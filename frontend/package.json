@@ -7,9 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "api:gen": "orval --config ./orval.config.ts"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.101.3",
+    "axios": "^1.18.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
@@ -18,6 +21,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "orval": "^8.22.0",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",
     "vite": "^8.1.1"
