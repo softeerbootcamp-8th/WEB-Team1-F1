@@ -1,3 +1,15 @@
 spring:
   application:
     name: race
+  datasource:
+    url: jdbc:mysql://localhost:3306/race?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: race
+    password: race
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
