@@ -140,7 +140,7 @@
 
 ## 🧑🏻‍💻 팀원 소개
 
-| <img src="https://github.com/tukjw.png" width="100"> | <img src="https://github.com/ReusCap.png" width="100"> | <img src="https://github.com/eojinxx.png" width="100"> | <img src="https://github.com/mookkae.png" width="100"> |
+| <img src="https://github.com/eojinxx.png" width="100"> | <img src="https://github.com/tukjw.png" width="100"> | <img src="https://github.com/ReusCap.png" width="100"> | <img src="https://github.com/mookkae.png" width="100"> |
 | --- | --- | --- | --- |
 | 김어진 | 김재완 | 박태은 | 정동현 |
 | BE | BE | BE | BE |
