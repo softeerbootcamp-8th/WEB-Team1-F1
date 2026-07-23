@@ -4,6 +4,8 @@ import com.softeer.race.common.domain.BaseTimeEntity;
 import com.softeer.race.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,8 +29,9 @@ public class Vehicle extends BaseTimeEntity {
     @JoinColumn(name = "seller_id", nullable = false)
     private User seller;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String manufacturer;
+    private Manufacturer manufacturer;
 
     @Column(nullable = false)
     private String model;
@@ -39,11 +42,13 @@ public class Vehicle extends BaseTimeEntity {
     @Column(nullable = false)
     private int mileage;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String fuelType;
+    private FuelType fuelType;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String transmission;
+    private Transmission transmission;
 
     @Column(nullable = false)
     private String plateNumber;
