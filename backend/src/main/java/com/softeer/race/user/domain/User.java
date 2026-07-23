@@ -32,10 +32,10 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private String nickname;
 
-    @Column
+    @Column(nullable = false)
     private String phone;
 
-    @Column
+    @Column(nullable = false)
     private String address;
 
     @Enumerated(EnumType.STRING)
