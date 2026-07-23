@@ -14,7 +14,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -37,11 +36,10 @@ public class Auction extends BaseTimeEntity {
     @JoinColumn(name = "winner_id")
     private User winner;
 
-    @Column(nullable = false, precision = 15, scale = 2)
-    private BigDecimal startPrice;
+    @Column(nullable = false)
+    private long startPrice;
 
-    @Column(precision = 15, scale = 2)
-    private BigDecimal currentPrice;
+    private Long currentPrice;
 
     @Column(nullable = false)
     private LocalDateTime roomOpenAt;

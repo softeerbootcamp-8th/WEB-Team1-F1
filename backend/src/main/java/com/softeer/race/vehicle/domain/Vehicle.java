@@ -10,7 +10,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -49,6 +48,5 @@ public class Vehicle extends BaseTimeEntity {
     @Column(nullable = false)
     private String plateNumber;
 
-    @Column(precision = 15, scale = 2)
-    private BigDecimal estimatedPrice;
+    private Long estimatedPrice;
 }
