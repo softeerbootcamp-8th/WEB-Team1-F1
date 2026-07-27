@@ -5,7 +5,9 @@ import com.softeer.race.bid.infrastructure.BidIncrementTierRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 구간표를 읽어 정책 객체로 조립한다, 산출 규칙 자체는 BidIncrementPolicy가 갖는다 */
+/**
+ * 구간표를 읽어 정책 객체로 조립한다, 산출 규칙 자체는 BidIncrementPolicy가 갖는다
+ */
 @Service
 @Transactional(readOnly = true)
 public class BidIncrementService {
