@@ -41,7 +41,7 @@ public class AuctionRoomService {
 
         int connectedCount = 0;
 
-        if (phase.isOpen()) {
+        if (phase.isPresenceCounted()) {
             roomPresence.markPresent(auctionId, userId, now);
             connectedCount = roomPresence.countPresent(auctionId, now);
         }

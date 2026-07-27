@@ -13,12 +13,10 @@ public enum RoomPhase {
     RESULT(true),
     CLOSED(false);
 
-    /**
-     * 접속자로 집계하는 구간
-     */
-    private final boolean open;
+    // 접속자로 집계하는 구간
+    private final boolean presenceCounted;
 
-    RoomPhase(boolean open) {
-        this.open = open;
+    RoomPhase(boolean presenceCounted) {
+        this.presenceCounted = presenceCounted;
     }
 }

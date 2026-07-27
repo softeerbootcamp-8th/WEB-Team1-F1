@@ -27,16 +27,16 @@ class AuctionRoomSnapshotTest {
         return new AuctionRoomSnapshot(START_PRICE, null, ROOM_OPEN_AT, START_TIME, endTime);
     }
 
-    @DisplayName("경매방 단계와 개방 여부는 조회 시각으로 결정된다")
+    @DisplayName("경매방 단계와 접속자 집계 여부는 조회 시각으로 결정된다")
     @ParameterizedTest(name = "{0}")
     @MethodSource
-    void phaseAt(String scenario, LocalDateTime now, RoomPhase expected, boolean open) {
+    void phaseAt(String scenario, LocalDateTime now, RoomPhase expected, boolean presenceCounted) {
         AuctionRoomSnapshot snapshot = endingAt(END_TIME);
 
         RoomPhase phase = snapshot.phaseAt(now);
 
         assertThat(phase).isEqualTo(expected);
-        assertThat(phase.isOpen()).isEqualTo(open);
+        assertThat(phase.isPresenceCounted()).isEqualTo(presenceCounted);
     }
 
     static Stream<Arguments> phaseAt() {
