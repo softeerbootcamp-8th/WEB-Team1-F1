@@ -37,7 +37,7 @@ class UserControllerTest {
     @DisplayName("정상 회원가입 요청은 비밀번호 없이 201 응답을 반환한다")
     void signUp() throws Exception {
         when(userService.signUp(any(SignUpRequest.class)))
-                .thenReturn(new SignUpResponse(1L, "race@race.kr", "레이스", Role.GENERAL));
+                .thenReturn(new SignUpResponse(1L, "race@race.kr", "김레이스", Role.GENERAL));
 
         mockMvc.perform(post("/api/v1/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -45,7 +45,7 @@ class UserControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.email").value("race@race.kr"))
-                .andExpect(jsonPath("$.nickname").value("레이스"))
+                .andExpect(jsonPath("$.realName").value("김레이스"))
                 .andExpect(jsonPath("$.role").value("GENERAL"))
                 .andExpect(jsonPath("$.password").doesNotExist());
     }
@@ -59,7 +59,7 @@ class UserControllerTest {
                                 {
                                   "email": "not-an-email",
                                   "password": "123",
-                                  "nickname": "레이스",
+                                  "realName": "김레이스",
                                   "phone": "010-1234-5678",
                                   "address": "서울시 강남구 테헤란로 123",
                                   "role": "GENERAL"
@@ -99,7 +99,7 @@ class UserControllerTest {
                 {
                   "email": "race@race.kr",
                   "password": "password123",
-                  "nickname": "레이스",
+                  "realName": "김레이스",
                   "phone": "010-1234-5678",
                   "address": "서울시 강남구 테헤란로 123",
                   "role": "GENERAL"

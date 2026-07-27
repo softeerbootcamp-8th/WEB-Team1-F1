@@ -37,7 +37,7 @@ public class UserService {
         User user = User.create(
                 request.email(),
                 encodedPassword,
-                request.nickname(),
+                request.realName(),
                 request.phone(),
                 request.address(),
                 request.role());

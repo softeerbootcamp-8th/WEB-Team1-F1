@@ -12,8 +12,8 @@ public record SignUpResponse(
         @Schema(description = "이메일", example = "race@race.kr")
         String email,
 
-        @Schema(description = "닉네임", example = "레이스")
-        String nickname,
+        @Schema(description = "실명", example = "김레이스")
+        String realName,
 
         @Schema(description = "회원 유형", example = "GENERAL")
         Role role
@@ -23,7 +23,7 @@ public record SignUpResponse(
         return new SignUpResponse(
                 user.getId(),
                 user.getEmail(),
-                user.getNickname(),
+                user.getRealName(),
                 user.getRole());
     }
 }

@@ -21,10 +21,10 @@ public record SignUpRequest(
         @Size(min = 8, max = 64)
         String password,
 
-        @Schema(description = "닉네임", example = "레이스")
+        @Schema(description = "실명", example = "김레이스")
         @NotBlank
-        @Size(min = 2, max = 20)
-        String nickname,
+        @Size(min = 2, max = 30)
+        String realName,
 
         @Schema(description = "휴대전화 번호", example = "010-1234-5678")
         @NotBlank

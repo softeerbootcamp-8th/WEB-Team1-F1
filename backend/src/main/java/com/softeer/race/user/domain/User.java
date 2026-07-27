@@ -30,7 +30,7 @@ public class User extends BaseTimeEntity {
     private String password;
 
     @Column(nullable = false)
-    private String nickname;
+    private String realName;
 
     @Column(nullable = false)
     private String phone;
@@ -45,13 +45,13 @@ public class User extends BaseTimeEntity {
     private User(
             String email,
             String encodedPassword,
-            String nickname,
+            String realName,
             String phone,
             String address,
             Role role) {
         this.email = email;
         this.password = encodedPassword;
-        this.nickname = nickname;
+        this.realName = realName;
         this.phone = phone;
         this.address = address;
         this.role = role;
@@ -60,10 +60,10 @@ public class User extends BaseTimeEntity {
     public static User create(
             String email,
             String encodedPassword,
-            String nickname,
+            String realName,
             String phone,
             String address,
             Role role) {
-        return new User(email, encodedPassword, nickname, phone, address, role);
+        return new User(email, encodedPassword, realName, phone, address, role);
     }
 }
