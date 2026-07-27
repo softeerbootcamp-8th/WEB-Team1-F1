@@ -9,6 +9,9 @@ public record SignUpResponse(
         @Schema(description = "회원 ID", example = "1")
         Long id,
 
+        @Schema(description = "로그인 아이디", example = "race_kim")
+        String username,
+
         @Schema(description = "이메일", example = "race@race.kr")
         String email,
 
@@ -22,6 +25,7 @@ public record SignUpResponse(
     public static SignUpResponse from(User user) {
         return new SignUpResponse(
                 user.getId(),
+                user.getUsername(),
                 user.getEmail(),
                 user.getRealName(),
                 user.getRole());

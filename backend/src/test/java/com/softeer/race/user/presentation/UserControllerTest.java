@@ -37,13 +37,14 @@ class UserControllerTest {
     @DisplayName("정상 회원가입 요청은 비밀번호 없이 201 응답을 반환한다")
     void signUp() throws Exception {
         when(userService.signUp(any(SignUpRequest.class)))
-                .thenReturn(new SignUpResponse(1L, "race@race.kr", "김레이스", Role.GENERAL));
+                .thenReturn(new SignUpResponse(1L, "race_kim", "race@race.kr", "김레이스", Role.GENERAL));
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.username").value("race_kim"))
                 .andExpect(jsonPath("$.email").value("race@race.kr"))
                 .andExpect(jsonPath("$.realName").value("김레이스"))
                 .andExpect(jsonPath("$.role").value("GENERAL"))
@@ -57,6 +58,7 @@ class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
+                                  "username": "race_kim",
                                   "email": "not-an-email",
                                   "password": "123",
                                   "realName": "김레이스",
@@ -68,6 +70,17 @@ class UserControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
                 .andExpect(jsonPath("$.errors[*].field", hasItems("email", "password")));
+    }
+
+    @Test
+    @DisplayName("형식에 맞지 않는 아이디는 username 필드 오류와 함께 400을 반환한다")
+    void signUpRejectsInvalidUsername() throws Exception {
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequest().replace("race_kim", "Race_Kim")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.errors[*].field", hasItems("username")));
     }
 
     @Test
@@ -97,6 +110,7 @@ class UserControllerTest {
     private static String validRequest() {
         return """
                 {
+                  "username": "race_kim",
                   "email": "race@race.kr",
                   "password": "password123",
                   "realName": "김레이스",

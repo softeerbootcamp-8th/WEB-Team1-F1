@@ -1,6 +1,7 @@
 package com.softeer.race.user.application;
 
 import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_EMAIL;
+import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_USERNAME;
 import static com.softeer.race.user.exception.UserErrorCode.UNSUPPORTED_SIGNUP_ROLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -74,6 +75,21 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("이미 존재하는 아이디면 중복 아이디 예외를 던진다")
+    void signUpRejectsDuplicateUsername() {
+        SignUpRequest request = signUpRequest(Role.GENERAL);
+        when(userRepository.existsByUsername(request.username())).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.signUp(request))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(DUPLICATE_USERNAME));
+
+        verify(userRepository, never()).existsByEmail(any());
+        verify(passwordEncoder, never()).encode(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("평가사 역할의 자체 회원가입을 거부한다")
     void signUpRejectsEvaluatorRole() {
         SignUpRequest request = signUpRequest(Role.EVALUATOR);
@@ -83,25 +99,42 @@ class UserServiceTest {
                         exception -> assertThat(exception.errorCode())
                                 .isEqualTo(UNSUPPORTED_SIGNUP_ROLE));
 
+        verify(userRepository, never()).existsByUsername(any());
         verify(userRepository, never()).existsByEmail(any());
         verify(userRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("동시 가입으로 저장 시 무결성 위반이 발생하면 중복 이메일 예외로 변환한다")
+    @DisplayName("동시 가입으로 이메일 제약이 위반되면 중복 이메일 예외로 변환한다")
     void signUpConvertsDataIntegrityViolation() {
         SignUpRequest request = signUpRequest(Role.GENERAL);
         when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
         when(userRepository.save(any(User.class)))
-                .thenThrow(new DataIntegrityViolationException("duplicate email"));
+                .thenThrow(new DataIntegrityViolationException(
+                        "could not execute statement [Unique index or primary key violation: uk_users_email]"));
 
         assertThatThrownBy(() -> userService.signUp(request))
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(DUPLICATE_EMAIL));
     }
 
+    @Test
+    @DisplayName("동시 가입으로 아이디 제약이 위반되면 중복 아이디 예외로 변환한다")
+    void signUpConvertsUsernameDataIntegrityViolation() {
+        SignUpRequest request = signUpRequest(Role.GENERAL);
+        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        when(userRepository.save(any(User.class)))
+                .thenThrow(new DataIntegrityViolationException(
+                        "could not execute statement [Unique index or primary key violation: uk_users_username]"));
+
+        assertThatThrownBy(() -> userService.signUp(request))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(DUPLICATE_USERNAME));
+    }
+
     private static SignUpRequest signUpRequest(Role role) {
         return new SignUpRequest(
+                "race_kim",
                 "race@race.kr",
                 RAW_PASSWORD,
                 "김레이스",

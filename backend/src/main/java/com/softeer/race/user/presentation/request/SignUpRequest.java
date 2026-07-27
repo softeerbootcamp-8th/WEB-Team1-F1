@@ -10,6 +10,11 @@ import jakarta.validation.constraints.Size;
 
 @Schema(description = "회원가입 요청")
 public record SignUpRequest(
+        @Schema(description = "로그인 아이디", example = "race_kim")
+        @NotBlank
+        @Pattern(regexp = "^[a-z0-9_]{4,20}$")
+        String username,
+
         @Schema(description = "이메일", example = "race@race.kr")
         @NotBlank
         @Email
