@@ -41,4 +41,29 @@ public class User extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    private User(
+            String email,
+            String encodedPassword,
+            String nickname,
+            String phone,
+            String address,
+            Role role) {
+        this.email = email;
+        this.password = encodedPassword;
+        this.nickname = nickname;
+        this.phone = phone;
+        this.address = address;
+        this.role = role;
+    }
+
+    public static User create(
+            String email,
+            String encodedPassword,
+            String nickname,
+            String phone,
+            String address,
+            Role role) {
+        return new User(email, encodedPassword, nickname, phone, address, role);
+    }
 }
