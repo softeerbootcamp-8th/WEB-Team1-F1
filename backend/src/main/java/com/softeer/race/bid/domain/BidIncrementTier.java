@@ -28,8 +28,18 @@ public class BidIncrementTier {
     private long increment;
 
     /** 행은 data.sql이 넣으므로 프로덕션에서는 생성하지 않는다, 테스트에서 구간을 조립하기 위한 생성자다 */
-    public BidIncrementTier(long minPrice, long increment) {
+    BidIncrementTier(long minPrice, long increment) {
         this.minPrice = minPrice;
         this.increment = increment;
+    }
+
+    /** 하한이 이 금액 이하인가, 실제 구간 선택은 이런 구간 중 하한이 가장 큰 것을 고른다 */
+    boolean startsAtOrBelow(long price) {
+        return minPrice <= price;
+    }
+
+    /** 상승가 격자 위의 값 중 현재가보다 큰 최솟값 */
+    long nextBidPrice(long currentPrice) {
+        return (currentPrice / increment + 1) * increment;
     }
 }
