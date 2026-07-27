@@ -1,8 +1,8 @@
 package com.softeer.race.user.presentation;
 
 import com.softeer.race.user.application.UserService;
-import com.softeer.race.user.presentation.dto.request.SignUpRequest;
-import com.softeer.race.user.presentation.dto.response.SignUpResponse;
+import com.softeer.race.user.presentation.request.SignUpRequest;
+import com.softeer.race.user.presentation.response.SignUpResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

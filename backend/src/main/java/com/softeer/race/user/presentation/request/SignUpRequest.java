@@ -1,4 +1,4 @@
-package com.softeer.race.user.presentation.dto.request;
+package com.softeer.race.user.presentation.request;
 
 import com.softeer.race.user.domain.Role;
 import io.swagger.v3.oas.annotations.media.Schema;

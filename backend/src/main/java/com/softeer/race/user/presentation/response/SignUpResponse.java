@@ -1,4 +1,4 @@
-package com.softeer.race.user.presentation.dto.response;
+package com.softeer.race.user.presentation.response;
 
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
