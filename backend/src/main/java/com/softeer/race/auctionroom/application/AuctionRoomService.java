@@ -4,6 +4,7 @@ import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auctionroom.domain.*;
 import com.softeer.race.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,9 @@ public class AuctionRoomService {
     private final RoomBidRepository roomBidRepository;
     private final RoomPresence roomPresence;
     private final Clock clock;
+
+    // 호가창에 보일 건수
+    private static final int RECENT_BID_LIMIT = 20;
 
     /**
      * 경매방 현황, 조회가 곧 접속 기록이 된다
@@ -44,9 +48,7 @@ public class AuctionRoomService {
 
         int bidderCount = roomBidRepository.countBidders(auctionId);
 
-        List<RecentBid> recentBids = roomBidRepository.findRecentBids(auctionId).stream()
-                .map(RecentBid::from)
-                .toList();
+        List<RecentBid> recentBids = roomBidRepository.findRecentBids(auctionId, Limit.of(RECENT_BID_LIMIT));
 
         return AuctionRoomView.of(
                 auctionId, phase, snapshot, connectedCount, bidderCount, recentBids, now);
