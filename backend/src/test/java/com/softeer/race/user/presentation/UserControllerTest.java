@@ -39,7 +39,7 @@ class UserControllerTest {
         when(userService.signUp(any(SignUpRequest.class)))
                 .thenReturn(new SignUpResponse(1L, "race@race.kr", "김레이스", Role.GENERAL));
 
-        mockMvc.perform(post("/api/v1/users")
+        mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest()))
                 .andExpect(status().isCreated())
@@ -53,7 +53,7 @@ class UserControllerTest {
     @Test
     @DisplayName("잘못된 이메일과 짧은 비밀번호는 필드별 오류와 함께 400을 반환한다")
     void signUpValidationFailure() throws Exception {
-        mockMvc.perform(post("/api/v1/users")
+        mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -73,7 +73,7 @@ class UserControllerTest {
     @Test
     @DisplayName("정의되지 않은 역할 문자열은 INVALID_REQUEST로 400을 반환한다")
     void signUpRejectsUnknownRole() throws Exception {
-        mockMvc.perform(post("/api/v1/users")
+        mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest().replace("GENERAL", "ADMIN")))
                 .andExpect(status().isBadRequest())
@@ -86,7 +86,7 @@ class UserControllerTest {
         when(userService.signUp(any(SignUpRequest.class)))
                 .thenThrow(new BusinessException(UserErrorCode.DUPLICATE_EMAIL));
 
-        mockMvc.perform(post("/api/v1/users")
+        mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest()))
                 .andExpect(status().isConflict())

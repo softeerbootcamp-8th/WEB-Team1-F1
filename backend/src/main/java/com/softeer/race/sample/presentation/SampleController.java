@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Sample", description = "환경 검증용 샘플 API")
 @RestController
-@RequestMapping("/api/v1/samples")
+@RequestMapping("/api/samples")
 public class SampleController {
 
     private final SampleService sampleService;
