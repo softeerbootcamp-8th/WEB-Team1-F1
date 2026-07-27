@@ -84,6 +84,41 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("특수문자로 이루어진 ASCII 비밀번호는 정상 처리된다")
+    void signUpAcceptsSpecialCharacterPassword() throws Exception {
+        when(userService.signUp(any(SignUpRequest.class)))
+                .thenReturn(new SignUpResponse(1L, "race_kim", "race@race.kr", "김레이스", Role.GENERAL));
+
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequest().replace("password123", "P@ssw0rd!#$%^&*()_+-=~`")))
+                .andExpect(status().isCreated());
+    }
+
+    // ASCII 제약이 풀리면 bcrypt 72바이트 한계를 넘겨 500이 나므로 400으로 막히는지 고정한다
+    @Test
+    @DisplayName("ASCII가 아닌 비밀번호는 password 필드 오류와 함께 400을 반환한다")
+    void signUpRejectsNonAsciiPassword() throws Exception {
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequest().replace("password123", "비밀번호입니다123")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.errors[*].field", hasItems("password")));
+    }
+
+    @Test
+    @DisplayName("공백이 포함된 비밀번호는 password 필드 오류와 함께 400을 반환한다")
+    void signUpRejectsPasswordWithWhitespace() throws Exception {
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequest().replace("password123", "pass word123")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.errors[*].field", hasItems("password")));
+    }
+
+    @Test
     @DisplayName("정의되지 않은 역할 문자열은 INVALID_REQUEST로 400을 반환한다")
     void signUpRejectsUnknownRole() throws Exception {
         mockMvc.perform(post("/api/users")

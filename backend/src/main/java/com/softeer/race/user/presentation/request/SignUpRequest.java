@@ -21,9 +21,12 @@ public record SignUpRequest(
         @Size(max = 255)
         String email,
 
-        @Schema(description = "비밀번호", example = "password123")
+        // bcrypt는 UTF-8 72바이트를 넘는 입력에 예외를 던진다
+        // 출력 가능 ASCII로 제한해 1자 = 1바이트를 보장하므로 아래 max는 72를 넘길 수 없다
+        @Schema(description = "비밀번호(공백을 제외한 ASCII 문자)", example = "password123")
         @NotBlank
         @Size(min = 8, max = 64)
+        @Pattern(regexp = "^[\\x21-\\x7E]+$", message = "비밀번호는 공백을 제외한 영문, 숫자, 특수문자만 사용할 수 있습니다.")
         String password,
 
         @Schema(description = "실명", example = "김레이스")
