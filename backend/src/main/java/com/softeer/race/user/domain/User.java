@@ -16,6 +16,8 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
+// @Column(unique = true)는 제약명이 자동 생성되어 위반 시 어떤 컬럼인지 구분할 수 없다
+// UserService가 제약명으로 중복 원인을 가려내므로 이름을 직접 지정한다
 @Table(name = "users", uniqueConstraints = {
         @UniqueConstraint(name = "uk_users_username", columnNames = "username"),
         @UniqueConstraint(name = "uk_users_email", columnNames = "email")

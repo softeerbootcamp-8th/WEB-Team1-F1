@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Size;
 
 @Schema(description = "회원가입 요청")
 public record SignUpRequest(
+        // 대소문자만 다른 아이디가 서로 다른 계정이 되는 혼동을 막기 위해 소문자로만 받는다
         @Schema(description = "로그인 아이디", example = "race_kim")
         @NotBlank
         @Pattern(regexp = "^[a-z0-9_]{4,20}$")

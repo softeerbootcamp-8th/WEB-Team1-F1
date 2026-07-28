@@ -72,6 +72,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 exception, invalidRequest(exception, errors, request), headers, status, request);
     }
 
+    // 잘못된 role 값이나 깨진 JSON은 역직렬화 단계에서 막혀 Bean Validation까지 가지 못한다
+    // 필드별 사유를 채울 수 없으므로 errors는 비우되 응답 형식은 위와 동일하게 맞춘다
     @Override
     protected @Nullable ResponseEntity<Object> handleHttpMessageNotReadable(
             HttpMessageNotReadableException exception,

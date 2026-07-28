@@ -34,6 +34,7 @@ class BcryptPasswordEncoderTest {
         assertThat(passwordEncoder.matches(rawPassword, secondEncodedPassword)).isTrue();
     }
 
+    // SignUpRequest가 허용하는 최대 길이. ASCII 전용이라 64자 = 64바이트로 bcrypt의 72바이트 한계 안에 든다
     @Test
     @DisplayName("허용 상한인 64자 비밀번호를 처리할 수 있다")
     void encodeMaximumLengthPassword() {
