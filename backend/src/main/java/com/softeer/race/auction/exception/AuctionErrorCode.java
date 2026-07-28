@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 public enum AuctionErrorCode implements ErrorCode {
 
     INVALID_START_AT(HttpStatus.BAD_REQUEST, "경매 시작 시각은 현재보다 1시간 이후여야 합니다."),
-    VEHICLE_NOT_FOUND(HttpStatus.BAD_REQUEST, "존재하지 않는 차량입니다."),
+    VEHICLE_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 차량입니다."),
     AUCTION_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 경매가 있는 차량입니다.");
 
     private final HttpStatus status;
