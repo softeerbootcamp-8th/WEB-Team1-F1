@@ -40,4 +40,17 @@ public class Notification extends BaseTimeEntity {
     private boolean isRead;
 
     private Long referenceId;
+
+    /**
+     * 읽지 않은 상태의 알림 생성
+     */
+    public static Notification of(User user, NotificationType type, String message, Long referenceId) {
+        Notification notification = new Notification();
+        notification.user = user;
+        notification.type = type;
+        notification.message = message;
+        notification.isRead = false;
+        notification.referenceId = referenceId;
+        return notification;
+    }
 }
