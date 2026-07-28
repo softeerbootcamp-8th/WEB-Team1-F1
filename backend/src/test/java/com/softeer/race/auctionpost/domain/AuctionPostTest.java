@@ -14,11 +14,10 @@ class AuctionPostTest {
     @Test
     @DisplayName("경매글은 발행 상태로 생성된다.")
     void create_발행상태() {
-        AuctionPost post = AuctionPost.create(null, "2021 그랜저 IG", "무사고", "https://cdn/1.jpg", NOW);
+        AuctionPost post = AuctionPost.create(null, "https://cdn/1.jpg", NOW);
 
         assertThat(post.getPostStatus()).isEqualTo(PostStatus.PUBLISHED);
         assertThat(post.getPublishedAt()).isEqualTo(NOW);
-        assertThat(post.getTitle()).isEqualTo("2021 그랜저 IG");
         assertThat(post.getThumbnailUrl()).isEqualTo("https://cdn/1.jpg");
     }
 }

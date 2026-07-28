@@ -1,6 +1,5 @@
 package com.softeer.race.auction.application;
 
-import com.softeer.race.auction.application.dto.AuctionCreateCommand;
 import com.softeer.race.auction.application.dto.AuctionCreateInfo;
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionRepository;
@@ -40,9 +39,7 @@ public class AuctionService {
      * 경매글과 경매를 한 트랜잭션으로 함께 생성한다
      */
     @Transactional
-    public AuctionCreateInfo create(AuctionCreateCommand command) {
-        Long vehicleId = command.vehicleId();
-
+    public AuctionCreateInfo create(Long vehicleId, long startPrice, LocalDateTime startAt) {
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new BusinessException(AuctionErrorCode.VEHICLE_NOT_FOUND));
 
@@ -57,9 +54,9 @@ public class AuctionService {
 
         LocalDateTime now = LocalDateTime.now(clock);
         AuctionPost post = auctionPostRepository.save(
-                AuctionPost.create(vehicle, command.title(), command.description(), thumbnailUrl, now));
+                AuctionPost.create(vehicle, thumbnailUrl, now));
         Auction auction = auctionRepository.save(
-                Auction.schedule(post, command.startPrice(), command.startAt()));
+                Auction.schedule(post, startPrice, startAt));
 
         return AuctionCreateInfo.from(auction);
     }

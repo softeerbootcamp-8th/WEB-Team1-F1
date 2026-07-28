@@ -72,7 +72,7 @@ class AuctionControllerTest {
     @DisplayName("필수 값이 없으면 400을 반환한다.")
     void 필수값_누락() throws Exception {
         String invalidJson = """
-                { "startPrice": 10000000, "title": "제목" }
+                { "startPrice": 10000000 }
                 """;
 
         mockMvc.perform(post("/api/auctions")
@@ -99,9 +99,7 @@ class AuctionControllerTest {
                 {
                   "vehicleId": %d,
                   "startPrice": 10000000,
-                  "startAt": "%s",
-                  "title": "그랜저 IG 하이브리드",
-                  "description": "단순교환 무사고"
+                  "startAt": "%s"
                 }
                 """.formatted(VEHICLE_ID, startAt.format(REQUEST_FORMAT));
     }

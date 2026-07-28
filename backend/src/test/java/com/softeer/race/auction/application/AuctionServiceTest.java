@@ -1,6 +1,5 @@
 package com.softeer.race.auction.application;
 
-import com.softeer.race.auction.application.dto.AuctionCreateCommand;
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.auctionpost.domain.AuctionPost;
@@ -40,6 +39,7 @@ class AuctionServiceTest {
             Clock.fixed(Instant.parse("2026-07-27T06:30:00Z"), KST);
 
     private static final Long VEHICLE_ID = 1000L;
+    private static final long START_PRICE = 10_000_000L;
 
     private static final LocalDateTime VALID_START_AT = LocalDateTime.of(2026, 7, 27, 16, 30);
 
@@ -69,7 +69,7 @@ class AuctionServiceTest {
         given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(auctionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-        service.create(command(VALID_START_AT));
+        service.create(VEHICLE_ID, START_PRICE, VALID_START_AT);
         then(auctionPostRepository).should().save(any(AuctionPost.class));
         then(auctionRepository).should().save(any(Auction.class));
     }
@@ -84,7 +84,7 @@ class AuctionServiceTest {
         given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(auctionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-        service.create(command(VALID_START_AT));
+        service.create(VEHICLE_ID, START_PRICE, VALID_START_AT);
 
         ArgumentCaptor<AuctionPost> captor = ArgumentCaptor.forClass(AuctionPost.class);
         then(auctionPostRepository).should().save(captor.capture());
@@ -98,7 +98,7 @@ class AuctionServiceTest {
         given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle()));
         given(auctionRepository.existsActiveByVehicleId(any(), any())).willReturn(true);
 
-        assertThatThrownBy(() -> service.create(command(VALID_START_AT)))
+        assertThatThrownBy(() -> service.create(VEHICLE_ID, START_PRICE, VALID_START_AT))
                 .isInstanceOf(BusinessException.class);
 
         then(auctionPostRepository).shouldHaveNoInteractions();
@@ -110,16 +110,13 @@ class AuctionServiceTest {
     void create_차량_없음_거부() {
         given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.create(command(VALID_START_AT)))
+        assertThatThrownBy(() -> service.create(VEHICLE_ID, START_PRICE, VALID_START_AT))
                 .isInstanceOf(BusinessException.class);
 
         then(auctionPostRepository).shouldHaveNoInteractions();
         then(auctionRepository).should(never()).save(any());
     }
 
-    private AuctionCreateCommand command(LocalDateTime startAt) {
-        return new AuctionCreateCommand(VEHICLE_ID, 10_000_000L, startAt, "그랜저 IG 하이브리드 익스클루시브 스페셜", "단순교환 무사고");
-    }
 
     private Vehicle vehicle() {
         return mock(Vehicle.class);

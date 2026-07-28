@@ -22,12 +22,6 @@ public class AuctionPost extends BaseTimeEntity {
     @JoinColumn(name = "vehicle_id", nullable = false, unique = true)
     private Vehicle vehicle;
 
-    @Column(nullable = false)
-    private String title;
-
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
     private String thumbnailUrl;
 
     @Enumerated(EnumType.STRING)
@@ -41,11 +35,9 @@ public class AuctionPost extends BaseTimeEntity {
     /**
      * 임시저장 없이 곧바로 발행 상태로 경매글을 만든다
      */
-    public static AuctionPost create(Vehicle vehicle, String title, String description, String thumbnailUrl, LocalDateTime now) {
+    public static AuctionPost create(Vehicle vehicle, String thumbnailUrl, LocalDateTime now) {
         AuctionPost post = new AuctionPost();
         post.vehicle = vehicle;
-        post.title = title;
-        post.description = description;
         post.thumbnailUrl = thumbnailUrl;
         post.postStatus = PostStatus.PUBLISHED;
         post.publishedAt = now;

@@ -58,6 +58,6 @@ class AuctionTest {
     }
 
     private AuctionPost post() {
-        return AuctionPost.create(null, "2021 그랜저 IG", "무사고", null, PUBLISHED_AT);
+        return AuctionPost.create(null, null, PUBLISHED_AT);
     }
 }
