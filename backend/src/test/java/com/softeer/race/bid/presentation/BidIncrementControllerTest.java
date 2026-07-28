@@ -11,12 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 
 // 프론트는 이 표를 받아 버튼 라벨과 다음 입찰 금액을 로컬에서 계산한다
-// 값과 순서가 곧 계약이므로 가짜 데이터가 아니라 data.sql의 실제 시드로 확인한다
+// 값과 순서가 곧 계약이므로 가짜 데이터가 아니라 확정 구간표 픽스처(@Sql)로 확인한다
 @SpringBootTest
 @AutoConfigureMockMvc
+@Sql("/sql/bid-increment-tiers.sql")
 class BidIncrementControllerTest {
 
     @Autowired
