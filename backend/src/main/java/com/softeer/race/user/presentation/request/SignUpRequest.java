@@ -1,5 +1,6 @@
 package com.softeer.race.user.presentation.request;
 
+import com.softeer.race.user.application.dto.command.SignUpCommand;
 import com.softeer.race.user.domain.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -49,4 +50,8 @@ public record SignUpRequest(
         @NotNull
         Role role
 ) {
+
+    public SignUpCommand toCommand() {
+        return new SignUpCommand(username, email, password, realName, phone, address, role);
+    }
 }

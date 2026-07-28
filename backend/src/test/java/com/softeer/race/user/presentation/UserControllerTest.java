@@ -10,10 +10,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.presentation.GlobalExceptionHandler;
 import com.softeer.race.user.application.UserService;
+import com.softeer.race.user.application.dto.command.SignUpCommand;
+import com.softeer.race.user.application.dto.info.SignUpInfo;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.exception.UserErrorCode;
-import com.softeer.race.user.presentation.request.SignUpRequest;
-import com.softeer.race.user.presentation.response.SignUpResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,8 +36,8 @@ class UserControllerTest {
     @Test
     @DisplayName("정상 회원가입 요청은 비밀번호 없이 201 응답을 반환한다")
     void signUp() throws Exception {
-        when(userService.signUp(any(SignUpRequest.class)))
-                .thenReturn(new SignUpResponse(1L, "race_kim", "race@race.kr", "김레이스", Role.GENERAL));
+        when(userService.signUp(any(SignUpCommand.class)))
+                .thenReturn(new SignUpInfo(1L, "race_kim", "race@race.kr", "김레이스", Role.GENERAL));
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -86,8 +86,8 @@ class UserControllerTest {
     @Test
     @DisplayName("특수문자로 이루어진 ASCII 비밀번호는 정상 처리된다")
     void signUpAcceptsSpecialCharacterPassword() throws Exception {
-        when(userService.signUp(any(SignUpRequest.class)))
-                .thenReturn(new SignUpResponse(1L, "race_kim", "race@race.kr", "김레이스", Role.GENERAL));
+        when(userService.signUp(any(SignUpCommand.class)))
+                .thenReturn(new SignUpInfo(1L, "race_kim", "race@race.kr", "김레이스", Role.GENERAL));
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -131,7 +131,7 @@ class UserControllerTest {
     @Test
     @DisplayName("중복 이메일 비즈니스 예외는 USER_DUPLICATE_EMAIL로 409를 반환한다")
     void signUpDuplicateEmail() throws Exception {
-        when(userService.signUp(any(SignUpRequest.class)))
+        when(userService.signUp(any(SignUpCommand.class)))
                 .thenThrow(new BusinessException(UserErrorCode.DUPLICATE_EMAIL));
 
         mockMvc.perform(post("/api/users")

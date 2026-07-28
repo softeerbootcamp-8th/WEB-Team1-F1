@@ -1,7 +1,7 @@
 package com.softeer.race.user.presentation.response;
 
+import com.softeer.race.user.application.dto.info.SignUpInfo;
 import com.softeer.race.user.domain.Role;
-import com.softeer.race.user.domain.User;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "회원가입 응답")
@@ -22,12 +22,12 @@ public record SignUpResponse(
         Role role
 ) {
 
-    public static SignUpResponse from(User user) {
+    public static SignUpResponse from(SignUpInfo info) {
         return new SignUpResponse(
-                user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getRealName(),
-                user.getRole());
+                info.id(),
+                info.username(),
+                info.email(),
+                info.realName(),
+                info.role());
     }
 }

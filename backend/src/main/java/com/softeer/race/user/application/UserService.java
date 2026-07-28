@@ -7,10 +7,10 @@ import static com.softeer.race.user.exception.UserErrorCode.UNSUPPORTED_SIGNUP_R
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.exception.ErrorCode;
 import com.softeer.race.common.security.PasswordEncoder;
+import com.softeer.race.user.application.dto.command.SignUpCommand;
+import com.softeer.race.user.application.dto.info.SignUpInfo;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
-import com.softeer.race.user.presentation.request.SignUpRequest;
-import com.softeer.race.user.presentation.response.SignUpResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -24,30 +24,30 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public SignUpResponse signUp(SignUpRequest request) {
-        if (!request.role().isSelfSignUpAllowed()) {
+    public SignUpInfo signUp(SignUpCommand command) {
+        if (!command.role().isSelfSignUpAllowed()) {
             throw new BusinessException(UNSUPPORTED_SIGNUP_ROLE);
         }
-        if (userRepository.existsByUsername(request.username())) {
+        if (userRepository.existsByUsername(command.username())) {
             throw new BusinessException(DUPLICATE_USERNAME);
         }
-        if (userRepository.existsByEmail(request.email())) {
+        if (userRepository.existsByEmail(command.email())) {
             throw new BusinessException(DUPLICATE_EMAIL);
         }
 
-        String encodedPassword = passwordEncoder.encode(request.password());
+        String encodedPassword = passwordEncoder.encode(command.password());
         User user = User.create(
-                request.username(),
-                request.email(),
+                command.username(),
+                command.email(),
                 encodedPassword,
-                request.realName(),
-                request.phone(),
-                request.address(),
-                request.role());
+                command.realName(),
+                command.phone(),
+                command.address(),
+                command.role());
 
         try {
             User savedUser = userRepository.save(user);
-            return SignUpResponse.from(savedUser);
+            return SignUpInfo.from(savedUser);
         } catch (DataIntegrityViolationException exception) {
             throw new BusinessException(resolveDuplicateErrorCode(exception));
         }

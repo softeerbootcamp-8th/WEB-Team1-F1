@@ -1,6 +1,7 @@
 package com.softeer.race.user.presentation;
 
 import com.softeer.race.user.application.UserService;
+import com.softeer.race.user.application.dto.info.SignUpInfo;
 import com.softeer.race.user.presentation.request.SignUpRequest;
 import com.softeer.race.user.presentation.response.SignUpResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +26,7 @@ public class UserController {
     @Operation(summary = "회원가입", description = "일반 회원 또는 딜러 회원을 생성합니다.")
     @PostMapping
     public ResponseEntity<SignUpResponse> signUp(@Valid @RequestBody SignUpRequest request) {
-        SignUpResponse response = userService.signUp(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        SignUpInfo info = userService.signUp(request.toCommand());
+        return ResponseEntity.status(HttpStatus.CREATED).body(SignUpResponse.from(info));
     }
 }
