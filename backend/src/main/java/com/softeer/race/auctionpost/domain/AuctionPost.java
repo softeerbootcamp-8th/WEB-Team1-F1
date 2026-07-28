@@ -2,20 +2,12 @@ package com.softeer.race.auctionpost.domain;
 
 import com.softeer.race.common.domain.BaseTimeEntity;
 import com.softeer.race.vehicle.domain.Vehicle;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import java.time.LocalDateTime;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Getter
 @Entity
@@ -30,12 +22,6 @@ public class AuctionPost extends BaseTimeEntity {
     @JoinColumn(name = "vehicle_id", nullable = false, unique = true)
     private Vehicle vehicle;
 
-    @Column(nullable = false)
-    private String title;
-
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
     private String thumbnailUrl;
 
     @Enumerated(EnumType.STRING)
@@ -45,4 +31,17 @@ public class AuctionPost extends BaseTimeEntity {
     private LocalDateTime publishedAt;
 
     private LocalDateTime deletedAt;
+
+    /**
+     * 임시저장 없이 곧바로 발행 상태로 경매글을 만든다
+     */
+    public static AuctionPost create(Vehicle vehicle, String thumbnailUrl, LocalDateTime now) {
+        AuctionPost post = new AuctionPost();
+        post.vehicle = vehicle;
+        post.thumbnailUrl = thumbnailUrl;
+        post.postStatus = PostStatus.PUBLISHED;
+        post.publishedAt = now;
+
+        return post;
+    }
 }
