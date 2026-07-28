@@ -7,8 +7,15 @@
 # macOS
 .DS_Store
 
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
 # Claude 프로젝트 지침 (backend/CLAUDE.md, frontend/CLAUDE.md 등 어느 폴더든 제외)
 CLAUDE.md
+CLAUDE.local.md
 
 # Ignore Gradle GUI config
 gradle-app.setting
