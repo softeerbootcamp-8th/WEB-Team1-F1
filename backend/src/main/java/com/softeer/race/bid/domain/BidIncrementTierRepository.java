@@ -1,6 +1,5 @@
-package com.softeer.race.bid.infrastructure;
+package com.softeer.race.bid.domain;
 
-import com.softeer.race.bid.domain.BidIncrementTier;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 // JpaRepository<엔티티, ID타입>을 상속하면 런타임에 이 인터페이스의 구현체를 만들어서 빈으로 등록.
