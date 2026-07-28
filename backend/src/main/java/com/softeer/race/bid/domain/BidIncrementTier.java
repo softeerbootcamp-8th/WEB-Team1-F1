@@ -10,7 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 가격 구간별 최저 입찰 상승가 엔티티.
+ * 입찰 가격 구간별 상승가 정보를 관리하는 엔티티
  * 데이터베이스의 테이블과 매핑되며, 한 행이 하나의 가격 구간 정책을 나타낸다.
  */
 @Getter

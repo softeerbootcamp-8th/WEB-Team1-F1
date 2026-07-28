@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 구간표를 읽어 정책 객체로 조립한다, 산출 규칙 자체는 BidIncrementPolicy가 갖는다
+ * 입찰 가격 구간 정책을 조회하고 다음 최소 입찰가를 계산하는 서비스
  */
 @Service
 @Transactional(readOnly = true)

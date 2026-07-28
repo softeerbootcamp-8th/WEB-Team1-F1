@@ -61,6 +61,21 @@ class BidIncrementPolicyTest {
         assertThat(shuffled.nextBidPrice(10_000_000)).isEqualTo(10_050_000);
     }
 
+    // 조회 API가 하한 오름차순을 계약으로 내걸었으므로 정렬 자체도 고정한다
+    @DisplayName("구간표는 하한 오름차순으로 정렬되어 반환된다")
+    @Test
+    void tiersAreSortedByMinPrice() {
+        BidIncrementPolicy shuffled = new BidIncrementPolicy(List.of(
+                new BidIncrementTier(30_000_000, 100_000),
+                new BidIncrementTier(0, 10_000),
+                new BidIncrementTier(5_000_000, 50_000)
+        ));
+
+        assertThat(shuffled.tiers())
+                .extracting(BidIncrementTier::getMinPrice)
+                .containsExactly(0L, 5_000_000L, 30_000_000L);
+    }
+
     @DisplayName("현재가를 담당하는 구간이 없으면 예외를 던진다")
     @Test
     void tierNotFound() {
