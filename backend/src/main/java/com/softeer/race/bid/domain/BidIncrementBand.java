@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class BidIncrementTier {
+public class BidIncrementBand {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,7 +31,7 @@ public class BidIncrementTier {
     private long increment;
 
     /** 행은 DB에 시드되므로 프로덕션에서는 생성하지 않는다, 테스트에서 구간을 조립하기 위한 생성자다 */
-    BidIncrementTier(long minPrice, long increment) {
+    BidIncrementBand(long minPrice, long increment) {
         this.minPrice = minPrice;
         this.increment = increment;
     }

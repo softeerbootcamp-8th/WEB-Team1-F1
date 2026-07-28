@@ -9,15 +9,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-class BidIncrementPolicyTest {
+class BidIncrementTableTest {
 
-    /** 픽스처(bid-increment-tiers.sql)와 같은 구간표 */
-    private static final BidIncrementPolicy POLICY = new BidIncrementPolicy(List.of(
-            new BidIncrementTier(0, 10_000),
-            new BidIncrementTier(5_000_000, 50_000),
-            new BidIncrementTier(30_000_000, 100_000),
-            new BidIncrementTier(60_000_000, 200_000),
-            new BidIncrementTier(100_000_000, 500_000)
+    /** 픽스처(bid-increment-bands.sql)와 같은 구간표 */
+    private static final BidIncrementTable TABLE = new BidIncrementTable(List.of(
+            new BidIncrementBand(0, 10_000),
+            new BidIncrementBand(5_000_000, 50_000),
+            new BidIncrementBand(30_000_000, 100_000),
+            new BidIncrementBand(60_000_000, 200_000),
+            new BidIncrementBand(100_000_000, 500_000)
     ));
 
     @DisplayName("다음 최소 입찰가는 현재가에 그 구간의 상승가를 더한 값이다")
@@ -40,16 +40,16 @@ class BidIncrementPolicyTest {
             "400000000,  400500000"
     })
     void nextBidPrice(long currentPrice, long expected) {
-        assertThat(POLICY.nextBidPrice(currentPrice)).isEqualTo(expected);
+        assertThat(TABLE.nextBidPrice(currentPrice)).isEqualTo(expected);
     }
 
     @DisplayName("구간표를 어떤 순서로 받아도 결과가 같다")
     @Test
     void orderDoesNotMatter() {
-        BidIncrementPolicy shuffled = new BidIncrementPolicy(List.of(
-                new BidIncrementTier(30_000_000, 100_000),
-                new BidIncrementTier(0, 10_000),
-                new BidIncrementTier(5_000_000, 50_000)
+        BidIncrementTable shuffled = new BidIncrementTable(List.of(
+                new BidIncrementBand(30_000_000, 100_000),
+                new BidIncrementBand(0, 10_000),
+                new BidIncrementBand(5_000_000, 50_000)
         ));
 
         assertThat(shuffled.nextBidPrice(10_000_000)).isEqualTo(10_050_000);
@@ -58,23 +58,23 @@ class BidIncrementPolicyTest {
     // 조회 API가 하한 오름차순을 계약으로 내걸었으므로 정렬 자체도 고정한다
     @DisplayName("구간표는 하한 오름차순으로 정렬되어 반환된다")
     @Test
-    void tiersAreSortedByMinPrice() {
-        BidIncrementPolicy shuffled = new BidIncrementPolicy(List.of(
-                new BidIncrementTier(30_000_000, 100_000),
-                new BidIncrementTier(0, 10_000),
-                new BidIncrementTier(5_000_000, 50_000)
+    void bandsAreSortedByMinPrice() {
+        BidIncrementTable shuffled = new BidIncrementTable(List.of(
+                new BidIncrementBand(30_000_000, 100_000),
+                new BidIncrementBand(0, 10_000),
+                new BidIncrementBand(5_000_000, 50_000)
         ));
 
-        assertThat(shuffled.tiers())
-                .extracting(BidIncrementTier::getMinPrice)
+        assertThat(shuffled.bands())
+                .extracting(BidIncrementBand::getMinPrice)
                 .containsExactly(0L, 5_000_000L, 30_000_000L);
     }
 
     @DisplayName("현재가를 담당하는 구간이 없으면 예외를 던진다")
     @Test
-    void tierNotFound() {
-        BidIncrementPolicy withGap = new BidIncrementPolicy(List.of(
-                new BidIncrementTier(5_000_000, 50_000)
+    void bandNotFound() {
+        BidIncrementTable withGap = new BidIncrementTable(List.of(
+                new BidIncrementBand(5_000_000, 50_000)
         ));
 
         assertThatThrownBy(() -> withGap.nextBidPrice(1_000_000))

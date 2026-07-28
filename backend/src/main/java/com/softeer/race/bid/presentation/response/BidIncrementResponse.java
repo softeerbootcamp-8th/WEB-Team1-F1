@@ -1,6 +1,6 @@
 package com.softeer.race.bid.presentation.response;
 
-import com.softeer.race.bid.domain.BidIncrementPolicy;
+import com.softeer.race.bid.domain.BidIncrementTable;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
@@ -8,12 +8,12 @@ import java.util.List;
 public record BidIncrementResponse(
 
         @Schema(description = "구간 목록, 하한 오름차순")
-        List<BidIncrementTierResponse> tiers
+        List<BidIncrementBandResponse> bands
 ) {
-    public static BidIncrementResponse from(BidIncrementPolicy policy) {
+    public static BidIncrementResponse from(BidIncrementTable table) {
         return new BidIncrementResponse(
-                policy.tiers().stream()
-                        .map(BidIncrementTierResponse::from)
+                table.bands().stream()
+                        .map(BidIncrementBandResponse::from)
                         .toList());
     }
 }

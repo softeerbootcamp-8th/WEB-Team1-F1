@@ -18,7 +18,7 @@ public class BidIncrementController implements BidIncrementApi {
     @Override
     @GetMapping
     public ResponseEntity<BidIncrementResponse> getBidIncrements() {
-        BidIncrementResponse response = BidIncrementResponse.from(bidIncrementService.policy());
+        BidIncrementResponse response = BidIncrementResponse.from(bidIncrementService.table());
         return ResponseEntity.ok(response);
     }
 }
