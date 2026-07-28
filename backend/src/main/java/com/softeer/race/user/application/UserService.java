@@ -8,7 +8,7 @@ import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.exception.ErrorCode;
 import com.softeer.race.common.security.PasswordEncoder;
 import com.softeer.race.user.domain.User;
-import com.softeer.race.user.infrastructure.UserRepository;
+import com.softeer.race.user.domain.UserRepository;
 import com.softeer.race.user.presentation.request.SignUpRequest;
 import com.softeer.race.user.presentation.response.SignUpResponse;
 import lombok.RequiredArgsConstructor;
