@@ -20,7 +20,7 @@ public class BidIncrementPolicy {
     }
 
     /**
-     * 현재가 기준 다음 최소 입찰가를 리턴, 해당 구간 상승가의 배수 중 현재가보다 큰 최솟값이다
+     * 현재가 기준 다음 최소 입찰가를 리턴, 현재가에 그 구간의 상승가를 더한 값이다
      */
     public long nextBidPrice(long currentPrice) {
         return tierOf(currentPrice).nextBidPrice(currentPrice);

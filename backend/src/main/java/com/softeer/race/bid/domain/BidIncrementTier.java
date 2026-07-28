@@ -30,7 +30,7 @@ public class BidIncrementTier {
     @Column(nullable = false)
     private long increment;
 
-    /** 행은 data.sql이 넣으므로 프로덕션에서는 생성하지 않는다, 테스트에서 구간을 조립하기 위한 생성자다 */
+    /** 행은 DB에 시드되므로 프로덕션에서는 생성하지 않는다, 테스트에서 구간을 조립하기 위한 생성자다 */
     BidIncrementTier(long minPrice, long increment) {
         this.minPrice = minPrice;
         this.increment = increment;
@@ -41,8 +41,8 @@ public class BidIncrementTier {
         return minPrice <= price;
     }
 
-    /** 상승가 격자 위의 값 중 현재가보다 큰 최솟값 */
+    /** 현재가에 이 구간의 상승가를 더한 값 */
     long nextBidPrice(long currentPrice) {
-        return (currentPrice / increment + 1) * increment;
+        return currentPrice + increment;
     }
 }
