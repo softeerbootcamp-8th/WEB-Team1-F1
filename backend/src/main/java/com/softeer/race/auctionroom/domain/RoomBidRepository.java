@@ -20,7 +20,7 @@ public interface RoomBidRepository extends Repository<Bid, Long> {
      * 최신순 호가, 이름은 담기는 시점에 마스킹된다
      */
     @Query("""
-            select new com.softeer.race.auctionroom.domain.RecentBid(u.nickname, b.amount, b.createdAt)
+            select new com.softeer.race.auctionroom.domain.RecentBid(u.realName, b.amount, b.createdAt)
             from Bid b
             join b.bidder u
             where b.auction.id = :auctionId

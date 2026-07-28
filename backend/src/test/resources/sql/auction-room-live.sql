@@ -1,13 +1,14 @@
 -- 시나리오 1 픽스처 : 고정 시각 20:45:12 에 진행(LIVE) 단계인 경매
 -- 최근 호가 정렬이 id 역순이라 id 순서와 created_at 순서를 일치시킨다
 -- id는 시나리오 2와 겹치지 않게 1번대를 쓴다
+-- username 과 email 에 유일 제약이 있고 두 시나리오가 같은 컨텍스트를 쓰므로 값도 겹치지 않게 나눈다
 
-insert into users (id, email, password, nickname, phone, address, role, created_at, updated_at)
-values (1, 'seller1@race.dev', 'pw', '박판매', '01000000001', '서울 강남구', 'GENERAL',
+insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
+values (1, 'seller1', 'seller1@race.dev', 'pw', '박판매', '01000000001', '서울 강남구', 'GENERAL',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00'),
-       (11, 'bidder1@race.dev', 'pw', '김민현', '01000000011', '서울 마포구', 'DEALER',
+       (11, 'bidder1', 'bidder1@race.dev', 'pw', '김민현', '01000000011', '서울 마포구', 'DEALER',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00'),
-       (12, 'bidder2@race.dev', 'pw', '남궁민수', '01000000012', '서울 성동구', 'DEALER',
+       (12, 'bidder2', 'bidder2@race.dev', 'pw', '남궁민수', '01000000012', '서울 성동구', 'DEALER',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00');
 
 insert into vehicle (id, seller_id, manufacturer, model, model_year, mileage, fuel_type, transmission,
@@ -15,8 +16,8 @@ insert into vehicle (id, seller_id, manufacturer, model, model_year, mileage, fu
 values (1, 1, 'HYUNDAI', '아반떼 CN7', 2022, 35000, 'GASOLINE', 'AUTOMATIC',
         '12가3456', 15000000, '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
-insert into auction_post (id, vehicle_id, title, post_status, published_at, created_at, updated_at)
-values (1, 1, '2022 아반떼 CN7 무사고', 'PUBLISHED', '2026-08-01 09:00:00',
+insert into auction_post (id, vehicle_id, post_status, published_at, created_at, updated_at)
+values (1, 1, 'PUBLISHED', '2026-08-01 09:00:00',
         '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
 insert into auction (id, post_id, start_price, current_price, room_open_at, start_time, current_end_time,
