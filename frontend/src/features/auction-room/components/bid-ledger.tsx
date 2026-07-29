@@ -8,19 +8,22 @@ import type { Bid } from '@/types/domain'
 
 interface BidLedgerProps {
   bids: Bid[]
+  totalBidCount: number
 }
 
 /**
  * 호가창. 최신순, 닉네임 마스킹, 최고가(맨 위) 강조.
  * 실제로는 커서 페이지네이션으로 과거 호가를 더 불러온다.
  */
-export function BidLedger({ bids }: BidLedgerProps) {
+export function BidLedger({ bids, totalBidCount }: BidLedgerProps) {
+  const visibleBids = bids.slice(0, 20)
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between px-1 pb-3">
         <h3 className="text-sm font-semibold">호가창</h3>
         <span className="text-muted-foreground text-xs">
-          총 <span className="tabular">{bids.length}</span>건
+          총 <span className="tabular">{totalBidCount}</span>건 입찰
         </span>
       </div>
 
@@ -34,26 +37,26 @@ export function BidLedger({ bids }: BidLedgerProps) {
       ) : (
         <ScrollArea className="h-[420px] rounded-lg border">
           <ul className="divide-border divide-y">
-            {bids.map((bid, i) => {
+            {visibleBids.map((bid, i) => {
               const isTop = i === 0
               return (
                 <li
                   key={bid.id}
                   className={cn(
                     'flex items-center justify-between gap-3 px-4 py-2.5 text-sm',
-                    isTop && 'bg-price-up/8',
-                    bid.isMine && !isTop && 'bg-accent/50',
+                    bid.isMine ? 'bg-muted' : isTop && 'bg-price-up/8',
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground tabular w-6 text-right text-xs">
-                      {bids.length - i}
-                    </span>
+                    <Badge
+                      variant="outline"
+                      className="h-4 px-1 text-[10px] font-normal"
+                    >
+                      {bid.bidderRole === 'DEALER' ? '딜러' : '일반'}
+                    </Badge>
                     <span className="font-medium">{bid.bidderNickname}</span>
                     {bid.isMine && (
-                      <Badge variant="outline" className="h-4 px-1 text-[10px]">
-                        나
-                      </Badge>
+                      <span className="text-muted-foreground text-xs">(나)</span>
                     )}
                     {isTop && (
                       <Badge variant="success" className="h-4 px-1 text-[10px]">

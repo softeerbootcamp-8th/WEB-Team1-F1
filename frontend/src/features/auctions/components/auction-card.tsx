@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Gauge, MapPin, Users } from 'lucide-react'
+import { Gauge, Users } from 'lucide-react'
 
 import { Card } from '@/components/ui/card'
 import { CarThumb } from '@/components/common/car-thumb'
@@ -64,11 +64,6 @@ export function AuctionCard({ auction }: AuctionCardProps) {
           <div className="flex items-center gap-1">
             <Gauge className="size-3.5" />
             <span className="tabular">{formatMileage(car.mileageKm)}</span>
-          </div>
-          <span aria-hidden>·</span>
-          <div className="flex items-center gap-1">
-            <MapPin className="size-3.5" />
-            <span>{car.region}</span>
           </div>
         </dl>
 

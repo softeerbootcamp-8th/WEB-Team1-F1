@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Trophy } from 'lucide-react'
+import { ArrowLeft, Eye, Gavel, Trophy } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/empty-state'
@@ -59,13 +59,15 @@ export function AuctionRoomPage() {
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
             <span className="text-muted-foreground text-sm">
-              {auction.car.region} · {auction.car.year}년
+              {auction.car.year}년
             </span>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
             {auction.car.name}
           </h1>
-          <p className="text-muted-foreground text-sm">{auction.title}</p>
+          <p className="text-muted-foreground text-sm">
+            평가사 한줄평 · {auction.title}
+          </p>
         </div>
       </div>
 
@@ -94,30 +96,55 @@ function LiveRoom({
   onEnd: () => void
 }) {
   const room = useAuctionRoom(auction)
+  const { user } = useAuth()
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-      <div className="space-y-6">
-        <PriceBoard
-          currentPrice={room.currentPrice}
-          startPrice={room.startPrice}
-          endAt={room.endAt}
-          extended={room.extended}
-          flashKey={room.flashKey}
-          onElapsed={onEnd}
-        />
-        <CarDetail auction={auction} />
-      </div>
+    <div className="space-y-6">
+      <PriceBoard
+        currentPrice={room.currentPrice}
+        startPrice={room.startPrice}
+        endAt={room.endAt}
+        extended={room.extended}
+        flashKey={room.flashKey}
+        onElapsed={onEnd}
+      />
 
-      <div className="space-y-6">
-        <BidPanel
-          currentPrice={room.currentPrice}
-          increment={room.increment}
-          nextMin={room.nextMin}
-          onBid={(amount) => room.placeBid(amount, '나')}
-        />
+      <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+        <CarDetail auction={auction} />
+
+        <div className="space-y-4">
+          <dl className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border p-4">
+              <dt className="text-muted-foreground flex items-center gap-2 text-xs">
+                <Eye className="size-4" />
+                실시간 시청자
+              </dt>
+              <dd className="tabular mt-2 text-2xl font-semibold">
+                {room.connectedCount}명
+              </dd>
+            </div>
+            <div className="rounded-xl border p-4">
+              <dt className="text-muted-foreground flex items-center gap-2 text-xs">
+                <Gavel className="size-4" />
+                입찰 참여자
+              </dt>
+              <dd className="tabular mt-2 text-2xl font-semibold">
+                {room.bidderCount}명
+              </dd>
+            </div>
+          </dl>
+
         <div className="rounded-xl border p-5">
-          <BidLedger bids={room.bids} />
+          <BidLedger bids={room.bids} totalBidCount={room.totalBidCount} />
+        </div>
+          <BidPanel
+            currentPrice={room.currentPrice}
+            increment={room.increment}
+            nextMin={room.nextMin}
+            onBid={(amount) =>
+              room.placeBid(amount, user?.nickname ?? '나', user?.role ?? 'USER')
+            }
+          />
         </div>
       </div>
     </div>

@@ -22,7 +22,14 @@ export interface CarSummary {
   year: number
   mileageKm: number
   fuel: string
-  region: string
+  evaluation?: VehicleEvaluation
+}
+
+export interface VehicleEvaluation {
+  exteriorFrame: string
+  accidentHistory: string
+  keyOptions: string
+  grade: string
 }
 
 export interface AuctionCard {
@@ -42,6 +49,7 @@ export interface AuctionCard {
 export interface Bid {
   id: number
   bidderNickname: string // 마스킹된 닉네임 (ex. 김X진)
+  bidderRole: UserRole
   amount: number
   createdAt: string // ISO
   isMine?: boolean
