@@ -12,7 +12,7 @@ public record BidIncrementResponse(
 ) {
     public static BidIncrementResponse from(BidIncrementTable table) {
         return new BidIncrementResponse(
-                table.bands().stream()
+                table.getBands().stream()
                         .map(BidIncrementBandResponse::from)
                         .toList());
     }

@@ -65,7 +65,7 @@ class BidIncrementTableTest {
                 new BidIncrementBand(5_000_000, 50_000)
         ));
 
-        assertThat(shuffled.bands())
+        assertThat(shuffled.getBands())
                 .extracting(BidIncrementBand::getMinPrice)
                 .containsExactly(0L, 5_000_000L, 30_000_000L);
     }

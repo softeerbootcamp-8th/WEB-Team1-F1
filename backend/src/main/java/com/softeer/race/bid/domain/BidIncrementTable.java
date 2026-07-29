@@ -29,7 +29,7 @@ public class BidIncrementTable {
     /**
      * 전체 입찰 가격 구간 리스트를 반환합니다.
      */
-    public List<BidIncrementBand> bands() {
+    public List<BidIncrementBand> getBands() {
         return bands;
     }
 

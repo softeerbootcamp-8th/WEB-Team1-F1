@@ -17,7 +17,7 @@ public class BidIncrementService {
     private final BidIncrementBandRepository bidIncrementBandRepository;
 
     // 값 변경이 재기동 없이 반영되도록 매번 조회한다, 5행 조회 비용은 입찰 트랜잭션에서 무시할 수준이다
-    public BidIncrementTable table() {
+    public BidIncrementTable loadTable() {
         return new BidIncrementTable(bidIncrementBandRepository.findAll());
     }
 }
