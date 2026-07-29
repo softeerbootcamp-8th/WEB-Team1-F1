@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { bidIncrement, SOFT_CLOSE_THRESHOLD_MS } from '@/lib/auction'
 import { maskNickname } from '@/lib/format'
-import type { AuctionCard, Bid } from '@/types/domain'
+import type { AuctionCard, Bid, UserRole } from '@/types/domain'
 import { mockBids } from '@/features/auctions/mock'
+
+const RECENT_BID_LIMIT = 20
 
 /**
  * 경매 룸 실시간 상태 (개발용 시뮬레이션).
@@ -14,7 +16,13 @@ import { mockBids } from '@/features/auctions/mock'
 export function useAuctionRoom(auction: AuctionCard) {
   const [currentPrice, setCurrentPrice] = useState(auction.currentPrice)
   const [bids, setBids] = useState<Bid[]>(() =>
-    mockBids(auction).map((b) => ({ ...b, bidderNickname: maskNickname(b.bidderNickname) })),
+    mockBids(auction)
+      .slice(0, RECENT_BID_LIMIT)
+      .map((b) => ({ ...b, bidderNickname: maskNickname(b.bidderNickname) })),
+  )
+  const [connectedCount] = useState(() => 18 + (auction.id % 7))
+  const [bidderCount, setBidderCount] = useState(() =>
+    Math.min(auction.bidCount, 9),
   )
   const [endAt, setEndAt] = useState(auction.endAt)
   const [extended, setExtended] = useState(false)
@@ -37,7 +45,12 @@ export function useAuctionRoom(auction: AuctionCard) {
   }, [endAt])
 
   const pushBid = useCallback(
-    (nickname: string, amount: number, isMine: boolean) => {
+    (
+      nickname: string,
+      amount: number,
+      isMine: boolean,
+      bidderRole: UserRole,
+    ) => {
       seq.current += 1
       priceRef.current = amount
       setCurrentPrice(amount)
@@ -46,12 +59,16 @@ export function useAuctionRoom(auction: AuctionCard) {
         {
           id: seq.current,
           bidderNickname: maskNickname(nickname),
+          bidderRole,
           amount,
           createdAt: new Date().toISOString(),
           isMine,
         },
         ...prev,
-      ])
+      ].slice(0, RECENT_BID_LIMIT))
+      if (isMine) {
+        setBidderCount((count) => Math.max(count, 1))
+      }
       applySoftClose()
     },
     [applySoftClose],
@@ -59,9 +76,9 @@ export function useAuctionRoom(auction: AuctionCard) {
 
   /** 내 입찰 */
   const placeBid = useCallback(
-    (amount: number, myNickname: string) => {
+    (amount: number, myNickname: string, myRole: UserRole) => {
       if (amount < nextMin) return { ok: false as const, reason: 'TOO_LOW' as const }
-      pushBid(myNickname, amount, true)
+      pushBid(myNickname, amount, true, myRole)
       return { ok: true as const }
     },
     [nextMin, pushBid],
@@ -75,7 +92,12 @@ export function useAuctionRoom(auction: AuctionCard) {
       () => {
         const price = priceRef.current
         const nick = others[seq.current % others.length]
-        pushBid(nick, price + bidIncrement(price), false)
+        pushBid(
+          nick,
+          price + bidIncrement(price),
+          false,
+          seq.current % 3 === 0 ? 'USER' : 'DEALER',
+        )
       },
       9000 + Math.floor((seq.current % 5) * 700),
     )
@@ -86,6 +108,8 @@ export function useAuctionRoom(auction: AuctionCard) {
     currentPrice,
     startPrice: auction.startPrice,
     bids,
+    connectedCount,
+    bidderCount,
     endAt,
     extended,
     increment,

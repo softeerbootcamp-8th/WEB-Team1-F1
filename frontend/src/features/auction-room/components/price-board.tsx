@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { TrendingUp } from 'lucide-react'
-
 import { Countdown } from '@/components/common/countdown'
 import { formatKRW } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -29,8 +27,6 @@ export function PriceBoard({
 }: PriceBoardProps) {
   const [flash, setFlash] = useState(false)
   const prev = useRef(currentPrice)
-  const delta = currentPrice - startPrice
-  const deltaPct = startPrice > 0 ? (delta / startPrice) * 100 : 0
 
   useEffect(() => {
     if (flashKey === 0) return
@@ -41,52 +37,45 @@ export function PriceBoard({
   }, [flashKey, currentPrice])
 
   return (
-    <div className="dark bg-background text-foreground rounded-xl border p-6">
-      <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
-          현재가
-        </span>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">마감까지</span>
+    <div className="dark bg-background text-foreground overflow-hidden rounded-xl border">
+      <div className="grid md:grid-cols-[1fr_auto]">
+        <div className="border-border border-b p-6 md:border-r md:border-b-0">
+          <span className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
+            현재가
+          </span>
+          <div
+            className={cn('-mx-2 mt-3 rounded-lg px-2 py-1 transition-colors')}
+            style={flash ? { animation: 'var(--animate-bid-flash)' } : undefined}
+          >
+            <div className="flex items-baseline gap-2">
+              <span className="tabular text-price-up text-5xl font-bold tracking-tight tabular-nums md:text-6xl">
+                {currentPrice.toLocaleString('ko-KR')}
+              </span>
+              <span className="text-muted-foreground text-xl">원</span>
+            </div>
+          </div>
+          <p className="text-muted-foreground mt-3 text-sm">
+            시작가{' '}
+            <span className="tabular text-foreground font-medium">
+              {formatKRW(startPrice)}
+            </span>
+          </p>
+        </div>
+
+        <div className="flex min-w-52 flex-col justify-center p-6 md:text-right">
+          <span className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
+            남은 시간
+          </span>
           <Countdown
             targetIso={endAt}
-            className="text-lg font-semibold"
+            className="tabular mt-2 text-3xl font-semibold"
             onElapsed={onElapsed}
           />
+          <p className="text-muted-foreground mt-2 min-h-5 text-xs">
+            {extended ? '새 입찰이 반영되어 마감 시간이 연장됐습니다.' : '서버 마감 시각 기준'}
+          </p>
         </div>
       </div>
-
-      <div
-        className={cn(
-          '-mx-2 mt-3 rounded-lg px-2 py-1 transition-colors',
-        )}
-        style={flash ? { animation: 'var(--animate-bid-flash)' } : undefined}
-      >
-        <div className="flex items-baseline gap-2">
-          <span className="tabular text-price-up text-5xl font-bold tracking-tight tabular-nums md:text-6xl">
-            {currentPrice.toLocaleString('ko-KR')}
-          </span>
-          <span className="text-muted-foreground text-2xl">원</span>
-        </div>
-      </div>
-
-      <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <span className="text-price-up inline-flex items-center gap-1 font-medium">
-          <TrendingUp className="size-4" />+{formatKRW(delta)} ({deltaPct.toFixed(1)}%)
-        </span>
-        <span>
-          시작가 <span className="tabular text-foreground">{formatKRW(startPrice)}</span>
-        </span>
-      </div>
-
-      {extended && (
-        <p
-          role="alert"
-          className="bg-closing-soon/15 text-closing-soon mt-4 rounded-md px-3 py-2 text-center text-sm font-medium"
-        >
-          ⏱ 마감 임박 입찰로 시간이 30초 연장되었습니다
-        </p>
-      )}
     </div>
   )
 }

@@ -8,6 +8,7 @@ import type { AuctionCard } from '@/types/domain'
 /** 차량 상세 — 썸네일, 스펙 표, 진단 리포트 placeholder. */
 export function CarDetail({ auction }: { auction: AuctionCard }) {
   const { car } = auction
+  const evaluation = car.evaluation
   const specs: { label: string; value: string }[] = [
     { label: '연식', value: `${car.year}년` },
     { label: '주행거리', value: formatMileage(car.mileageKm) },
@@ -39,19 +40,27 @@ export function CarDetail({ auction }: { auction: AuctionCard }) {
         <ul className="text-muted-foreground grid gap-2 text-sm sm:grid-cols-2">
           <li className="flex justify-between">
             <span>외판·골격</span>
-            <span className="text-foreground font-medium">무사고</span>
+            <span className="text-foreground font-medium">
+              {evaluation?.exteriorFrame ?? '진단 예정'}
+            </span>
           </li>
           <li className="flex justify-between">
             <span>사고이력</span>
-            <span className="text-foreground font-medium">없음</span>
+            <span className="text-foreground font-medium">
+              {evaluation?.accidentHistory ?? '진단 예정'}
+            </span>
           </li>
           <li className="flex justify-between">
             <span>주요 옵션</span>
-            <span className="text-foreground font-medium">파노라마, HUD</span>
+            <span className="text-foreground font-medium">
+              {evaluation?.keyOptions ?? '진단 예정'}
+            </span>
           </li>
           <li className="flex justify-between">
             <span>점검 등급</span>
-            <span className="text-price-up font-medium">A</span>
+            <span className="text-price-up font-medium">
+              {evaluation?.grade ?? '진단 예정'}
+            </span>
           </li>
         </ul>
       </div>
