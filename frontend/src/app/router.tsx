@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { HomePage } from '@/features/auctions/pages/home-page'
 import { AuctionRoomPage } from '@/features/auction-room/pages/auction-room-page'
 import { SellPage } from '@/features/sell/pages/sell-page'
+import { EvaluatorConnectionPage } from '@/features/sell/pages/evaluator-connection-page'
+import { PriceQuotePage } from '@/features/quote/pages/price-quote-page'
 import { MyPage } from '@/features/deals/pages/mypage'
 import { LoginPage } from '@/features/auth/pages/login-page'
 import { SignupPage } from '@/features/auth/pages/signup-page'
@@ -21,7 +23,9 @@ export function AppRouter() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/auctions/:id" element={<AuctionRoomPage />} />
+        <Route path="/quote" element={<PriceQuotePage />} />
         <Route path="/sell" element={<SellPage />} />
+        <Route path="/sell/evaluator" element={<EvaluatorConnectionPage />} />
         <Route path="/mypage" element={<MyPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>

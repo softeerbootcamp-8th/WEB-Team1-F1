@@ -65,6 +65,9 @@ export function AuctionRoomPage() {
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
             {auction.car.name}
           </h1>
+          <p className="text-muted-foreground text-sm">
+            평가사 한줄평 · {auction.title}
+          </p>
         </div>
       </div>
 

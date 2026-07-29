@@ -48,20 +48,15 @@ export function BidLedger({ bids, totalBidCount }: BidLedgerProps) {
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground tabular w-6 text-right text-xs">
-                      {totalBidCount - i}
-                    </span>
-                    <span className="font-medium">{bid.bidderNickname}</span>
                     <Badge
                       variant="outline"
                       className="h-4 px-1 text-[10px] font-normal"
                     >
                       {bid.bidderRole === 'DEALER' ? '딜러' : '일반'}
                     </Badge>
+                    <span className="font-medium">{bid.bidderNickname}</span>
                     {bid.isMine && (
-                      <Badge variant="outline" className="h-4 px-1 text-[10px]">
-                        나
-                      </Badge>
+                      <span className="text-muted-foreground text-xs">(나)</span>
                     )}
                     {isTop && (
                       <Badge variant="success" className="h-4 px-1 text-[10px]">

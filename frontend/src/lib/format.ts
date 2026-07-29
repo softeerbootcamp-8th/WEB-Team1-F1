@@ -20,15 +20,15 @@ export function formatMileage(km: number): string {
 }
 
 /**
- * 닉네임 마스킹. 가운데 글자를 X 로 가린다.
- * "김민진" → "김X진", "이수" → "이X", "박" → "박"
+ * 닉네임 마스킹. 가운데 글자를 * 로 가린다.
+ * "김민진" → "김*진", "이수" → "이*", "박" → "박"
  */
 export function maskNickname(nickname: string): string {
   if (nickname.length <= 1) return nickname
-  if (nickname.length === 2) return `${nickname[0]}X`
+  if (nickname.length === 2) return `${nickname[0]}*`
   const first = nickname[0]
   const last = nickname[nickname.length - 1]
-  return `${first}${'X'.repeat(nickname.length - 2)}${last}`
+  return `${first}${'*'.repeat(nickname.length - 2)}${last}`
 }
 
 /** 남은 시간(ms)을 mm:ss 또는 hh:mm:ss 로. 음수는 00:00 */
