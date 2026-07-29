@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Gauge, Users } from 'lucide-react'
 
 import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { CarThumb } from '@/components/common/car-thumb'
 import { StatusBadge } from '@/components/common/status-badge'
 import { Countdown } from '@/components/common/countdown'
@@ -15,6 +16,8 @@ interface AuctionCardProps {
 /** 홈 리스트의 경매 카드. 썸네일·차종·현재가/시작가·남은시간. */
 export function AuctionCard({ auction }: AuctionCardProps) {
   const { car, status } = auction
+  const evaluationKeyword =
+    auction.evaluationKeywords[auction.id % auction.evaluationKeywords.length]
   const isLive = status === 'LIVE'
   const priceLabel = isLive ? '현재가' : status === 'ENDED' ? '낙찰가' : '시작가'
   const price = isLive || status === 'ENDED' ? auction.currentPrice : auction.startPrice
@@ -51,9 +54,9 @@ export function AuctionCard({ auction }: AuctionCardProps) {
           <Link to={`/auctions/${auction.id}`}>
             <h3 className="truncate font-semibold tracking-tight">{car.name}</h3>
           </Link>
-          <p className="text-muted-foreground truncate text-xs">
-            {auction.title}
-          </p>
+          <Badge variant="secondary" className="font-normal">
+            평가사 한줄평 · {evaluationKeyword}
+          </Badge>
         </div>
 
         <dl className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -82,7 +85,7 @@ export function AuctionCard({ auction }: AuctionCardProps) {
           </div>
           <div className="text-muted-foreground flex items-center gap-1 text-xs">
             <Users className="size-3.5" />
-            <span className="tabular">{auction.bidCount}</span>
+            <span className="tabular">입찰자 {auction.participantCount}명</span>
           </div>
         </div>
       </div>
