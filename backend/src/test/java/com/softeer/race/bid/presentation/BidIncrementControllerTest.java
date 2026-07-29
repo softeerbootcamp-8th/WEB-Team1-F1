@@ -8,21 +8,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import com.softeer.race.support.IntegrationTestSupport;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
-import org.springframework.test.web.servlet.MockMvc;
 
 // 프론트는 이 표를 받아 버튼 라벨과 다음 입찰 금액을 로컬에서 계산한다
 // 값과 순서가 곧 계약이므로 가짜 데이터가 아니라 확정 구간표 픽스처(@Sql)로 확인한다
-@SpringBootTest
-@AutoConfigureMockMvc
 @Sql("/sql/bid-increment-bands.sql")
-class BidIncrementControllerTest {
+class BidIncrementControllerTest extends IntegrationTestSupport {
 
-    @Autowired
-    private MockMvc mockMvc;
 
     @DisplayName("확정한 5개 구간을 하한 오름차순으로 반환한다")
     @Test

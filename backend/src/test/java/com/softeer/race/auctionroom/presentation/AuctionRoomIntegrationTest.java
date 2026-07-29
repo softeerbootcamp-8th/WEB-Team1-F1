@@ -3,11 +3,9 @@ package com.softeer.race.auctionroom.presentation;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import com.softeer.race.support.IntegrationTestSupport;
 import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.jdbc.Sql;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.Clock;
@@ -34,9 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 마감 절대시각과 서버 시각을 오프셋 없는 KST 문자열로 내림
  */
 @DisplayName("경매방 현황 조회 통합 테스트")
-@SpringBootTest
-@AutoConfigureMockMvc
-class AuctionRoomIntegrationTest {
+class AuctionRoomIntegrationTest extends IntegrationTestSupport {
 
     // 상수
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
@@ -56,8 +52,6 @@ class AuctionRoomIntegrationTest {
         return Clock.fixed(NOW.atZone(KST).toInstant(), KST);
     }
 
-    @Autowired
-    private MockMvc mockMvc;
 
     @Test
     @DisplayName("시나리오 1 : 진행 중 경매방 조회 -> 마스킹된 최근 호가 + 입찰자 수 2명 + 접속자 본인 1명")

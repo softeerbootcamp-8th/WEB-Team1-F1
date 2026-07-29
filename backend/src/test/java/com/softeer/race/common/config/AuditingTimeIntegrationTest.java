@@ -8,7 +8,7 @@ import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import com.softeer.race.support.IntegrationTestSupport;
 import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -27,8 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 3. created_at 과 updated_at 이 고정한 시각으로 남는다
  */
 @DisplayName("감사 시각 통합 테스트")
-@SpringBootTest
-class AuditingTimeIntegrationTest {
+class AuditingTimeIntegrationTest extends IntegrationTestSupport {
 
     // 상수
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");

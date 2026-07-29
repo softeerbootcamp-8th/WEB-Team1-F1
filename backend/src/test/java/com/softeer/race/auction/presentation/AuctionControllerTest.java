@@ -5,14 +5,12 @@ import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.auction.domain.AuctionStatus;
 import com.softeer.race.auctionpost.domain.AuctionPost;
 import com.softeer.race.auctionpost.domain.AuctionPostRepository;
+import com.softeer.race.support.IntegrationTestSupport;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
@@ -25,17 +23,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
 @Transactional
 @Sql("/sql/auction-create-fixture.sql")
-class AuctionControllerTest {
+class AuctionControllerTest extends IntegrationTestSupport {
 
     private static final Long VEHICLE_ID = 1000L;
     private static final DateTimeFormatter REQUEST_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
-    @Autowired
-    private MockMvc mockMvc;
     @Autowired
     private AuctionRepository auctionRepository;
     @Autowired
