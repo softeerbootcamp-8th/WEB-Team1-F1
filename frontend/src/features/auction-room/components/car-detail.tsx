@@ -13,7 +13,6 @@ export function CarDetail({ auction }: { auction: AuctionCard }) {
     { label: '연식', value: `${car.year}년` },
     { label: '주행거리', value: formatMileage(car.mileageKm) },
     { label: '연료', value: car.fuel },
-    { label: '지역', value: car.region },
   ]
 
   return (
@@ -22,7 +21,7 @@ export function CarDetail({ auction }: { auction: AuctionCard }) {
         <CarThumb src={auction.thumbnailUrl} alt={car.name} />
       </div>
 
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
+      <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border bg-border">
         {specs.map((s) => (
           <div key={s.label} className="bg-card p-4">
             <dt className="text-muted-foreground text-xs">{s.label}</dt>

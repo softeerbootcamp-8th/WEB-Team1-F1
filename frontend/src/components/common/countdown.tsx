@@ -31,7 +31,7 @@ export function Countdown({
     <span
       className={cn(
         'tabular tracking-tight transition-colors',
-        isClosingSoon && 'text-closing-soon',
+        isClosingSoon && 'text-destructive',
         className,
       )}
       role={isClosingSoon ? 'alert' : undefined}

@@ -59,7 +59,7 @@ export function AuctionRoomPage() {
           <div className="flex items-center gap-3">
             <StatusBadge status={status} />
             <span className="text-muted-foreground text-sm">
-              {auction.car.region} · {auction.car.year}년
+              {auction.car.year}년
             </span>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
@@ -132,7 +132,7 @@ function LiveRoom({
           </dl>
 
         <div className="rounded-xl border p-5">
-          <BidLedger bids={room.bids} />
+          <BidLedger bids={room.bids} totalBidCount={room.totalBidCount} />
         </div>
           <BidPanel
             currentPrice={room.currentPrice}

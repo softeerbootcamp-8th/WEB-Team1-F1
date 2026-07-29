@@ -22,7 +22,6 @@ export interface CarSummary {
   year: number
   mileageKm: number
   fuel: string
-  region: string
   evaluation?: VehicleEvaluation
 }
 

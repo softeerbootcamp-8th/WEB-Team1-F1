@@ -170,13 +170,9 @@ export function SellPage() {
         {step === 1 && (
           <div className="space-y-5">
             <p className="text-muted-foreground text-sm">
-              평가사가 차량을 방문 진단합니다. 희망 지역과 연락처를 입력해 주세요.
+              평가사가 차량을 방문 진단합니다. 연락처를 입력해 주세요.
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="region">희망 지역</Label>
-                <Input id="region" placeholder="서울 강서구" />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">연락처</Label>
                 <Input id="phone" type="tel" placeholder="010-0000-0000" />

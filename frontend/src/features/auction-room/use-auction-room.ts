@@ -21,6 +21,7 @@ export function useAuctionRoom(auction: AuctionCard) {
       .map((b) => ({ ...b, bidderNickname: maskNickname(b.bidderNickname) })),
   )
   const [connectedCount] = useState(() => 18 + (auction.id % 7))
+  const [totalBidCount, setTotalBidCount] = useState(auction.bidCount)
   const [bidderCount, setBidderCount] = useState(() =>
     Math.min(auction.bidCount, 9),
   )
@@ -66,6 +67,7 @@ export function useAuctionRoom(auction: AuctionCard) {
         },
         ...prev,
       ].slice(0, RECENT_BID_LIMIT))
+      setTotalBidCount((count) => count + 1)
       if (isMine) {
         setBidderCount((count) => Math.max(count, 1))
       }
@@ -110,6 +112,7 @@ export function useAuctionRoom(auction: AuctionCard) {
     bids,
     connectedCount,
     bidderCount,
+    totalBidCount,
     endAt,
     extended,
     increment,

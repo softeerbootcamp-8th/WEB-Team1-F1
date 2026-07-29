@@ -19,7 +19,6 @@ export const MOCK_AUCTIONS: AuctionCard[] = [
       year: 2022,
       mileageKm: 31200,
       fuel: '가솔린',
-      region: '서울 강서',
       evaluation: {
         exteriorFrame: '무사고',
         accidentHistory: '보험 이력 없음',
@@ -43,7 +42,6 @@ export const MOCK_AUCTIONS: AuctionCard[] = [
       year: 2023,
       mileageKm: 18450,
       fuel: '하이브리드',
-      region: '경기 성남',
       evaluation: {
         exteriorFrame: '단순 교환 1건',
         accidentHistory: '주요 골격 이상 없음',
@@ -67,7 +65,6 @@ export const MOCK_AUCTIONS: AuctionCard[] = [
       year: 2022,
       mileageKm: 27800,
       fuel: '전기',
-      region: '인천 연수',
       evaluation: {
         exteriorFrame: '무사고',
         accidentHistory: '보험 이력 없음',
@@ -91,7 +88,6 @@ export const MOCK_AUCTIONS: AuctionCard[] = [
       year: 2021,
       mileageKm: 62100,
       fuel: '디젤',
-      region: '대전 유성',
       evaluation: {
         exteriorFrame: '외판 교환 1건',
         accidentHistory: '주요 골격 이상 없음',
@@ -115,7 +111,6 @@ export const MOCK_AUCTIONS: AuctionCard[] = [
       year: 2023,
       mileageKm: 14200,
       fuel: '가솔린',
-      region: '부산 해운대',
       evaluation: {
         exteriorFrame: '무사고',
         accidentHistory: '보험 이력 없음',
@@ -139,7 +134,6 @@ export const MOCK_AUCTIONS: AuctionCard[] = [
       year: 2022,
       mileageKm: 22600,
       fuel: '가솔린',
-      region: '광주 서구',
       evaluation: {
         exteriorFrame: '무사고',
         accidentHistory: '보험 이력 없음',
@@ -167,7 +161,7 @@ export function mockBids(auction: AuctionCard): Bid[] {
   const step = 250_000
   const rows: Bid[] = []
   let price = auction.currentPrice
-  const count = Math.min(auction.bidCount, 12)
+  const count = Math.min(auction.bidCount, 20)
   for (let i = 0; i < count; i++) {
     rows.push({
       id: auction.id * 1000 + i,

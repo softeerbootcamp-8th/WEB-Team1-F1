@@ -8,13 +8,14 @@ import type { Bid } from '@/types/domain'
 
 interface BidLedgerProps {
   bids: Bid[]
+  totalBidCount: number
 }
 
 /**
  * 호가창. 최신순, 닉네임 마스킹, 최고가(맨 위) 강조.
  * 실제로는 커서 페이지네이션으로 과거 호가를 더 불러온다.
  */
-export function BidLedger({ bids }: BidLedgerProps) {
+export function BidLedger({ bids, totalBidCount }: BidLedgerProps) {
   const visibleBids = bids.slice(0, 20)
 
   return (
@@ -22,7 +23,7 @@ export function BidLedger({ bids }: BidLedgerProps) {
       <div className="flex items-center justify-between px-1 pb-3">
         <h3 className="text-sm font-semibold">호가창</h3>
         <span className="text-muted-foreground text-xs">
-          최근 <span className="tabular">{visibleBids.length}</span>건
+          총 <span className="tabular">{totalBidCount}</span>건 입찰
         </span>
       </div>
 
@@ -48,7 +49,7 @@ export function BidLedger({ bids }: BidLedgerProps) {
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-muted-foreground tabular w-6 text-right text-xs">
-                      {visibleBids.length - i}
+                      {totalBidCount - i}
                     </span>
                     <span className="font-medium">{bid.bidderNickname}</span>
                     <Badge
