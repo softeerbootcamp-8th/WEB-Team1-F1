@@ -16,8 +16,8 @@ insert into vehicle (id, seller_id, manufacturer, model, model_year, mileage, fu
 values (1, 1, 'HYUNDAI', '아반떼 CN7', 2022, 35000, 'GASOLINE', 'AUTOMATIC',
         '12가3456', 15000000, '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
-insert into auction_post (id, vehicle_id, post_status, published_at, created_at, updated_at)
-values (1, 1, 'PUBLISHED', '2026-08-01 09:00:00',
+insert into auction_post (id, vehicle_id, thumbnail_url, post_status, published_at, created_at, updated_at)
+values (1, 1, 'https://cdn.race.dev/avante-1.jpg', 'PUBLISHED', '2026-08-01 09:00:00',
         '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
 insert into auction (id, post_id, start_price, current_price, room_open_at, start_time, current_end_time,

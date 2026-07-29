@@ -15,6 +15,13 @@ public record AuctionRoomResponse(
         @Schema(description = "방 단계", example = "LIVE")
         RoomPhase phase,
 
+        @Schema(description = "경매 차량")
+        VehicleResponse vehicle,
+
+        @Schema(description = "대표 사진, 등록되지 않았으면 없다",
+                example = "https://cdn.race.dev/avante-1.jpg")
+        String thumbnailUrl,
+
         @Schema(description = "시작가", example = "10000000")
         long startPrice,
 
@@ -38,7 +45,13 @@ public record AuctionRoomResponse(
         int connectedCount,
 
         @Schema(description = "지금까지 입찰한 사람 수", example = "4")
-        int bidderCount,
+        long bidderCount,
+
+        @Schema(description = "지금까지 들어온 입찰 건수, 최근 호가 20건과 달리 전체를 센다", example = "37")
+        long bidCount,
+
+        @Schema(description = "낙찰자")
+        WinnerResponse winner,
 
         @Schema(description = "최근 호가, 최신순 최대 20건")
         List<RecentBidResponse> recentBids
@@ -48,6 +61,8 @@ public record AuctionRoomResponse(
         return new AuctionRoomResponse(
                 view.auctionId(),
                 view.phase(),
+                VehicleResponse.from(view.vehicle()),
+                view.thumbnailUrl(),
                 view.startPrice(),
                 view.currentPrice(),
                 view.openAt(),
@@ -56,6 +71,8 @@ public record AuctionRoomResponse(
                 view.serverTime(),
                 view.connectedCount(),
                 view.bidderCount(),
+                view.bidCount(),
+                view.winnerName() == null ? null : new WinnerResponse(view.winnerName(), view.winnerIsMine()),
                 view.recentBids().stream().map(RecentBidResponse::from).toList());
     }
 }
