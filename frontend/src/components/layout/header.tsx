@@ -22,6 +22,7 @@ import { ROLE_LABEL, useAuth } from '@/features/auth/auth-context'
 const NAV = [
   { to: '/', label: '홈', end: true },
   { to: '/quote', label: '시세조회' },
+  { to: '/auctions', label: '경매 목록' },
   { to: '/sell', label: '내차 팔기' },
   { to: '/mypage', label: '마이페이지' },
 ]

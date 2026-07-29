@@ -41,6 +41,8 @@ export interface AuctionCard {
   startPrice: number
   currentPrice: number
   bidCount: number
+  participantCount: number
+  evaluationKeywords: string[]
   startAt: string // ISO — 시작 시각
   endAt: string // ISO — 종료 예정 시각
 }
