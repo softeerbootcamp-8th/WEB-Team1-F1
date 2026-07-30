@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.presentation.GlobalExceptionHandler;
 import com.softeer.race.user.application.UserService;
@@ -32,6 +33,12 @@ class UserControllerTest {
 
     @MockitoBean
     private UserService userService;
+
+    // @WebMvcTest 슬라이스는 WebMvcConfigurer와 HandlerInterceptor 빈을 함께 스캔한다
+    // AuthInterceptor가 들어오면서 그 의존성인 SessionService가 없어 컨텍스트 로딩이 실패하므로 채워 준다
+    // /api/users는 인터셉터 경로가 아니라 이 목이 호출되지는 않는다
+    @MockitoBean
+    private SessionService sessionService;
 
     @Test
     @DisplayName("정상 회원가입 요청은 비밀번호 없이 201 응답을 반환한다")

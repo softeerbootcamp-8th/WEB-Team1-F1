@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.exception.ErrorCode;
 import jakarta.validation.Valid;
@@ -18,6 +19,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,6 +35,11 @@ class GlobalExceptionHandlerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    // @WebMvcTest 슬라이스는 HandlerInterceptor 빈을 함께 스캔한다
+    // AuthInterceptor가 들어오면서 그 의존성인 SessionService가 없어 컨텍스트 로딩이 실패하므로 채워 준다
+    @MockitoBean
+    private SessionService sessionService;
 
     @Test
     @DisplayName("비즈니스 예외는 ErrorCode의 상태코드와 code를 담아 내려간다")
