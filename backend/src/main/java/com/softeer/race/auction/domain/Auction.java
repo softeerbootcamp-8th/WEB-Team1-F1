@@ -10,6 +10,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Getter
@@ -26,6 +27,10 @@ public class Auction extends BaseTimeEntity {
     private static final int ROOM_OPEN_BEFORE_MINUTES = 30;
     private static final int DURATION_MINUTES = 20;
     private static final int MIN_LEAD_TIME_HOURS = 1;
+
+    // 마감까지 남은 시간이 이 값 이하인 입찰만 마감을 밀어낸다
+    // 재설정 폭도 같은 값이라 상수 하나로 둔다, 둘이 갈라지는 요구가 생기면 쪼갠다
+    private static final Duration SOFT_CLOSE_WINDOW = Duration.ofSeconds(30);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -85,5 +90,30 @@ public class Auction extends BaseTimeEntity {
         if (startTime.isBefore(publishTime.plusHours(MIN_LEAD_TIME_HOURS))) {
             throw new BusinessException(AuctionErrorCode.INVALID_START_AT);
         }
+    }
+
+    /**
+     * 마감 임박 입찰이면 마감을 입찰 시각 기준으로 다시 채우고 연장 횟수를 올린다
+     */
+    public void extendIfClosingSoon(LocalDateTime bidAt) {
+        // 입찰 가능 판정(phaseAt)을 통과한 입찰만 여기 온다
+        // 마감된 경매가 도달했다면 판정과 연장이 서로 다른 시각을 봤다는 뜻이므로,
+        // 호출자는 두 곳에 같은 기준 시각을 넘겨야 한다
+        // 사용자가 고쳐 재시도할 수 있는 실패가 아니라 서버 결함이라 BusinessException을 쓰지 않는다
+        if (!bidAt.isBefore(currentEndTime)) {
+            throw new IllegalStateException(
+                    "마감된 경매에 연장 판정이 들어왔다, 경매 %d 마감 %s 입찰 %s"
+                            .formatted(id, currentEndTime, bidAt));
+        }
+
+        // 임계값에 들어오기 전 입찰은 마감 시각에 영향을 주지 않는다
+        if (bidAt.isBefore(currentEndTime.minus(SOFT_CLOSE_WINDOW))) {
+            return;
+        }
+
+        // 누적 가산이 아니라 재설정이다, 잔여 10초에 들어온 입찰도 40초가 아니라 30초를 받는다
+        currentEndTime = bidAt.plus(SOFT_CLOSE_WINDOW);
+        extensionCount++;
+        // 연장 횟수에 상한을 두지 않는다
     }
 }
