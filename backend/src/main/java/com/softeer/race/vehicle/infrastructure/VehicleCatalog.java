@@ -38,7 +38,9 @@ public class VehicleCatalog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    // 물리 컬럼명을 적어 둔다. 네이밍 전략이 알아서 바꿔주지만, 위 유니크 제약이 그 이름을 문자열로
+    // 참조하고 있어 정적 분석이 둘을 연결하지 못한다. 이름을 여기 박아두면 오타를 IDE 가 잡는다.
+    @Column(name = "plate_number", nullable = false)
     private String plateNumber;
 
     @Column(nullable = false)
@@ -65,17 +67,21 @@ public class VehicleCatalog {
     @Column(nullable = false)
     private Transmission transmission;
 
-    /** 시세 산정의 입력이 되는 참고가, 이 값 자체는 응답에 나가지 않는다 */
+    /**
+     * 이 모델의 기준가. 개별 차량의 연식·주행거리는 반영되지 않은 값이고, 예상 시세는 여기서
+     * QuotePolicy 가 감가를 뺀 결과다. 이 값 자체는 응답에 나가지 않는다 — 노출되면 산정 로직이 역산된다.
+     */
     @Column(nullable = false)
     private long basePrice;
 
-    @Column(nullable = false)
-    private String imageUrl;
+    /** 대표 이미지. 없는 차량이 데모에 한 대 있어야 목록 카드의 이미지 없음 처리가 실제로 실행된다 */
+    @Column
+    private String mainImageUrl;
 
     /** 행은 DB에 시드되므로 프로덕션에서는 생성하지 않는다, 테스트에서 조립하기 위한 생성자다 */
     VehicleCatalog(String plateNumber, String ownerName, Manufacturer manufacturer, String model,
                    int modelYear, int mileage, FuelType fuelType, Transmission transmission,
-                   long basePrice, String imageUrl) {
+                   long basePrice, String mainImageUrl) {
         this.plateNumber = plateNumber;
         this.ownerName = ownerName;
         this.manufacturer = manufacturer;
@@ -85,14 +91,14 @@ public class VehicleCatalog {
         this.fuelType = fuelType;
         this.transmission = transmission;
         this.basePrice = basePrice;
-        this.imageUrl = imageUrl;
+        this.mainImageUrl = mainImageUrl;
     }
 
-    /** 이 행의 제원을 차량 조회기가 내보낼 계약 타입으로 옮긴다 */
+    /** 이 행의 제원을 포트가 내보낼 계약 타입으로 옮긴다 */
     // 변환은 보통 받는 쪽 정적 팩터리가 맡지만
     // 그러면 domain 의 VehicleSpec 이 infrastructure 를 알게 되어 의존 방향이 뒤집힌다. 그래서 주는 쪽에 둔다.
     VehicleSpec toSpec() {
-        return new VehicleSpec(manufacturer, model, modelYear, mileage, fuelType,
-                transmission, ownerName, basePrice, imageUrl);
+        return new VehicleSpec(plateNumber, ownerName, manufacturer, model, modelYear,
+                mileage, fuelType, transmission, basePrice, mainImageUrl);
     }
 }
