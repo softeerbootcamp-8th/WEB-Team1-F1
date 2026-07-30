@@ -14,3 +14,23 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+auth:
+  session:
+    # 체감 유휴 타임아웃은 ttl - renew-threshold ~ ttl 구간(15~30분)이다
+    # 정확히 30분을 보장해야 하면 ttl 60m / renew-threshold 30m로 바꾼다
+    ttl: 30m
+    renew-threshold: 15m
+  cookie:
+    # 로컬은 http라 true로 두면 브라우저가 쿠키를 저장하지 않는다, 배포 시 true
+    secure: false
+    # 5173과 8080은 같은 site(scheme + eTLD+1, 포트 무관)라 Lax로 충분하고
+    # 타 사이트발 POST에는 쿠키가 실리지 않아 CSRF 주 경로가 막힌다
+    same-site: Lax
+  # 정확한 오리진이 아니라 패턴이다, allowedOriginPatterns로 넘어가므로 * 를 쓸 수 있다
+  # 지금은 프론트가 어느 호스트에서 뜰지 확정되지 않아 전면 개방한다
+  # TODO 오리진이 확정되면 아래처럼 좁힌다, 패턴 자리에 정확한 문자열을 그대로 써도 된다
+  #   - http://localhost:5173
+  #   - http://127.0.0.1:5173
+  allowed-origins:
+    - "*"
