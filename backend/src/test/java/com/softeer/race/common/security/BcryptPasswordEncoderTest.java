@@ -2,6 +2,7 @@ package com.softeer.race.common.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,5 +43,18 @@ class BcryptPasswordEncoderTest {
 
         assertThatCode(() -> passwordEncoder.encode(rawPassword))
                 .doesNotThrowAnyException();
+    }
+
+    // 로그인 요청에는 ASCII 제약이 없어 64자 한글(192바이트)이 들어올 수 있다
+    // AuthService가 검증 전에 바이트 길이를 막는 근거가 이 경계이므로 여기서 고정한다
+    @Test
+    @DisplayName("검증은 72바이트까지 허용하고 그 이상은 예외를 던진다")
+    void matchesRejectsInputBeyondByteLimit() {
+        String encodedPassword = passwordEncoder.encode("password123");
+
+        assertThatCode(() -> passwordEncoder.matches("a".repeat(72), encodedPassword))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> passwordEncoder.matches("a".repeat(73), encodedPassword))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }
