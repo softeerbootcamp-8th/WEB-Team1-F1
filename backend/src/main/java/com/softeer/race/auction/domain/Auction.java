@@ -14,6 +14,12 @@ import java.time.LocalDateTime;
 
 @Getter
 @Entity
+// 목록 조회가 시작·마감 시각으로 범위를 좁히고 같은 컬럼으로 정렬한다.
+// 인덱스가 없으면 매번 전체를 훑고 정렬하므로 종료된 경매가 쌓일수록 첫 페이지까지 느려진다.
+@Table(indexes = {
+        @Index(name = "idx_auction_start_time", columnList = "start_time, id"),
+        @Index(name = "idx_auction_end_time", columnList = "current_end_time, id")
+})
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Auction extends BaseTimeEntity {
 
