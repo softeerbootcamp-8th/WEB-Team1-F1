@@ -40,9 +40,4 @@ public class BidIncrementBand {
     boolean startsAtOrBelow(long price) {
         return minPrice <= price;
     }
-
-    /** 현재가에 이 구간의 상승가를 더한 값 */
-    long nextBidPrice(long currentPrice) {
-        return currentPrice + increment;
-    }
 }
