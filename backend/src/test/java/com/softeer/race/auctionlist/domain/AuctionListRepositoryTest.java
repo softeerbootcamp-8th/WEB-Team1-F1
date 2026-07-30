@@ -1,10 +1,10 @@
 package com.softeer.race.auctionlist.domain;
 
 import com.softeer.race.auctionpost.domain.PostStatus;
+import com.softeer.race.support.IntegrationTestSupport;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Limit;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,10 +30,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * select new 가 세 테이블 값을 레코드에 채우는지, 입찰 전 null 가격도 담기는지
  */
 @DisplayName("경매글 목록 조회 쿼리 테스트")
-@SpringBootTest
 @Transactional
 @Sql("/sql/auction-list-fixture.sql")
-class AuctionListRepositoryTest {
+class AuctionListRepositoryTest extends IntegrationTestSupport {
 
     // 픽스처가 이 시각을 기준으로 세 그룹에 나뉘도록 짜여 있다
     private static final LocalDateTime SNAPSHOT_AT = LocalDateTime.of(2026, 8, 3, 12, 0, 0);
