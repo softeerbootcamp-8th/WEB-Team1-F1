@@ -22,10 +22,9 @@ import java.util.List;
 @AutoConfigureMockMvc
 public abstract class IntegrationTestSupport {
 
-    // 개발용 compose 와 같은 MySQL 8.4 LTS, 시간대도 같게 맞춰 저장 시각 검증이 흔들리지 않게 한다
+    // 개발용 compose 와 같은 MySQL 8.4 LTS, 연결 시간대는 application.yml 과 같은 이유로 넘기지 않는다
     private static final MySQLContainer MYSQL = new MySQLContainer(DockerImageName.parse("mysql:8.4"))
             .withEnv("TZ", "Asia/Seoul")
-            .withUrlParam("serverTimezone", "Asia/Seoul")
             .withUrlParam("characterEncoding", "UTF-8");
 
     static {

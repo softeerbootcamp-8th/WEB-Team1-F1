@@ -2,7 +2,8 @@ spring:
   application:
     name: race
   datasource:
-    url: jdbc:mysql://localhost:3306/race?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    # serverTimezone 을 주면 드라이버가 datetime 을 그 시간대의 instant 로 보고 JVM 시간대로 옮긴다
+    url: jdbc:mysql://localhost:3306/race?characterEncoding=UTF-8
     username: race
     password: race
     driver-class-name: com.mysql.cj.jdbc.Driver
