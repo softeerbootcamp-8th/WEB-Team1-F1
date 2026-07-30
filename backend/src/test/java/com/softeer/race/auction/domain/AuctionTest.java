@@ -6,6 +6,9 @@ import com.softeer.race.common.exception.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,6 +18,8 @@ class AuctionTest {
 
     private static final LocalDateTime PUBLISHED_AT = LocalDateTime.of(2026, 7, 27, 15, 30);
     private static final LocalDateTime START_TIME = LocalDateTime.of(2026, 7, 27, 16, 30);
+    // schedule()이 계산하는 마감 = START_TIME + 20분
+    private static final LocalDateTime END_TIME = LocalDateTime.of(2026, 7, 27, 16, 50);
 
     @Test
     @DisplayName("경매를 예약하면 방 개설은 시작 30분 전, 마감은 시작 20분 후가 된다.")
@@ -55,6 +60,56 @@ class AuctionTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(AuctionErrorCode.INVALID_START_AT);
+    }
+
+    // 기대값의 30초는 일부러 하드코딩한다
+    // 상수를 실수로 바꾸면 테스트가 깨져야 하므로 SOFT_CLOSE_WINDOW를 노출해 참조하지 않는다
+    @DisplayName("잔여 시간이 30초 이하인 입찰만 마감을 입찰 시각 + 30초로 다시 채운다")
+    @ParameterizedTest(name = "잔여 {0}초 → 연장 {1}")
+    @CsvSource({
+            "31, false", // 임계값 밖, 1초 차이로 갈리는 지점을 고정한다
+            "30, true",  // 경계 포함 — FR-3.3.1이 "이하"다
+            "29, true",
+            "1,  true"   // 마감 직전
+    })
+    void extendsOnlyInsideWindow(long remainingSeconds, boolean extended) {
+        Auction auction = scheduled();
+        LocalDateTime bidAt = END_TIME.minusSeconds(remainingSeconds);
+
+        auction.extendIfClosingSoon(bidAt);
+
+        assertThat(auction.getCurrentEndTime())
+                .isEqualTo(extended ? bidAt.plusSeconds(30) : END_TIME);
+        assertThat(auction.getExtensionCount()).isEqualTo(extended ? 1 : 0);
+    }
+
+    @Test
+    @DisplayName("연장이 반복돼도 마감은 마지막 입찰 시각 기준으로만 정해진다")
+    void doesNotAccumulateExtensions() {
+        Auction auction = scheduled();
+        LocalDateTime firstBid = END_TIME.minusSeconds(10);   // 잔여 10초
+        LocalDateTime secondBid = firstBid.plusSeconds(25);   // 새 마감 기준 잔여 5초
+
+        auction.extendIfClosingSoon(firstBid);
+        auction.extendIfClosingSoon(secondBid);
+
+        // 누적 가산이면 원래 마감 + 60초가 된다, 이 단정이 누적 여부를 가리는 유일한 검증이다
+        assertThat(auction.getCurrentEndTime()).isEqualTo(secondBid.plusSeconds(30));
+        assertThat(auction.getExtensionCount()).isEqualTo(2);
+    }
+
+    @DisplayName("마감 시각에 도달한 입찰은 연장을 만들지 못한다")
+    @ParameterizedTest(name = "마감 {0}초 후 입찰")
+    @ValueSource(longs = {0, 1}) // 0 = 마감 정각(진행이 끝난 첫 순간), 1 = 마감 이후
+    void rejectsBidAtOrAfterDeadline(long secondsAfterEnd) {
+        Auction auction = scheduled();
+
+        assertThatThrownBy(() -> auction.extendIfClosingSoon(END_TIME.plusSeconds(secondsAfterEnd)))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    private Auction scheduled() {
+        return Auction.schedule(post(), 10_000_000L, START_TIME);
     }
 
     private AuctionPost post() {
