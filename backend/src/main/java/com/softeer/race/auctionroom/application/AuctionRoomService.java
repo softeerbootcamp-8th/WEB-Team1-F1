@@ -1,6 +1,5 @@
 package com.softeer.race.auctionroom.application;
 
-import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auctionroom.domain.*;
 import com.softeer.race.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -31,13 +30,17 @@ public class AuctionRoomService {
      */
     @Transactional(readOnly = true)
     public AuctionRoomView enterRoom(long auctionId, long userId) {
-        Auction auction = auctionRoomRepository.findById(auctionId)
+        // 쿼리 셋이 한 트랜잭션에서 같은 스냅샷을 봐야한다.
+        AuctionRoomDetail detail = auctionRoomRepository.findDetailById(auctionId)
                 .orElseThrow(() -> new BusinessException(AUCTION_ROOM_NOT_FOUND));
 
         LocalDateTime now = LocalDateTime.now(clock);
 
-        AuctionRoomSnapshot snapshot = AuctionRoomSnapshot.from(auction);
-        RoomPhase phase = snapshot.phaseAt(now);
+        RoomPhase phase = detail.snapshot().phaseAt(now);
+
+        BidStats stats = roomBidRepository.findStats(auctionId);
+
+        List<RecentBid> recentBids = roomBidRepository.findRecentBids(auctionId, Limit.of(RECENT_BID_LIMIT));
 
         int connectedCount = 0;
 
@@ -46,11 +49,7 @@ public class AuctionRoomService {
             connectedCount = roomPresence.countPresent(auctionId, now);
         }
 
-        int bidderCount = roomBidRepository.countBidders(auctionId);
-
-        List<RecentBid> recentBids = roomBidRepository.findRecentBids(auctionId, Limit.of(RECENT_BID_LIMIT));
-
         return AuctionRoomView.of(
-                auctionId, phase, snapshot, connectedCount, bidderCount, recentBids, now);
+                auctionId, userId, phase, detail, connectedCount, stats, recentBids, now);
     }
 }

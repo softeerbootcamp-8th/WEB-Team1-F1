@@ -1,7 +1,5 @@
 package com.softeer.race.auctionroom.domain;
 
-import com.softeer.race.auction.domain.Auction;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 
@@ -17,15 +15,6 @@ public record AuctionRoomSnapshot(
 ) {
     // 마감 후 결과를 확인할 수 있는 구간
     private static final Duration RESULT_VIEWING = Duration.ofMinutes(5);
-
-    public static AuctionRoomSnapshot from(Auction auction) {
-        return new AuctionRoomSnapshot(
-                auction.getStartPrice(),
-                auction.getCurrentPrice(),
-                auction.getRoomOpenAt(),
-                auction.getStartTime(),
-                auction.getCurrentEndTime());
-    }
 
     /**
      * 주어진 시각 기준의 방 단계

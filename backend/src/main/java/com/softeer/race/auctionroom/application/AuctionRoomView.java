@@ -1,8 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
-import com.softeer.race.auctionroom.domain.AuctionRoomSnapshot;
-import com.softeer.race.auctionroom.domain.RecentBid;
-import com.softeer.race.auctionroom.domain.RoomPhase;
+import com.softeer.race.auctionroom.domain.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,6 +11,8 @@ import java.util.List;
 public record AuctionRoomView(
         long auctionId,
         RoomPhase phase,
+        VehicleSummary vehicle,
+        String thumbnailUrl,
         long startPrice,
         long currentPrice,
         LocalDateTime openAt,
@@ -20,15 +20,23 @@ public record AuctionRoomView(
         LocalDateTime endAt,
         LocalDateTime serverTime,
         int connectedCount,
-        int bidderCount,
-        List<RecentBid> recentBids
+        long bidderCount,
+        long bidCount,
+        String winnerName,
+        boolean winnerIsMine,
+        List<RecentBidView> recentBids
 ) {
 
-    public static AuctionRoomView of(long auctionId, RoomPhase phase, AuctionRoomSnapshot snapshot, int connectedCount,
-                                     int bidderCount, List<RecentBid> recentBids, LocalDateTime serverTime) {
+    public static AuctionRoomView of(long auctionId, long viewerId, RoomPhase phase, AuctionRoomDetail detail,
+                                     int connectedCount, BidStats stats, List<RecentBid> recentBids,
+                                     LocalDateTime serverTime) {
+        AuctionRoomSnapshot snapshot = detail.snapshot();
+
         return new AuctionRoomView(
                 auctionId,
                 phase,
+                detail.vehicle(),
+                detail.thumbnailUrl(),
                 snapshot.startPrice(),
                 snapshot.displayPrice(),
                 snapshot.roomOpenAt(),
@@ -36,8 +44,11 @@ public record AuctionRoomView(
                 snapshot.endTime(),
                 serverTime,
                 connectedCount,
-                bidderCount,
-                recentBids
+                stats.bidderCount(),
+                stats.bidCount(),
+                detail.winnerName().map(MaskedName::value).orElse(null),
+                detail.isWonBy(viewerId),
+                recentBids.stream().map(bid -> RecentBidView.of(bid, viewerId)).toList()
         );
     }
 }
