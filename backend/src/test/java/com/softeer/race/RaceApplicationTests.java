@@ -1,10 +1,9 @@
 package com.softeer.race;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import com.softeer.race.support.IntegrationTestSupport;
 
-@SpringBootTest
-class RaceApplicationTests {
+class RaceApplicationTests extends IntegrationTestSupport {
 
     @Test
     void contextLoads() {

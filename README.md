@@ -138,6 +138,14 @@
 
 - (세팅 예정)
 
+## ▶️ 실행
+
+Docker가 실행 중이어야 한다.
+
+`docker compose up -d` 로 개발용 MySQL을 띄우고 `./gradlew bootRun` 으로 서버를 실행한다.
+
+통합테스트는 개발용 DB를 쓰지 않는다. 실행할 때마다 별도 MySQL 컨테이너를 띄워 거기에 붙으므로, Docker만 떠 있으면 `./gradlew test` 한 줄로 돌아가고 개발 데이터는 영향을 받지 않는다. 새 통합테스트는 `IntegrationTestSupport` 를 상속한다.
+
 ## 👥 팀원 소개
 
 | <img src="https://github.com/eojinxx.png" width="100"> | <img src="https://github.com/tukjw.png" width="100"> | <img src="https://github.com/ReusCap.png" width="100"> | <img src="https://github.com/mookkae.png" width="100"> |
