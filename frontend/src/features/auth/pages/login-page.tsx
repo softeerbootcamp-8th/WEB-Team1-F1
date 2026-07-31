@@ -5,27 +5,29 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { getErrorMessage } from '@/lib/axios'
 import { AuthShell } from '../components/auth-shell'
 import { useAuth } from '../auth-context'
 
 export function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // 목업 로그인: 실제로는 백엔드 인증(Filter/Interceptor) 후 세션/JWT 발급.
-    // 역할은 계정에 저장된 값이 내려온다(로그인에서 선택하지 않는다).
-    login({
-      id: 1,
-      nickname: '회원',
-      role: 'USER',
-      email: email || 'demo@race.kr',
-    })
-    toast.success('로그인되었습니다')
-    navigate('/')
+    setIsSubmitting(true)
+    try {
+      await login({ username, password })
+      toast.success('로그인되었습니다')
+      navigate('/')
+    } catch (error) {
+      toast.error(getErrorMessage(error, '로그인에 실패했습니다'))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -43,14 +45,13 @@ export function LoginPage() {
     >
       <form onSubmit={submit} className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="email">이메일</Label>
+          <Label htmlFor="username">아이디</Label>
           <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            id="username"
+            autoComplete="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
           />
         </div>
         <div className="space-y-2">
@@ -59,12 +60,12 @@ export function LoginPage() {
             id="password"
             type="password"
             autoComplete="current-password"
-            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
           />
         </div>
-        <Button type="submit" size="lg" className="w-full">
+        <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
           로그인
         </Button>
       </form>

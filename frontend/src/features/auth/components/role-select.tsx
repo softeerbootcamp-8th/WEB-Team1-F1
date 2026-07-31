@@ -1,15 +1,15 @@
 import { Store, User } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import type { UserRole } from '@/types/domain'
+import type { SelfSignUpRole } from '@/types/domain'
 
 const OPTIONS: {
-  value: UserRole
+  value: SelfSignUpRole
   label: string
   desc: string
   icon: typeof User
 }[] = [
-  { value: 'USER', label: '개인', desc: '개인 회원으로 이용', icon: User },
+  { value: 'GENERAL', label: '개인', desc: '개인 회원으로 이용', icon: User },
   { value: 'DEALER', label: '딜러', desc: '사업자 딜러로 이용', icon: Store },
 ]
 
@@ -21,8 +21,8 @@ export function RoleSelect({
   value,
   onChange,
 }: {
-  value: UserRole
-  onChange: (role: UserRole) => void
+  value: SelfSignUpRole
+  onChange: (role: SelfSignUpRole) => void
 }) {
   return (
     <div role="radiogroup" aria-label="역할 선택" className="grid grid-cols-2 gap-3">

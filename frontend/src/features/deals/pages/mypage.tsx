@@ -8,10 +8,36 @@ import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/common/empty-state'
 import { AuctionCard } from '@/features/auctions/components/auction-card'
 import { MOCK_AUCTIONS } from '@/features/auctions/mock'
+import type { AuctionListCard, RoomPhase } from '@/features/auctions/types'
 import { ROLE_LABEL, useAuth } from '@/features/auth/auth-context'
 import { DealCard } from '../components/deal-card'
 import { MOCK_DEALS } from '../mock'
-import type { Deal } from '@/types/domain'
+import type { AuctionCard as MockAuctionCard, Deal } from '@/types/domain'
+
+// 마이페이지는 아직 실제 Deal/참여 경매 API가 없어 mock을 쓴다.
+// AuctionCard 컴포넌트는 실제 목록 API 계약을 따르므로 여기서만 변환해 맞춘다.
+const STATUS_TO_PHASE: Record<MockAuctionCard['status'], RoomPhase> = {
+  SCHEDULED: 'WAITING',
+  LIVE: 'LIVE',
+  ENDED: 'CLOSED',
+}
+
+function toListCard(auction: MockAuctionCard): AuctionListCard {
+  return {
+    auctionId: auction.id,
+    phase: STATUS_TO_PHASE[auction.status],
+    thumbnailUrl: auction.thumbnailUrl || null,
+    model: auction.car.name,
+    modelYear: auction.car.year,
+    mileage: auction.car.mileageKm,
+    startPrice: auction.startPrice,
+    currentPrice: auction.currentPrice,
+    openAt: auction.startAt,
+    startAt: auction.startAt,
+    endAt: auction.endAt,
+    connectedCount: auction.participantCount,
+  }
+}
 
 export function MyPage() {
   const { user, isAuthenticated } = useAuth()
@@ -54,7 +80,7 @@ export function MyPage() {
     <main aria-label="마이페이지" className="mx-auto max-w-5xl px-6 py-10">
       <header className="mb-8 flex items-center gap-3">
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          {user.nickname}
+          {user.realName}
         </h1>
         <Badge variant="outline">{ROLE_LABEL[user.role]} 회원</Badge>
       </header>
@@ -81,7 +107,7 @@ export function MyPage() {
           <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {participated.map((a) => (
               <li key={a.id}>
-                <AuctionCard auction={a} />
+                <AuctionCard auction={toListCard(a)} />
               </li>
             ))}
           </ul>

@@ -1,34 +1,32 @@
 import { Link } from 'react-router-dom'
-import { Gauge, Users } from 'lucide-react'
+import { Eye, Gauge } from 'lucide-react'
 
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { CarThumb } from '@/components/common/car-thumb'
 import { StatusBadge } from '@/components/common/status-badge'
 import { Countdown } from '@/components/common/countdown'
 import { formatKRW, formatManwon, formatMileage } from '@/lib/format'
-import type { AuctionCard as AuctionCardModel } from '@/types/domain'
+import { roomPhaseToStatus } from '@/lib/auction'
+import type { AuctionListCard as AuctionListCardModel } from '@/features/auctions/types'
 
 interface AuctionCardProps {
-  auction: AuctionCardModel
+  auction: AuctionListCardModel
 }
 
-/** 홈 리스트의 경매 카드. 썸네일·차종·현재가/시작가·남은시간. */
+/** 홈/목록 화면의 경매 카드. 썸네일·차종·현재가/시작가·남은시간. */
 export function AuctionCard({ auction }: AuctionCardProps) {
-  const { car, status } = auction
-  const evaluationKeyword =
-    auction.evaluationKeywords[auction.id % auction.evaluationKeywords.length]
+  const status = roomPhaseToStatus(auction.phase)
   const isLive = status === 'LIVE'
   const priceLabel = isLive ? '현재가' : status === 'ENDED' ? '낙찰가' : '시작가'
   const price = isLive || status === 'ENDED' ? auction.currentPrice : auction.startPrice
 
   return (
     <Card className="group gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md">
-      <Link to={`/auctions/${auction.id}`} className="block">
+      <Link to={`/auctions/${auction.auctionId}`} className="block">
         <div className="bg-muted relative aspect-[4/3] overflow-hidden">
           <CarThumb
-            src={auction.thumbnailUrl}
-            alt={car.name}
+            src={auction.thumbnailUrl ?? undefined}
+            alt={auction.model}
             className="transition-transform duration-500 group-hover:scale-105"
           />
           <div className="absolute top-3 left-3">
@@ -50,23 +48,18 @@ export function AuctionCard({ auction }: AuctionCardProps) {
       </Link>
 
       <div className="flex flex-col gap-3 p-4">
-        <div className="space-y-1">
-          <Link to={`/auctions/${auction.id}`}>
-            <h3 className="truncate font-semibold tracking-tight">{car.name}</h3>
-          </Link>
-          <Badge variant="secondary" className="font-normal">
-            평가사 한줄평 · {evaluationKeyword}
-          </Badge>
-        </div>
+        <Link to={`/auctions/${auction.auctionId}`}>
+          <h3 className="truncate font-semibold tracking-tight">{auction.model}</h3>
+        </Link>
 
         <dl className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           <div className="flex items-center gap-1">
-            <span className="tabular">{car.year}년</span>
+            <span className="tabular">{auction.modelYear}년</span>
           </div>
           <span aria-hidden>·</span>
           <div className="flex items-center gap-1">
             <Gauge className="size-3.5" />
-            <span className="tabular">{formatMileage(car.mileageKm)}</span>
+            <span className="tabular">{formatMileage(auction.mileage)}</span>
           </div>
         </dl>
 
@@ -84,8 +77,8 @@ export function AuctionCard({ auction }: AuctionCardProps) {
             </p>
           </div>
           <div className="text-muted-foreground flex items-center gap-1 text-xs">
-            <Users className="size-3.5" />
-            <span className="tabular">입찰자 {auction.participantCount}명</span>
+            <Eye className="size-3.5" />
+            <span className="tabular">실시간 시청 {auction.connectedCount}명</span>
           </div>
         </div>
       </div>

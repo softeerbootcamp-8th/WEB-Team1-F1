@@ -11,7 +11,8 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { AuctionCard } from '@/features/auctions/components/auction-card'
-import { MOCK_AUCTIONS } from '@/features/auctions/mock'
+import { useAuctionList } from '@/features/auctions/use-auction-list'
+import { roomPhaseToStatus } from '@/lib/auction'
 
 const FEATURES = [
   {
@@ -41,9 +42,10 @@ const FEATURES = [
 ]
 
 export function HomePage() {
-  const liveAuctions = MOCK_AUCTIONS.filter(
-    (auction) => auction.status === 'LIVE',
-  ).slice(0, 3)
+  const { cards } = useAuctionList()
+  const liveAuctions = cards
+    .filter((auction) => roomPhaseToStatus(auction.phase) === 'LIVE')
+    .slice(0, 3)
 
   return (
     <main aria-label="RACE 홈">
@@ -180,7 +182,7 @@ export function HomePage() {
         </div>
         <ul className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {liveAuctions.map((auction) => (
-            <li key={auction.id}>
+            <li key={auction.auctionId}>
               <AuctionCard auction={auction} />
             </li>
           ))}
