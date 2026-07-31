@@ -1,17 +1,26 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowRight, ShieldCheck } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/common/empty-state'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { getErrorMessage } from '@/lib/axios'
 import { useAuth } from '@/features/auth/auth-context'
-import {
-  VehicleOwnerForm,
-  type VehicleOwnerValues,
-} from '@/features/vehicle/components/vehicle-owner-form'
+import { applySell } from '@/features/sell/api'
+import type { VehicleOwnerValues } from '@/features/vehicle/components/vehicle-owner-form'
+
+const PLATE_PATTERN = /^\d{2,3}[가-힣]\d{4}$/
 
 export function SellPage() {
   const navigate = useNavigate()
+  const { state } = useLocation()
   const { isAuthenticated } = useAuth()
+  const prefill = state as Partial<VehicleOwnerValues> | null
+  const [plateNumber, setPlateNumber] = useState(prefill?.plateNumber ?? '')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (!isAuthenticated) {
     return (
@@ -19,7 +28,7 @@ export function SellPage() {
         <EmptyState
           icon={ShieldCheck}
           title="내 차 팔기는 로그인이 필요합니다"
-          description="차량 소유자 확인과 평가사 연결을 위해 먼저 로그인해 주세요."
+          description="차량 소유자 확인을 위해 먼저 로그인해 주세요."
           action={
             <div className="flex gap-2">
               <Button asChild>
@@ -35,53 +44,60 @@ export function SellPage() {
     )
   }
 
-  const connectEvaluator = (values: VehicleOwnerValues) => {
-    navigate('/sell/evaluator', { state: values })
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    try {
+      const result = await applySell(plateNumber)
+      navigate('/sell/result', { state: result })
+    } catch (error) {
+      toast.error(getErrorMessage(error, '판매 신청에 실패했습니다'))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <main aria-label="내 차 팔기">
-      <section className="bg-foreground text-background">
-        <div className="mx-auto max-w-5xl px-6 py-20 md:py-28">
-          <p className="text-background/55 text-sm tracking-[0.2em] uppercase">
-            Sell with RACE
-          </p>
-          <h1 className="mt-4 text-4xl font-semibold md:text-6xl">
-            이름과 번호판으로
-            <br />
-            판매 준비를 시작하세요.
-          </h1>
-          <p className="text-background/65 mt-5 max-w-lg leading-7">
-            입력한 차량 정보를 유지한 채 담당 평가사 연결 단계로 이어집니다.
-          </p>
-        </div>
-      </section>
+    <main className="mx-auto max-w-5xl px-6 py-14" aria-label="내 차 팔기">
+      <header className="max-w-2xl">
+        <p className="text-muted-foreground text-sm tracking-[0.18em] uppercase">
+          Sell with RACE
+        </p>
+        <h1 className="mt-4 text-4xl font-semibold md:text-5xl">
+          내 차를 판매해보세요!
+        </h1>
+        <p className="text-muted-foreground mt-4 leading-7">
+          번호판만 입력하면 서버가 차량 정보를 조회해 경매를 바로 등록해요. 경매는
+          신청 시각으로부터 1시간 뒤에 시작해요.
+        </p>
+      </header>
 
-      <section className="mx-auto grid max-w-5xl gap-10 px-6 py-16 lg:grid-cols-[1fr_0.8fr]">
-        <div className="rounded-2xl border p-7 md:p-10">
-          <VehicleOwnerForm
-            actionLabel="평가사 연결하기"
-            actionIcon={ArrowRight}
-            onSubmit={connectEvaluator}
-          />
-        </div>
-
-        <ol className="space-y-7 py-3">
-          {[
-            ['01', '차량 확인', '이름과 번호판으로 소유 차량을 확인합니다.'],
-            ['02', '평가사 연결', '차량 진단을 진행할 평가사를 연결합니다.'],
-            ['03', '경매 등록', '진단이 끝나면 경매 게시글이 완성됩니다.'],
-          ].map(([number, title, description]) => (
-            <li key={number} className="flex gap-4">
-              <span className="text-muted-foreground tabular text-sm">{number}</span>
-              <div>
-                <h3 className="font-semibold">{title}</h3>
-                <p className="text-muted-foreground mt-1 text-sm">{description}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
+      <div className="mt-12 rounded-2xl border p-7">
+        <form className="space-y-5" onSubmit={submit}>
+          <div className="space-y-2">
+            <Label htmlFor="plate-number">차량 번호판</Label>
+            <Input
+              id="plate-number"
+              value={plateNumber}
+              onChange={(e) => setPlateNumber(e.target.value)}
+              placeholder="12가3456"
+              className="h-14 text-lg font-semibold"
+              autoComplete="off"
+              pattern="^\d{2,3}[가-힣]\d{4}$"
+              required
+            />
+          </div>
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={isSubmitting || !PLATE_PATTERN.test(plateNumber)}
+          >
+            <ArrowRight className="size-4" />
+            경매 등록하기
+          </Button>
+        </form>
+      </div>
     </main>
   )
 }
