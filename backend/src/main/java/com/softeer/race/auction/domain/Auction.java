@@ -116,4 +116,25 @@ public class Auction extends BaseTimeEntity {
         extensionCount++;
         // 연장 횟수에 상한을 두지 않는다
     }
+
+    // 스케줄러가 들어오면 status와 시각 판정의 관계를 다시 정리한다.
+    public boolean isBiddableAt(LocalDateTime now) {
+        return !now.isBefore(startTime) && now.isBefore(currentEndTime);
+    }
+
+    /**
+     * 입찰 성립을 경매에 반영한다.
+     * <p>
+     * 낙찰자와 status는 건드리지 않는다. 최고가 갱신과 낙찰 확정은 다른 사건이고,
+     * 마감 전에 낙찰자를 정하면 연장이 걸렸을 때 잘못된 낙찰자가 남는다.
+     *
+     * @param acceptedAt 요청이 도착한 시각이 아니라 이 입찰이 순서를 배정받은 시각이다.
+     *                   호출자가 잠금을 얻은 뒤에 찍어야 하고, isBiddableAt 판정에 쓴 것과 같은 값이어야 한다.
+     *                   마감을 지난 시각이면 extendIfClosingSoon이 IllegalStateException을 던진다.
+     */
+    public void acceptBid(long amount, LocalDateTime acceptedAt) {
+        this.currentPrice = amount;
+        this.priceUpdatedAt = acceptedAt;
+        extendIfClosingSoon(acceptedAt);
+    }
 }

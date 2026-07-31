@@ -20,10 +20,21 @@ public class BidIncrementTable {
     }
 
     /**
-     * 현재가 기준 다음 최소 입찰가를 리턴, 현재가에 그 구간의 상승가를 더한 값이다
+     * 지금 낼 수 있는 금액의 기준
+     * 첫 입찰은 시작가를 그대로 낼 수 있고, 이후는 현재가에서 최소 한 칸 올려야 한다
+     * <p>
+     * 첫 입찰인지는 현재가가 없는 것으로 알 수 있지만, 그때 기준이 될 금액은 표가 모른다.
+     * 구간표는 가격대별 상승가만 알고 시작가는 경매마다 다르다. 그래서 함께 받는다.
+     *
+     * @param startPrice   첫 입찰일 때 기준이 되는 금액, 구간을 고르는 입력이기도 하다
+     * @param currentPrice 아직 입찰이 없으면 null
      */
-    public long nextBidPrice(long currentPrice) {
-        return bandOf(currentPrice).nextBidPrice(currentPrice);
+    public BidRule ruleFor(long startPrice, Long currentPrice) {
+        boolean firstBid = (currentPrice == null);
+        long base = firstBid ? startPrice : currentPrice;
+        long increment = bandOf(base).getIncrement();
+
+        return new BidRule(base, increment, firstBid ? base : base + increment);
     }
 
     /**

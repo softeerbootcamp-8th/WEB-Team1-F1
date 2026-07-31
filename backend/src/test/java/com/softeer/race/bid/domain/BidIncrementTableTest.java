@@ -20,7 +20,7 @@ class BidIncrementTableTest {
             new BidIncrementBand(100_000_000, 500_000)
     ));
 
-    @DisplayName("다음 최소 입찰가는 현재가에 그 구간의 상승가를 더한 값이다")
+    @DisplayName("이후 입찰의 최소 금액은 현재가에 그 구간의 상승가를 더한 값이다")
     @ParameterizedTest(name = "현재가 {0}원이면 {1}원")
     @CsvSource({
             // 최하단 구간(+1만)
@@ -39,8 +39,20 @@ class BidIncrementTableTest {
             "100000000,  100500000",
             "400000000,  400500000"
     })
-    void nextBidPrice(long currentPrice, long expected) {
-        assertThat(TABLE.nextBidPrice(currentPrice)).isEqualTo(expected);
+    void minAmountOfNextBid(long currentPrice, long expected) {
+        // 현재가가 있으면 시작가는 판정에 쓰이지 않는다
+        assertThat(TABLE.ruleFor(0, currentPrice).minAmount()).isEqualTo(expected);
+    }
+
+    // 첫 입찰만 한 칸 올리지 않고 그대로 낼 수 있다, 시작가가 상승가 격자에 맞지 않아도 마찬가지다
+    @DisplayName("입찰이 없으면 최소 금액은 시작가 그대로다")
+    @Test
+    void minAmountOfFirstBid() {
+        BidRule rule = TABLE.ruleFor(24_800_000, null);
+
+        assertThat(rule.currentPrice()).isEqualTo(24_800_000);
+        assertThat(rule.minAmount()).isEqualTo(24_800_000);
+        assertThat(rule.increment()).isEqualTo(50_000);
     }
 
     @DisplayName("구간표를 어떤 순서로 받아도 결과가 같다")
@@ -52,7 +64,7 @@ class BidIncrementTableTest {
                 new BidIncrementBand(5_000_000, 50_000)
         ));
 
-        assertThat(shuffled.nextBidPrice(10_000_000)).isEqualTo(10_050_000);
+        assertThat(shuffled.ruleFor(0, 10_000_000L).minAmount()).isEqualTo(10_050_000);
     }
 
     // 조회 API가 하한 오름차순을 계약으로 내걸었으므로 정렬 자체도 고정한다
@@ -77,7 +89,7 @@ class BidIncrementTableTest {
                 new BidIncrementBand(5_000_000, 50_000)
         ));
 
-        assertThatThrownBy(() -> withGap.nextBidPrice(1_000_000))
+        assertThatThrownBy(() -> withGap.ruleFor(0, 1_000_000L))
                 .isInstanceOf(IllegalStateException.class);
     }
 }
