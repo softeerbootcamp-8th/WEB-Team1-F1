@@ -1,0 +1,18 @@
+spring:
+  jpa:
+    hibernate:
+      # 재배포마다 스키마를 지우지 않고 엔티티 기준으로 부족한 것만 반영한다
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+logging:
+  level:
+    root: info
+
+# 아직 http 라 auth.cookie.secure 를 켜지 않는다, 켜면 브라우저가 쿠키를 저장하지 않아 로그인이 막힌다
+# HTTPS 를 붙일 때 아래 셋을 함께 바꾼다, same-site 만 완화하면 CORS 가 열린 채로 남는다
+#   auth.cookie.secure: true / auth.cookie.same-site: None / auth.allowed-origins 를 실제 도메인으로
+# 프록시나 ALB 뒤에 두면 server.forward-headers-strategy: framework 도 필요하다
