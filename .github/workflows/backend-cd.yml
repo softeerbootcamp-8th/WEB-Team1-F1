@@ -1,0 +1,143 @@
+name: Backend CD
+
+# main 에 머지되면(=push) 이미지를 빌드해 GHCR 에 올리고 앱 EC2 에 배포한다
+# workflow_dispatch 는 재배포 창구다, 경로 필터에 걸리지 않는 변경이나 서버 이상 시 손으로 다시 민다
+# 롤백은 이전에 성공한 실행을 Actions 에서 re-run 하면 그 커밋으로 다시 빌드·배포된다
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-cd.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/web-team1-f1-backend
+
+jobs:
+  # PR 체크 이후 main 이 움직였으면 실제 배포되는 상태는 테스트된 적이 없다
+  # 이미지 빌드와 병렬로 돌리고 deploy 가 둘 다 기다린다
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      - name: Test
+        run: ./gradlew build
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cd-test-report-${{ github.run_number }}
+          path: backend/build/reports/tests/test
+          retention-days: 7
+
+  build-and-push:
+    name: Build and push image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to EC2
+    needs: [test, build-and-push]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Copy compose file to EC2
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: backend/docker-compose.prod.yml
+          target: /home/ec2-user/race-backend
+          strip_components: 1
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: IMAGE_TAG,GHCR_TOKEN,GHCR_ACTOR,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD
+          script: |
+            set -euo pipefail
+            cd /home/ec2-user/race-backend
+
+            # DB 값은 이 셸의 환경변수로만 존재하고 compose 가 거기서 보간한다
+            # 파일로 떨어뜨리지 않아 서버에 평문 사본이 남지 않는다
+            # 예전 배포가 남긴 .env 가 있으면 compose 가 그걸 먼저 읽어 낡은 값으로 뜬다
+            rm -f .env
+
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin
+            docker compose -f docker-compose.prod.yml pull
+
+            # --wait 가 healthcheck 통과까지 기다린다, 실패하면 로그를 남기고 배포를 실패시킨다
+            if ! docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 150; then
+              docker compose -f docker-compose.prod.yml logs --tail=100 app
+              exit 1
+            fi
+
+            # prune -f 는 dangling 만 지워서 sha 로 태그된 이전 이미지가 계속 쌓인다
+            # 이 박스는 앱 컨테이너만 돌므로 -a 로 미사용 이미지를 다 지워도 남는 건 방금 띄운 것뿐이다
+            docker image prune -af
+            docker logout ghcr.io
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ACTOR: ${{ github.actor }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
