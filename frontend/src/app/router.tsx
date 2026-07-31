@@ -8,7 +8,10 @@ import { AuctionsPage } from '@/features/auctions/pages/auctions-page'
 import { AuctionRoomPage } from '@/features/auction-room/pages/auction-room-page'
 import { SellPage } from '@/features/sell/pages/sell-page'
 import { EvaluatorConnectionPage } from '@/features/sell/pages/evaluator-connection-page'
+import { AuctionPostPage } from '@/features/sell/pages/auction-post-page'
+import { SellResultPage } from '@/features/sell/pages/sell-result-page'
 import { PriceQuotePage } from '@/features/quote/pages/price-quote-page'
+import { QuoteResultPage } from '@/features/quote/pages/quote-result-page'
 import { MyPage } from '@/features/deals/pages/mypage'
 import { LoginPage } from '@/features/auth/pages/login-page'
 import { SignupPage } from '@/features/auth/pages/signup-page'
@@ -24,10 +27,13 @@ export function AppRouter() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/quote" element={<PriceQuotePage />} />
+        <Route path="/quote/result" element={<QuoteResultPage />} />
         <Route path="/auctions" element={<AuctionsPage />} />
         <Route path="/auctions/:id" element={<AuctionRoomPage />} />
         <Route path="/sell" element={<SellPage />} />
         <Route path="/sell/evaluator" element={<EvaluatorConnectionPage />} />
+        <Route path="/sell/auction-post" element={<AuctionPostPage />} />
+        <Route path="/sell/result" element={<SellResultPage />} />
         <Route path="/mypage" element={<MyPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
