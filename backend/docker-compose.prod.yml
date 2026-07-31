@@ -1,0 +1,30 @@
+services:
+  app:
+    image: ghcr.io/softeerbootcamp-8th/web-team1-f1-backend:${IMAGE_TAG:-latest}
+    container_name: race-backend
+    restart: always
+    # 값은 배포 스크립트의 환경변수에서 보간된다, 서버에 .env 를 두지 않아 평문 사본이 남지 않는다
+    # env_file 로 두면 compose 가 값 안의 $ 를 변수 참조로 해석해 비밀번호가 조용히 잘린다
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: ${DB_HOST:?배포 스크립트가 DB_HOST 를 내려주지 않았다}
+      DB_PORT: ${DB_PORT:?배포 스크립트가 DB_PORT 를 내려주지 않았다}
+      DB_NAME: ${DB_NAME:?배포 스크립트가 DB_NAME 을 내려주지 않았다}
+      DB_USERNAME: ${DB_USERNAME:?배포 스크립트가 DB_USERNAME 을 내려주지 않았다}
+      DB_PASSWORD: ${DB_PASSWORD:?배포 스크립트가 DB_PASSWORD 를 내려주지 않았다}
+    ports:
+      - "8080:8080"
+    # up --wait 가 이 판정을 기다린다, 없으면 앱이 부팅 중 죽어도 배포가 성공으로 보고된다
+    # show-details 가 never 라 본문은 상태 문자열뿐이고, DB 연결이 끊기면 DOWN 이 된다
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 40s
+    # 운영 중 로그가 디스크를 채우지 않도록 컨테이너 로그 자체를 순환·상한한다
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -23,6 +23,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // 배포 시 컨테이너 healthcheck 가 /actuator/health 로 기동 완료와 DB 연결을 함께 확인한다
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
     implementation 'at.favre.lib:bcrypt:0.10.2'
     compileOnly 'org.projectlombok:lombok'
