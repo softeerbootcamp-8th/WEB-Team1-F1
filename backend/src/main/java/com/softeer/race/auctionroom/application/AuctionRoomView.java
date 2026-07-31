@@ -1,54 +1,22 @@
 package com.softeer.race.auctionroom.application;
 
-import com.softeer.race.auctionroom.domain.*;
-
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 경매방 조회 결과
+ * 경매방 조회 결과, 방 현황에 조회한 사람 기준의 판정을 얹은 것
  */
 public record AuctionRoomView(
-        long auctionId,
-        RoomPhase phase,
-        VehicleSummary vehicle,
-        String thumbnailUrl,
-        long startPrice,
-        long currentPrice,
-        LocalDateTime openAt,
-        LocalDateTime startAt,
-        LocalDateTime endAt,
-        LocalDateTime serverTime,
-        int connectedCount,
-        long bidderCount,
-        long bidCount,
-        String winnerName,
+        RoomState state,
         boolean winnerIsMine,
         List<RecentBidView> recentBids
 ) {
 
-    public static AuctionRoomView of(long auctionId, long viewerId, RoomPhase phase, AuctionRoomDetail detail,
-                                     int connectedCount, BidStats stats, List<RecentBid> recentBids,
-                                     LocalDateTime serverTime) {
-        AuctionRoomSnapshot snapshot = detail.snapshot();
-
+    // 방 현황은 브로드캐스트와 같은 조립을 그대로 쓴다, 여기서 갈라지면 열어 둔 화면과 방금 들어온 화면이 달라진다
+    // 호가만 다시 훑는다, 내 입찰 표시는 보는 사람마다 달라서 방 현황에 담을 수 없다
+    static AuctionRoomView of(long viewerId, RoomQueryResult result, int connectedCount) {
         return new AuctionRoomView(
-                auctionId,
-                phase,
-                detail.vehicle(),
-                detail.thumbnailUrl(),
-                snapshot.startPrice(),
-                snapshot.displayPrice(),
-                snapshot.roomOpenAt(),
-                snapshot.startTime(),
-                snapshot.endTime(),
-                serverTime,
-                connectedCount,
-                stats.bidderCount(),
-                stats.bidCount(),
-                detail.winnerName().map(MaskedName::value).orElse(null),
-                detail.isWonBy(viewerId),
-                recentBids.stream().map(bid -> RecentBidView.of(bid, viewerId)).toList()
-        );
+                RoomState.of(result, connectedCount),
+                result.detail().isWonBy(viewerId),
+                result.recentBids().stream().map(bid -> RecentBidView.of(bid, viewerId)).toList());
     }
 }

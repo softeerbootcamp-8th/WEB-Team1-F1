@@ -10,6 +10,7 @@ import java.util.Optional;
  * 경매방 조회가 한 번에 읽어오는 경매·차량·낙찰자
  */
 public record AuctionRoomDetail(
+        long auctionId,
         long startPrice,
         Long currentPrice,
         LocalDateTime roomOpenAt,

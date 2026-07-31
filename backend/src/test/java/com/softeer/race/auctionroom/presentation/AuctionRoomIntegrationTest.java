@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 개장·시작·마감 시각과 고정된 현재 시각으로 LIVE / CLOSED 판정
  * <p>
  * 2. 접속자 집계 (인메모리)
- * 조회가 곧 하트비트, 열린 단계에서만 집계
+ * 조회는 접속이 아니다, 열려 있는 구독이 없으면 0
  * <p>
  * 3. 입찰 집계와 최근 호가 (MySQL)
  * 건수와 사람 수, 최신순, 이름 마스킹, 조회자 본인 호가 판정
@@ -52,7 +52,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
     private static final long VIEWER_ID = 11L;
     private static final long WINNER_ID = 22L;
 
-    // 접속자 맵은 컨텍스트에 살아 있는 싱글턴이라 시나리오마다 auctionId 를 다르게 써서 격리한다
+    // 구독 목록은 컨텍스트에 살아 있는 싱글턴이라 시나리오마다 auctionId 를 다르게 써서 격리한다
     // 픽스처도 시나리오별로 나눠 arrange 가 서로 묶이지 않게 한다
     
     @TestBean(methodName = "fixedClock")
@@ -83,9 +83,10 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
         // when : 입찰자 한 명이 방을 조회
         ResultActions response = getRoom(LIVE_AUCTION_ID, VIEWER_ID);
 
-        // then 1 : 상태가 아니라 시각으로 판정한 단계
+        // then 1 : 상태가 아니라 시각으로 판정한 단계, 경매 식별자는 요청 경로가 아니라 조회 결과에서 온다
         response.andExpectAll(
                 status().isOk(),
+                jsonPath("$.auctionId").value(LIVE_AUCTION_ID),
                 jsonPath("$.phase").value("LIVE"));
 
         // then 2 : 시작가와 현재가를 함께 내려 상승폭을 보인다
@@ -117,8 +118,8 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.bidCount").value(3),
                 jsonPath("$.bidderCount").value(2));
 
-        // then 7 : 기록이 집계보다 먼저라 조회한 본인이 포함된다
-        response.andExpect(jsonPath("$.connectedCount").value(1));
+        // then 7 : 조회는 접속이 아니다, 스트림에 열려 있는 구독이 없으므로 0이다
+        response.andExpect(jsonPath("$.connectedCount").value(0));
 
         // then 8 : 최신순, 이름은 앞뒤 한 글자만 남는다
         response.andExpectAll(
@@ -128,19 +129,22 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.recentBids[0].bidAt").value("2026-08-03T20:44:31"),
                 jsonPath("$.recentBids[1].name").value("남**수"));
 
-        // then 9 : 조회자가 넣은 호가만 내 입찰로 표시된다, 마스킹된 이름으로는 구분할 수 없다
+        // then 9 : 누가 넣었는지는 내려보내지 않는다, 식별자가 나가면 마스킹이 무의미해진다
+        response.andExpect(jsonPath("$.recentBids[0].bidderId").doesNotExist());
+
+        // then 10 : 조회자가 넣은 호가만 내 입찰로 표시된다, 마스킹된 이름으로는 구분할 수 없다
         response.andExpectAll(
                 jsonPath("$.recentBids[0].mine").value(true),
                 jsonPath("$.recentBids[1].mine").value(false),
                 jsonPath("$.recentBids[2].mine").value(true));
 
-        // then 10 : 역할은 값으로 내리고 배지 문구는 화면이 정한다
+        // then 11 : 역할은 값으로 내리고 배지 문구는 화면이 정한다
         response.andExpect(jsonPath("$.recentBids[0].role").value("DEALER"));
 
-        // then 11 : 낙찰 확정 전이라 낙찰자가 없다
+        // then 12 : 낙찰 확정 전이라 낙찰자가 없다
         response.andExpect(jsonPath("$.winner").isEmpty());
 
-        // then 12 : 경매·집계·최근 호가 셋이면 충분하다, 2초 폴링이라 쿼리 수를 계약으로 고정한다
+        // then 13 : 경매·집계·최근 호가 셋이면 충분하다, 브로드캐스트마다 도는 조회라 쿼리 수를 계약으로 고정한다
         assertThat(statistics.getPrepareStatementCount()).isEqualTo(3);
     }
 
@@ -156,7 +160,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 status().isOk(),
                 jsonPath("$.phase").value("CLOSED"));
 
-        // then 2 : 닫힌 단계에서는 조회해도 접속자로 세지 않는다
+        // then 2 : 닫힌 단계에서는 구독이 남아 있어도 접속자로 세지 않는다
         response.andExpect(jsonPath("$.connectedCount").value(0));
 
         // then 3 : 낙찰 결과는 감출 정보가 아니므로 호가와 집계는 그대로 내려간다

@@ -1,0 +1,99 @@
+package com.softeer.race.auctionroom.infrastructure;
+
+import com.softeer.race.auctionroom.application.RoomChannel;
+import com.softeer.race.auctionroom.application.RoomState;
+import com.softeer.race.auctionroom.application.RoomSubscriber;
+import org.springframework.stereotype.Component;
+
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Component
+public class InMemoryRoomChannel implements RoomChannel {
+
+    // 등록은 요청 스레드, 해제는 컨테이너 콜백 스레드, 전송은 또 다른 스레드에서 온다
+    private final Map<Long, Set<RoomSubscriber>> subscribersByAuction = new ConcurrentHashMap<>();
+
+    @Override
+    public void subscribe(long auctionId, RoomSubscriber subscriber) {
+        subscribersByAuction
+                .computeIfAbsent(auctionId, id -> ConcurrentHashMap.newKeySet())
+                .add(subscriber);
+    }
+
+    @Override
+    public void unsubscribe(long auctionId, RoomSubscriber subscriber) {
+        remove(auctionId, Set.of(subscriber));
+    }
+
+    @Override
+    public int countSubscribers(long auctionId) {
+        Set<RoomSubscriber> subscribers = subscribersByAuction.get(auctionId);
+
+        return subscribers == null ? 0 : subscribers.size();
+    }
+
+    @Override
+    public void broadcast(long auctionId, RoomState state) {
+        Set<RoomSubscriber> subscribers = subscribersByAuction.get(auctionId);
+
+        if (subscribers == null) {
+            return;
+        }
+
+        // 순회 중에는 집합을 건드리지 않는다, 보내다 닫힌 구독은 모아 두었다가 끝나고 걷어낸다
+        Set<RoomSubscriber> closed = new HashSet<>();
+
+        for (RoomSubscriber subscriber : subscribers) {
+            subscriber.send(state);
+
+            if (!subscriber.isOpen()) {
+                closed.add(subscriber);
+            }
+        }
+
+        // 걷어내기는 정리 작업이라 다시 전송하지 않는다, 전송이 제거를 부르고 제거가 다시 전송을 부르면 재귀가 된다
+        // 이미 닫힌 구독의 주인은 방을 떠났으므로 줄어든 접속자 수는 다음 사건에서 맞춰진다
+        remove(auctionId, closed);
+    }
+
+    // 서버는 이 연결에 쓰기만 하고 읽지 않아서, 상대가 끊어도 다음 쓰기 전까지 모른다
+    // 아무 사건이 없는 방은 영영 모르므로 주기적으로 찔러 봐야 죽은 구독이 드러난다
+    @Override
+    public Set<Long> sweepClosed() {
+        Set<Long> sweptAuctions = new HashSet<>();
+
+        subscribersByAuction.forEach((auctionId, subscribers) -> {
+            Set<RoomSubscriber> closed = new HashSet<>();
+
+            for (RoomSubscriber subscriber : subscribers) {
+                subscriber.ping();
+
+                if (!subscriber.isOpen()) {
+                    closed.add(subscriber);
+                }
+            }
+
+            if (!closed.isEmpty()) {
+                remove(auctionId, closed);
+                sweptAuctions.add(auctionId);
+            }
+        });
+
+        return sweptAuctions;
+    }
+
+    // 마지막 구독이 빠지는 순간과 새 구독이 들어오는 순간이 겹쳐도 새 구독이 유실되지 않게 한 번에 처리한다
+    private void remove(long auctionId, Set<RoomSubscriber> targets) {
+        if (targets.isEmpty()) {
+            return;
+        }
+
+        subscribersByAuction.computeIfPresent(auctionId, (id, subscribers) -> {
+            subscribers.removeAll(targets);
+            return subscribers.isEmpty() ? null : subscribers;
+        });
+    }
+}
