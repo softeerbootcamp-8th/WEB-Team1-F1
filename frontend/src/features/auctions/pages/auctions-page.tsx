@@ -2,9 +2,11 @@ import { useMemo, useState } from 'react'
 import { SearchX } from 'lucide-react'
 
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/empty-state'
 import { AuctionCard } from '@/features/auctions/components/auction-card'
-import { MOCK_AUCTIONS } from '@/features/auctions/mock'
+import { useAuctionList } from '@/features/auctions/use-auction-list'
+import { roomPhaseToStatus } from '@/lib/auction'
 import type { AuctionStatus } from '@/types/domain'
 
 type Filter = 'ALL' | AuctionStatus
@@ -17,13 +19,14 @@ const FILTERS: { value: Filter; label: string }[] = [
 ]
 
 export function AuctionsPage() {
+  const { cards, isLoading, isLoadingMore, hasNext, loadMore } = useAuctionList()
   const [filter, setFilter] = useState<Filter>('ALL')
   const auctions = useMemo(
     () =>
       filter === 'ALL'
-        ? MOCK_AUCTIONS
-        : MOCK_AUCTIONS.filter((auction) => auction.status === filter),
-    [filter],
+        ? cards
+        : cards.filter((auction) => roomPhaseToStatus(auction.phase) === filter),
+    [cards, filter],
   )
 
   return (
@@ -47,20 +50,30 @@ export function AuctionsPage() {
         </Tabs>
       </header>
 
-      {auctions.length === 0 ? (
+      {!isLoading && auctions.length === 0 ? (
         <EmptyState
           icon={SearchX}
           title="해당 상태의 경매가 없습니다"
           description="다른 필터를 선택해 보세요."
         />
       ) : (
-        <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {auctions.map((auction) => (
-            <li key={auction.id}>
-              <AuctionCard auction={auction} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {auctions.map((auction) => (
+              <li key={auction.auctionId}>
+                <AuctionCard auction={auction} />
+              </li>
+            ))}
+          </ul>
+
+          {filter === 'ALL' && hasNext && (
+            <div className="mt-8 flex justify-center">
+              <Button variant="outline" onClick={loadMore} disabled={isLoadingMore}>
+                더 보기
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </main>
   )

@@ -1,4 +1,5 @@
 import type { AuctionStatus, DealStatus } from '@/types/domain'
+import type { RoomPhase } from '@/features/auctions/types'
 
 /**
  * 호가 단위(최소 인상폭) 자동 계산.
@@ -27,6 +28,16 @@ export const AUCTION_STATUS_META: Record<
   LIVE: { label: '진행중', variant: 'live' },
   SCHEDULED: { label: '예정', variant: 'scheduled' },
   ENDED: { label: '종료', variant: 'ended' },
+}
+
+/**
+ * 백엔드 5단계 RoomPhase를 화면의 3단계 AuctionStatus로 좁힌다.
+ * NOT_OPEN·WAITING은 아직 입찰 전이라 "예정"으로, RESULT·CLOSED는 "종료"로 묶는다.
+ */
+export function roomPhaseToStatus(phase: RoomPhase): AuctionStatus {
+  if (phase === 'LIVE') return 'LIVE'
+  if (phase === 'NOT_OPEN' || phase === 'WAITING') return 'SCHEDULED'
+  return 'ENDED'
 }
 
 /** 거래 파이프라인 단계 순서 (진행률 계산용) */
