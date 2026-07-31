@@ -32,11 +32,18 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
      * TODO X-User-Id를 걷어낼 때 /api/** 를 기본 차단으로 두고 공개 경로만 excludePathPatterns로 뒤집는다.
      * <p>
      * 로그아웃은 넣지 않는다. 이미 만료된 세션의 로그아웃이 401이 되면 멱등성이 깨진다.
+     * <p>
+     * 인증이 필요한 경로는 여기와 핸들러의 {@code @LoginUser} 파라미터를 <b>둘 다</b> 갖춰야 한다.
+     * 여기서만 빠지면 LoginUserArgumentResolver가 401을 던져 안전하게 실패하기는 하지만,
+     * 쿠키를 정상적으로 보낸 요청까지 401이 되어 원인을 오해하기 쉽다.
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/api/auth/me",
+                        "/api/sell",
+                        // 세그먼트 하나만 매치하는 * 다. ** 로 넓히면 /api/auctions/{id} 까지 걸려
+                        // X-User-Id 를 쓰는 경매방 조회가 401 이 된다
                         "/api/auctions/*/bids");
     }
 

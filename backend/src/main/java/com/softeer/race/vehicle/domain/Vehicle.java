@@ -54,4 +54,34 @@ public class Vehicle extends BaseTimeEntity {
     private String plateNumber;
 
     private Long estimatedPrice;
+
+    private Vehicle(User seller, VehicleSpec spec, long estimatedPrice) {
+        this.seller = seller;
+        this.manufacturer = spec.manufacturer();
+        this.model = spec.model();
+        this.modelYear = spec.modelYear();
+        this.mileage = spec.mileage();
+        this.fuelType = spec.fuelType();
+        this.transmission = spec.transmission();
+        this.plateNumber = spec.plateNumber();
+        this.estimatedPrice = estimatedPrice;
+    }
+
+    /**
+     * 조회된 제원으로 판매자의 차량을 만든다.
+     * <p>
+     * 제원을 개별 파라미터로 늘어놓지 않고 {@link VehicleSpec}을 통째로 받는 이유가 둘이다.
+     * 첫째, 클라이언트가 보낸 값으로 차량을 만드는 경로가 타입 수준에서 사라져 "제원은 서버가 재조회해
+     * 채운다"가 컴파일 타임에 강제된다. 둘째, modelYear와 mileage가 둘 다 int라 9-인자 팩토리에서는
+     * 2021과 45000이 서로 뒤바뀌어도 컴파일과 테스트를 모두 통과한다. record를 거치면 그 실패가 없다.
+     * <p>
+     * 예상 시세만 spec에서 꺼내지 않고 따로 받는다. {@link VehicleSpec#basePrice()}는 그 모델의
+     * 기준가이고 개별 차량의 연식·주행거리가 빠져 있어, 그대로 넣으면 기준가가 예상 시세로 저장돼
+     * 목록·경매방 응답에 실려 나간다. 감가를 반영하는 것은 정책의 일이라 호출자가 계산해 넘긴다.
+     * <p>
+     * 판매자가 제원을 직접 입력하는 요구가 생기면 그때 오버로드를 추가한다.
+     */
+    public static Vehicle create(User seller, VehicleSpec spec, long estimatedPrice) {
+        return new Vehicle(seller, spec, estimatedPrice);
+    }
 }

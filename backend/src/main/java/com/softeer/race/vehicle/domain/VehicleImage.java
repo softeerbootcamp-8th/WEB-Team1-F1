@@ -31,4 +31,21 @@ public class VehicleImage extends BaseTimeEntity {
 
     @Column(nullable = false)
     private int sortOrder;
+
+    private VehicleImage(Vehicle vehicle, String imageUrl, int sortOrder) {
+        this.vehicle = vehicle;
+        this.imageUrl = imageUrl;
+        this.sortOrder = sortOrder;
+    }
+
+    /**
+     * 차량 이미지를 만든다.
+     * <p>
+     * isThumbnail 같은 대표 이미지 플래그를 두지 않는다. 대표 이미지 규칙은 이미
+     * {@link VehicleImageRepository#findFirstByVehicleOrderBySortOrderAsc}에 "sortOrder 최솟값"으로
+     * 한 번 정의돼 있고, 플래그를 더하면 두 규칙이 서로 어긋날 수 있다.
+     */
+    public static VehicleImage create(Vehicle vehicle, String imageUrl, int sortOrder) {
+        return new VehicleImage(vehicle, imageUrl, sortOrder);
+    }
 }
