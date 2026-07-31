@@ -52,16 +52,6 @@ export interface AuctionCard {
   endAt: string // ISO — 종료 예정 시각
 }
 
-/** 호가창 한 줄 (커서 페이지네이션) */
-export interface Bid {
-  id: number
-  bidderNickname: string // 마스킹된 닉네임 (ex. 김X진)
-  bidderRole: UserRole
-  amount: number
-  createdAt: string // ISO
-  isMine?: boolean
-}
-
 /** 거래(Deal) 상태 파이프라인 */
 export type DealStatus =
   | 'PENDING_SELLER'

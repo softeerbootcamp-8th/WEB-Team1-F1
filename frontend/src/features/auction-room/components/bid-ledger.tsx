@@ -4,15 +4,15 @@ import { EmptyState } from '@/components/common/empty-state'
 import { cn } from '@/lib/utils'
 import { formatClock, formatKRW } from '@/lib/format'
 import { Gavel } from 'lucide-react'
-import type { Bid } from '@/types/domain'
+import type { RecentBid } from '@/features/auction-room/types'
 
 interface BidLedgerProps {
-  bids: Bid[]
+  bids: RecentBid[]
   totalBidCount: number
 }
 
 /**
- * 호가창. 최신순, 닉네임 마스킹, 최고가(맨 위) 강조.
+ * 호가창. 최신순, 최고가(맨 위) 강조. 이름은 백엔드가 이미 마스킹해서 내려준다.
  * 실제로는 커서 페이지네이션으로 과거 호가를 더 불러온다.
  */
 export function BidLedger({ bids, totalBidCount }: BidLedgerProps) {
@@ -41,10 +41,10 @@ export function BidLedger({ bids, totalBidCount }: BidLedgerProps) {
               const isTop = i === 0
               return (
                 <li
-                  key={bid.id}
+                  key={`${bid.bidAt}-${bid.amount}-${i}`}
                   className={cn(
                     'flex items-center justify-between gap-3 px-4 py-2.5 text-sm',
-                    bid.isMine ? 'bg-muted' : isTop && 'bg-price-up/8',
+                    bid.mine ? 'bg-muted' : isTop && 'bg-price-up/8',
                   )}
                 >
                   <div className="flex items-center gap-2">
@@ -52,10 +52,10 @@ export function BidLedger({ bids, totalBidCount }: BidLedgerProps) {
                       variant="outline"
                       className="h-4 px-1 text-[10px] font-normal"
                     >
-                      {bid.bidderRole === 'DEALER' ? '딜러' : '일반'}
+                      {bid.role === 'DEALER' ? '딜러' : bid.role === 'GENERAL' ? '일반' : '평가사'}
                     </Badge>
-                    <span className="font-medium">{bid.bidderNickname}</span>
-                    {bid.isMine && (
+                    <span className="font-medium">{bid.name}</span>
+                    {bid.mine && (
                       <span className="text-muted-foreground text-xs">(나)</span>
                     )}
                     {isTop && (
@@ -74,7 +74,7 @@ export function BidLedger({ bids, totalBidCount }: BidLedgerProps) {
                       {formatKRW(bid.amount)}
                     </span>
                     <span className="text-muted-foreground/70 tabular w-14 text-right text-xs">
-                      {formatClock(bid.createdAt)}
+                      {formatClock(bid.bidAt)}
                     </span>
                   </div>
                 </li>

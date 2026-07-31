@@ -1,4 +1,4 @@
-import type { AuctionCard, Bid } from '@/types/domain'
+import type { AuctionCard } from '@/types/domain'
 
 /**
  * 개발용 목업 데이터. 백엔드 연동 시 src/api/generated 훅으로 대체.
@@ -162,28 +162,3 @@ export const MOCK_AUCTIONS: AuctionCard[] = [
   },
 ]
 
-export function getAuctionById(id: number): AuctionCard | undefined {
-  return MOCK_AUCTIONS.find((a) => a.id === id)
-}
-
-/** 호가창 목업 — 최신순 */
-export function mockBids(auction: AuctionCard): Bid[] {
-  if (auction.bidCount === 0) return []
-  const names = ['김민준', '이서연', '박도현', '최지우', '정하윤', '강시우', '조은우']
-  const step = 250_000
-  const rows: Bid[] = []
-  let price = auction.currentPrice
-  const count = Math.min(auction.bidCount, 20)
-  for (let i = 0; i < count; i++) {
-    rows.push({
-      id: auction.id * 1000 + i,
-      bidderNickname: names[i % names.length],
-      bidderRole: i % 3 === 0 ? 'GENERAL' : 'DEALER',
-      amount: price,
-      createdAt: new Date(now - i * 47_000).toISOString(),
-      isMine: i === 1,
-    })
-    price -= step + (i % 3) * 50_000
-  }
-  return rows
-}

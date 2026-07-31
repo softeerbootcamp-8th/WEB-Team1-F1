@@ -1,20 +1,15 @@
 import type { AuctionStatus, DealStatus } from '@/types/domain'
 import type { RoomPhase } from '@/features/auctions/types'
+import type { BidIncrementBand } from '@/features/auction-room/types'
 
 /**
- * 호가 단위(최소 인상폭) 자동 계산.
- * 현재가 구간에 따라 단위를 키운다. (백엔드 규칙과 반드시 일치시킬 것)
+ * 가격대별 최저 상승가 계산. 구간표는 DB 시드값(GET /api/bid-increments)이라
+ * 클라이언트에 값을 박지 않고 반드시 받아온 bands로 계산한다.
  */
-export function bidIncrement(currentPrice: number): number {
-  if (currentPrice < 3_000_000) return 50_000
-  if (currentPrice < 10_000_000) return 100_000
-  if (currentPrice < 30_000_000) return 250_000
-  return 500_000
-}
-
-/** 다음 최소 입찰가 = 현재가 + 호가 단위 */
-export function nextMinBid(currentPrice: number): number {
-  return currentPrice + bidIncrement(currentPrice)
+export function incrementForPrice(price: number, bands: BidIncrementBand[]): number {
+  const sorted = [...bands].sort((a, b) => a.minPrice - b.minPrice)
+  const band = [...sorted].reverse().find((b) => b.minPrice <= price)
+  return band?.increment ?? 0
 }
 
 /** 소프트 클로즈 임계 — 남은 시간이 이 값 이하이면 마감 임박 */

@@ -1,24 +1,24 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Minus, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { formatKRW, formatManwon } from '@/lib/format'
+import { getErrorMessage } from '@/lib/axios'
 import { useAuth } from '@/features/auth/auth-context'
 
 interface BidPanelProps {
-
   currentPrice: number
   increment: number
   nextMin: number
   disabled?: boolean
-  onBid: (amount: number) => { ok: boolean; reason?: 'TOO_LOW' }
+  onBid: (amount: number) => Promise<void>
 }
 
 /**
  * 입찰 패널. 로그인한 회원이면 누구나(개인·딜러 모두) 입찰 가능.
- * 호가 단위 기반 빠른 입찰 버튼 + 직접 입력.
+ * 금액은 직접 입력하지 않고 호가 단위만큼 -/+로만 조정한다 — 단위에 안 맞는 금액을 낼 수 없다.
  */
 export function BidPanel({
   currentPrice,
@@ -29,13 +29,13 @@ export function BidPanel({
 }: BidPanelProps) {
   const { isAuthenticated } = useAuth()
   const [amount, setAmount] = useState(nextMin)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // 현재가가 오르면 입력값 하한도 따라 올린다.
+  // 현재가·호가 단위가 바뀌면(다른 입찰이 성립하거나 구간이 넘어가면) 쌓아둔 +/- 조정값은
+  // 새 단위에 안 맞을 수 있어 그대로 두지 않고 최소 입찰가로 되돌린다.
   useEffect(() => {
-    setAmount((prev) => (prev < nextMin ? nextMin : prev))
-  }, [nextMin])
-
-  const quickSteps = [1, 2, 5]
+    setAmount(nextMin)
+  }, [nextMin, increment])
 
   if (!isAuthenticated) {
     return (
@@ -50,15 +50,16 @@ export function BidPanel({
     )
   }
 
-  const submit = () => {
-    const result = onBid(amount)
-    if (result.ok) {
+  const submit = async () => {
+    setIsSubmitting(true)
+    try {
+      await onBid(amount)
       toast.success('입찰 완료', { description: formatKRW(amount) })
       setAmount(amount + increment)
-    } else if (result.reason === 'TOO_LOW') {
-      toast.error('입찰가가 낮습니다', {
-        description: `최소 ${formatKRW(nextMin)} 이상 입력하세요.`,
-      })
+    } catch (error) {
+      toast.error(getErrorMessage(error, '입찰에 실패했습니다'))
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -71,42 +72,39 @@ export function BidPanel({
         </span>
       </div>
 
-      <div className="mb-3 flex gap-2">
-        {quickSteps.map((mult) => {
-          const value = nextMin + increment * (mult - 1)
-          return (
-            <Button
-              key={mult}
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1"
-              disabled={disabled}
-              onClick={() => setAmount(value)}
-            >
-              +{formatManwon(increment * mult)}
-            </Button>
-          )
-        })}
+      <div className="flex items-center overflow-hidden rounded-md border">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-11 rounded-none"
+          disabled={disabled || amount <= nextMin}
+          onClick={() => setAmount((prev) => Math.max(nextMin, prev - increment))}
+          aria-label="입찰가 낮추기"
+        >
+          <Minus className="size-4" />
+        </Button>
+        <div className="tabular border-x flex-1 py-2.5 text-center text-sm font-medium">
+          {formatKRW(increment)}
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-11 rounded-none"
+          disabled={disabled}
+          onClick={() => setAmount((prev) => prev + increment)}
+          aria-label="입찰가 높이기"
+        >
+          <Plus className="size-4" />
+        </Button>
       </div>
 
-      <label className="text-muted-foreground mb-1.5 block text-xs" htmlFor="bid-amount">
-        입찰가 (원)
-      </label>
-      <div className="flex gap-2">
-        <Input
-          id="bid-amount"
-          type="number"
-          inputMode="numeric"
-          step={increment}
-          min={nextMin}
-          value={amount}
-          disabled={disabled}
-          onChange={(e) => setAmount(Number(e.target.value))}
-          className="tabular text-right text-base font-semibold"
-        />
+      <div className="tabular mt-3 rounded-md border py-3 text-center text-xl font-semibold">
+        {formatKRW(amount)}
       </div>
-      <p className="text-muted-foreground mt-1.5 text-xs">
+
+      <p className="text-muted-foreground mt-2 text-xs">
         현재가 {formatKRW(currentPrice)} · 최소 입찰가{' '}
         <span className="text-foreground tabular font-medium">
           {formatKRW(nextMin)}
@@ -117,10 +115,10 @@ export function BidPanel({
         type="button"
         size="lg"
         className="mt-4 w-full"
-        disabled={disabled || amount < nextMin}
+        disabled={disabled || isSubmitting || amount < nextMin}
         onClick={submit}
       >
-        {formatKRW(amount)} 입찰
+        입찰
       </Button>
     </div>
   )

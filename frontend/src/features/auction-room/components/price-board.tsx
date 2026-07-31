@@ -10,7 +10,6 @@ interface PriceBoardProps {
   extended: boolean
   /** 새 입찰마다 증가하는 키 — 값이 바뀌면 플래시 애니메이션 */
   flashKey: number
-  onElapsed?: () => void
 }
 
 /**
@@ -23,7 +22,6 @@ export function PriceBoard({
   endAt,
   extended,
   flashKey,
-  onElapsed,
 }: PriceBoardProps) {
   const [flash, setFlash] = useState(false)
   const prev = useRef(currentPrice)
@@ -69,7 +67,6 @@ export function PriceBoard({
           <Countdown
             targetIso={endAt}
             className="tabular mt-2 text-3xl font-semibold"
-            onElapsed={onElapsed}
           />
           <p className="text-muted-foreground mt-2 min-h-5 text-xs">
             {extended ? '새 입찰이 반영되어 마감 시간이 연장됐습니다.' : '서버 마감 시각 기준'}
