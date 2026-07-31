@@ -142,7 +142,7 @@ function LiveRoom({
             increment={room.increment}
             nextMin={room.nextMin}
             onBid={(amount) =>
-              room.placeBid(amount, user?.nickname ?? '나', user?.role ?? 'USER')
+              room.placeBid(amount, user?.realName ?? '나', user?.role ?? 'GENERAL')
             }
           />
         </div>

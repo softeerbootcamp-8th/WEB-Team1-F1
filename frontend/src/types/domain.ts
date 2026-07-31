@@ -4,14 +4,19 @@
  * 지금은 화면 개발용 계약(contract) 역할.
  */
 
-/** 사용자 역할 — 일반인(판매자) / 딜러(구매자) */
-export type UserRole = 'USER' | 'DEALER'
+/** 사용자 역할 — 백엔드 Role enum과 동일. 평가사(EVALUATOR)는 셀프 회원가입 대상이 아니다. */
+export type UserRole = 'GENERAL' | 'DEALER' | 'EVALUATOR'
 
+/** 회원가입으로 만들 수 있는 역할만 */
+export type SelfSignUpRole = 'GENERAL' | 'DEALER'
+
+/** 백엔드 AuthUserResponse와 동일한 필드 */
 export interface User {
   id: number
-  nickname: string
-  role: UserRole
+  username: string
   email: string
+  realName: string
+  role: UserRole
 }
 
 /** 경매 진행 상태 (스케줄러 자동 전이: SCHEDULED → LIVE → ENDED) */

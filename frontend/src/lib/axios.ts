@@ -2,8 +2,10 @@ import Axios from 'axios'
 import type { AxiosError, AxiosRequestConfig } from 'axios'
 
 // orval mutator가 사용할 프로젝트 공용 axios 인스턴스
+// 인증이 HttpOnly 쿠키 세션이라 withCredentials 없이는 Set-Cookie/쿠키 전송이 모두 안 된다
 export const axiosInstance = Axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080',
+  withCredentials: true,
 })
 
 /**
@@ -32,5 +34,16 @@ export const customInstance = <T>(
 
 export type ErrorType<Error> = AxiosError<Error>
 export type BodyType<BodyData> = BodyData
+
+interface ProblemDetailBody {
+  detail?: string
+  errors?: { field: string; message: string }[]
+}
+
+/** 백엔드 ProblemDetail(RFC 9457) 응답에서 사용자에게 보여줄 메시지를 뽑는다. */
+export function getErrorMessage(error: unknown, fallback: string): string {
+  const body = (error as AxiosError<ProblemDetailBody> | undefined)?.response?.data
+  return body?.errors?.[0]?.message ?? body?.detail ?? fallback
+}
 
 export default customInstance

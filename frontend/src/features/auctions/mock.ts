@@ -178,7 +178,7 @@ export function mockBids(auction: AuctionCard): Bid[] {
     rows.push({
       id: auction.id * 1000 + i,
       bidderNickname: names[i % names.length],
-      bidderRole: i % 3 === 0 ? 'USER' : 'DEALER',
+      bidderRole: i % 3 === 0 ? 'GENERAL' : 'DEALER',
       amount: price,
       createdAt: new Date(now - i * 47_000).toISOString(),
       isMine: i === 1,

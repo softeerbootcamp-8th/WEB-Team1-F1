@@ -54,7 +54,7 @@ export function MyPage() {
     <main aria-label="마이페이지" className="mx-auto max-w-5xl px-6 py-10">
       <header className="mb-8 flex items-center gap-3">
         <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-          {user.nickname}
+          {user.realName}
         </h1>
         <Badge variant="outline">{ROLE_LABEL[user.role]} 회원</Badge>
       </header>

@@ -98,7 +98,7 @@ export function useAuctionRoom(auction: AuctionCard) {
           nick,
           price + bidIncrement(price),
           false,
-          seq.current % 3 === 0 ? 'USER' : 'DEALER',
+          seq.current % 3 === 0 ? 'GENERAL' : 'DEALER',
         )
       },
       9000 + Math.floor((seq.current % 5) * 700),

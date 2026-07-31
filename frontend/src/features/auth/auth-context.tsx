@@ -1,48 +1,56 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import type { User, UserRole } from '@/types/domain'
+import { fetchMe, loginRequest, logoutRequest, type LoginPayload } from './api'
 
 /**
- * 인증 컨텍스트 (개발용 목업).
- * 실제 연동 시 로그인/회원가입은 Filter/Interceptor 기반 백엔드 API로 교체하고,
- * 세션/JWT는 lib/axios.ts mutator 레이어에서 주입한다.
+ * 인증 컨텍스트. 세션은 서버가 HttpOnly 쿠키(RACE_SESSION)로 관리하므로
+ * 프론트는 토큰을 들고 있지 않고, 앱 시작 시 /api/auth/me로 로그인 여부만 확인한다.
  */
 
 interface AuthState {
   user: User | null
   isAuthenticated: boolean
-  login: (user: User) => void
-  logout: () => void
+  /** 세션 확인(/api/auth/me)이 끝나기 전까지 true. 이 동안은 로그인 여부를 단정하지 않는다. */
+  isLoading: boolean
+  login: (payload: LoginPayload) => Promise<User>
+  logout: () => Promise<void>
+  setUser: (user: User) => void
 }
-
-const STORAGE_KEY = 'race.auth.user'
 
 const AuthContext = createContext<AuthState | null>(null)
 
-function readStored(): User | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as User) : null
-  } catch {
-    return null
-  }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(readStored)
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const login = useCallback((next: User) => {
-    setUser(next)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  useEffect(() => {
+    fetchMe()
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setIsLoading(false))
   }, [])
 
-  const logout = useCallback(() => {
+  const login = useCallback(async (payload: LoginPayload) => {
+    const next = await loginRequest(payload)
+    setUser(next)
+    return next
+  }, [])
+
+  const logout = useCallback(async () => {
+    await logoutRequest()
     setUser(null)
-    localStorage.removeItem(STORAGE_KEY)
   }, [])
 
   const value = useMemo<AuthState>(
-    () => ({ user, isAuthenticated: !!user, login, logout }),
-    [user, login, logout],
+    () => ({ user, isAuthenticated: !!user, isLoading, login, logout, setUser }),
+    [user, isLoading, login, logout],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>
@@ -57,6 +65,7 @@ export function useAuth(): AuthState {
 
 /** 역할 한글 라벨 */
 export const ROLE_LABEL: Record<UserRole, string> = {
-  USER: '개인',
+  GENERAL: '개인',
   DEALER: '딜러',
+  EVALUATOR: '평가사',
 }
