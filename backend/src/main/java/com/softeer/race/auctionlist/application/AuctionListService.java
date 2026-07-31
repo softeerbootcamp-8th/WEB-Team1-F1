@@ -9,7 +9,7 @@ import com.softeer.race.auctionlist.domain.AuctionListRow;
 import com.softeer.race.auctionpost.domain.PostStatus;
 import com.softeer.race.auctionroom.domain.AuctionRoomSnapshot;
 import com.softeer.race.auctionroom.domain.RoomPhase;
-import com.softeer.race.auctionroom.domain.RoomPresence;
+import com.softeer.race.auctionroom.application.RoomChannel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
@@ -29,7 +29,7 @@ public class AuctionListService {
     private static final int PAGE_SIZE = 20;
 
     private final AuctionListRepository auctionListRepository;
-    private final RoomPresence roomPresence;
+    private final RoomChannel roomChannel;
     private final Clock clock;
 
     /**
@@ -109,8 +109,8 @@ public class AuctionListService {
         RoomPhase phase = snapshot.phaseAt(now);
 
         // 닫힌 단계는 경매방도 접속자를 세지 않는다. 목록만 다른 수를 보이면 안 된다.
-        int connectedCount = phase.isPresenceCounted()
-                ? roomPresence.countPresent(row.auctionId(), now) : 0;
+        int connectedCount = phase.allowsConnection()
+                ? roomChannel.countSubscribers(row.auctionId()) : 0;
 
         return new AuctionCardInfo(
                 row.auctionId(),

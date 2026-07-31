@@ -36,7 +36,7 @@ class AuctionRoomSnapshotTest {
         RoomPhase phase = snapshot.phaseAt(now);
 
         assertThat(phase).isEqualTo(expected);
-        assertThat(phase.isPresenceCounted()).isEqualTo(presenceCounted);
+        assertThat(phase.allowsConnection()).isEqualTo(presenceCounted);
     }
 
     static Stream<Arguments> phaseAt() {

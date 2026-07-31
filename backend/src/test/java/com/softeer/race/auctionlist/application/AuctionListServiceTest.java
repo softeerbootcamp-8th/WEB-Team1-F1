@@ -7,7 +7,7 @@ import com.softeer.race.auctionlist.domain.AuctionListGroup;
 import com.softeer.race.auctionlist.domain.AuctionListRepository;
 import com.softeer.race.auctionlist.domain.AuctionListRow;
 import com.softeer.race.auctionroom.domain.RoomPhase;
-import com.softeer.race.auctionroom.domain.RoomPresence;
+import com.softeer.race.auctionroom.application.RoomChannel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,13 +65,13 @@ class AuctionListServiceTest {
     private AuctionListRepository auctionListRepository;
 
     @Mock
-    private RoomPresence roomPresence;
+    private RoomChannel roomChannel;
 
     private AuctionListService auctionListService;
 
     @BeforeEach
     void setUp() {
-        auctionListService = new AuctionListService(auctionListRepository, roomPresence, FIXED_CLOCK);
+        auctionListService = new AuctionListService(auctionListRepository, roomChannel, FIXED_CLOCK);
     }
 
     // ================= 그룹 순회 =================
@@ -314,24 +314,22 @@ class AuctionListServiceTest {
         // then : 경매방도 세지 않는 구간이라 목록만 다른 수를 보이면 안 된다
         assertThat(card.phase()).isEqualTo(RoomPhase.CLOSED);
         assertThat(card.connectedCount()).isZero();
-        then(roomPresence).should(never()).countPresent(anyLong(), any());
     }
 
     @Test
     @DisplayName("열린 단계는 경매방의 접속자 수를 그대로 쓴다")
-    void openPhase_usesRoomPresence() {
+    void openPhase_usesRoomChannel() {
         // given
         givenLive(List.of(liveRow(1, NOW.minusMinutes(10))));
         givenPending(List.of());
         givenEnded(List.of());
-        given(roomPresence.countPresent(1L, NOW)).willReturn(7);
+        given(roomChannel.countSubscribers(1L)).willReturn(7);
 
         // when
         AuctionCardInfo card = auctionListService.list(null).content().getFirst();
 
-        // then : 목록 조회는 방 입장이 아니므로 세기만 하고 기록하지는 않는다
+        // then : 목록 조회는 방 입장이 아니므로 세기만 한다, 구독을 만들 수단이 없어 셀 수도 없다
         assertThat(card.connectedCount()).isEqualTo(7);
-        then(roomPresence).should(never()).markPresent(anyLong(), anyLong(), any());
     }
 
     // ================= 목 설정 =================

@@ -1,6 +1,5 @@
 package com.softeer.race.auctionroom.presentation.response;
 
-import com.softeer.race.auctionroom.application.AuctionRoomView;
 import com.softeer.race.auctionroom.application.RoomState;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -8,8 +7,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Schema(description = "경매방 현황")
-public record AuctionRoomResponse(
+@Schema(description = "실시간으로 밀어주는 경매방 현황, 방에 있는 모두에게 같은 값이다")
+public record RoomStateResponse(
         @Schema(description = "경매 식별자", example = "1")
         long auctionId,
 
@@ -38,30 +37,28 @@ public record AuctionRoomResponse(
         @Schema(description = "마감 시각, 연장되면 뒤로 밀린다", example = "2026-08-03T21:00:00")
         LocalDateTime endAt,
 
-        @Schema(description = "응답을 만든 서버 시각, 클라이언트 시계 보정에 쓴다",
+        @Schema(description = "현황을 만든 서버 시각, 클라이언트 시계 보정에 쓴다",
                 example = "2026-08-03T20:45:12")
         LocalDateTime serverTime,
 
-        @Schema(description = "지금 방을 보고 있는 사람 수", example = "12")
+        @Schema(description = "지금 방에 연결된 구독 수", example = "12")
         int connectedCount,
 
         @Schema(description = "지금까지 입찰한 사람 수", example = "4")
         long bidderCount,
 
-        @Schema(description = "지금까지 들어온 입찰 건수, 최근 호가 20건과 달리 전체를 센다", example = "37")
+        @Schema(description = "지금까지 들어온 입찰 건수", example = "37")
         long bidCount,
 
-        @Schema(description = "낙찰자")
-        WinnerResponse winner,
+        @Schema(description = "가운데를 마스킹한 낙찰자 이름, 낙찰 확정 전에는 없다", example = "이*호")
+        String winnerName,
 
         @Schema(description = "최근 호가, 최신순 최대 20건")
-        List<RecentBidResponse> recentBids
+        List<RoomStateBidResponse> recentBids
 ) {
 
-    public static AuctionRoomResponse from(AuctionRoomView view) {
-        RoomState state = view.state();
-
-        return new AuctionRoomResponse(
+    public static RoomStateResponse from(RoomState state) {
+        return new RoomStateResponse(
                 state.auctionId(),
                 state.phase(),
                 VehicleResponse.from(state.vehicle()),
@@ -75,7 +72,7 @@ public record AuctionRoomResponse(
                 state.connectedCount(),
                 state.bidderCount(),
                 state.bidCount(),
-                state.winnerName() == null ? null : new WinnerResponse(state.winnerName().value(), view.winnerIsMine()),
-                view.recentBids().stream().map(RecentBidResponse::from).toList());
+                state.winnerName() == null ? null : state.winnerName().value(),
+                state.recentBids().stream().map(RoomStateBidResponse::from).toList());
     }
 }
