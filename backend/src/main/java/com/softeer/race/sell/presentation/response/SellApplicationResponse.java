@@ -20,7 +20,9 @@ public record SellApplicationResponse(
         @Schema(description = "등록된 차량 ID", example = "1000")
         Long vehicleId,
 
-        @Schema(description = "경매 시작가(조회된 기준가)", example = "24800000")
+        // 기준가가 아니라 감가를 반영한 예상 시세다. 기준가를 여기 실으면 시세 조회가 감춘 값이
+        // 이 응답으로 새어 나가고, 예상 시세와 나란히 놓고 감가율을 역산할 수 있게 된다
+        @Schema(description = "경매 시작가(서버가 산정한 예상 시세)", example = "23200000")
         long startPrice,
 
         @Schema(description = "경매 시작 시각", example = "2026-07-30T21:31:00")

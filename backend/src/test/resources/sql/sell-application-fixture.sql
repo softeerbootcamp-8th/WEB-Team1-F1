@@ -1,6 +1,7 @@
--- 판매 신청 통합테스트 픽스처
+-- 판매 신청 통합테스트 픽스처 — 판매자 계정과 세션만 심는다
+-- 차량 카탈로그는 vehicle-catalog-fixture.sql이 심고, 테스트가 두 스크립트를 함께 실행한다
 -- IntegrationTestSupport가 테스트마다 테이블을 비우므로 시나리오마다 이 스크립트가 새로 실행된다
--- id는 다른 픽스처(1 · 81 · 100번대)와 겹치지 않게 90번대를 쓴다
+-- id는 다른 픽스처(1 · 81 · 100번대 · 카탈로그 200번대)와 겹치지 않게 90번대를 쓴다
 
 -- 비밀번호는 이 테스트에서 쓰지 않는다, 로그인 대신 세션을 직접 심기 때문이다
 insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)

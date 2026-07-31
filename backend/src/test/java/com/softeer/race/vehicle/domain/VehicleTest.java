@@ -15,17 +15,17 @@ class VehicleTest {
      * 어느 필드 하나라도 조회 결과와 달라지면 위조 방지가 무너진다.
      */
     @Test
-    @DisplayName("조회된 제원이 차량에 그대로 옮겨지고 기준가가 추정가가 된다")
+    @DisplayName("조회된 제원이 차량에 그대로 옮겨지고 넘겨받은 값이 추정가가 된다")
     void createCopiesSpec() {
         // given
         User seller = mock(User.class);
         VehicleSpec spec = new VehicleSpec("12가3456", "김민수",
                 Manufacturer.HYUNDAI, "그랜저 IG", 2021, 45_000,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
-                24_800_000L, "https://cdn.race.dev/vehicles/grandeur-ig.jpg");
+                34_000_000L, "https://cdn.race.dev/vehicles/grandeur-ig.jpg");
 
         // when
-        Vehicle vehicle = Vehicle.create(seller, spec);
+        Vehicle vehicle = Vehicle.create(seller, spec, 23_200_000L);
 
         // then
         assertThat(vehicle.getSeller()).isSameAs(seller);
@@ -37,7 +37,9 @@ class VehicleTest {
         assertThat(vehicle.getMileage()).isEqualTo(45_000);
         assertThat(vehicle.getFuelType()).isEqualTo(FuelType.GASOLINE);
         assertThat(vehicle.getTransmission()).isEqualTo(Transmission.AUTOMATIC);
-        assertThat(vehicle.getEstimatedPrice()).isEqualTo(24_800_000L);
+        // 기준가(3400만)가 아니라 호출자가 산정해 넘긴 예상 시세다.
+        // spec.basePrice()를 그대로 넣는 구현으로 되돌아가면 여기가 깨진다
+        assertThat(vehicle.getEstimatedPrice()).isEqualTo(23_200_000L);
     }
 
     // 차량은 이미지 URL을 갖지 않는다, 대표 이미지는 VehicleImage에만 남는다
@@ -47,11 +49,11 @@ class VehicleTest {
         VehicleSpec spec = new VehicleSpec("90마5678", "정하늘",
                 Manufacturer.BMW, "520i", 2020, 61_000,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
-                29_400_000L, null);
+                68_000_000L, null);
 
-        Vehicle vehicle = Vehicle.create(mock(User.class), spec);
+        Vehicle vehicle = Vehicle.create(mock(User.class), spec, 41_370_000L);
 
         assertThat(vehicle.getPlateNumber()).isEqualTo("90마5678");
-        assertThat(vehicle.getEstimatedPrice()).isEqualTo(29_400_000L);
+        assertThat(vehicle.getEstimatedPrice()).isEqualTo(41_370_000L);
     }
 }

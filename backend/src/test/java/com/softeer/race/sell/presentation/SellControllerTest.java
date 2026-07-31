@@ -59,7 +59,7 @@ class SellControllerTest {
     @DisplayName("정상 요청은 201과 경매 Location을 준다")
     void apply() throws Exception {
         given(sellService.apply(any(SellApplicationCommand.class))).willReturn(
-                new SellApplicationInfo(1L, 1000L, 24_800_000L,
+                new SellApplicationInfo(1L, 1000L, 23_200_000L,
                         START_AT, START_AT.minusMinutes(30), START_AT.plusMinutes(20), "SCHEDULED"));
 
         mockMvc.perform(post("/api/sell")
@@ -71,7 +71,7 @@ class SellControllerTest {
                 .andExpect(header().string(HttpHeaders.LOCATION, "/api/auctions/1"))
                 .andExpect(jsonPath("$.auctionId").value(1))
                 .andExpect(jsonPath("$.vehicleId").value(1000))
-                .andExpect(jsonPath("$.startPrice").value(24800000))
+                .andExpect(jsonPath("$.startPrice").value(23200000))
                 .andExpect(jsonPath("$.startAt").value("2026-07-30T21:31:00"))
                 .andExpect(jsonPath("$.roomOpenAt").value("2026-07-30T21:01:00"))
                 .andExpect(jsonPath("$.endAt").value("2026-07-30T21:51:00"))

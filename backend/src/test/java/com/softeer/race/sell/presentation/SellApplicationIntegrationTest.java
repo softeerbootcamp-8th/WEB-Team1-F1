@@ -43,10 +43,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <b>Clock을 고정하지 않는다.</b> 이 API가 가장 깨지기 쉬운 지점은 발행 시각과 시작 시각을 서로 다른
  * 시각에서 계산해 최소 리드타임 검증이 항상 실패하는 것인데, 그 버그는 고정 Clock에서는 두 값이 같은
  * 틱에 떨어져 재현되지 않는다. 실제 Clock으로 돌려야 회귀 방어가 성립한다.
+ * <p>
+ * 그 대가로 <b>금액을 정확한 값으로 검증하지 못한다.</b> 예상 시세가 연식 나이에서 계산되므로 해가
+ * 바뀌면 값이 달라지고, 하드코딩하면 1월 1일에 전 시나리오가 깨진다. 그래서 여기서는 관계만 본다 —
+ * 시작가가 기준가보다 낮고, 차량의 예상 시세와 같은 값이라는 것. 정확한 금액은 Clock을 고정한
+ * {@code SellServiceTest}와 {@code QuotePolicyTest}가 맡는다.
+ * <p>
+ * 차량 카탈로그는 시세 조회와 같은 픽스처를 쓴다. 판매 신청용으로 따로 시드하면 두 픽스처의 기준가가
+ * 갈라져, "시세 조회가 보여준 금액으로 경매가 시작된다"를 테스트가 더 이상 보증하지 못한다.
  */
 @DisplayName("판매 신청 통합 테스트")
 @Transactional
-@Sql("/sql/sell-application-fixture.sql")
+@Sql({"/sql/vehicle-catalog-fixture.sql", "/sql/sell-application-fixture.sql"})
 class SellApplicationIntegrationTest extends IntegrationTestSupport {
 
     private static final long SELLER_ID = 90L;
@@ -55,7 +63,12 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
     private static final String PLATE_WITH_IMAGE = "12가3456";
     private static final String PLATE_WITHOUT_IMAGE = "90마5678";
     private static final String IMAGE_URL = "https://cdn.race.dev/vehicles/grandeur-ig.jpg";
-    private static final long BASE_PRICE = 24_800_000L;
+
+    /** 픽스처의 201번 기준가. 그 모델의 신차급 가격이라 시작가로 나가면 안 되는 값이다 */
+    private static final long CATALOG_BASE_PRICE = 34_000_000L;
+
+    /** 예상 시세는 만원 단위로 절사돼 나간다, 원 단위 잔돈이 붙으면 정책을 거치지 않은 값이다 */
+    private static final long DISPLAY_UNIT = 10_000L;
 
     // 고정하지 않은 실제 Clock이다, 시각은 값이 아니라 범위로 검증한다
     @Autowired
@@ -72,10 +85,16 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
         MvcResult result = apply(PLATE_WITH_IMAGE)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("SCHEDULED"))
-                .andExpect(jsonPath("$.startPrice").value(BASE_PRICE))
                 .andReturn();
 
         LocalDateTime after = LocalDateTime.now(clock);
+
+        // then 0 : 시작가는 기준가가 아니라 감가를 반영한 예상 시세다
+        // 기준가를 그대로 쓰면 시작가가 예상 시세보다 높아 첫 입찰이 붙지 않고 유찰된다
+        long startPrice = priceOf(result, "$.startPrice");
+        assertThat(startPrice).isLessThan(CATALOG_BASE_PRICE);
+        assertThat(startPrice).isPositive();
+        assertThat(startPrice % DISPLAY_UNIT).isZero();
 
         // then 1 : 시작 시각은 최소 리드타임(1시간)을 넘기고 분 단위로 떨어진다
         // 시각을 두 번 읽는 구현이면 여기가 아니라 위 status().isCreated()가 400 INVALID_START_AT으로 깨진다
@@ -98,7 +117,9 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
         assertThat(vehicle.get("mileage")).isEqualTo(45_000);
         assertThat(vehicle.get("fuel_type")).isEqualTo("GASOLINE");
         assertThat(vehicle.get("transmission")).isEqualTo("AUTOMATIC");
-        assertThat(vehicle.get("estimated_price")).isEqualTo(BASE_PRICE);
+        // 차량에 남는 예상 시세도 시작가와 같은 값이다. 여기에 기준가가 들어가면 목록 카드와
+        // 경매방 응답으로 신차급 가격이 흘러나가고, 시세 조회가 감춘 기준가가 그 경로로 노출된다
+        assertThat(vehicle.get("estimated_price")).isEqualTo(startPrice);
 
         // then 4 : 대표 이미지는 sortOrder 최솟값 규칙에 맞게 1로 저장된다
         Map<String, Object> image = rowOf("select * from vehicle_image");
@@ -116,8 +137,14 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
         assertThat(auction.get("start_time")).isEqualTo(startAt);
         assertThat(auction.get("room_open_at")).isEqualTo(startAt.minusMinutes(30));
         assertThat(auction.get("current_end_time")).isEqualTo(startAt.plusMinutes(20));
-        assertThat(auction.get("start_price")).isEqualTo(BASE_PRICE);
+        assertThat(auction.get("start_price")).isEqualTo(startPrice);
         assertThat(auction.get("status")).isEqualTo("SCHEDULED");
+
+        // then 7 : 기준가는 어디에도 남지 않는다
+        // 응답 DTO에 필드가 하나 늘거나 차량에 기준가 컬럼이 생기는 것만으로 무너지므로 못 박는다
+        assertThat(result.getResponse().getContentAsString())
+                .doesNotContain(String.valueOf(CATALOG_BASE_PRICE));
+        assertThat(vehicle).doesNotContainValue(CATALOG_BASE_PRICE);
     }
 
     // 평가 요청을 만들지 않고 곧바로 발행하기로 한 결정이 실제로 목적을 달성하는지 확인하는 유일한 자리다
@@ -127,6 +154,7 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
         // given : 판매 신청
         MvcResult created = apply(PLATE_WITH_IMAGE).andExpect(status().isCreated()).andReturn();
         int auctionId = JsonPath.read(created.getResponse().getContentAsString(), "$.auctionId");
+        long startPrice = priceOf(created, "$.startPrice");
 
         // when : 같은 트랜잭션이지만 JPQL 실행 전 auto-flush가 일어나 위 쓰기가 보인다
         // then : 시작이 1시간 뒤라 예정 그룹(NOT_OPEN)에 잡히고, 카드 값은 조회된 제원 그대로다
@@ -139,9 +167,10 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.content[0].model").value("그랜저 IG"))
                 .andExpect(jsonPath("$.content[0].modelYear").value(2021))
                 .andExpect(jsonPath("$.content[0].mileage").value(45000))
-                .andExpect(jsonPath("$.content[0].startPrice").value(BASE_PRICE))
+                // 목록 카드가 신청 응답과 같은 시작가를 보여줘야 한다, 신차급 기준가가 아니다
+                .andExpect(jsonPath("$.content[0].startPrice").value(startPrice))
                 // 입찰이 없으므로 현재가는 시작가로 채워진다
-                .andExpect(jsonPath("$.content[0].currentPrice").value(BASE_PRICE));
+                .andExpect(jsonPath("$.content[0].currentPrice").value(startPrice));
     }
 
     // 중복 검사를 넣지 않기로 한 결정을 고정한다
@@ -247,6 +276,12 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
 
     private static String json(MvcResult result, String path) throws Exception {
         return JsonPath.read(result.getResponse().getContentAsString(), path);
+    }
+
+    // JsonPath는 int에 들어가는 금액을 Integer로 돌려주므로 Number로 받아 폭을 맞춘다
+    private static long priceOf(MvcResult result, String path) throws Exception {
+        Number price = JsonPath.read(result.getResponse().getContentAsString(), path);
+        return price.longValue();
     }
 
     private Integer countOf(String table) {

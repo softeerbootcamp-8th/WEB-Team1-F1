@@ -55,6 +55,16 @@ class SellServiceTest {
     private static final String PLATE_NUMBER = "12가3456";
     private static final String IMAGE_URL = "https://cdn.race.dev/vehicles/grandeur-ig.jpg";
 
+    /** 그 모델의 기준가. 개별 차량의 연식·주행거리가 빠진 신차급 값이다 */
+    private static final long BASE_PRICE = 34_000_000L;
+
+    /**
+     * 위 기준가에 2021년식·4.5만km 감가를 반영한 값이다. QuotePolicy를 테스트에서 다시 호출해
+     * 비교하면 정책이 무엇을 계산하든 통과하므로, 손으로 계산한 값을 적어 둔다.
+     * 기준가 3400만 - 연식 5년(25%) 850만 - 주행 4.5만km(6.75%) 229.5만 = 2320.5만 → 만원 절사
+     */
+    private static final long ESTIMATED_PRICE = 23_200_000L;
+
     @Mock
     private VehicleLookup vehicleLookup;
     @Mock
@@ -98,11 +108,17 @@ class SellServiceTest {
         assertThat(post.getVehicle().getModelYear()).isEqualTo(2021);
         assertThat(post.getVehicle().getMileage()).isEqualTo(45_000);
 
-        // then 3 : 시작가는 조회된 기준가다
-        Auction auction = capturedAuction();
-        assertThat(auction.getStartPrice()).isEqualTo(24_800_000L);
+        // then 3 : 차량의 예상 시세는 기준가가 아니라 감가를 반영한 값이다
+        // 기준가가 그대로 남으면 목록 카드와 경매방 응답으로 신차급 가격이 흘러나간다
+        assertThat(post.getVehicle().getEstimatedPrice()).isEqualTo(ESTIMATED_PRICE);
 
-        // then 4 : 발행 시각으로부터 최소 리드타임(1시간)을 넘긴다
+        // then 4 : 시작가도 같은 예상 시세다
+        // 기준가를 시작가로 쓰면 시작가가 예상 시세보다 높아져 첫 입찰이 붙지 않는다
+        Auction auction = capturedAuction();
+        assertThat(auction.getStartPrice()).isEqualTo(ESTIMATED_PRICE);
+        assertThat(auction.getStartPrice()).isLessThan(BASE_PRICE);
+
+        // then 5 : 발행 시각으로부터 최소 리드타임(1시간)을 넘긴다
         // 시각을 두 번 읽는 구현이면 publishedAt이 startAt 계산 기준보다 뒤라 여기가 아니라
         // Auction.schedule에서 INVALID_START_AT으로 터진다
         assertThat(auction.getStartTime()).isAfter(post.getPublishedAt().plusHours(1));
@@ -211,7 +227,7 @@ class SellServiceTest {
         return new VehicleSpec(PLATE_NUMBER, "김민수",
                 Manufacturer.HYUNDAI, "그랜저 IG", 2021, 45_000,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
-                24_800_000L, mainImageUrl);
+                BASE_PRICE, mainImageUrl);
     }
 
     // ================= 캡처 =================
