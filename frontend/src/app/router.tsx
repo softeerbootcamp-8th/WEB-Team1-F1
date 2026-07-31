@@ -12,7 +12,7 @@ import { AuctionPostPage } from '@/features/sell/pages/auction-post-page'
 import { SellResultPage } from '@/features/sell/pages/sell-result-page'
 import { PriceQuotePage } from '@/features/quote/pages/price-quote-page'
 import { QuoteResultPage } from '@/features/quote/pages/quote-result-page'
-import { MyPage } from '@/features/deals/pages/mypage'
+import { MyPageComingSoon } from '@/features/deals/pages/mypage-coming-soon'
 import { LoginPage } from '@/features/auth/pages/login-page'
 import { SignupPage } from '@/features/auth/pages/signup-page'
 
@@ -34,7 +34,7 @@ export function AppRouter() {
         <Route path="/sell/evaluator" element={<EvaluatorConnectionPage />} />
         <Route path="/sell/auction-post" element={<AuctionPostPage />} />
         <Route path="/sell/result" element={<SellResultPage />} />
-        <Route path="/mypage" element={<MyPage />} />
+        <Route path="/mypage" element={<MyPageComingSoon />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
