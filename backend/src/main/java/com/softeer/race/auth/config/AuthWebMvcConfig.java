@@ -2,7 +2,6 @@ package com.softeer.race.auth.config;
 
 import com.softeer.race.auth.presentation.support.AuthInterceptor;
 import com.softeer.race.auth.presentation.support.LoginUserArgumentResolver;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +9,8 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.util.List;
 
 @Configuration
 // RaceApplication의 @ConfigurationPropertiesScan과 중복이지만 @WebMvcTest 슬라이스는 그 스캔을
@@ -39,7 +40,11 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authInterceptor)
-                .addPathPatterns("/api/auth/me", "/api/sell");
+                .addPathPatterns("/api/auth/me",
+                        "/api/sell",
+                        // 세그먼트 하나만 매치하는 * 다. ** 로 넓히면 /api/auctions/{id} 까지 걸려
+                        // X-User-Id 를 쓰는 경매방 조회가 401 이 된다
+                        "/api/auctions/*/bids");
     }
 
     @Override
