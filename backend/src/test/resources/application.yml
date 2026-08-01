@@ -7,12 +7,12 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
 
-# 배경 스레드가 테스트 중에 DB 를 건드리면 쿼리 수 같은 계약이 흔들린다
+# 배경 스레드가 테스트 중에 DB 를 건드리면 검증 대상 데이터가 흔들린다
 race:
   scheduling:
     enabled: false
