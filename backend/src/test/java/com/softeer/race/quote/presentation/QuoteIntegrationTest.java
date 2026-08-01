@@ -7,13 +7,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.softeer.race.support.IntegrationTestSupport;
 import java.nio.charset.StandardCharsets;
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,16 +37,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Sql("/sql/vehicle-catalog-fixture.sql")
 class QuoteIntegrationTest extends IntegrationTestSupport {
 
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
-
     // 픽스처의 예상 시세가 이 연도(2026)를 기준으로 계산돼 있다
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 12, 0, 0);
 
-    @TestBean(methodName = "fixedClock")
-    private Clock clock;
-
-    static Clock fixedClock() {
-        return Clock.fixed(NOW.atZone(KST).toInstant(), KST);
+    @BeforeEach
+    void fixClock() {
+        fixClockAt(NOW);
     }
 
     // ================= 조회와 산정 =================

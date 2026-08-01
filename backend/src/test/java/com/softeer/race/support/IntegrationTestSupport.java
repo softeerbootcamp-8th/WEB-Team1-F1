@@ -1,6 +1,7 @@
 package com.softeer.race.support;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -8,9 +9,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.convention.TestBean;
 import org.testcontainers.mysql.MySQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 // 통합테스트 부모 클래스
@@ -21,6 +26,17 @@ import java.util.List;
 @SpringBootTest
 @AutoConfigureMockMvc
 public abstract class IntegrationTestSupport {
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private static final MutableClock CLOCK = new MutableClock(KST);
+
+    // 빈 오버라이드가 컨텍스트 캐시 키에 들어가므로 자식이 각자 선언하면 그 수만큼 컨텍스트가 뜬다
+    @TestBean(methodName = "sharedClock", enforceOverride = true)
+    private Clock clock;
+
+    static Clock sharedClock() {
+        return CLOCK;
+    }
 
     // 개발용 compose 와 같은 MySQL 8.4 LTS, 연결 시간대는 application.yml 과 같은 이유로 넘기지 않는다
     private static final MySQLContainer MYSQL = new MySQLContainer(DockerImageName.parse("mysql:8.4"))
@@ -43,6 +59,16 @@ public abstract class IntegrationTestSupport {
 
     @Autowired
     protected MockMvc mockMvc;
+
+    // 부모 콜백이 자식보다 먼저 돌아, 앞 테스트가 건 시각을 자식이 자기 시각을 걸기 전에 푼다
+    @BeforeEach
+    void releaseClock() {
+        CLOCK.release();
+    }
+
+    protected void fixClockAt(LocalDateTime now) {
+        CLOCK.fixAt(now);
+    }
 
     // 테스트 전이 아니라 후에 지운다
     // @Sql 픽스처는 스프링 리스너가 JUnit 콜백보다 먼저 실행하므로, 앞에서 지우면 픽스처가 날아간다

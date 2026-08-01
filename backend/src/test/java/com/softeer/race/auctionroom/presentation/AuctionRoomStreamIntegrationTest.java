@@ -1,18 +1,16 @@
 package com.softeer.race.auctionroom.presentation;
 
 import com.softeer.race.support.IntegrationTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -31,18 +29,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("경매방 현황 구독 통합 테스트")
 class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
 
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
 
     private static final long LIVE_AUCTION_ID = 4L;
     private static final long CLOSED_AUCTION_ID = 2L;
     private static final long MISSING_AUCTION_ID = 999L;
 
-    @TestBean(methodName = "fixedClock")
-    private Clock clock;
-
-    static Clock fixedClock() {
-        return Clock.fixed(NOW.atZone(KST).toInstant(), KST);
+    @BeforeEach
+    void fixClock() {
+        fixClockAt(NOW);
     }
 
     @Test

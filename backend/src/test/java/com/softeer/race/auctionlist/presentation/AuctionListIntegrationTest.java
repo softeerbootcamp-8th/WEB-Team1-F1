@@ -1,16 +1,14 @@
 package com.softeer.race.auctionlist.presentation;
 
 import com.softeer.race.support.IntegrationTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -36,16 +34,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql("/sql/auction-list-fixture.sql")
 class AuctionListIntegrationTest extends IntegrationTestSupport {
 
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
-
     // 픽스처가 이 시각을 기준으로 진행중 101·102·103·110 / 예정 104·105 / 종료 106·107 로 나뉜다
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 12, 0, 0);
 
-    @TestBean(methodName = "fixedClock")
-    private Clock clock;
-
-    static Clock fixedClock() {
-        return Clock.fixed(NOW.atZone(KST).toInstant(), KST);
+    @BeforeEach
+    void fixClock() {
+        fixClockAt(NOW);
     }
 
     // ================= 첫 페이지 =================

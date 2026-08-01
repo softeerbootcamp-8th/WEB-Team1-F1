@@ -8,13 +8,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.softeer.race.support.IntegrationTestSupport;
-import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.ResultActions;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -43,7 +40,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuctionRoomIntegrationTest extends IntegrationTestSupport {
 
     // 상수
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
 
     private static final long LIVE_AUCTION_ID = 1L;
@@ -54,20 +50,17 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
 
     // 구독 목록은 컨텍스트에 살아 있는 싱글턴이라 시나리오마다 auctionId 를 다르게 써서 격리한다
     // 픽스처도 시나리오별로 나눠 arrange 가 서로 묶이지 않게 한다
-    
-    @TestBean(methodName = "fixedClock")
-    private Clock clock;
-
-    static Clock fixedClock() {
-        return Clock.fixed(NOW.atZone(KST).toInstant(), KST);
-    }
-
 
     @Autowired
     private EntityManagerFactory entityManagerFactory;
 
     // 방 조회 한 번이 쓰는 쿼리 수를 세기 위해 켠다, 프로젝션을 엔티티 조회로 되돌리면 이 수가 늘어난다
     private Statistics statistics;
+
+    @BeforeEach
+    void fixClock() {
+        fixClockAt(NOW);
+    }
 
     @BeforeEach
     void enableStatistics() {

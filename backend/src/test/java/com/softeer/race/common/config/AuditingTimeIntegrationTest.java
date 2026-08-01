@@ -5,17 +5,15 @@ import com.softeer.race.notification.domain.NotificationType;
 import com.softeer.race.user.domain.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.softeer.race.support.IntegrationTestSupport;
-import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,15 +28,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AuditingTimeIntegrationTest extends IntegrationTestSupport {
 
     // 상수
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
     private static final long USER_ID = 91L;
 
-    @TestBean(methodName = "fixedClock", enforceOverride = true)
-    private Clock clock;
-
-    static Clock fixedClock() {
-        return Clock.fixed(NOW.atZone(KST).toInstant(), KST);
+    @BeforeEach
+    void fixClock() {
+        fixClockAt(NOW);
     }
 
     @Autowired

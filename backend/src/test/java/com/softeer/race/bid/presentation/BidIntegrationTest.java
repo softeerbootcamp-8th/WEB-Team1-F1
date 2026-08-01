@@ -3,16 +3,14 @@ package com.softeer.race.bid.presentation;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.ResultActions;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -46,7 +44,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql({"/sql/bid-increment-bands.sql", "/sql/bid-place-fixture.sql"})
 class BidIntegrationTest extends IntegrationTestSupport {
 
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     // 러너 시간대(UTC)와 로컬(KST)에서 결과가 갈리지 않도록 실제 시각을 쓰지 않는다
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 0);
 
@@ -66,11 +63,9 @@ class BidIntegrationTest extends IntegrationTestSupport {
     private static final long START_PRICE = 24_800_000L;
     private static final long INCREMENT = 50_000L;
 
-    @TestBean(methodName = "fixedClock")
-    private Clock clock;
-
-    static Clock fixedClock() {
-        return Clock.fixed(NOW.atZone(KST).toInstant(), KST);
+    @BeforeEach
+    void fixClock() {
+        fixClockAt(NOW);
     }
 
     @Test
