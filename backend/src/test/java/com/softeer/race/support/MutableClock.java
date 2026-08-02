@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 // 시각을 옮길 수 있는 Clock, 기본은 실제 시각이고 걸었을 때만 그 시각에 멈춘다
 public final class MutableClock extends Clock {
@@ -28,6 +29,19 @@ public final class MutableClock extends Clock {
 
     public void release() {
         fixedAt.set(null);
+    }
+
+    /**
+     * 그 시각에 멈춘 채로 실행하고 원래 시각으로 되돌린다
+     */
+    public <T> T at(LocalDateTime now, Supplier<T> action) {
+        Instant previous = fixedAt.get();
+        fixAt(now);
+        try {
+            return action.get();
+        } finally {
+            fixedAt.set(previous);
+        }
     }
 
     @Override

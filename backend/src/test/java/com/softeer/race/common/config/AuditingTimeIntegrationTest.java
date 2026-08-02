@@ -10,7 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.softeer.race.support.IntegrationTestSupport;
-import org.springframework.test.context.jdbc.Sql;
+import com.softeer.race.user.domain.Role;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
@@ -29,7 +29,6 @@ class AuditingTimeIntegrationTest extends IntegrationTestSupport {
 
     // 상수
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
-    private static final long USER_ID = 91L;
 
     @BeforeEach
     void fixClock() {
@@ -44,12 +43,14 @@ class AuditingTimeIntegrationTest extends IntegrationTestSupport {
 
     @Test
     @DisplayName("시나리오 1 : 알림 저장 -> 생성 시각과 수정 시각이 고정한 Clock 의 시각으로 남는다")
-    @Sql("/sql/auditing-user.sql")
     void scenario1_AuditingFollowsServerClock() {
+        // given : 알림을 받을 회원
+        long userId = users.user("김알림", Role.GENERAL).getId();
+
         // when : 알림 한 건 저장
         Long id = transactionTemplate.execute(status -> {
             Notification notification = Notification.of(
-                    entityManager.getReference(User.class, USER_ID),
+                    entityManager.getReference(User.class, userId),
                     NotificationType.AUCTION_WON,
                     "낙찰되었습니다",
                     1L);
