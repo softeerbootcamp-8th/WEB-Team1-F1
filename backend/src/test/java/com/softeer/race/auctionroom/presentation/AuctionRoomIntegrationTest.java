@@ -4,7 +4,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import com.softeer.race.support.IntegrationTestSupport;
-import org.springframework.test.context.jdbc.Sql;
+import com.softeer.race.user.domain.Role;
+import com.softeer.race.user.domain.User;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.LocalDateTime;
@@ -37,14 +38,10 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
     // 상수
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
 
-    private static final long LIVE_AUCTION_ID = 1L;
-    private static final long CLOSED_AUCTION_ID = 2L;
-    private static final long DELETED_POST_AUCTION_ID = 3L;
-    private static final long VIEWER_ID = 11L;
-    private static final long WINNER_ID = 22L;
+    private static final LocalDateTime START_AT = LocalDateTime.of(2026, 8, 3, 20, 30);
 
-    // 구독 목록은 컨텍스트에 살아 있는 싱글턴이라 시나리오마다 auctionId 를 다르게 써서 격리한다
-    // 픽스처도 시나리오별로 나눠 arrange 가 서로 묶이지 않게 한다
+    // 마감(시작 + 20분)에 결과 확인 5분까지 지난 시각이 되도록 뒤로 물린다
+    private static final LocalDateTime CLOSED_START_AT = LocalDateTime.of(2026, 8, 3, 18, 30);
 
     @BeforeEach
     void fixClock() {
@@ -53,15 +50,25 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
 
     @Test
     @DisplayName("시나리오 1 : 진행 중 경매방 조회 -> 차량 요약 + 마스킹된 최근 호가에 내 입찰 표시 + 집계")
-    @Sql("/sql/auction-room-live.sql")
     void scenario1_LiveRoom_HappyPath() throws Exception {
+        // given : 세 건을 두 사람이 넣은 진행 중인 방, 조회자는 그중 두 건을 넣은 김민현이다
+        User viewer = users.user("김민현", Role.DEALER);
+
+        long liveAuctionId = rooms
+                .room(users.user("박판매", Role.GENERAL), START_AT)
+                .thumbnailUrl("https://cdn.race.dev/avante-1.jpg")
+                .bid(LocalDateTime.of(2026, 8, 3, 20, 40, 5), viewer, 11_000_000L)
+                .bid(LocalDateTime.of(2026, 8, 3, 20, 42, 18), users.user("남궁민수", Role.DEALER), 12_000_000L)
+                .bid(LocalDateTime.of(2026, 8, 3, 20, 44, 31), viewer, 12_500_000L)
+                .create();
+
         // when : 입찰자 한 명이 방을 조회
-        ResultActions response = getRoom(LIVE_AUCTION_ID, VIEWER_ID);
+        ResultActions response = getRoom(liveAuctionId, viewer.getId());
 
         // then 1 : 상태가 아니라 시각으로 판정한 단계, 경매 식별자는 요청 경로가 아니라 조회 결과에서 온다
         response.andExpectAll(
                 status().isOk(),
-                jsonPath("$.auctionId").value(LIVE_AUCTION_ID),
+                jsonPath("$.auctionId").value(liveAuctionId),
                 jsonPath("$.phase").value("LIVE"));
 
         // then 2 : 시작가와 현재가를 함께 내려 상승폭을 보인다
@@ -70,10 +77,11 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.currentPrice").value(12500000));
 
         // then 3 : 남은 초가 아니라 마감 절대시각과 서버 시각, 대기 화면을 위해 개장·시작 시각도 함께
+        // 개장은 시작 30분 전, 마감은 시작 20분 뒤로 도메인이 정한다
         response.andExpectAll(
                 jsonPath("$.openAt").value("2026-08-03T20:00:00"),
                 jsonPath("$.startAt").value("2026-08-03T20:30:00"),
-                jsonPath("$.endAt").value("2026-08-03T21:00:00"),
+                jsonPath("$.endAt").value("2026-08-03T20:50:00"),
                 jsonPath("$.serverTime").value("2026-08-03T20:45:12"));
 
         // then 4 : 목록을 거치지 않고 들어와도 화면을 채울 차량 정보가 함께 온다
@@ -96,13 +104,12 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
         // then 7 : 조회는 접속이 아니다, 스트림에 열려 있는 구독이 없으므로 0이다
         response.andExpect(jsonPath("$.connectedCount").value(0));
 
-        // then 8 : 최신순, 이름은 앞뒤 한 글자만 남는다
+        // then 8 : 최신순, 원본이 아니라 마스킹된 이름이 실린다, 마스킹 규칙 자체는 단위테스트가 본다
         response.andExpectAll(
                 jsonPath("$.recentBids.length()").value(3),
                 jsonPath("$.recentBids[0].name").value("김*현"),
                 jsonPath("$.recentBids[0].amount").value(12500000),
-                jsonPath("$.recentBids[0].bidAt").value("2026-08-03T20:44:31"),
-                jsonPath("$.recentBids[1].name").value("남**수"));
+                jsonPath("$.recentBids[0].bidAt").value("2026-08-03T20:44:31"));
 
         // then 9 : 누가 넣었는지는 내려보내지 않는다, 식별자가 나가면 마스킹이 무의미해진다
         response.andExpect(jsonPath("$.recentBids[0].bidderId").doesNotExist());
@@ -122,10 +129,19 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
 
     @Test
     @DisplayName("시나리오 2 : 완전 종료된 경매방 조회 -> 접속자로 세지 않고, 낙찰 여부는 조회자마다 다르다")
-    @Sql("/sql/auction-room-closed.sql")
     void scenario2_ClosedRoom_NotCountedAsPresence() throws Exception {
-        // when : 마감 후 5분이 지난 방을 낙찰자 본인이 조회
-        ResultActions response = getRoom(CLOSED_AUCTION_ID, WINNER_ID);
+        // given : 마감 후 5분이 지난 방, 유일한 입찰자가 낙찰자다
+        User winner = users.user("이준호", Role.DEALER);
+        User other = users.user("한구경", Role.DEALER);
+
+        long closedAuctionId = rooms.room(users.user("최판매", Role.GENERAL), CLOSED_START_AT)
+                .startPrice(20_000_000L)
+                .bid(CLOSED_START_AT.plusMinutes(15), winner, 21_000_000L)
+                .create();
+        confirmWinner(closedAuctionId, winner);
+
+        // when : 낙찰자 본인이 조회
+        ResultActions response = getRoom(closedAuctionId, winner.getId());
 
         // then 1 : 없어진 리소스가 아니라 단계가 다를 뿐이라 200 이다
         response.andExpectAll(
@@ -150,7 +166,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.recentBids[0].mine").value(true));
 
         // then 6 : 같은 방을 남이 보면 이름은 같고 본인 표시만 꺼진다
-        getRoom(CLOSED_AUCTION_ID, VIEWER_ID).andExpectAll(
+        getRoom(closedAuctionId, other.getId()).andExpectAll(
                 jsonPath("$.winner.name").value("이*호"),
                 jsonPath("$.winner.mine").value(false),
                 jsonPath("$.recentBids[0].mine").value(false));
@@ -158,15 +174,36 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
 
     @Test
     @DisplayName("시나리오 3 : 삭제된 경매글의 방 조회 -> 진행 중이어도 없는 방으로 취급한다")
-    @Sql("/sql/auction-room-deleted-post.sql")
     void scenario3_DeletedPost_NotFound() throws Exception {
+        // given : 진행 중으로 둔다, 삭제 조건이 빠지면 200 LIVE 가 나가 이 단정이 깨지도록
+        User viewer = users.user("한구경", Role.DEALER);
+        long deletedPostAuctionId = rooms.room(users.user("정판매", Role.GENERAL), START_AT).create();
+        deletePost(deletedPostAuctionId);
+
         // when : 글이 내려간 경매의 방을 조회
-        ResultActions response = getRoom(DELETED_POST_AUCTION_ID, VIEWER_ID);
+        ResultActions response = getRoom(deletedPostAuctionId, viewer.getId());
 
         // then : 도달할 수 없는 자원이므로 단계를 알리지 않고 404 다
         response.andExpectAll(
                 status().isNotFound(),
                 jsonPath("$.code").value("AUCTION_ROOM_NOT_FOUND"));
+    }
+
+    // ================= 도메인에 아직 없는 전이 ====================
+    // 낙찰 확정과 게시글 삭제는 도메인에 메서드가 없어 여기서만 직접 쓴다
+    // 마감 시 종료·낙찰 확정은 #63 이 만들고, 그때 아래 두 메서드는 지운다
+
+    private void confirmWinner(long auctionId, User winner) {
+        jdbcTemplate.update("update auction set winner_id = ?, status = 'ENDED' where id = ?",
+                winner.getId(), auctionId);
+    }
+
+    private void deletePost(long auctionId) {
+        jdbcTemplate.update("""
+                update auction_post p join auction a on a.post_id = p.id
+                set p.deleted_at = ?
+                where a.id = ?
+                """, NOW.minusMinutes(5), auctionId);
     }
 
     // ================= 요청 ====================
