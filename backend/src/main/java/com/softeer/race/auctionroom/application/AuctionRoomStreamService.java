@@ -3,6 +3,7 @@ package com.softeer.race.auctionroom.application;
 import com.softeer.race.common.config.SchedulingConfig;
 import com.softeer.race.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +14,7 @@ import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_NOT_
  * 경매방 현황을 열려 있는 구독으로 흘려보내는 서비스
  */
 // @Transactional 을 붙이지 않는다, 브로드캐스트가 소켓 쓰기라 안 받아 가는 상대 하나에 커넥션이 묶인다
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuctionRoomStreamService {
@@ -55,7 +57,14 @@ public class AuctionRoomStreamService {
      */
     @Scheduled(fixedDelay = SWEEP_INTERVAL_MILLIS, scheduler = SchedulingConfig.ROOM_STREAM)
     public void sweepClosedSubscriptions() {
-        roomChannel.sweepClosed().forEach(this::refresh);
+        // 한 방의 실패를 그 방에 가둔다, 여기서만 옳은 정책이라 refresh 자체는 계속 던지게 둔다
+        for (long auctionId : roomChannel.sweepClosed()) {
+            try {
+                refresh(auctionId);
+            } catch (Exception e) {
+                log.warn("경매방 현황 갱신 실패, 경매 {}", auctionId, e);
+            }
+        }
     }
 
     // 방이 비었으면 보낼 곳이 없으므로 조회도 하지 않는다
@@ -72,6 +81,10 @@ public class AuctionRoomStreamService {
     private void broadcast(RoomQueryResult result) {
         long auctionId = result.detail().auctionId();
 
-        roomChannel.broadcast(auctionId, RoomState.of(result, roomChannel.countSubscribers(auctionId)));
+        // 연결을 열어 두지 않는 단계면 남은 구독은 접속자가 아니다, 조회·목록과 같은 판정을 여기서도 한다
+        int connectedCount = result.phase().allowsConnection()
+                ? roomChannel.countSubscribers(auctionId) : 0;
+
+        roomChannel.broadcast(auctionId, RoomState.of(result, connectedCount));
     }
 }

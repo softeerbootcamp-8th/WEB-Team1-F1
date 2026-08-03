@@ -3,6 +3,7 @@ package com.softeer.race.auctionroom.presentation;
 import com.softeer.race.auctionroom.application.AuctionRoomStreamService;
 import com.softeer.race.auctionroom.application.RoomSubscriber;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +15,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/auctions")
 @RequiredArgsConstructor
@@ -28,7 +30,7 @@ public class AuctionRoomStreamController implements AuctionRoomStreamApi {
     @GetMapping(path = "/{auctionId}/room/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<SseEmitter> stream(@PathVariable("auctionId") long auctionId) {
         SseEmitter emitter = new SseEmitter(STREAM_TIMEOUT_MILLIS);
-        RoomSubscriber subscriber = new SseRoomSubscriber(emitter);
+        RoomSubscriber subscriber = new SseRoomSubscriber(auctionId, emitter);
 
         // 타임아웃 뒤에 완료 콜백이 잇달아 와서 해제가 두 번 불린다
         AtomicBoolean released = new AtomicBoolean();
@@ -41,7 +43,11 @@ public class AuctionRoomStreamController implements AuctionRoomStreamApi {
 
         emitter.onCompletion(release);
         emitter.onTimeout(release);
-        emitter.onError(error -> release.run());
+        emitter.onError(error -> {
+            // 클라이언트 정상 종료도 여기로 오므로 경고면 소음이 된다, 진짜 문제도 조용히 사라지지 않게 흔적만 남긴다
+            log.debug("경매방 현황 연결 오류, 경매 {}", auctionId, error);
+            release.run();
+        });
 
         auctionRoomStreamService.subscribe(auctionId, subscriber);
 

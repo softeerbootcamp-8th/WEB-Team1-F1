@@ -9,6 +9,11 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,6 +22,9 @@ class InMemoryRoomChannelTest {
 
     private static final long AUCTION = 1L;
     private static final long OTHER_AUCTION = 2L;
+
+    // 창이 좁아 한 번으로는 못 잡는다, 반복 횟수가 곧 검출력이다
+    private static final int RACE_ROUNDS = 10_000;
 
     private final InMemoryRoomChannel channel = new InMemoryRoomChannel();
 
@@ -58,6 +66,19 @@ class InMemoryRoomChannelTest {
         channel.subscribe(AUCTION, new FakeSubscriber());
 
         channel.unsubscribe(AUCTION, leaving);
+
+        int connected = channel.countSubscribers(AUCTION);
+
+        assertThat(connected).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("같은 구독을 두 번 등록해도 하나다")
+    void subscribeIsIdempotent() {
+        FakeSubscriber subscriber = new FakeSubscriber();
+
+        channel.subscribe(AUCTION, subscriber);
+        channel.subscribe(AUCTION, subscriber);
 
         int connected = channel.countSubscribers(AUCTION);
 
@@ -175,6 +196,52 @@ class InMemoryRoomChannelTest {
         Set<Long> swept = channel.sweepClosed();
 
         assertThat(swept).isEmpty();
+    }
+
+    @Test
+    @DisplayName("마지막 구독이 빠지는 순간 들어온 구독은 유실되지 않는다")
+    void arrivingSubscriberSurvivesLastDeparture() throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        int lost = 0;
+
+        try {
+            for (int round = 0; round < RACE_ROUNDS; round++) {
+                FakeSubscriber leaving = new FakeSubscriber();
+                FakeSubscriber arriving = new FakeSubscriber();
+                channel.subscribe(AUCTION, leaving);
+
+                // 마지막 해제와 새 등록을 같은 순간에 풀어 준다
+                CyclicBarrier gate = new CyclicBarrier(2);
+                Future<?> departure = pool.submit(() -> {
+                    await(gate);
+                    channel.unsubscribe(AUCTION, leaving);
+                });
+                Future<?> arrival = pool.submit(() -> {
+                    await(gate);
+                    channel.subscribe(AUCTION, arriving);
+                });
+                departure.get();
+                arrival.get();
+
+                // 들어온 쪽은 남아 있어야 한다, 0이면 맵에서 떨어져 나간 집합에 들어간 것이다
+                if (channel.countSubscribers(AUCTION) == 0) {
+                    lost++;
+                }
+                channel.unsubscribe(AUCTION, arriving);
+            }
+        } finally {
+            pool.shutdown();
+        }
+
+        assertThat(lost).isZero();
+    }
+
+    private static void await(CyclicBarrier gate) {
+        try {
+            gate.await();
+        } catch (InterruptedException | BrokenBarrierException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     // 채널은 현황을 나르기만 하고 안을 들여다보지 않으므로, 같은 객체가 갔는지만 확인하면 된다
