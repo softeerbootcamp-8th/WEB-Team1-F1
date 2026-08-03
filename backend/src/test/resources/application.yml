@@ -12,6 +12,15 @@ spring:
       hibernate:
         format_sql: false
 
+# 이 설정이 메인 설정을 가리므로 여기에도 두어야 한다
+# 필수 항목이 비면 S3Properties 가 기동을 실패시켜 통합테스트 전부가 컨텍스트 로딩에서 깨진다
+# 실제 S3 를 호출하지 않으므로 값은 형식만 맞으면 된다
+aws:
+  s3:
+    bucket: test-bucket
+    region: ap-northeast-2
+    cdn-base-url: https://cdn.test.local
+
 # 배경 스레드가 테스트 중에 DB 를 건드리면 검증 대상 데이터가 흔들린다
 race:
   scheduling:
