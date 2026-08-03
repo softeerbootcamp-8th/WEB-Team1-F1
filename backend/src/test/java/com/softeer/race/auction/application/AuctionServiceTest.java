@@ -2,6 +2,7 @@ package com.softeer.race.auction.application;
 
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionRepository;
+import com.softeer.race.auction.domain.AuctionStatus;
 import com.softeer.race.auctionpost.domain.AuctionPost;
 import com.softeer.race.auctionpost.domain.AuctionPostRepository;
 import com.softeer.race.common.exception.BusinessException;
@@ -21,11 +22,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Collection;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -103,6 +106,26 @@ class AuctionServiceTest {
 
         then(auctionPostRepository).shouldHaveNoInteractions();
         then(auctionRepository).should(never()).save(any());
+    }
+
+    @Test
+    @DisplayName("유찰된 경매는 재등록 판단 대상 상태에서 제외된다.")
+    void create_유찰은_활성상태_아님() {
+        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle()));
+        given(vehicleImageRepository.findFirstByVehicleOrderBySortOrderAsc(any()))
+                .willReturn(Optional.empty());
+        given(auctionRepository.existsActiveByVehicleId(any(), any())).willReturn(false);
+        given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(auctionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        service.create(VEHICLE_ID, START_PRICE, VALID_START_AT);
+
+        ArgumentCaptor<Collection<AuctionStatus>> statusesCaptor = ArgumentCaptor.forClass(Collection.class);
+        then(auctionRepository).should().existsActiveByVehicleId(eq(VEHICLE_ID), statusesCaptor.capture());
+
+        assertThat(statusesCaptor.getValue())
+                .doesNotContain(AuctionStatus.FAILED)
+                .contains(AuctionStatus.SCHEDULED, AuctionStatus.IN_PROGRESS, AuctionStatus.ENDED);
     }
 
     @Test
