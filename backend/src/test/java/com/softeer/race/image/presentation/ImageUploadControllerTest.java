@@ -54,7 +54,7 @@ class ImageUploadControllerTest {
 
     private static final long EVALUATOR_ID = 91L;
     private static final LocalDateTime EXPIRES_AT = LocalDateTime.of(2026, 8, 2, 15, 30);
-    private static final String KEY = "images/evaluations/2026/08/3f2b1c8e.jpg";
+    private static final String KEY = "images/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg";
 
     @Autowired
     private MockMvc mockMvc;

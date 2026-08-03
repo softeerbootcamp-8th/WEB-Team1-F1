@@ -27,7 +27,7 @@ public record ImageUploadResponse(
     public record PresignedUploadResponse(
 
             @Schema(description = "저장소 안의 객체 키",
-                    example = "images/evaluations/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg")
+                    example = "images/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg")
             String key,
 
             @Schema(description = "이 주소로 파일을 PUT 합니다. 요청에 적은 Content-Type과 크기를 "
@@ -35,7 +35,8 @@ public record ImageUploadResponse(
             String uploadUrl,
 
             @Schema(description = "업로드 후 이미지를 조회할 주소. 저장해 두어야 하는 값입니다.",
-                    example = "https://cdn.example.com/images/evaluations/2026/08/3f2b1c8e.jpg")
+                    example = "https://www.f1race.site/images/2026/08/"
+                            + "3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg")
             String fileUrl,
 
             @Schema(description = "uploadUrl이 만료되는 시각", example = "2026-08-02T15:30:00")

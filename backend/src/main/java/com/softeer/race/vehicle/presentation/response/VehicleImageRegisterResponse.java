@@ -15,7 +15,8 @@ public record VehicleImageRegisterResponse(
         List<RegisteredImageResponse> images,
 
         @Schema(description = "대표 이미지. 경매글이 있으면 그 썸네일도 이 값으로 갱신됩니다.",
-                example = "https://www.f1race.site/images/evaluations/2026/08/3f2b1c8e.jpg")
+                example = "https://www.f1race.site/images/2026/08/"
+                        + "3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg")
         String thumbnailUrl
 ) {
 

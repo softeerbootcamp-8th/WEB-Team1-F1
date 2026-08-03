@@ -19,7 +19,8 @@ import java.util.List;
 public record VehicleImageRegisterRequest(
 
         @Schema(description = "업로드를 마친 이미지 주소 목록. 보낸 순서가 표시 순서이며 첫 번째가 대표 이미지가 됩니다.",
-                example = "[\"https://www.f1race.site/images/evaluations/2026/08/3f2b1c8e.jpg\"]")
+                example = "[\"https://www.f1race.site/images/2026/08/"
+                        + "3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg\"]")
         @NotEmpty(message = "등록할 이미지가 최소 한 장은 필요합니다.")
         @Size(max = VehicleImageRegisterRequest.MAX_IMAGE_COUNT,
                 message = "이미지는 " + VehicleImageRegisterRequest.MAX_IMAGE_COUNT + "장까지 등록할 수 있습니다.")
