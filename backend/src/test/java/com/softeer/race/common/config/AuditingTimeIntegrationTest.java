@@ -49,10 +49,9 @@ class AuditingTimeIntegrationTest extends IntegrationTestSupport {
 
         // when : 알림 한 건 저장
         Long id = transactionTemplate.execute(status -> {
-            Notification notification = Notification.of(
+            Notification notification = Notification.create(
                     entityManager.getReference(User.class, userId),
                     NotificationType.AUCTION_WON,
-                    "낙찰되었습니다",
                     1L);
             entityManager.persist(notification);
             return notification.getId();
