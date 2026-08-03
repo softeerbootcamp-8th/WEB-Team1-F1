@@ -1,5 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
+import com.softeer.race.common.config.SchedulingConfig;
 import com.softeer.race.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -52,7 +53,7 @@ public class AuctionRoomStreamService {
     /**
      * 끊긴 구독을 걷어내고, 사람이 빠진 방에는 줄어든 접속자 수를 보낸다
      */
-    @Scheduled(fixedDelay = SWEEP_INTERVAL_MILLIS)
+    @Scheduled(fixedDelay = SWEEP_INTERVAL_MILLIS, scheduler = SchedulingConfig.ROOM_STREAM)
     public void sweepClosedSubscriptions() {
         roomChannel.sweepClosed().forEach(this::refresh);
     }
