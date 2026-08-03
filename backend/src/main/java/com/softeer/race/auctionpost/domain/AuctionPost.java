@@ -44,4 +44,8 @@ public class AuctionPost extends BaseTimeEntity {
 
         return post;
     }
+
+    public void delete(LocalDateTime now) {
+        this.deletedAt = now;
+    }
 }

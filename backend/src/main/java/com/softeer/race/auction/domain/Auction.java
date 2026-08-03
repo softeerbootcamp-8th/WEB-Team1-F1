@@ -194,4 +194,22 @@ public class Auction extends BaseTimeEntity {
         status = AuctionStatus.IN_PROGRESS;
     }
 
+    public boolean isEditableAt(LocalDateTime now) {
+        return now.isBefore(roomOpenAt);
+    }
+
+    public void updateBeforeRoomOpens(long startPrice, LocalDateTime startTime, LocalDateTime now) {
+        if (!isEditableAt(now)) {
+            throw new BusinessException(AuctionErrorCode.AUCTION_ROOM_ALREADY_OPEN);
+        }
+        // 리드타임 기준은 발행 시각이 아니라 지금이다. publishedAt은 과거에 고정된 값이라
+        // 그대로 쓰면 발행 후 시간이 오래 지난 뒤에는 리드타임 없이 임박한 시각으로도 바꿀 수 있게 된다.
+        validateStartTime(startTime, now);
+
+        this.startPrice = startPrice;
+        this.roomOpenAt = startTime.minusMinutes(ROOM_OPEN_BEFORE_MINUTES);
+        this.startTime = startTime;
+        this.currentEndTime = startTime.plusMinutes(DURATION_MINUTES);
+    }
+
 }
