@@ -33,8 +33,7 @@ public class AuctionService {
 
     // 재등록을 막아야 하는 상태.
     private static final Set<AuctionStatus> ACTIVE_STATUSES =
-            Set.of(AuctionStatus.SCHEDULED, AuctionStatus.IN_PROGRESS,
-                    AuctionStatus.FAILED, AuctionStatus.ENDED);
+            Set.of(AuctionStatus.SCHEDULED, AuctionStatus.IN_PROGRESS, AuctionStatus.ENDED);
 
     /**
      * 경매글과 경매를 한 트랜잭션으로 함께 생성한다
