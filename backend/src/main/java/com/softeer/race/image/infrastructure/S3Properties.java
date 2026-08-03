@@ -1,4 +1,4 @@
-package com.softeer.race.evaluation.infrastructure;
+package com.softeer.race.image.infrastructure;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

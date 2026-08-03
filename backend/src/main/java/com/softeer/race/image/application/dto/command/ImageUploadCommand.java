@@ -1,4 +1,4 @@
-package com.softeer.race.evaluation.application.dto.command;
+package com.softeer.race.image.application.dto.command;
 
 import java.util.List;
 

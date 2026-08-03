@@ -1,7 +1,7 @@
 package com.softeer.race.vehicle.application;
 
 import com.softeer.race.common.exception.BusinessException;
-import com.softeer.race.evaluation.domain.ImageStorage;
+import com.softeer.race.image.domain.ImageStorage;
 import com.softeer.race.vehicle.application.dto.command.VehicleImageRegisterCommand;
 import com.softeer.race.vehicle.application.dto.info.VehicleImageRegisterInfo;
 import com.softeer.race.vehicle.domain.Vehicle;
@@ -27,10 +27,7 @@ import java.util.stream.IntStream;
  * 다만 지금 {@code SellService}는 판매 신청 즉시 경매글을 만든다. 그 과도기에는 사진을 바꿔도
  * 이미 만들어진 경매글의 썸네일이 옛 카탈로그 이미지로 남는다. 판매 신청을 평가 신청으로
  * 전환하면 사라지는 문제라 별도 대응을 두지 않았다.
- * <p>
- * TODO {@link ImageStorage}가 evaluation 패키지에 있어 여기서 그쪽을 참조한다. 두 도메인이 함께
- * 쓰게 된 시점이므로 image 패키지로 옮기는 것이 맞지만, 발급 API 경로까지 바뀌는 이동이라
- * 별도 작업으로 둔다.
+
  */
 @Service
 @RequiredArgsConstructor

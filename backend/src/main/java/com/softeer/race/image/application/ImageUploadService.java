@@ -1,17 +1,17 @@
-package com.softeer.race.evaluation.application;
+package com.softeer.race.image.application;
 
-import com.softeer.race.evaluation.application.dto.command.ImageUploadCommand;
-import com.softeer.race.evaluation.application.dto.info.ImageUploadInfo;
-import com.softeer.race.evaluation.domain.ImageContentType;
-import com.softeer.race.evaluation.domain.ImageStorage;
-import com.softeer.race.evaluation.domain.PresignedUpload;
+import com.softeer.race.image.application.dto.command.ImageUploadCommand;
+import com.softeer.race.image.application.dto.info.ImageUploadInfo;
+import com.softeer.race.image.domain.ImageContentType;
+import com.softeer.race.image.domain.ImageStorage;
+import com.softeer.race.image.domain.PresignedUpload;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 /**
- * 평가 사진 업로드 주소 발급.
+ * 이미지 업로드 주소 발급.
  * <p>
  * {@code @Transactional}을 붙이지 않는다. DB를 건드리지 않으므로 트랜잭션을 열면 커넥션만 잡고
  * 아무것도 하지 않는다.
@@ -26,7 +26,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
-public class EvaluationImageService {
+public class ImageUploadService {
 
     private final ImageStorage imageStorage;
 

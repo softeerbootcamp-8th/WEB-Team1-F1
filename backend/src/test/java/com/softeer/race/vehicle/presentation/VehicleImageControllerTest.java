@@ -51,8 +51,8 @@ class VehicleImageControllerTest {
 
     private static final long EVALUATOR_ID = 91L;
     private static final long VEHICLE_ID = 1000L;
-    private static final String IMAGE_1 = "https://www.f1race.site/images/evaluations/2026/08/a.jpg";
-    private static final String IMAGE_2 = "https://www.f1race.site/images/evaluations/2026/08/b.jpg";
+    private static final String IMAGE_1 = "https://www.f1race.site/images/2026/08/a.jpg";
+    private static final String IMAGE_2 = "https://www.f1race.site/images/2026/08/b.jpg";
 
     @Autowired
     private MockMvc mockMvc;

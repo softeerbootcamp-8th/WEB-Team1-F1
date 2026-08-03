@@ -1,12 +1,12 @@
-package com.softeer.race.evaluation.application;
+package com.softeer.race.image.application;
 
 import com.softeer.race.common.exception.BusinessException;
-import com.softeer.race.evaluation.application.dto.command.ImageUploadCommand;
-import com.softeer.race.evaluation.application.dto.info.ImageUploadInfo;
-import com.softeer.race.evaluation.domain.ImageContentType;
-import com.softeer.race.evaluation.domain.ImageStorage;
-import com.softeer.race.evaluation.domain.PresignedUpload;
-import com.softeer.race.evaluation.exception.EvaluationImageErrorCode;
+import com.softeer.race.image.application.dto.command.ImageUploadCommand;
+import com.softeer.race.image.application.dto.info.ImageUploadInfo;
+import com.softeer.race.image.domain.ImageContentType;
+import com.softeer.race.image.domain.ImageStorage;
+import com.softeer.race.image.domain.PresignedUpload;
+import com.softeer.race.image.exception.ImageErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +33,7 @@ import static org.mockito.BDDMockito.then;
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("평가 사진 업로드 서비스")
-class EvaluationImageServiceTest {
+class ImageUploadServiceTest {
 
     private static final LocalDateTime EXPIRES_AT = LocalDateTime.of(2026, 8, 2, 15, 30);
 
@@ -41,7 +41,7 @@ class EvaluationImageServiceTest {
     private ImageStorage imageStorage;
 
     @InjectMocks
-    private EvaluationImageService evaluationImageService;
+    private ImageUploadService evaluationImageService;
 
     @Test
     @DisplayName("요청한 건수만큼 발급하고 요청 순서를 그대로 유지한다")
@@ -86,7 +86,7 @@ class EvaluationImageServiceTest {
         assertThatThrownBy(() -> evaluationImageService.issue(command))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).errorCode())
-                .isEqualTo(EvaluationImageErrorCode.UNSUPPORTED_TYPE);
+                .isEqualTo(ImageErrorCode.UNSUPPORTED_TYPE);
     }
 
     @Test

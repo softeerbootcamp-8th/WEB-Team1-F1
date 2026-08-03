@@ -1,7 +1,7 @@
-package com.softeer.race.evaluation.domain;
+package com.softeer.race.image.domain;
 
 import com.softeer.race.common.exception.BusinessException;
-import com.softeer.race.evaluation.exception.EvaluationImageErrorCode;
+import com.softeer.race.image.exception.ImageErrorCode;
 
 import java.util.Arrays;
 
@@ -35,7 +35,7 @@ public enum ImageContentType {
         return Arrays.stream(values())
                 .filter(type -> type.mimeType.equalsIgnoreCase(mimeType))
                 .findFirst()
-                .orElseThrow(() -> new BusinessException(EvaluationImageErrorCode.UNSUPPORTED_TYPE));
+                .orElseThrow(() -> new BusinessException(ImageErrorCode.UNSUPPORTED_TYPE));
     }
 
     public String mimeType() {

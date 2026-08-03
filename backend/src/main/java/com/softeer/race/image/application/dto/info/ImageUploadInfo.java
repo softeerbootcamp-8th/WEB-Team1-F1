@@ -1,6 +1,6 @@
-package com.softeer.race.evaluation.application.dto.info;
+package com.softeer.race.image.application.dto.info;
 
-import com.softeer.race.evaluation.domain.PresignedUpload;
+import com.softeer.race.image.domain.PresignedUpload;
 
 import java.util.List;
 

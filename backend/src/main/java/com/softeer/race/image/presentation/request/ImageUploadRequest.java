@@ -1,6 +1,6 @@
-package com.softeer.race.evaluation.presentation.request;
+package com.softeer.race.image.presentation.request;
 
-import com.softeer.race.evaluation.application.dto.command.ImageUploadCommand;
+import com.softeer.race.image.application.dto.command.ImageUploadCommand;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -14,13 +14,13 @@ import java.util.List;
 /**
  * 업로드 주소 발급 요청. 파일은 오지 않고 형식과 크기만 온다.
  * <p>
- * 한 번에 여러 건을 받는 이유는 평가사가 부위별로 사진을 여러 장 올리기 때문이다. 장당 한 번씩
+ * 한 번에 여러 건을 받는 이유는 부위별로 사진을 여러 장 올리기 때문이다. 장당 한 번씩
  * 발급받으면 사진 열 장에 왕복이 열 번이다.
  * <p>
  * <b>파일명을 받지 않는다.</b> 확장자는 서버가 {@code contentType}에서 정한다. 파일명을 받으면
  * 경로 구분자나 이중 확장자가 섞인 값을 걸러내야 하는데, 받지 않으면 그 문제가 아예 없다.
  */
-@Schema(description = "평가 사진 업로드 주소 발급 요청")
+@Schema(description = "이미지 업로드 주소 발급 요청")
 public record ImageUploadRequest(
 
         @Schema(description = "발급받을 파일 목록")

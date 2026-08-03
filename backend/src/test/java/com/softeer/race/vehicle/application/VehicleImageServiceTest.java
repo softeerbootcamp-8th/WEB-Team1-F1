@@ -1,7 +1,7 @@
 package com.softeer.race.vehicle.application;
 
 import com.softeer.race.common.exception.BusinessException;
-import com.softeer.race.evaluation.domain.ImageStorage;
+import com.softeer.race.image.domain.ImageStorage;
 import com.softeer.race.vehicle.application.dto.command.VehicleImageRegisterCommand;
 import com.softeer.race.vehicle.application.dto.info.VehicleImageRegisterInfo;
 import com.softeer.race.vehicle.domain.Vehicle;
@@ -45,8 +45,8 @@ import static org.mockito.Mockito.never;
 class VehicleImageServiceTest {
 
     private static final long VEHICLE_ID = 1000L;
-    private static final String REAL_IMAGE_1 = "https://cdn.race.dev/images/evaluations/2026/08/a.jpg";
-    private static final String REAL_IMAGE_2 = "https://cdn.race.dev/images/evaluations/2026/08/b.jpg";
+    private static final String REAL_IMAGE_1 = "https://cdn.race.dev/images/2026/08/a.jpg";
+    private static final String REAL_IMAGE_2 = "https://cdn.race.dev/images/2026/08/b.jpg";
 
     @Mock
     private VehicleRepository vehicleRepository;

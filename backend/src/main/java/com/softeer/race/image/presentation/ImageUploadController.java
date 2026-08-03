@@ -1,10 +1,10 @@
-package com.softeer.race.evaluation.presentation;
+package com.softeer.race.image.presentation;
 
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
-import com.softeer.race.evaluation.application.EvaluationImageService;
-import com.softeer.race.evaluation.presentation.request.ImageUploadRequest;
-import com.softeer.race.evaluation.presentation.response.ImageUploadResponse;
+import com.softeer.race.image.application.ImageUploadService;
+import com.softeer.race.image.presentation.request.ImageUploadRequest;
+import com.softeer.race.image.presentation.response.ImageUploadResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,11 +14,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/evaluations/images")
+@RequestMapping("/api/images")
 @RequiredArgsConstructor
-public class EvaluationImageController implements EvaluationImageApi {
+public class ImageUploadController implements ImageUploadApi {
 
-    private final EvaluationImageService evaluationImageService;
+    private final ImageUploadService evaluationImageService;
 
     /**
      * 201이 아니라 200이다. 이 요청은 아무것도 만들지 않는다. 서명된 주소를 계산해 돌려줄 뿐이고,

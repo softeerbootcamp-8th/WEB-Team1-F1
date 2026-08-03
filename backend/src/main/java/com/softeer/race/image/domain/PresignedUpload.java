@@ -1,4 +1,4 @@
-package com.softeer.race.evaluation.domain;
+package com.softeer.race.image.domain;
 
 import java.time.LocalDateTime;
 

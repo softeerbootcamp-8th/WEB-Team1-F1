@@ -1,9 +1,9 @@
-package com.softeer.race.evaluation.exception;
+package com.softeer.race.image.exception;
 
 import com.softeer.race.common.exception.ErrorCode;
 import org.springframework.http.HttpStatus;
 
-public enum EvaluationImageErrorCode implements ErrorCode {
+public enum ImageErrorCode implements ErrorCode {
 
     /**
      * 장수와 파일 크기는 요청 검증(Bean Validation)이 막아 400 INVALID_REQUEST + errors 배열로 나간다.
@@ -16,18 +16,18 @@ public enum EvaluationImageErrorCode implements ErrorCode {
     private final HttpStatus status;
     private final String message;
 
-    EvaluationImageErrorCode(HttpStatus status, String message) {
+    ImageErrorCode(HttpStatus status, String message) {
         this.status = status;
         this.message = message;
     }
 
     /**
-     * 접두사를 붙인다. 평가 도메인에는 곧 평가 요청·평가서 관련 코드가 함께 생기는데, 사진 업로드
-     * 실패와 그쪽 실패가 프론트에서 같은 문자열로 보이면 처리 분기를 나눌 수 없다.
+     * 접두사를 붙인다. 접두사가 없으면 UNSUPPORTED_TYPE 처럼 흔한 이름이 다른 도메인 코드와
+     * 겹쳐 프론트가 처리 분기를 나눌 수 없다.
      */
     @Override
     public String code() {
-        return "EVAL_IMAGE_" + name();
+        return "IMAGE_" + name();
     }
 
     @Override

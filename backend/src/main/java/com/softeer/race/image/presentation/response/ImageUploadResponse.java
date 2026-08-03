@@ -1,7 +1,7 @@
-package com.softeer.race.evaluation.presentation.response;
+package com.softeer.race.image.presentation.response;
 
-import com.softeer.race.evaluation.application.dto.info.ImageUploadInfo;
-import com.softeer.race.evaluation.domain.PresignedUpload;
+import com.softeer.race.image.application.dto.info.ImageUploadInfo;
+import com.softeer.race.image.domain.PresignedUpload;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * 발급 결과. 요청한 파일 순서와 같은 순서로 담긴다.
  */
-@Schema(description = "평가 사진 업로드 주소 발급 응답")
+@Schema(description = "이미지 업로드 주소 발급 응답")
 public record ImageUploadResponse(
 
         @Schema(description = "요청한 순서대로의 발급 결과")

@@ -1,8 +1,8 @@
-package com.softeer.race.evaluation.infrastructure;
+package com.softeer.race.image.infrastructure;
 
-import com.softeer.race.evaluation.domain.ImageContentType;
-import com.softeer.race.evaluation.domain.ImageStorage;
-import com.softeer.race.evaluation.domain.PresignedUpload;
+import com.softeer.race.image.domain.ImageContentType;
+import com.softeer.race.image.domain.ImageStorage;
+import com.softeer.race.image.domain.PresignedUpload;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -24,16 +24,10 @@ import java.util.UUID;
 public class S3ImageStorage implements ImageStorage {
 
     /**
-     * 버킷을 프론트 정적 파일과 함께 쓰므로 {@code images/} 아래로 격리한다. 그 안을 다시 도메인으로
-     * 나눠 두면 나중에 {@code images/vehicles/}가 생겨도 서로 섞이지 않는다.
+     * 버킷을 프론트 정적 파일과 함께 쓰므로 이 아래로 격리한다. 키를 만들 때와 관리 대상인지
+     * 판정할 때 같은 값을 쓴다 — 두 규칙이 갈라지면 방금 발급한 주소가 검증에서 떨어진다.
      */
-    private static final String KEY_PREFIX = "images/evaluations";
-
-    /**
-     * 관리 대상 판정은 {@link #KEY_PREFIX}가 아니라 이 한 단계 위로 한다. 나중에
-     * {@code images/vehicles/}처럼 다른 접두사가 생겨도 등록이 막히지 않게 하기 위해서다.
-     */
-    private static final String MANAGED_PREFIX = "images/";
+    private static final String KEY_PREFIX = "images";
 
     private static final DateTimeFormatter KEY_DATE_PATTERN = DateTimeFormatter.ofPattern("yyyy/MM");
 
@@ -78,13 +72,14 @@ public class S3ImageStorage implements ImageStorage {
         if (fileUrl.contains("..")) {
             return false;
         }
-        return fileUrl.startsWith(s3Properties.cdnBaseUrl() + "/" + MANAGED_PREFIX);
+        return fileUrl.startsWith(s3Properties.cdnBaseUrl() + "/" + KEY_PREFIX + "/");
     }
 
     /**
-     * 키에 평가 식별자를 넣지 않는다. 어느 사진이 어느 평가의 것인지는 DB가 알고 있고, 키에까지
-     * 담으려면 업로드 시점에 평가가 이미 있어야 하거나 나중에 객체를 옮겨야 한다. S3에는 이동이
-     * 없어 복사 후 삭제가 되는데, 그러면 <b>이미 발급해 화면이 쓰고 있던 주소가 바뀐다.</b>
+     * 키에 용도나 대상 식별자를 넣지 않는다. 어느 사진이 무엇에 붙은 것인지는 DB가 알고 있고,
+     * 키에까지 담으려면 업로드 시점에 그 대상이 이미 있어야 하거나 나중에 객체를 옮겨야 한다.
+     * S3에는 이동이 없어 복사 후 삭제가 되는데, 그러면 <b>이미 발급해 화면이 쓰고 있던 주소가
+     * 바뀐다.</b>
      * <p>
      * 날짜로 나누는 것은 한 접두사 아래 객체가 무한정 쌓이지 않게 하려는 것뿐이다. 파일명은 UUID라
      * 같은 이름이 겹쳐 덮어써질 일이 없다.

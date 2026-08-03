@@ -1,4 +1,4 @@
-package com.softeer.race.evaluation.presentation;
+package com.softeer.race.image.presentation;
 
 import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.auth.domain.AuthenticatedUser;
@@ -6,11 +6,11 @@ import com.softeer.race.auth.exception.AuthErrorCode;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.presentation.GlobalExceptionHandler;
-import com.softeer.race.evaluation.application.EvaluationImageService;
-import com.softeer.race.evaluation.application.dto.command.ImageUploadCommand;
-import com.softeer.race.evaluation.application.dto.info.ImageUploadInfo;
-import com.softeer.race.evaluation.domain.PresignedUpload;
-import com.softeer.race.evaluation.exception.EvaluationImageErrorCode;
+import com.softeer.race.image.application.ImageUploadService;
+import com.softeer.race.image.application.dto.command.ImageUploadCommand;
+import com.softeer.race.image.application.dto.info.ImageUploadInfo;
+import com.softeer.race.image.domain.PresignedUpload;
+import com.softeer.race.image.exception.ImageErrorCode;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,17 +40,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 시나리오
  * <ol>
  *   <li>정상 요청은 200과 발급 결과를 준다</li>
- *   <li>지원하지 않는 형식은 400 EVAL_IMAGE_UNSUPPORTED_TYPE</li>
+ *   <li>지원하지 않는 형식은 400 IMAGE_UNSUPPORTED_TYPE</li>
  *   <li>파일 목록이 비면 400</li>
  *   <li>허용 건수를 넘으면 400</li>
  *   <li>파일 크기가 상한을 넘으면 400이고 어느 파일인지 알려준다</li>
  *   <li>세션이 없으면 401이고 서비스까지 도달하지 않는다</li>
  * </ol>
  */
-@WebMvcTest(controllers = EvaluationImageController.class)
+@WebMvcTest(controllers = ImageUploadController.class)
 @Import(GlobalExceptionHandler.class)
 @DisplayName("평가 사진 업로드 컨트롤러")
-class EvaluationImageControllerTest {
+class ImageUploadControllerTest {
 
     private static final long EVALUATOR_ID = 91L;
     private static final LocalDateTime EXPIRES_AT = LocalDateTime.of(2026, 8, 2, 15, 30);
@@ -60,7 +60,7 @@ class EvaluationImageControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private EvaluationImageService evaluationImageService;
+    private ImageUploadService evaluationImageService;
 
     /**
      * 발급 경로는 인터셉터가 걸려 있어 이 목이 실제로 호출된다. 인증을 통과시켜야 컨트롤러까지
@@ -99,10 +99,10 @@ class EvaluationImageControllerTest {
     }
 
     @Test
-    @DisplayName("지원하지 않는 형식이면 400 EVAL_IMAGE_UNSUPPORTED_TYPE")
+    @DisplayName("지원하지 않는 형식이면 400 IMAGE_UNSUPPORTED_TYPE")
     void issueRejectsUnsupportedType() throws Exception {
         // given
-        willThrow(new BusinessException(EvaluationImageErrorCode.UNSUPPORTED_TYPE))
+        willThrow(new BusinessException(ImageErrorCode.UNSUPPORTED_TYPE))
                 .given(evaluationImageService).issue(any(ImageUploadCommand.class));
 
         // when & then
@@ -110,7 +110,7 @@ class EvaluationImageControllerTest {
                 {"files": [{"contentType": "application/pdf", "contentLength": 100}]}
                 """)
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("EVAL_IMAGE_UNSUPPORTED_TYPE"));
+                .andExpect(jsonPath("$.code").value("IMAGE_UNSUPPORTED_TYPE"));
     }
 
     @Test
@@ -159,7 +159,7 @@ class EvaluationImageControllerTest {
                 .willThrow(new BusinessException(AuthErrorCode.UNAUTHENTICATED));
 
         // when
-        ResultActions response = mockMvc.perform(post("/api/evaluations/images/presigned")
+        ResultActions response = mockMvc.perform(post("/api/images/presigned")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"files": [{"contentType": "image/jpeg", "contentLength": 100}]}
@@ -171,7 +171,7 @@ class EvaluationImageControllerTest {
     }
 
     private ResultActions request(String body) throws Exception {
-        return mockMvc.perform(post("/api/evaluations/images/presigned")
+        return mockMvc.perform(post("/api/images/presigned")
                 .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, "raw-token"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body));

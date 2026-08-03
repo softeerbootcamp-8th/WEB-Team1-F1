@@ -43,9 +43,9 @@ class VehicleImageIntegrationTest extends IntegrationTestSupport {
     private static final String CATALOG_IMAGE = "https://cdn.race.dev/vehicles/catalog.jpg";
 
     /** 테스트 설정의 aws.s3.cdn-base-url 이 https://cdn.test.local 이라 그 아래여야 통과한다 */
-    private static final String REAL_IMAGE_1 = "https://cdn.test.local/images/evaluations/2026/08/real-1.jpg";
-    private static final String REAL_IMAGE_2 = "https://cdn.test.local/images/evaluations/2026/08/real-2.jpg";
-    private static final String REAL_IMAGE_3 = "https://cdn.test.local/images/evaluations/2026/08/real-3.jpg";
+    private static final String REAL_IMAGE_1 = "https://cdn.test.local/images/2026/08/real-1.jpg";
+    private static final String REAL_IMAGE_2 = "https://cdn.test.local/images/2026/08/real-2.jpg";
+    private static final String REAL_IMAGE_3 = "https://cdn.test.local/images/2026/08/real-3.jpg";
 
     @Autowired
     private Clock clock;
