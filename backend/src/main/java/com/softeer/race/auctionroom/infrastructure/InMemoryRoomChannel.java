@@ -18,9 +18,14 @@ public class InMemoryRoomChannel implements RoomChannel {
 
     @Override
     public void subscribe(long auctionId, RoomSubscriber subscriber) {
-        subscribersByAuction
-                .computeIfAbsent(auctionId, id -> ConcurrentHashMap.newKeySet())
-                .add(subscriber);
+        // 집합을 얻는 것과 더하는 것을 한 번에
+        // 나누니까 기존 집합을 받아든 사이 마지막 해제가 엔트리를 지워, 맵에서 떨어져 나간 집합에 더하게 된다
+        subscribersByAuction.compute(auctionId, (id, subscribers) -> {
+            Set<RoomSubscriber> room = subscribers != null ? subscribers : ConcurrentHashMap.newKeySet();
+            room.add(subscriber);
+
+            return room;
+        });
     }
 
     @Override

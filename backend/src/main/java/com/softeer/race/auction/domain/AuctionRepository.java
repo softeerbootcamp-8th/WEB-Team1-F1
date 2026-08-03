@@ -1,12 +1,15 @@
 package com.softeer.race.auction.domain;
 
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface AuctionRepository extends JpaRepository<Auction, Long> {
@@ -53,4 +56,32 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
             """
     )
     boolean isSeller(@Param("auctionId") long auctionId, @Param("userId") long userId);
+
+    /**
+     * 시작 시각이 지났는데 아직 예약 상태인 경매의 id
+     */
+    @Query("""
+            select a.id
+            from Auction a
+            where a.status = :scheduled
+                and a.startTime <= :now
+            order by a.startTime
+            """)
+    List<Long> findStartableIds(@Param("scheduled") AuctionStatus scheduled,
+                                @Param("now") LocalDateTime now,
+                                Limit limit);
+
+    /**
+     * 마감이 지났는데 아직 진행 중인 경매의 id
+     */
+    @Query("""
+             select a.id
+             from Auction a
+             where a.status = :inProgress
+                 and a.currentEndTime <= :now
+             order by a.currentEndTime
+            """)
+    List<Long> findClosableIds(@Param("inProgress") AuctionStatus inProgress,
+                               @Param("now") LocalDateTime now,
+                               Limit limit);
 }

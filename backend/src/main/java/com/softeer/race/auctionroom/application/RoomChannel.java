@@ -8,7 +8,7 @@ import java.util.Set;
 public interface RoomChannel {
 
     /**
-     * 구독을 방에 등록한다
+     * 구독을 방에 등록한다, 같은 구독을 두 번 등록해도 하나다
      */
     void subscribe(long auctionId, RoomSubscriber subscriber);
 
@@ -18,7 +18,7 @@ public interface RoomChannel {
     void unsubscribe(long auctionId, RoomSubscriber subscriber);
 
     /**
-     * 방에 열려 있는 구독 수, 곧 접속자 수
+     * 방에 등록된 구독 수, 접속자로 셀지는 단계가 정한다
      */
     int countSubscribers(long auctionId);
 

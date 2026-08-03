@@ -41,16 +41,25 @@ public class Notification extends BaseTimeEntity {
 
     private Long referenceId;
 
+    private Notification(User user, NotificationType type, Long referenceId) {
+        // 링크를 만들 수 있는 조합인지 저장 전에 확인한다. 결과는 쓰지 않고 버린다 — 조회에서 처음
+        // 걸리면 잘못 저장된 한 건이 목록 응답 전체를 500으로 만든다
+        type.linkTo(referenceId);
+
+        this.user = user;
+        this.type = type;
+        this.message = type.defaultMessage();
+        this.isRead = false;
+        this.referenceId = referenceId;
+    }
+
     /**
-     * 읽지 않은 상태의 알림 생성
+     * 해당 종류의 기본 문구를 사용해 읽지 않은 알림을 만든다.
+     * <p>
+     * 문구는 발행 당시의 내용을 보존하기 위해 저장하고, 링크는 화면 주소 변경을 반영할 수 있도록
+     * 저장하지 않고 {@link NotificationType}과 참조값으로 조회 시점에 만든다.
      */
-    public static Notification of(User user, NotificationType type, String message, Long referenceId) {
-        Notification notification = new Notification();
-        notification.user = user;
-        notification.type = type;
-        notification.message = message;
-        notification.isRead = false;
-        notification.referenceId = referenceId;
-        return notification;
+    public static Notification create(User user, NotificationType type, Long referenceId) {
+        return new Notification(user, type, referenceId);
     }
 }

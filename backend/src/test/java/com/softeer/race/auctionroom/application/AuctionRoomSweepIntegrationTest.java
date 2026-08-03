@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 // 브라우저가 조용히 끊긴 상황은 MockMvc 로 재현되지 않는다, 끊긴 구독을 흉내 낸 것을 채널에 직접 건다
 // 구독은 우리가 관리하지 않는 바깥 연결이라 대역을 세워도 되고, 채널과 DB 는 실물 그대로 쓴다
@@ -21,8 +22,14 @@ class AuctionRoomSweepIntegrationTest extends IntegrationTestSupport {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
 
+    // 방을 보는 사람, 낙찰자가 없는 방이라 누구로 보든 결과가 같다
+    private static final long VIEWER_ID = 1L;
+
     @Autowired
     private AuctionRoomStreamService auctionRoomStreamService;
+
+    @Autowired
+    private AuctionRoomService auctionRoomService;
 
     @Autowired
     private RoomChannel roomChannel;
@@ -30,27 +37,34 @@ class AuctionRoomSweepIntegrationTest extends IntegrationTestSupport {
     private final FakeSubscriber alive = new FakeSubscriber();
     private final FakeSubscriber gone = new FakeSubscriber();
 
-    private long auctionId;
+    // 채널은 테이블이 아니라 컨텍스트에 남으므로 정리 훅이 지워 주지 않는다, 건 것을 모아 두었다가 끝나고 뺀다
+    private final List<Subscription> subscriptions = new ArrayList<>();
 
     @BeforeEach
     void fixClock() {
         fixClockAt(NOW);
     }
 
-    // 채널은 테이블이 아니라 컨텍스트에 남으므로 정리 훅이 지워 주지 않는다
     @AfterEach
-    void leaveRoom() {
-        roomChannel.unsubscribe(auctionId, alive);
-        roomChannel.unsubscribe(auctionId, gone);
+    void leaveRooms() {
+        subscriptions.forEach(it -> roomChannel.unsubscribe(it.auctionId(), it.subscriber()));
+    }
+
+    private void subscribe(long auctionId, RoomSubscriber subscriber) {
+        roomChannel.subscribe(auctionId, subscriber);
+        subscriptions.add(new Subscription(auctionId, subscriber));
+    }
+
+    private record Subscription(long auctionId, RoomSubscriber subscriber) {
     }
 
     @Test
     @DisplayName("조용히 끊긴 구독을 걷어내면 남은 구독이 줄어든 접속자 수를 받는다")
     void sweepNotifiesRemainingSubscribers() {
         // given : 두 사람이 진행 중인 방에 있다가 한쪽이 알리지 않고 사라진다
-        auctionId = liveRoom();
-        roomChannel.subscribe(auctionId, alive);
-        roomChannel.subscribe(auctionId, gone);
+        long auctionId = liveRoom();
+        subscribe(auctionId, alive);
+        subscribe(auctionId, gone);
         gone.disconnect();
 
         // when
@@ -68,8 +82,7 @@ class AuctionRoomSweepIntegrationTest extends IntegrationTestSupport {
     @DisplayName("아무도 끊기지 않았으면 현황을 새로 보내지 않는다")
     void sweepStaysQuietWhenAllOpen() {
         // given
-        auctionId = liveRoom();
-        roomChannel.subscribe(auctionId, alive);
+        subscribe(liveRoom(), alive);
 
         // when
         auctionRoomStreamService.sweepClosedSubscriptions();
@@ -78,8 +91,63 @@ class AuctionRoomSweepIntegrationTest extends IntegrationTestSupport {
         assertThat(alive.received()).isEmpty();
     }
 
+    @Test
+    @DisplayName("방이 닫힌 뒤 나가는 갱신도 조회와 같이 접속자를 0으로 센다")
+    void closedRoomCountsNobodyAsConnected() {
+        // given : 진행 중일 때 둘이 들어와 있다
+        long auctionId = liveRoom();
+        subscribe(auctionId, alive);
+        subscribe(auctionId, gone);
+
+        // when : 결과 구간까지 지나 방이 닫힌 뒤 한쪽이 조용히 사라져 갱신이 돈다
+        fixClockAt(NOW.plusMinutes(30));
+        gone.disconnect();
+        auctionRoomStreamService.sweepClosedSubscriptions();
+
+        // then 1 : 연결은 아직 열려 있지만 닫힌 방은 접속자로 세지 않는다
+        assertThat(alive.lastState().connectedCount()).isZero();
+
+        // then 2 : 같은 순간 다시 조회한 사람도 같은 숫자를 봐야 한다
+        assertThat(auctionRoomService.enterRoom(auctionId, VIEWER_ID).state().connectedCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("한 방의 데이터 결함이 다른 방의 갱신을 멈추지 않는다")
+    void brokenRoomDoesNotStopOtherRooms() {
+        // given : 한 글자 실명 입찰자가 있는 방, 호가를 마스킹하는 순간 터진다
+        long brokenRoom = liveRoomWithBidderNamed("김");
+        FakeSubscriber brokenAlive = new FakeSubscriber();
+        FakeSubscriber brokenGone = new FakeSubscriber();
+        subscribe(brokenRoom, brokenAlive);
+        subscribe(brokenRoom, brokenGone);
+
+        // given : 아무 결함이 없는 방
+        long healthyRoom = liveRoom();
+        FakeSubscriber healthyAlive = new FakeSubscriber();
+        FakeSubscriber healthyGone = new FakeSubscriber();
+        subscribe(healthyRoom, healthyAlive);
+        subscribe(healthyRoom, healthyGone);
+
+        // when : 두 방에서 한 명씩 사라져 청소가 둘 다 갱신하려 한다
+        brokenGone.disconnect();
+        healthyGone.disconnect();
+        Throwable thrown = catchThrowable(() -> auctionRoomStreamService.sweepClosedSubscriptions());
+
+        // then 1 : 한 방이 터져도 청소가 통째로 멈추지 않는다
+        assertThat(thrown).isNull();
+
+        // then 2 : 멀쩡한 방은 처리 순서와 무관하게 줄어든 접속자 수를 받는다
+        assertThat(healthyAlive.lastState().connectedCount()).isEqualTo(1);
+    }
+
     private long liveRoom() {
         return rooms.room(users.user("박판매", Role.GENERAL), NOW.minusMinutes(15))
+                .create();
+    }
+
+    private long liveRoomWithBidderNamed(String realName) {
+        return rooms.room(users.user("박판매", Role.GENERAL), NOW.minusMinutes(15))
+                .bid(NOW.minusMinutes(1), users.user(realName, Role.DEALER), 12_500_000L)
                 .create();
     }
 
