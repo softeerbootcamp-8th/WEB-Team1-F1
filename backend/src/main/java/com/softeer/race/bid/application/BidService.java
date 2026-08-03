@@ -2,6 +2,7 @@ package com.softeer.race.bid.application;
 
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionRepository;
+import com.softeer.race.auctionroom.application.AuctionRoomStreamService;
 import com.softeer.race.bid.application.dto.BidPlaceInfo;
 import com.softeer.race.bid.domain.Bid;
 import com.softeer.race.bid.domain.BidIncrementTable;
@@ -27,6 +28,7 @@ public class BidService {
     private final BidRepository bidRepository;
     private final UserRepository userRepository;
     private final BidIncrementService bidIncrementService;
+    private final AuctionRoomStreamService auctionRoomStreamService;
     private final Clock clock;
 
     /**
@@ -69,6 +71,9 @@ public class BidService {
 
         Bid bid = bidRepository.save(Bid.place(auction, bidder, amount));
         auction.acceptBid(amount, acceptedAt);
+
+        // 잠금 안이다, 이벤트로 뺄지는 잠금 보유 시간에 얼마가 붙는지 재고 정한다
+        auctionRoomStreamService.refresh(auctionId);
 
         // acceptBid 뒤에 읽어야 연장된 마감이 담긴다.
         return new BidPlaceInfo(bid.getId(), amount, auction.getCurrentEndTime(), acceptedAt);

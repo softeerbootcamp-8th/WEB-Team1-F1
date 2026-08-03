@@ -3,6 +3,7 @@ package com.softeer.race.bid.application;
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.auctionpost.domain.AuctionPost;
+import com.softeer.race.auctionroom.application.AuctionRoomStreamService;
 import com.softeer.race.bid.domain.BidIncrementTable;
 import com.softeer.race.bid.domain.BidRepository;
 import com.softeer.race.bid.domain.BidRule;
@@ -70,6 +71,8 @@ class BidServiceTest {
     @Mock
     private BidIncrementService bidIncrementService;
     @Mock
+    private AuctionRoomStreamService auctionRoomStreamService;
+    @Mock
     private BidIncrementTable table;
 
     @Test
@@ -127,7 +130,8 @@ class BidServiceTest {
 
     private BidService bidService(Clock clock) {
         return new BidService(
-                auctionRepository, bidRepository, userRepository, bidIncrementService, clock);
+                auctionRepository, bidRepository, userRepository, bidIncrementService,
+                auctionRoomStreamService, clock);
     }
 
     private Auction scheduledAuction() {
