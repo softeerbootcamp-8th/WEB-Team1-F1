@@ -14,7 +14,10 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * S3에 직접 올릴 수 있는 서명된 PUT 주소를 발급한다.
@@ -30,6 +33,15 @@ public class S3ImageStorage implements ImageStorage {
     private static final String KEY_PREFIX = "images";
 
     private static final DateTimeFormatter KEY_DATE_PATTERN = DateTimeFormatter.ofPattern("yyyy/MM");
+
+    /**
+     * {@link #createKey}가 만드는 키의 형태를 그대로 옮긴 것. 날짜 두 칸, UUID 파일명, 허용 확장자
+     * 순이다. 확장자 목록은 {@link ImageContentType}에서 끌어오므로 형식을 하나 추가해도 발급
+     * 규칙과 판정 규칙이 갈라지지 않는다.
+     */
+    private static final Pattern MANAGED_KEY_PATTERN = Pattern.compile(
+            "%s/\\d{4}/\\d{2}/[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\\.(?:%s)"
+                    .formatted(KEY_PREFIX, allowedExtensions()));
 
     private final S3Presigner s3Presigner;
     private final S3Properties s3Properties;
@@ -62,17 +74,31 @@ public class S3ImageStorage implements ImageStorage {
                 LocalDateTime.ofInstant(presigned.expiration(), clock.getZone()));
     }
 
+    /**
+     * 접두사만 확인하면 <b>발급하지 않은 키가 통과한다.</b> {@code .../images/../other} 처럼 상위
+     * 경로를 타거나, 그걸 {@code %2e%2e}로 퍼센트 인코딩해 문자열 검사만 피해 가는 값이 있다.
+     * S3는 키를 리터럴로 다뤄 {@code ..}를 경로 이동으로 풀지 않으므로 실제로 버킷 밖을 가리키지는
+     * 않지만, 우리가 서명해 준 적 없는 객체를 차량 이미지로 박아 넣는 것은 그대로 된다.
+     * <p>
+     * 그래서 걸러낼 문자열을 나열하는 대신 <b>발급한 키 형태와 정확히 일치하는지</b> 본다. 쿼리나
+     * 프래그먼트가 붙은 값도 이 규칙에서 함께 떨어진다.
+     */
     @Override
     public boolean isManagedUrl(String fileUrl) {
         if (fileUrl == null) {
             return false;
         }
-        // 상위 경로 표기를 걸러낸다. startsWith 만으로는 .../images/../ 로 접두사를 통과한 뒤
-        // 전혀 다른 곳을 가리키는 주소를 막지 못한다
-        if (fileUrl.contains("..")) {
+        String baseUrl = s3Properties.cdnBaseUrl() + "/";
+        if (!fileUrl.startsWith(baseUrl)) {
             return false;
         }
-        return fileUrl.startsWith(s3Properties.cdnBaseUrl() + "/" + KEY_PREFIX + "/");
+        return MANAGED_KEY_PATTERN.matcher(fileUrl.substring(baseUrl.length())).matches();
+    }
+
+    private static String allowedExtensions() {
+        return Arrays.stream(ImageContentType.values())
+                .map(ImageContentType::extension)
+                .collect(Collectors.joining("|"));
     }
 
     /**

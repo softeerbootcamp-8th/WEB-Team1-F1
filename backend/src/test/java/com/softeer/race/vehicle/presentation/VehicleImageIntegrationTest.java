@@ -42,10 +42,14 @@ class VehicleImageIntegrationTest extends IntegrationTestSupport {
     /** 판매 신청이 카탈로그에서 복제해 넣는 제조사 홍보 이미지 */
     private static final String CATALOG_IMAGE = "https://cdn.race.dev/vehicles/catalog.jpg";
 
-    /** 테스트 설정의 aws.s3.cdn-base-url 이 https://cdn.test.local 이라 그 아래여야 통과한다 */
-    private static final String REAL_IMAGE_1 = "https://cdn.test.local/images/2026/08/real-1.jpg";
-    private static final String REAL_IMAGE_2 = "https://cdn.test.local/images/2026/08/real-2.jpg";
-    private static final String REAL_IMAGE_3 = "https://cdn.test.local/images/2026/08/real-3.jpg";
+    /**
+     * 테스트 설정의 aws.s3.cdn-base-url 이 https://cdn.test.local 이다. 그 아래인 것만으로는
+     * 부족하고 발급 키 형태(images/yyyy/MM/UUID.확장자)와 일치해야 통과하므로 파일명이 UUID다.
+     */
+    private static final String ISSUED_PREFIX = "https://cdn.test.local/images/2026/08/";
+    private static final String REAL_IMAGE_1 = ISSUED_PREFIX + "11111111-1111-1111-1111-111111111111.jpg";
+    private static final String REAL_IMAGE_2 = ISSUED_PREFIX + "22222222-2222-2222-2222-222222222222.jpg";
+    private static final String REAL_IMAGE_3 = ISSUED_PREFIX + "33333333-3333-3333-3333-333333333333.jpg";
 
     @Autowired
     private Clock clock;
