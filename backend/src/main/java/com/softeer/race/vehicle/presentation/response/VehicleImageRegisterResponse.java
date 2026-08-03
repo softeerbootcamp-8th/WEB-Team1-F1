@@ -14,7 +14,8 @@ public record VehicleImageRegisterResponse(
         @Schema(description = "등록된 이미지 목록. 요청 순서 그대로입니다.")
         List<RegisteredImageResponse> images,
 
-        @Schema(description = "대표 이미지. 경매글이 있으면 그 썸네일도 이 값으로 갱신됩니다.",
+        @Schema(description = "대표 이미지. 보낸 목록의 첫 장입니다. "
+                + "이미 만들어진 경매글의 썸네일에는 반영되지 않습니다.",
                 example = "https://www.f1race.site/images/2026/08/"
                         + "3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg")
         String thumbnailUrl

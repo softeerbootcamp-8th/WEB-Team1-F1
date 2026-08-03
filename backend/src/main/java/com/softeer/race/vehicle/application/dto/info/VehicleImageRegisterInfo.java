@@ -7,7 +7,8 @@ import java.util.List;
 /**
  * 등록 결과.
  *
- * @param thumbnailUrl 대표 이미지. 경매글이 있으면 그 썸네일도 이 값으로 갱신된 상태다
+ * @param thumbnailUrl 대표 이미지. 저장한 목록의 첫 장이다. 경매글 썸네일은 여기서 갱신하지
+ *                     않는다 — 이유는 {@code VehicleImageService} 주석에 있다
  */
 public record VehicleImageRegisterInfo(
         long vehicleId,
