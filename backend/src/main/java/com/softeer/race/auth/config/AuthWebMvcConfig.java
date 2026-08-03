@@ -43,6 +43,7 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/auth/me",
                         "/api/sell",
                         "/api/evaluations/images/presigned",
+                        "/api/vehicles/*/images",
                         // 세그먼트 하나만 매치하는 * 다. ** 로 넓히면 /api/auctions/{id} 까지 걸려
                         // X-User-Id 를 쓰는 경매방 조회가 401 이 된다
                         "/api/auctions/*/bids");
