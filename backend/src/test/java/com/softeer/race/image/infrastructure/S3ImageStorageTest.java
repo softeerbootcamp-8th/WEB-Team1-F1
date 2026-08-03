@@ -60,7 +60,12 @@ class S3ImageStorageTest {
             ISSUED_URL + ".jpg#fragment",
             CDN_BASE_URL + "/images/2026/08/not-a-uuid.jpg",
             CDN_BASE_URL + "/images/" + UUID_NAME + ".jpg",
-            CDN_BASE_URL + "/images/2026/08/" + UUID_NAME + ".jpg/extra"
+            CDN_BASE_URL + "/images/2026/08/" + UUID_NAME + ".jpg/extra",
+            // 발급 결과가 낼 수 없는 값들. LocalDate는 00이나 13월을 만들지 않고
+            // UUID.toString()은 대문자 hex를 만들지 않는다
+            CDN_BASE_URL + "/images/2026/00/" + UUID_NAME + ".jpg",
+            CDN_BASE_URL + "/images/2026/13/" + UUID_NAME + ".jpg",
+            CDN_BASE_URL + "/images/2026/08/123E4567-E89B-12D3-A456-426614174000.jpg"
     })
     void rejectUnissuedUrl(String fileUrl) {
         assertThat(s3ImageStorage.isManagedUrl(fileUrl)).isFalse();

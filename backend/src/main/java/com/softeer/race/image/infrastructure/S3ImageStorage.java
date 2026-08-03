@@ -38,9 +38,13 @@ public class S3ImageStorage implements ImageStorage {
      * {@link #createKey}가 만드는 키의 형태를 그대로 옮긴 것. 날짜 두 칸, UUID 파일명, 허용 확장자
      * 순이다. 확장자 목록은 {@link ImageContentType}에서 끌어오므로 형식을 하나 추가해도 발급
      * 규칙과 판정 규칙이 갈라지지 않는다.
+     * <p>
+     * 각 칸을 발급 결과가 낼 수 있는 값까지 좁힌다. 월은 {@code LocalDate}가 {@code 01}~{@code 12}만
+     * 내고 UUID의 hex는 {@link UUID#toString()}이 소문자만 낸다. {@code \d{2}}나 대소문자 혼용을
+     * 허용하면 <b>발급한 적 없는 키가 통과하는 만큼만 넓어지고 얻는 것이 없다.</b>
      */
     private static final Pattern MANAGED_KEY_PATTERN = Pattern.compile(
-            "%s/\\d{4}/\\d{2}/[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\\.(?:%s)"
+            "%s/\\d{4}/(?:0[1-9]|1[0-2])/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\\.(?:%s)"
                     .formatted(KEY_PREFIX, allowedExtensions()));
 
     private final S3Presigner s3Presigner;
