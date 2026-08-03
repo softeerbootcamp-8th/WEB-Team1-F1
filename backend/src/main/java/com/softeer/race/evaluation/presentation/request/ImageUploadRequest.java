@@ -27,8 +27,7 @@ public record ImageUploadRequest(
         @NotEmpty(message = "발급받을 파일 정보가 최소 한 건은 필요합니다.")
         @Size(max = ImageUploadRequest.MAX_FILE_COUNT,
                 message = "한 번에 " + ImageUploadRequest.MAX_FILE_COUNT + "건까지 발급받을 수 있습니다.")
-        @Valid
-        List<ImageFileRequest> files
+        List<@Valid ImageFileRequest> files
 ) {
 
     static final int MAX_FILE_COUNT = 20;
