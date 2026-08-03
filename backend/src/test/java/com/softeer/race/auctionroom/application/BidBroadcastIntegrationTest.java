@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.jdbc.Sql;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -89,6 +90,23 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
         assertThat(watcher.lastState().endAt()).isEqualTo(NOW.plusSeconds(30));
     }
 
+    @Test
+    @Transactional
+    @DisplayName("입찰이 롤백되면 방송도 나가지 않는다")
+    void rolledBackBidIsNotBroadcast() {
+        // given : 진행 중인 방을 한 사람이 보고 있다
+        auctionId = liveRoom();
+        auctionRoomStreamService.subscribe(auctionId, watcher);
+        int beforeBid = watcher.received().size();
+
+        // when : 이 메서드의 트랜잭션 안에서 입찰한다, 테스트가 끝나며 롤백된다
+        User bidder = users.user("김입찰", Role.DEALER);
+        bidService.place(auctionId, bidder.getId(), BID_AMOUNT);
+
+        // then : 없던 일이 될 입찰은 방에 나가지 않아야 한다
+        assertThat(watcher.received()).hasSize(beforeBid);
+    }
+
     // 마감 30초 임계 밖이라 이 방의 입찰은 마감을 밀지 않는다
     private long liveRoom() {
         return rooms.room(users.user("박판매", Role.GENERAL), NOW.minusMinutes(15))
@@ -105,6 +123,10 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     private static final class RecordingSubscriber implements RoomSubscriber {
 
         private final List<RoomState> received = new ArrayList<>();
+
+        List<RoomState> received() {
+            return received;
+        }
 
         RoomState lastState() {
             return received.getLast();
