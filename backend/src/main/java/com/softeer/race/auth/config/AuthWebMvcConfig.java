@@ -42,6 +42,8 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/api/auth/me",
                         "/api/sell",
+                        // 알림은 전 경로가 본인 것만 다룬다, 세그먼트 수가 달라 ** 로 묶는다
+                        "/api/notifications/**",
                         // 세그먼트 하나만 매치하는 * 다. ** 로 넓히면 /api/auctions/{id} 까지 걸려
                         // X-User-Id 를 쓰는 경매방 조회가 401 이 된다
                         "/api/auctions/*/bids");
