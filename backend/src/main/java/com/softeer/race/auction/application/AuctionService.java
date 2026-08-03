@@ -31,9 +31,10 @@ public class AuctionService {
     private final VehicleImageRepository vehicleImageRepository;
     private final Clock clock;
 
-    // 재등록을 막아야 하는 상태. 유찰(FAILED)·취소(CANCELLED) 도입 시 재검토 필요
+    // 재등록을 막아야 하는 상태.
     private static final Set<AuctionStatus> ACTIVE_STATUSES =
-            Set.of(AuctionStatus.SCHEDULED, AuctionStatus.IN_PROGRESS, AuctionStatus.ENDED);
+            Set.of(AuctionStatus.SCHEDULED, AuctionStatus.IN_PROGRESS,
+                    AuctionStatus.FAILED, AuctionStatus.ENDED);
 
     /**
      * 경매글과 경매를 한 트랜잭션으로 함께 생성한다
