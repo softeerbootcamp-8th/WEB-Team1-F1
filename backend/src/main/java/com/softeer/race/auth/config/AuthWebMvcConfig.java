@@ -44,7 +44,10 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
                         "/api/sell",
                         // 세그먼트 하나만 매치하는 * 다. ** 로 넓히면 /api/auctions/{id} 까지 걸려
                         // X-User-Id 를 쓰는 경매방 조회가 401 이 된다
-                        "/api/auctions/*/bids");
+                        "/api/auctions/*/bids",
+                        // 경매글 수정·삭제. PATCH/DELETE만 있고 같은 경로를 쓰는 GET이 없어
+                        // /api/auctions(목록 GET)와 달리 메서드 구분 없이 그대로 걸어도 된다
+                        "/api/auctions/*");
     }
 
     @Override
