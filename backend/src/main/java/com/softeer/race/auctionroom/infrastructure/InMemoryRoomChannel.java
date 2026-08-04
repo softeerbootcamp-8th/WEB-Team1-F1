@@ -90,6 +90,24 @@ public class InMemoryRoomChannel implements RoomChannel {
         return sweptAuctions;
     }
 
+    // 호출자가 이 목록을 돌며 방을 끊으므로 도는 사이에 맵이 바뀐다, 그 순간의 사본을 준다
+    @Override
+    public Set<Long> subscribedAuctions() {
+        return Set.copyOf(subscribersByAuction.keySet());
+    }
+
+    @Override
+    public void closeRoom(long auctionId) {
+        // 명부에서 먼저 뺀다, 끝난 연결이 해제 콜백으로 돌아왔을 때 방이 비어 있어야 갱신이 돌지 않는다
+        Set<RoomSubscriber> subscribers = subscribersByAuction.remove(auctionId);
+
+        if (subscribers == null) {
+            return;
+        }
+
+        subscribers.forEach(RoomSubscriber::close);
+    }
+
     // 마지막 구독이 빠지는 순간과 새 구독이 들어오는 순간이 겹쳐도 새 구독이 유실되지 않게 한 번에 처리한다
     private void remove(long auctionId, Set<RoomSubscriber> targets) {
         if (targets.isEmpty()) {

@@ -31,4 +31,14 @@ public interface RoomChannel {
      * 모든 방을 찔러 보고 닫힌 구독을 걷어낸다, 실제로 걷어낸 방의 식별자를 돌려준다
      */
     Set<Long> sweepClosed();
+
+    /**
+     * 구독이 등록된 방의 식별자, 아직 걷히지 않은 죽은 구독도 방을 목록에 남긴다
+     */
+    Set<Long> subscribedAuctions();
+
+    /**
+     * 방의 모든 구독을 서버가 끝낸다, 명부에서 먼저 빼므로 끝내는 동안 갱신이 돌지 않는다
+     */
+    void closeRoom(long auctionId);
 }
