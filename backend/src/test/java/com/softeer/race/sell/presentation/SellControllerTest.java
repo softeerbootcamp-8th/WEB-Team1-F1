@@ -85,7 +85,7 @@ class SellControllerTest {
                         .cookie(sessionCookie())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"plateNumber": ""}
+                                {"plateNumber": "", "mileage": 45000}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
@@ -112,7 +112,7 @@ class SellControllerTest {
                         .cookie(sessionCookie())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"plateNumber": "12가 3456"}
+                                {"plateNumber": "12가 3456", "mileage": 45000}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
@@ -140,7 +140,7 @@ class SellControllerTest {
 
     private static String validRequest() {
         return """
-                {"plateNumber": "12가3456"}
+                {"plateNumber": "12가3456", "mileage": 45000}
                 """;
     }
 }

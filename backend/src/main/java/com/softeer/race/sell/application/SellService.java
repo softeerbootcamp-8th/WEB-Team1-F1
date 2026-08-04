@@ -27,7 +27,8 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 /**
- * 판매 신청. 회원이 번호판만 보내면 서버가 제원을 재조회해 차량 · 경매글 · 경매를 한 트랜잭션으로 만든다.
+ * 판매 신청. 회원이 번호판과 주행거리를 보내면 서버가 나머지 제원을 재조회해
+ * 차량 · 경매글 · 경매를 한 트랜잭션으로 만든다.
  * <p>
  * 평가 요청(Evaluation)은 만들지 않는다. 데모에서는 판매 신청이 곧바로 발행된 경매글과 예약된 경매가
  * 되어 경매 목록에 노출되는 것이 목표다.
@@ -63,7 +64,9 @@ public class SellService {
      */
     @Transactional
     public SellApplicationInfo apply(SellApplicationCommand command) {
-        // 제원은 클라이언트가 아니라 서버가 조회한다. 클라이언트 값을 믿으면 연식·주행거리를 위조할 수 있다
+        // 제원은 클라이언트가 아니라 서버가 조회한다. 클라이언트 값을 믿으면 연식을 위조할 수 있다.
+        // 주행거리만 신고값이다 — 조회기가 들고 있을 수 없는 값이라 어쩔 수 없고, 이 경로에는
+        // 실측 검증이 없어 낮게 신고하면 시작가가 부풀려진다(SellApplicationRequest 주석 참고)
         // 소유자명까지 대조하는 find가 아니라 번호판만 받는 쪽을 쓴다. 이 요청은 인터셉터가 세션을
         // 검증한 뒤에 도달하므로 본인 확인이 이미 끝났고, 소유자명 대조는 비회원 시세 조회 쪽 요구다
         VehicleSpec spec = vehicleLookup.findByPlateNumber(command.plateNumber())
@@ -82,15 +85,15 @@ public class SellService {
         // 정확히 경계에 걸치지 않게 다음 분으로 올린다. 데모 시작 시각도 초 단위가 아니라 깔끔해진다
         LocalDateTime startAt = now.plus(START_DELAY).truncatedTo(ChronoUnit.MINUTES).plusMinutes(1);
 
-        // 나이는 연도 차이로만 센다. QuoteService.estimate와 같은 계산이고 같은 이유다 —
-        // 카탈로그에 등록월이 없고 감가율 자체가 임시값이라 정밀도를 올려도 정확도가 오르지 않는다.
         // 위에서 읽은 now를 재사용한다, clock을 다시 읽으면 시각 이중 읽기를 여기서 되살리는 셈이다
-        int age = now.getYear() - spec.modelYear();
-        long estimatedPrice = QuotePolicy.estimate(spec.basePrice(), age, spec.mileage());
+        int age = QuotePolicy.ageOf(spec.modelYear(), now.getYear());
+        // 주행거리는 조회된 제원이 아니라 신청자가 신고한 값이다, 이 경로에는 실측 검증이 없다
+        long estimatedPrice = QuotePolicy.estimate(spec.basePrice(), age, command.mileage());
 
         // 번호판 중복을 검사하지 않는다. 반복 신청하면 매번 새 차량이 생기므로
         // AuctionPost.vehicle의 unique 제약과도 충돌하지 않는다
-        Vehicle vehicle = vehicleRepository.save(Vehicle.create(seller, spec, estimatedPrice));
+        Vehicle vehicle = vehicleRepository.save(
+                Vehicle.create(seller, spec, command.mileage(), estimatedPrice));
 
         if (spec.mainImageUrl() != null) {
             vehicleImageRepository.save(

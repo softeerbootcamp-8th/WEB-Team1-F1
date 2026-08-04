@@ -40,6 +40,21 @@ public final class QuotePolicy {
     }
 
     /**
+     * 연식 기준 나이(년). {@link #estimate}의 age 인자를 만드는 유일한 경로다.
+     *
+     * <p>등록월까지 반영하면 정밀해 보이지만 카탈로그에 월 정보가 없고, 감가율 자체가 임시값이라
+     * 정밀도를 올려도 정확도가 오르지 않는다. 그래서 연도 차이로만 센다.
+     *
+     * <p>계산 자체는 한 줄이지만 여기 모아 둔다. 시세 조회 · 판매 신청 · 방문견적 신청 세 곳이 같은
+     * 값을 계산하고, 한 곳만 등록월을 반영하도록 바뀌면 같은 차의 예상 시세가 화면마다 갈라진다.
+     *
+     * @param currentYear 호출자가 주입된 Clock으로 읽은 현재 연도
+     */
+    public static int ageOf(int modelYear, int currentYear) {
+        return currentYear - modelYear;
+    }
+
+    /**
      * 예상 시세를 원 단위로 돌려준다. 만원 단위로 내려져 있다.
      *
      * @param basePrice 조회기가 준 기준가

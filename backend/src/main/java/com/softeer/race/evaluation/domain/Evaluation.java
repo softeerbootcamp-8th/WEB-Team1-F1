@@ -1,6 +1,8 @@
 package com.softeer.race.evaluation.domain;
 
 import com.softeer.race.common.domain.BaseTimeEntity;
+import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.vehicle.domain.Vehicle;
 import jakarta.persistence.Column;
@@ -13,11 +15,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 판매자가 낸 평가사 방문 요청. 접수되면 평가사가 배정될 때까지 {@code REQUESTED} + {@code evaluator == null}로 대기한다.
+ */
 @Getter
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -31,16 +36,67 @@ public class Evaluation extends BaseTimeEntity {
     @JoinColumn(name = "vehicle_id", nullable = false)
     private Vehicle vehicle;
 
+    /**
+     * 배정 전에는 비어 있다. 배정 대기를 별도 상태 상수로 두지 않고 이 필드의 null로 표현한다 —
+     * 상태를 하나 더 만들면 "REQUESTED이지만 배정됨"과 "배정 대기"가 두 곳에서 관리돼 어긋날 수 있다.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "evaluator_id")
     private User evaluator;
 
+    /**
+     * 날짜만 받는다. 몇 시에 방문할지는 평가사가 배정된 뒤 협의할 일이라 신청 시점에 정할 수 없고,
+     * LocalDateTime으로 두면 서버가 임의의 기본 시각을 만들어 넣게 된다.
+     */
     @Column(nullable = false)
-    private LocalDateTime visitTime;
+    private LocalDate visitDate;
+
+    @Column(nullable = false)
+    private String visitAddress;
+
+    /**
+     * 방문 시 연락받을 번호. {@code User.phone}으로 대신하지 않는다. 가입 때 적은 번호와 방문 연락을
+     * 받을 번호가 다를 수 있고, 회원이 나중에 번호를 바꿔도 이 신청 당시의 값이 남아야 한다.
+     * <p>
+     * 하이픈 없는 숫자만 저장된다(형식 강제는 요청 DTO가 한다). 응답으로는 나가지 않는다.
+     */
+    @Column(nullable = false)
+    private String contactPhone;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EvaluationStatus status;
 
     private String rejectReason;
+
+    private Evaluation(Vehicle vehicle, LocalDate visitDate, String visitAddress, String contactPhone) {
+        this.vehicle = vehicle;
+        this.visitDate = visitDate;
+        this.visitAddress = visitAddress;
+        this.contactPhone = contactPhone;
+        this.status = EvaluationStatus.REQUESTED;
+    }
+
+    /**
+     * 방문 희망 장소 · 날짜 · 연락처로 신청을 접수한다. 평가사는 배정되지 않은 상태로 남는다.
+     * <p>
+     * 오늘 날짜를 파라미터로 받는 이유는 엔티티가 Clock 빈을 주입받을 수 없고, 저장소 규칙상
+     * {@code LocalDate.now()}를 직접 호출할 수 없기 때문이다. 검증을 서비스로 올리지 않는 것은
+     * {@code Auction.schedule}이 최소 리드타임을 스스로 검증하는 것과 같은 이유다 — 규칙을 어긴
+     * 인스턴스가 애초에 만들어지지 않아야 다른 호출자가 생겨도 검증이 빠지지 않는다.
+     */
+    public static Evaluation request(Vehicle vehicle, LocalDate visitDate,
+                                     String visitAddress, String contactPhone, LocalDate today) {
+        validateVisitDate(visitDate, today);
+
+        return new Evaluation(vehicle, visitDate, visitAddress, contactPhone);
+    }
+
+    // 오늘은 허용한다. 당일 방문 요청 자체가 무의미한 입력은 아니고, 배정 단계에서 판단할 일이다.
+    // 상한(예: 90일 이내)은 두지 않는다 — 근거 있는 값을 정할 수 없어 임의의 숫자가 된다
+    private static void validateVisitDate(LocalDate visitDate, LocalDate today) {
+        if (visitDate.isBefore(today)) {
+            throw new BusinessException(EvaluationErrorCode.PAST_VISIT_DATE);
+        }
+    }
 }

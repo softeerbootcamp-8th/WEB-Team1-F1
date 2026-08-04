@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 썸네일 없는 경로가 실제로 동작하는지
  * <p>
  * 5. 인증
- * 인터셉터 화이트리스트가 실제로 걸려 있는지
+ * 핸들러의 @LoginUser 선언으로 인증이 실제로 요구되는지
  * <p>
  * <b>Clock을 고정하지 않는다.</b> 이 API가 가장 깨지기 쉬운 지점은 발행 시각과 시작 시각을 서로 다른
  * 시각에서 계산해 최소 리드타임 검증이 항상 실패하는 것인데, 그 버그는 고정 Clock에서는 두 값이 같은
@@ -70,12 +70,15 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
     /** 예상 시세는 만원 단위로 절사돼 나간다, 원 단위 잔돈이 붙으면 정책을 거치지 않은 값이다 */
     private static final long DISPLAY_UNIT = 10_000L;
 
+    /** 주행거리는 카탈로그가 아니라 신청자가 신고한다. 이 경로에는 실측 검증이 없다 */
+    private static final int MILEAGE = 45_000;
+
     // 고정하지 않은 실제 Clock이다, 시각은 값이 아니라 범위로 검증한다
     @Autowired
     private Clock clock;
 
     @Test
-    @DisplayName("시나리오 1 : 번호판만 보내면 차량 · 이미지 · 경매글 · 경매가 함께 만들어진다")
+    @DisplayName("시나리오 1 : 번호판과 주행거리를 보내면 차량 · 이미지 · 경매글 · 경매가 함께 만들어진다")
     void scenario1_CreatesEverythingFromPlateNumber() throws Exception {
         // given : 픽스처에 차량이 없다
         assertThat(countOf("vehicle")).isZero();
@@ -114,7 +117,8 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
         assertThat(vehicle.get("manufacturer")).isEqualTo("HYUNDAI");
         assertThat(vehicle.get("model")).isEqualTo("그랜저 IG");
         assertThat(vehicle.get("model_year")).isEqualTo(2021);
-        assertThat(vehicle.get("mileage")).isEqualTo(45_000);
+        // 신고한 주행거리가 그대로 저장된다
+        assertThat(vehicle.get("mileage")).isEqualTo(MILEAGE);
         assertThat(vehicle.get("fuel_type")).isEqualTo("GASOLINE");
         assertThat(vehicle.get("transmission")).isEqualTo("AUTOMATIC");
         // 차량에 남는 예상 시세도 시작가와 같은 값이다. 여기에 기준가가 들어가면 목록 카드와
@@ -166,7 +170,7 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.content[0].thumbnailUrl").value(IMAGE_URL))
                 .andExpect(jsonPath("$.content[0].model").value("그랜저 IG"))
                 .andExpect(jsonPath("$.content[0].modelYear").value(2021))
-                .andExpect(jsonPath("$.content[0].mileage").value(45000))
+                .andExpect(jsonPath("$.content[0].mileage").value(MILEAGE))
                 // 목록 카드가 신청 응답과 같은 시작가를 보여줘야 한다, 신차급 기준가가 아니다
                 .andExpect(jsonPath("$.content[0].startPrice").value(startPrice))
                 // 입찰이 없으므로 현재가는 시작가로 채워진다
@@ -209,8 +213,8 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.content[0].thumbnailUrl").doesNotExist());
     }
 
-    // 인터셉터 화이트리스트에서 /api/sell이 빠지면 이 테스트만 통과하고 시나리오 1~4가 전부 깨진다
-    // 반대로 화이트리스트만 있고 @LoginUser가 없으면 여기가 깨진다
+    // 핸들러의 @LoginUser 를 떼면 이 테스트만 깨지고 시나리오 1~4는 그대로 통과한다.
+    // 인증 요구를 선언하는 곳이 그 파라미터 한 곳뿐이라, 빠뜨리면 조용히 공개 API 가 된다
     @Test
     @DisplayName("시나리오 5 : 세션 쿠키 없이 신청하면 401이다")
     void scenario5_RequiresAuthentication() throws Exception {
@@ -268,8 +272,8 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
 
     private static String body(String plateNumber) {
         return """
-                {"plateNumber": "%s"}
-                """.formatted(plateNumber);
+                {"plateNumber": "%s", "mileage": %d}
+                """.formatted(plateNumber, MILEAGE);
     }
 
     // ================= 조회 =================
