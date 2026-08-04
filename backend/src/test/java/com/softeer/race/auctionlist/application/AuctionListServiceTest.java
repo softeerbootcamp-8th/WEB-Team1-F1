@@ -83,7 +83,7 @@ class AuctionListServiceTest {
         givenLive(liveRows(1, FETCH_SIZE));
 
         // when
-        auctionListService.list(null);
+        auctionListService.list(null, null);
 
         // then : 필요 없는 왕복을 하지 않는다
         then(auctionListRepository).should(never())
@@ -100,7 +100,7 @@ class AuctionListServiceTest {
         givenPending(pendingRows(100, 16));
 
         // when
-        auctionListService.list(null);
+        auctionListService.list(null, null);
 
         // then : 예정에는 21이 아니라 남은 16을 요청해야 페이지가 정확히 21에서 멈춘다
         ArgumentCaptor<Limit> limit = ArgumentCaptor.forClass(Limit.class);
@@ -117,7 +117,7 @@ class AuctionListServiceTest {
         givenEnded(endedRows(200, 2));
 
         // when
-        auctionListService.list(null);
+        auctionListService.list(null, null);
 
         // then 1 : 예정은 오름차순이라 아래쪽 끝에서 출발한다
         assertCursorPassedToPending(ASC_START, 0L);
@@ -141,7 +141,7 @@ class AuctionListServiceTest {
         givenEnded(endedRows(200, 3));
 
         // when
-        auctionListService.list(cursor);
+        auctionListService.list(cursor, null);
 
         // then 1 : 지나온 진행중은 아예 조회하지 않는다
         then(auctionListRepository).should(never())
@@ -165,7 +165,7 @@ class AuctionListServiceTest {
                 pendingRow(78, NOW.plusMinutes(30))));
 
         // when
-        AuctionListInfo info = auctionListService.list(null);
+        AuctionListInfo info = auctionListService.list(null, null);
 
         // then : 예정 쿼리는 startTime 으로 정렬하므로 커서도 startTime 이어야 한다.
         // 마감(12:45)이 담기면 다음 페이지에서 시작 12:30~12:45 인 경매가 전부 건너뛰어진다
@@ -182,7 +182,7 @@ class AuctionListServiceTest {
         givenLive(liveRows(1, FETCH_SIZE));
 
         // when
-        AuctionListInfo info = auctionListService.list(null);
+        AuctionListInfo info = auctionListService.list(null, null);
 
         // then : 진행중 쿼리는 currentEndTime 으로 정렬한다
         AuctionListRow last = liveRows(1, FETCH_SIZE).get(PAGE_SIZE - 1);
@@ -202,7 +202,7 @@ class AuctionListServiceTest {
         givenLive(liveRows(1, FETCH_SIZE));
 
         // when
-        AuctionListInfo info = auctionListService.list(cursor);
+        AuctionListInfo info = auctionListService.list(cursor, null);
 
         // then : 이 값이 흔들리면 그 사이 단계가 바뀐 경매가 자리를 옮겨 커서가 어긋난다
         assertThat(info.nextCursor().snapshotAt()).isEqualTo(frozen);
@@ -219,7 +219,7 @@ class AuctionListServiceTest {
         givenLive(liveRows(1, FETCH_SIZE));
 
         // when
-        AuctionListInfo info = auctionListService.list(null);
+        AuctionListInfo info = auctionListService.list(null, null);
 
         // then : 21번째는 판단에만 쓰고 응답에서 뺀다
         assertThat(info.content()).hasSize(PAGE_SIZE);
@@ -236,7 +236,7 @@ class AuctionListServiceTest {
         givenEnded(endedRows(200, 3));
 
         // when
-        AuctionListInfo info = auctionListService.list(null);
+        AuctionListInfo info = auctionListService.list(null, null);
 
         // then
         assertThat(info.content()).hasSize(9);
@@ -253,7 +253,7 @@ class AuctionListServiceTest {
         givenEnded(List.of());
 
         // when
-        AuctionListInfo info = auctionListService.list(null);
+        AuctionListInfo info = auctionListService.list(null, null);
 
         // then
         assertThat(info.content()).isEmpty();
@@ -275,7 +275,7 @@ class AuctionListServiceTest {
         givenEnded(List.of());
 
         // when
-        auctionListService.list(tampered);
+        auctionListService.list(tampered, null);
 
         // then
         then(auctionListRepository).should()
@@ -293,7 +293,7 @@ class AuctionListServiceTest {
         givenEnded(List.of());
 
         // when
-        AuctionCardInfo card = auctionListService.list(null).content().getFirst();
+        AuctionCardInfo card = auctionListService.list(null, null).content().getFirst();
 
         // then : null 처리를 화면에 떠넘기지 않는다
         assertThat(card.currentPrice()).isEqualTo(card.startPrice());
@@ -309,7 +309,7 @@ class AuctionListServiceTest {
         givenEnded(List.of(endedRow(200, NOW.minusHours(2))));
 
         // when
-        AuctionCardInfo card = auctionListService.list(null).content().getFirst();
+        AuctionCardInfo card = auctionListService.list(null, null).content().getFirst();
 
         // then : 경매방도 세지 않는 구간이라 목록만 다른 수를 보이면 안 된다
         assertThat(card.phase()).isEqualTo(RoomPhase.CLOSED);
@@ -326,10 +326,43 @@ class AuctionListServiceTest {
         given(roomChannel.countSubscribers(1L)).willReturn(7);
 
         // when
-        AuctionCardInfo card = auctionListService.list(null).content().getFirst();
+        AuctionCardInfo card = auctionListService.list(null, null).content().getFirst();
 
         // then : 목록 조회는 방 입장이 아니므로 세기만 한다, 구독을 만들 수단이 없어 셀 수도 없다
         assertThat(card.connectedCount()).isEqualTo(7);
+    }
+
+    // ================= 상태 필터 =================
+
+    @Test
+    @DisplayName("상태 필터가 걸리면 페이지가 모자라도 다음 그룹으로 넘어가지 않는다")
+    void doesNotFallThroughToNextGroupWhenFiltered() {
+        // given : 진행중이 5건뿐이라 21건에 한참 모자라다
+        givenLive(liveRows(1, 5));
+
+        // when
+        auctionListService.list(null, AuctionListGroup.LIVE);
+
+        // then : 모자란 만큼 다음 그룹에서 채우면 "진행중" 탭에 예정 경매가 섞여 나온다
+        then(auctionListRepository).should(never())
+                .findPendingPage(any(), any(), any(), anyLong(), any());
+        then(auctionListRepository).should(never())
+                .findEndedPage(any(), any(), any(), anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("필터가 가리키는 그룹은 커서가 없어도 그 그룹의 시작값부터 읽는다")
+    void startsFromFilteredGroupWithoutCursor() {
+        // given
+        givenEnded(endedRows(200, 2));
+
+        // when
+        auctionListService.list(null, AuctionListGroup.ENDED);
+
+        // then : 진행중부터 훑지 않는다. 종료는 내림차순이라 위쪽 끝에서 출발한다
+        then(auctionListRepository).should(never())
+                .findLivePage(any(), any(), any(), anyLong(), any());
+        assertCursorPassedToEnded(DESC_START, Long.MAX_VALUE);
     }
 
     // ================= 목 설정 =================

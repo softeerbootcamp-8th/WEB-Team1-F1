@@ -19,7 +19,10 @@ public record AuctionListCursorRequest(
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         LocalDateTime sortAt,
 
-        Long auctionId
+        Long auctionId,
+
+        // null이면 전체, 있으면 해당 그룹만
+        AuctionListGroup filter
 ) {
 
     // 일부만 온 커서로는 이어 읽을 지점을 특정할 수 없다.

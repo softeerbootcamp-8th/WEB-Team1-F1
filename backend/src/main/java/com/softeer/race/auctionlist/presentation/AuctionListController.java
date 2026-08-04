@@ -21,7 +21,7 @@ public class AuctionListController implements AuctionListApi {
     @GetMapping
     public ResponseEntity<AuctionListResponse> list(@Valid AuctionListCursorRequest request) {
         AuctionListResponse response =
-                AuctionListResponse.from(auctionListService.list(request.toCursor()));
+                AuctionListResponse.from(auctionListService.list(request.toCursor(), request.filter()));
 
         return ResponseEntity.ok(response);
     }

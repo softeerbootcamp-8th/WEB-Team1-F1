@@ -18,9 +18,8 @@ public record AuctionListCursor(
         LocalDateTime sortAt,
         long auctionId
 ) {
-
-    public static AuctionListCursor first(LocalDateTime snapshotAt) {
-        AuctionListGroup first = AuctionListGroup.LIVE;
-        return new AuctionListCursor(snapshotAt, first, first.startSortAt(), first.startAuctionId());
+    public static AuctionListCursor first(LocalDateTime snapshotAt, AuctionListGroup group) {
+        AuctionListGroup start = group != null ? group : AuctionListGroup.LIVE;
+        return new AuctionListCursor(snapshotAt, start, start.startSortAt(), start.startAuctionId());
     }
 }
