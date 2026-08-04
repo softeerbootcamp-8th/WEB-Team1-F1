@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.softeer.race.auctionroom.presentation.response.RoomStateResponse;
+import com.softeer.race.auth.domain.AuthenticatedUser;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -29,5 +30,9 @@ public interface AuctionRoomStreamApi {
     @ApiResponse(responseCode = "401", description = "세션 쿠키가 없거나 만료된 경우입니다.")
     @ApiResponse(responseCode = "404", description = "없는 경매이거나 경매글이 삭제된 경우입니다.")
     @ApiResponse(responseCode = "409", description = "아직 열리지 않았거나 이미 닫힌 방입니다.")
-    ResponseEntity<SseEmitter> stream(@Parameter(description = "경매 식별자", example = "1") long auctionId);
+    ResponseEntity<SseEmitter> stream(
+            @Parameter(description = "경매 식별자", example = "1") long auctionId,
+
+            // 값을 쓰지 않고 로그인 요구를 선언하는 파라미터다, 요청에 실리지 않으므로 문서에서 감춘다
+            @Parameter(hidden = true) AuthenticatedUser authenticatedUser);
 }

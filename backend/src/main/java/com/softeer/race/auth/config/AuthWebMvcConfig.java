@@ -26,38 +26,23 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
     private final AuthProperties authProperties;
 
     /**
-     * 인증이 필요한 경로만 화이트리스트로 나열한다. deny-by-default로 뒤집지 않는 이유는 다른 트랙의
-     * 핸들러가 아직 {@code @LoginUser}를 받지 않아, 회원가입·시세 조회·경매 등록이 함께 401이 되기 때문이다.
+     * API 전체를 인터셉터에 걸고, 인증이 필요한지는 AuthInterceptor가 핸들러를 보고 판정한다.
+     * <b>여기에는 경로를 나열하지 않는다.</b> 인증 요구를 선언하는 곳은 핸들러의
+     * {@code @LoginUser} 파라미터 한 곳뿐이므로, 새 API가 생겨도 이 메서드는 고치지 않는다.
      * <p>
-     * 로그아웃은 넣지 않는다. 이미 만료된 세션의 로그아웃이 401이 되면 멱등성이 깨진다.
+     * 경로 목록을 걷어낸 이유는 메서드를 구분하지 못했기 때문이다. {@code /api/auctions} 하나에
+     * 공개인 목록 조회(GET)와 로그인이 필요한 경매 등록(POST)이 함께 매핑돼 있어, 경로를 넣으면
+     * 비회원 조회가 401이 되고 빼면 등록이 무인증으로 뚫렸다.
      * <p>
-     * 인증이 필요한 경로는 여기와 핸들러의 {@code @LoginUser} 파라미터를 <b>둘 다</b> 갖춰야 한다.
-     * 여기서만 빠지면 LoginUserArgumentResolver가 401을 던져 안전하게 실패하기는 하지만,
-     * 쿠키를 정상적으로 보낸 요청까지 401이 되어 원인을 오해하기 쉽다.
+     * 로그아웃은 {@code @LoginUser}를 받지 않으므로 자연히 공개로 남는다. 이미 만료된 세션의
+     * 로그아웃이 401이 되면 멱등성이 깨지므로 그대로 두어야 한다.
      * <p>
-     * 예외는 경매방 구독이다. 구독이 내려보내는 방 현황에는 보는 사람에 따라 달라지는 값이 없어
-     * 서버가 누구인지 알 필요가 없고 로그인 여부만 확인하면 된다. 그래서 경로만 등록하고 핸들러는
-     * {@code @LoginUser}를 받지 않는다. 반대로 방 조회는 낙찰자 본인 여부와 내 입찰 표시를 판정해야
-     * 하므로 둘 다 갖춘다.
+     * 선언을 빠뜨린 핸들러가 조용히 공개로 동작하는 문제는 남아 있다. 공개 API를 명시하게 만들고
+     * 미선언을 기동에서 실패시키는 일은 별도 이슈로 다룬다.
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(authInterceptor)
-                .addPathPatterns("/api/auth/me",
-                        "/api/sell",
-                        "/api/images/presigned",
-                        "/api/vehicles/*/images",
-                        // 알림은 전 경로가 본인 것만 다룬다, 세그먼트 수가 달라 ** 로 묶는다
-                        "/api/notifications/**",
-                        // 세그먼트 하나만 매치하는 * 다. ** 로 넓히면 로그인 없이 봐야 하는
-                        // 경매 목록 /api/auctions 까지 걸린다
-                        "/api/auctions/*/bids",
-                        "/api/auctions/*/room",
-                        // /room 등록이 덮지 않는다, * 도 ** 도 아닌 리터럴 세그먼트가 하나 더 붙어 있다
-                        "/api/auctions/*/room/stream",
-                        // 경매글 수정·삭제. PATCH/DELETE만 있고 같은 경로를 쓰는 GET이 없어
-                        // /api/auctions(목록 GET)와 달리 메서드 구분 없이 그대로 걸어도 된다
-                        "/api/auctions/*");
+        registry.addInterceptor(authInterceptor).addPathPatterns("/api/**");
     }
 
     @Override
