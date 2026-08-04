@@ -1,5 +1,7 @@
 package com.softeer.race.support.seed;
 
+import com.softeer.race.auction.application.AuctionCloser;
+import com.softeer.race.auction.application.AuctionStarter;
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.auctionpost.domain.AuctionPost;
@@ -19,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * 경매방 데이터를 등록과 입찰이라는 실제 경로로 세운다
  */
-// 도메인이 만들 수 없는 상태는 여기서도 만들 수 없다 — 낙찰 확정과 게시글 삭제가 그렇다
+// 도메인이 만들 수 없는 상태는 여기서도 만들 수 없다 — 게시글 삭제가 그렇다
 @RequiredArgsConstructor
 public class AuctionRoomSeeder {
 
@@ -33,6 +35,8 @@ public class AuctionRoomSeeder {
     private final AuctionPostRepository auctionPostRepository;
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
+    private final AuctionStarter auctionStarter;
+    private final AuctionCloser auctionCloser;
 
     /**
      * 시작 시각을 정해 경매를 예약한다, 그 시각 기준으로 개장·마감이 도메인 규칙대로 잡힌다
@@ -50,6 +54,7 @@ public class AuctionRoomSeeder {
         private String model = "아반떼 CN7";
         private String thumbnailUrl = "https://cdn.race.dev/avante.jpg";
         private long startPrice = DEFAULT_START_PRICE;
+        private boolean closed;
 
         private RoomBuilder(User seller, LocalDateTime startAt) {
             this.seller = seller;
@@ -80,6 +85,14 @@ public class AuctionRoomSeeder {
         }
 
         /**
+         * 마감 시각에 종료 확정까지 진행한다, 입찰이 없으면 유찰이다
+         */
+        public RoomBuilder closed() {
+            this.closed = true;
+            return this;
+        }
+
+        /**
          * 지금까지 지정한 값으로 경매를 만들고 식별자를 돌려준다
          */
         public long create() {
@@ -102,7 +115,20 @@ public class AuctionRoomSeeder {
                 });
             }
 
+            if (closed) {
+                closeAt(auction);
+            }
+
             return auction.getId();
+        }
+
+        // 스케줄러가 부르는 것을 그대로 부른다, 최고 입찰자 판정도 프로덕션 것을 쓴다
+        // 시작 전이 없이는 종료 확정이 상태 검사에 막힌다
+        private void closeAt(Auction auction) {
+            long auctionId = auction.getId();
+
+            TestClock.INSTANCE.runAt(auction.getStartTime(), () -> auctionStarter.start(auctionId));
+            TestClock.INSTANCE.runAt(auction.getCurrentEndTime(), () -> auctionCloser.close(auctionId));
         }
 
         private VehicleSpec spec() {
