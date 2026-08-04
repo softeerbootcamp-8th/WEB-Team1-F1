@@ -2,6 +2,8 @@ package com.softeer.race.auctionroom.presentation;
 
 import com.softeer.race.auctionroom.application.AuctionRoomStreamService;
 import com.softeer.race.auctionroom.application.RoomSubscriber;
+import com.softeer.race.auth.domain.AuthenticatedUser;
+import com.softeer.race.auth.presentation.annotation.LoginUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -28,7 +30,13 @@ public class AuctionRoomStreamController implements AuctionRoomStreamApi {
 
     @Override
     @GetMapping(path = "/{auctionId}/room/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public ResponseEntity<SseEmitter> stream(@PathVariable("auctionId") long auctionId) {
+    public ResponseEntity<SseEmitter> stream(
+            @PathVariable("auctionId") long auctionId,
+
+            // 값을 쓰지 않는다. 방송 내용이 보는 사람과 무관해 신원이 필요 없고 로그인 여부만 확인하면
+            // 되는데, AuthInterceptor 가 인증 요구를 이 파라미터의 유무로만 판정하므로 이것이 유일한
+            // 선언 수단이다. 안 쓴다고 지우면 구독이 조용히 비로그인에 열린다
+            @LoginUser AuthenticatedUser authenticatedUser) {
         SseEmitter emitter = new SseEmitter(STREAM_TIMEOUT_MILLIS);
         RoomSubscriber subscriber = new SseRoomSubscriber(auctionId, emitter);
 

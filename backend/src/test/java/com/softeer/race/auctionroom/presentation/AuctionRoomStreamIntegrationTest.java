@@ -1,10 +1,15 @@
 package com.softeer.race.auctionroom.presentation;
 
+import com.softeer.race.auth.application.SessionService;
+import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.user.domain.Role;
+import com.softeer.race.user.domain.User;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
@@ -25,9 +30,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 단위테스트로는 볼 수 없는 것만 여기서 고정한다. 응답이 끝나지 않고 열린 채로 남는지,
  * 미디어타입과 이벤트 프레이밍이 맞는지, 그리고 다른 사람이 들어왔을 때 이미 열려 있던 연결로
  * 새 현황이 흘러 들어가는지다. 셋 다 객체를 돌려받아서는 알 수 없다.
+ * <p>
+ * 로그인 여부도 여기서 본다. 구독은 누구인지가 아니라 로그인했는지만 확인하므로 검증할 것은
+ * 연결이 열리느냐 뿐이고, 그것 역시 응답 객체로는 알 수 없다.
  */
 @DisplayName("경매방 현황 구독 통합 테스트")
 class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
+
+    @Autowired
+    private SessionService sessionService;
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
 
@@ -108,6 +119,19 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.code").value("AUCTION_ROOM_NOT_FOUND"));
     }
 
+    @Test
+    @DisplayName("시나리오 4 : 세션 없이 구독 -> 연결을 열지 않고 401")
+    void scenario4_WithoutSession_Unauthorized() throws Exception {
+        // given : 쿠키만 있으면 열렸을 진행 중인 방이다, 401 이 방 단계 때문이 아님을 분명히 한다
+        long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
+
+        // when & then : 인터셉터에서 끊기므로 비동기 응답조차 시작되지 않는다
+        subscribeWithoutSession(liveAuctionId).andExpectAll(
+                status().isUnauthorized(),
+                jsonPath("$.code").value("AUTH_UNAUTHENTICATED"),
+                request().asyncNotStarted());
+    }
+
     // ================= 준비 ====================
     // 그 사람이 그 금액을 부른 진행 중인 방, 판매자와 시작 시각은 이 테스트가 보지 않는다
     private long liveRoomWithTopBid(String bidderName, long amount) {
@@ -118,8 +142,24 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
     }
 
     // ================= 요청 ====================
+    // 구독은 신원이 아니라 로그인 여부만 본다, 호출마다 다른 사람이 붙어도 결과가 같아야 한다
     private ResultActions subscribe(long auctionId) throws Exception {
-        return mockMvc.perform(get("/api/auctions/{auctionId}/room/stream", auctionId));
+        String sessionToken = loginAs(users.user("한구경", Role.DEALER));
+
+        return mockMvc.perform(get("/api/auctions/{auctionId}/room/stream", auctionId)
+                .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, sessionToken)));
+    }
+
+    // 브라우저의 EventSource 는 Accept: text/event-stream 만 보낸다, 거절 응답이 그 조건에서도
+    // 협상에 걸리지 않고 나가는지가 여기서만 드러난다
+    private ResultActions subscribeWithoutSession(long auctionId) throws Exception {
+        return mockMvc.perform(get("/api/auctions/{auctionId}/room/stream", auctionId)
+                .accept(MediaType.TEXT_EVENT_STREAM));
+    }
+
+    // 세션은 고정된 현재 시각 기준으로 발급된다, @BeforeEach 가 시각을 먼저 고정하므로 발급 직후 유효하다
+    private String loginAs(User user) {
+        return sessionService.issue(user);
     }
 
     // text/event-stream 에는 charset 이 안 붙어 getContentAsString() 이 ISO-8859-1 로 떨어진다
