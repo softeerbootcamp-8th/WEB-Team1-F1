@@ -82,10 +82,8 @@ public class SellService {
         // 정확히 경계에 걸치지 않게 다음 분으로 올린다. 데모 시작 시각도 초 단위가 아니라 깔끔해진다
         LocalDateTime startAt = now.plus(START_DELAY).truncatedTo(ChronoUnit.MINUTES).plusMinutes(1);
 
-        // 나이는 연도 차이로만 센다. QuoteService.estimate와 같은 계산이고 같은 이유다 —
-        // 카탈로그에 등록월이 없고 감가율 자체가 임시값이라 정밀도를 올려도 정확도가 오르지 않는다.
         // 위에서 읽은 now를 재사용한다, clock을 다시 읽으면 시각 이중 읽기를 여기서 되살리는 셈이다
-        int age = now.getYear() - spec.modelYear();
+        int age = QuotePolicy.ageOf(spec.modelYear(), now.getYear());
         long estimatedPrice = QuotePolicy.estimate(spec.basePrice(), age, spec.mileage());
 
         // 번호판 중복을 검사하지 않는다. 반복 신청하면 매번 새 차량이 생기므로
