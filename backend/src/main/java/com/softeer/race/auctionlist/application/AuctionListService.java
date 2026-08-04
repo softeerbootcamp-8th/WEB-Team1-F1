@@ -33,6 +33,14 @@ public class AuctionListService {
     private final Clock clock;
 
     public AuctionListInfo list(AuctionListCursor cursor, AuctionListGroup filter) {
+        return listInternal(cursor, filter, null);
+    }
+
+    public AuctionListInfo listMine(AuctionListCursor cursor, AuctionListGroup filter, long sellerId) {
+        return listInternal(cursor, filter, sellerId);
+    }
+
+    private AuctionListInfo listInternal(AuctionListCursor cursor, AuctionListGroup filter, Long sellerId) {
         LocalDateTime now = LocalDateTime.now(clock);
         AuctionListCursor start = (cursor != null) ? cursor : AuctionListCursor.first(now, filter);
 
@@ -40,7 +48,7 @@ public class AuctionListService {
         LocalDateTime snapshotAt = start.snapshotAt().isAfter(now) ? now : start.snapshotAt();
 
         // 한 건 더 읽어 다음 페이지 유무를 판단한다. 전체를 세는 쿼리를 피하려는 것이다.
-        List<Positioned> found = collect(start, snapshotAt, filter, PAGE_SIZE + 1);
+        List<Positioned> found = collect(start, snapshotAt, filter, sellerId, PAGE_SIZE + 1);
 
         boolean hasNext = found.size() > PAGE_SIZE;
         List<Positioned> page = hasNext ? found.subList(0, PAGE_SIZE) : found;
@@ -58,7 +66,7 @@ public class AuctionListService {
      * 커서가 가리키는 그룹부터 채우고, 모자란 만큼 다음 그룹에서 이어 읽는다.
      */
     private List<Positioned> collect(AuctionListCursor cursor, LocalDateTime snapshotAt,
-                                     AuctionListGroup filter, int need) {
+                                     AuctionListGroup filter, Long sellerId, int need) {
         List<Positioned> found = new ArrayList<>();
         int remaining = need;
 
@@ -72,7 +80,7 @@ public class AuctionListService {
             LocalDateTime from = resuming ? cursor.sortAt() : group.startSortAt();
             long fromId = resuming ? cursor.auctionId() : group.startAuctionId();
 
-            List<AuctionListRow> rows = query(group, snapshotAt, from, fromId, remaining);
+            List<AuctionListRow> rows = query(group, snapshotAt, from, fromId, remaining, sellerId);
             for (AuctionListRow row : rows) {
                 found.add(new Positioned(group, row));
             }
@@ -87,8 +95,20 @@ public class AuctionListService {
     }
 
     private List<AuctionListRow> query(AuctionListGroup group, LocalDateTime snapshotAt, LocalDateTime cursorSortAt,
-                                       long cursorAuctionId, int need) {
+                                       long cursorAuctionId, int need, Long sellerId) {
         Limit limit = Limit.of(need);
+
+        // nullable 로 합치면 인덱스를 출발점으로 쓰지 못해 소유자 조건은 쿼리를 나눠 등치로 건다.
+        if (sellerId != null) {
+            return switch (group) {
+                case LIVE -> auctionListRepository.findMyLivePage(
+                        PostStatus.PUBLISHED, sellerId, snapshotAt, cursorSortAt, cursorAuctionId, limit);
+                case PENDING -> auctionListRepository.findMyPendingPage(
+                        PostStatus.PUBLISHED, sellerId, snapshotAt, cursorSortAt, cursorAuctionId, limit);
+                case ENDED -> auctionListRepository.findMyEndedPage(
+                        PostStatus.PUBLISHED, sellerId, snapshotAt, cursorSortAt, cursorAuctionId, limit);
+            };
+        }
 
         return switch (group) {
             case LIVE -> auctionListRepository.findLivePage(

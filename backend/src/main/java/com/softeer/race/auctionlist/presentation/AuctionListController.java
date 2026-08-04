@@ -3,6 +3,8 @@ package com.softeer.race.auctionlist.presentation;
 import com.softeer.race.auctionlist.application.AuctionListService;
 import com.softeer.race.auctionlist.presentation.request.AuctionListCursorRequest;
 import com.softeer.race.auctionlist.presentation.response.AuctionListResponse;
+import com.softeer.race.auth.domain.AuthenticatedUser;
+import com.softeer.race.auth.presentation.annotation.LoginUser;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,16 @@ public class AuctionListController implements AuctionListApi {
     public ResponseEntity<AuctionListResponse> list(@Valid AuctionListCursorRequest request) {
         AuctionListResponse response =
                 AuctionListResponse.from(auctionListService.list(request.toCursor(), request.filter()));
+
+        return ResponseEntity.ok(response);
+    }
+
+    @Override
+    @GetMapping("/me")
+    public ResponseEntity<AuctionListResponse> listMine(@LoginUser AuthenticatedUser user,
+                                                        @Valid AuctionListCursorRequest request) {
+        AuctionListResponse response = AuctionListResponse.from(
+                auctionListService.listMine(request.toCursor(), request.filter(), user.id()));
 
         return ResponseEntity.ok(response);
     }

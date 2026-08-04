@@ -61,6 +61,8 @@ class AuctionListServiceTest {
     private static final LocalDateTime ASC_START = LocalDateTime.of(1000, 1, 1, 0, 0);
     private static final LocalDateTime DESC_START = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
 
+    private static final long SELLER_ID = 7L;
+
     @Mock
     private AuctionListRepository auctionListRepository;
 
@@ -365,7 +367,53 @@ class AuctionListServiceTest {
         assertCursorPassedToEnded(DESC_START, Long.MAX_VALUE);
     }
 
+    // ================= 나의 경매 =================
+
+    @Test
+    @DisplayName("나의 경매는 소유자 전용 쿼리로 조회한다")
+    void listMineUsesOwnerScopedQueries() {
+        // given
+        givenMyLive(liveRows(1, FETCH_SIZE));
+
+        // when
+        auctionListService.listMine(null, null, SELLER_ID);
+
+        // then : 공개 목록 쿼리를 쓰면 남의 경매까지 섞인다
+        then(auctionListRepository).should(never())
+                .findLivePage(any(), any(), any(), anyLong(), any());
+        verify(auctionListRepository)
+                .findMyLivePage(any(), eq(SELLER_ID), any(), any(), anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("나의 경매에 상태 필터를 걸면 그 그룹의 소유자 쿼리만 쓴다")
+    void listMineWithFilterUsesOnlyThatGroup() {
+        // given
+        givenMyEnded(endedRows(200, 2));
+
+        // when
+        auctionListService.listMine(null, AuctionListGroup.ENDED, SELLER_ID);
+
+        // then
+        then(auctionListRepository).should(never())
+                .findMyLivePage(any(), anyLong(), any(), any(), anyLong(), any());
+        then(auctionListRepository).should(never())
+                .findMyPendingPage(any(), anyLong(), any(), any(), anyLong(), any());
+        verify(auctionListRepository)
+                .findMyEndedPage(any(), eq(SELLER_ID), any(), any(), anyLong(), any());
+    }
+
     // ================= 목 설정 =================
+
+    private void givenMyLive(List<AuctionListRow> rows) {
+        given(auctionListRepository.findMyLivePage(any(), anyLong(), any(), any(), anyLong(), any()))
+                .willReturn(rows);
+    }
+
+    private void givenMyEnded(List<AuctionListRow> rows) {
+        given(auctionListRepository.findMyEndedPage(any(), anyLong(), any(), any(), anyLong(), any()))
+                .willReturn(rows);
+    }
 
     private void givenLive(List<AuctionListRow> rows) {
         given(auctionListRepository.findLivePage(any(), any(), any(), anyLong(), any())).willReturn(rows);
