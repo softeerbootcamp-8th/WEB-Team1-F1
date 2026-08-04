@@ -102,9 +102,10 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
         ResultActions response = subscribe(closedAuctionId);
 
         // then : 자원이 없는 게 아니라 단계가 맞지 않는 것이라 404 가 아니라 409 다
+        // 기다렸다 다시 오면 되는 방이 아니라는 것까지 code 로 알린다
         response.andExpectAll(
                 status().isConflict(),
-                jsonPath("$.code").value("ROOM_NOT_SUBSCRIBABLE"));
+                jsonPath("$.code").value("ROOM_ALREADY_CLOSED"));
     }
 
     @Test

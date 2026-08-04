@@ -1,5 +1,6 @@
 package com.softeer.race.auctionroom.domain;
 
+import com.softeer.race.auction.domain.AuctionStatus;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
 
@@ -11,6 +12,7 @@ import java.util.Optional;
  */
 public record AuctionRoomDetail(
         long auctionId,
+        AuctionStatus status,
         long startPrice,
         Long currentPrice,
         LocalDateTime roomOpenAt,
@@ -51,5 +53,25 @@ public record AuctionRoomDetail(
      */
     public boolean isWonBy(long viewerId) {
         return winnerId != null && winnerId == viewerId;
+    }
+
+    /**
+     * 확정된 경매 결과, 아직 끝나지 않았으면 없다
+     */
+    // 시각이 아니라 상태를 본다, 마감과 확정 사이에는 낙찰인지 유찰인지 알 수 없다
+    public Optional<AuctionOutcome> outcome() {
+        return switch (status) {
+            case ENDED -> Optional.of(AuctionOutcome.SOLD);
+            case FAILED -> Optional.of(AuctionOutcome.UNSOLD);
+            case SCHEDULED, IN_PROGRESS -> Optional.empty();
+        };
+    }
+
+    /**
+     * 최종 낙찰가, 유찰이거나 확정 전이면 없다
+     */
+    // 진행 중의 현재가는 낙찰가가 아니다, 연장이 걸리면 더 오를 수 있다
+    public Optional<Long> winningPrice() {
+        return status == AuctionStatus.ENDED ? Optional.ofNullable(currentPrice) : Optional.empty();
     }
 }

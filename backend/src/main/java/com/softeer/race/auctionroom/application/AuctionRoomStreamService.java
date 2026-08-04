@@ -8,7 +8,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.AUCTION_ROOM_NOT_FOUND;
-import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_NOT_SUBSCRIBABLE;
 
 /**
  * 경매방 현황을 열려 있는 구독으로 흘려보내는 서비스
@@ -33,9 +32,9 @@ public class AuctionRoomStreamService {
         RoomQueryResult result = auctionRoomReader.find(auctionId)
                 .orElseThrow(() -> new BusinessException(AUCTION_ROOM_NOT_FOUND));
 
-        if (!result.phase().allowsConnection()) {
-            throw new BusinessException(ROOM_NOT_SUBSCRIBABLE);
-        }
+        result.phase().entryRejection().ifPresent(errorCode -> {
+            throw new BusinessException(errorCode);
+        });
 
         roomChannel.subscribe(auctionId, subscriber);
 

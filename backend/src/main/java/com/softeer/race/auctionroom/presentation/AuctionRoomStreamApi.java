@@ -29,7 +29,9 @@ public interface AuctionRoomStreamApi {
                     schema = @Schema(implementation = RoomStateResponse.class)))
     @ApiResponse(responseCode = "401", description = "세션 쿠키가 없거나 만료된 경우입니다.")
     @ApiResponse(responseCode = "404", description = "없는 경매이거나 경매글이 삭제된 경우입니다.")
-    @ApiResponse(responseCode = "409", description = "아직 열리지 않았거나 이미 닫힌 방입니다.")
+    @ApiResponse(responseCode = "409",
+            description = "아직 열리지 않았거나(ROOM_NOT_OPEN_YET) 이미 종료된(ROOM_ALREADY_CLOSED) 방입니다. "
+                    + "앞쪽은 기다렸다 다시 열면 되고 뒤쪽은 결과 요약 API로 가야 합니다.")
     ResponseEntity<SseEmitter> stream(
             @Parameter(description = "경매 식별자", example = "1") long auctionId,
 

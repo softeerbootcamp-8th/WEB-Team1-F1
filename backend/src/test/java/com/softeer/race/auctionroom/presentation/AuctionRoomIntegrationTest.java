@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 경매방 현황 상세 조회를 컨트롤러에서 DB까지
  * <p>
  * 1. 방 단계 판정
- * 개장·시작·마감 시각과 고정된 현재 시각으로 LIVE / CLOSED 판정
+ * 개장·시작·마감 시각과 고정된 현재 시각으로 판정하고, 방을 열어 주지 않는 단계는 사유를 갈라 거절
  * <p>
  * 2. 접속자 집계 (인메모리)
  * 조회는 접속이 아니다, 열려 있는 구독이 없으면 0
@@ -52,6 +52,9 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
 
     // 마감(시작 + 20분)에 결과 확인 5분까지 지난 시각이 되도록 뒤로 물린다
     private static final LocalDateTime CLOSED_START_AT = LocalDateTime.of(2026, 8, 3, 18, 30);
+
+    // 개장(시작 30분 전)이 아직 오지 않도록 앞으로 민다
+    private static final LocalDateTime NOT_OPEN_START_AT = LocalDateTime.of(2026, 8, 3, 22, 0);
 
     @BeforeEach
     void fixClock() {
@@ -138,48 +141,23 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("시나리오 2 : 완전 종료된 경매방 조회 -> 접속자로 세지 않고, 낙찰 여부는 조회자마다 다르다")
-    void scenario2_ClosedRoom_NotCountedAsPresence() throws Exception {
-        // given : 마감 후 5분이 지난 방, 유일한 입찰자가 낙찰자다
-        User winner = users.user("이준호", Role.DEALER);
-        User other = users.user("한구경", Role.DEALER);
+    @DisplayName("시나리오 2 : 단계가 어긋난 방 조회 -> 아직 열리지 않음과 이미 끝남을 code 로 가른다")
+    void scenario2_PhaseMismatch_Rejected() throws Exception {
+        // given : 마감 후 5분까지 지난 방과, 개장 시각이 아직 오지 않은 방
+        User viewer = users.user("한구경", Role.DEALER);
 
-        long closedAuctionId = rooms.room(users.user("최판매", Role.GENERAL), CLOSED_START_AT)
-                .startPrice(20_000_000L)
-                .bid(CLOSED_START_AT.plusMinutes(15), winner, 21_000_000L)
-                .create();
-        confirmWinner(closedAuctionId, winner);
+        long closedAuctionId = rooms.room(users.user("최판매", Role.GENERAL), CLOSED_START_AT).create();
+        long notOpenAuctionId = rooms.room(users.user("정판매", Role.GENERAL), NOT_OPEN_START_AT).create();
 
-        // when : 낙찰자 본인이 조회
-        ResultActions response = getRoom(closedAuctionId, loginAs(winner));
+        // when & then 1 : 실시간 화면의 수명이 끝났다, 화면은 이 사유를 보고 결과로 옮겨간다
+        getRoom(closedAuctionId, loginAs(viewer)).andExpectAll(
+                status().isConflict(),
+                jsonPath("$.code").value("ROOM_ALREADY_CLOSED"));
 
-        // then 1 : 없어진 리소스가 아니라 단계가 다를 뿐이라 200 이다
-        response.andExpectAll(
-                status().isOk(),
-                jsonPath("$.phase").value("CLOSED"));
-
-        // then 2 : 닫힌 단계에서는 구독이 남아 있어도 접속자로 세지 않는다
-        response.andExpect(jsonPath("$.connectedCount").value(0));
-
-        // then 3 : 낙찰 결과는 감출 정보가 아니므로 호가와 집계는 그대로 내려간다
-        response.andExpectAll(
-                jsonPath("$.bidCount").value(1),
-                jsonPath("$.bidderCount").value(1),
-                jsonPath("$.recentBids.length()").value(1),
-                jsonPath("$.recentBids[0].name").value("이*호"));
-
-        // then 4 : 낙찰자도 호가와 같은 규칙으로 마스킹되고, 본인 여부는 이름 비교 없이 내려간다
-        // then 5 : 낙찰자가 곧 유일한 입찰자라 자기 호가로도 표시된다
-        response.andExpectAll(
-                jsonPath("$.winner.name").value("이*호"),
-                jsonPath("$.winner.mine").value(true),
-                jsonPath("$.recentBids[0].mine").value(true));
-
-        // then 6 : 같은 방을 남이 보면 이름은 같고 본인 표시만 꺼진다
-        getRoom(closedAuctionId, loginAs(other)).andExpectAll(
-                jsonPath("$.winner.name").value("이*호"),
-                jsonPath("$.winner.mine").value(false),
-                jsonPath("$.recentBids[0].mine").value(false));
+        // when & then 2 : 기다렸다 다시 오면 되는 방이라 사유가 다르다, 화면은 개장 안내로 옮겨간다
+        getRoom(notOpenAuctionId, loginAs(viewer)).andExpectAll(
+                status().isConflict(),
+                jsonPath("$.code").value("ROOM_NOT_OPEN_YET"));
     }
 
     @Test
@@ -212,13 +190,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
     }
 
     // ================= 도메인에 아직 없는 전이 ====================
-    // 낙찰 확정과 게시글 삭제는 도메인에 메서드가 없어 여기서만 직접 쓴다
-    // 마감 시 종료·낙찰 확정은 #63 이 만들고, 그때 아래 두 메서드는 지운다
-
-    private void confirmWinner(long auctionId, User winner) {
-        jdbcTemplate.update("update auction set winner_id = ?, status = 'ENDED' where id = ?",
-                winner.getId(), auctionId);
-    }
+    // 게시글 삭제는 도메인에 메서드가 없어 여기서만 직접 쓴다
 
     private void deletePost(long auctionId) {
         jdbcTemplate.update("""

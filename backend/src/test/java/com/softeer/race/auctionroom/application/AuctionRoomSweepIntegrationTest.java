@@ -1,5 +1,7 @@
 package com.softeer.race.auctionroom.application;
 
+import com.softeer.race.auctionroom.domain.AuctionRoomErrorCode;
+import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.user.domain.Role;
 import org.junit.jupiter.api.AfterEach;
@@ -92,7 +94,7 @@ class AuctionRoomSweepIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("방이 닫힌 뒤 나가는 갱신도 조회와 같이 접속자를 0으로 센다")
+    @DisplayName("방이 닫히면 남은 구독은 접속자에서 빠지고 새 조회는 거절된다")
     void closedRoomCountsNobodyAsConnected() {
         // given : 진행 중일 때 둘이 들어와 있다
         long auctionId = liveRoom();
@@ -107,8 +109,11 @@ class AuctionRoomSweepIntegrationTest extends IntegrationTestSupport {
         // then 1 : 연결은 아직 열려 있지만 닫힌 방은 접속자로 세지 않는다
         assertThat(alive.lastState().connectedCount()).isZero();
 
-        // then 2 : 같은 순간 다시 조회한 사람도 같은 숫자를 봐야 한다
-        assertThat(auctionRoomService.enterRoom(auctionId, VIEWER_ID).state().connectedCount()).isZero();
+        // then 2 : 같은 순간 새로 들어오려는 사람은 아예 막힌다, 열어 둔 화면과 새 조회가 어긋나지 않는다
+        assertThat(catchThrowable(() -> auctionRoomService.enterRoom(auctionId, VIEWER_ID)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(thrown -> ((BusinessException) thrown).errorCode())
+                .isEqualTo(AuctionRoomErrorCode.ROOM_ALREADY_CLOSED);
     }
 
     @Test
