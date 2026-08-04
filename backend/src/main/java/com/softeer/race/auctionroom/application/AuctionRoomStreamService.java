@@ -67,8 +67,10 @@ public class AuctionRoomStreamService {
         }
     }
 
-    // 방이 비었으면 보낼 곳이 없으므로 조회도 하지 않는다
-    private void refresh(long auctionId) {
+    /**
+     * 방에 열려 있는 구독에 현황을 다시 보낸다, 보는 사람이 없으면 조회도 하지 않는다
+     */
+    public void refresh(long auctionId) {
         if (roomChannel.countSubscribers(auctionId) == 0) {
             return;
         }

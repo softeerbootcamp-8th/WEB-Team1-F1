@@ -40,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * REJECTED는 종료 상태라 같은 차를 다시 신청할 수 있는지
  * <p>
  * 6. 인증
- * 인터셉터 화이트리스트가 실제로 걸려 있는지
+ * 핸들러의 @LoginUser 선언으로 인증이 실제로 요구되는지
  * <p>
  * 7. 소유자 대조
  * 로그인한 회원이 남의 차로 신청할 수 없는지. 세션이 소유를 증명하지 않는다는 사실을 고정한다
@@ -198,8 +198,8 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
                 .isEqualTo(1);
     }
 
-    // 화이트리스트에서 /api/visit-quotes가 빠지면 이 테스트만 통과하고 시나리오 1~5가 전부 깨진다
-    // 반대로 화이트리스트만 있고 @LoginUser가 없으면 여기가 깨진다
+    // 핸들러의 @LoginUser 를 떼면 이 테스트만 깨지고 시나리오 1~5는 그대로 통과한다.
+    // 인증 요구를 선언하는 곳이 그 파라미터 한 곳뿐이라, 빠뜨리면 조용히 공개 API 가 된다
     @Test
     @DisplayName("시나리오 6 : 세션 쿠키 없이 신청하면 401이다")
     void scenario6_RequiresAuthentication() throws Exception {

@@ -1,11 +1,15 @@
 package com.softeer.race.auctionroom.presentation;
 
+import com.softeer.race.auth.application.SessionService;
+import com.softeer.race.auth.presentation.support.SessionCookieFactory;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.LocalDateTime;
@@ -31,9 +35,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 5. 직렬화
  * 마감 절대시각과 서버 시각을 오프셋 없는 KST 문자열로 내림
+ * <p>
+ * 6. 인증
+ * 세션 쿠키 없이는 방을 열 수 없고, 본인 표시는 헤더가 아니라 쿠키 주인 기준이다
  */
 @DisplayName("경매방 현황 조회 통합 테스트")
 class AuctionRoomIntegrationTest extends IntegrationTestSupport {
+
+    @Autowired
+    private SessionService sessionService;
 
     // 상수
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
@@ -63,7 +73,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 .create();
 
         // when : 입찰자 한 명이 방을 조회
-        ResultActions response = getRoom(liveAuctionId, viewer.getId());
+        ResultActions response = getRoom(liveAuctionId, loginAs(viewer));
 
         // then 1 : 상태가 아니라 시각으로 판정한 단계, 경매 식별자는 요청 경로가 아니라 조회 결과에서 온다
         response.andExpectAll(
@@ -141,7 +151,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
         confirmWinner(closedAuctionId, winner);
 
         // when : 낙찰자 본인이 조회
-        ResultActions response = getRoom(closedAuctionId, winner.getId());
+        ResultActions response = getRoom(closedAuctionId, loginAs(winner));
 
         // then 1 : 없어진 리소스가 아니라 단계가 다를 뿐이라 200 이다
         response.andExpectAll(
@@ -166,7 +176,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.recentBids[0].mine").value(true));
 
         // then 6 : 같은 방을 남이 보면 이름은 같고 본인 표시만 꺼진다
-        getRoom(closedAuctionId, other.getId()).andExpectAll(
+        getRoom(closedAuctionId, loginAs(other)).andExpectAll(
                 jsonPath("$.winner.name").value("이*호"),
                 jsonPath("$.winner.mine").value(false),
                 jsonPath("$.recentBids[0].mine").value(false));
@@ -181,12 +191,24 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
         deletePost(deletedPostAuctionId);
 
         // when : 글이 내려간 경매의 방을 조회
-        ResultActions response = getRoom(deletedPostAuctionId, viewer.getId());
+        ResultActions response = getRoom(deletedPostAuctionId, loginAs(viewer));
 
         // then : 도달할 수 없는 자원이므로 단계를 알리지 않고 404 다
         response.andExpectAll(
                 status().isNotFound(),
                 jsonPath("$.code").value("AUCTION_ROOM_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("시나리오 4 : 세션 없이 방 조회 -> 방의 존재 여부를 알리지 않고 401")
+    void scenario4_WithoutSession_Unauthorized() throws Exception {
+        // given : 조회하면 200 이 나올 정상적인 진행 중 방이다, 401 이 방 상태 때문이 아님을 분명히 한다
+        long liveAuctionId = rooms.room(users.user("박판매", Role.GENERAL), START_AT).create();
+
+        // when & then : 쿠키가 없으면 인터셉터에서 끊긴다
+        getRoomWithoutSession(liveAuctionId).andExpectAll(
+                status().isUnauthorized(),
+                jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
     }
 
     // ================= 도메인에 아직 없는 전이 ====================
@@ -207,8 +229,17 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
     }
 
     // ================= 요청 ====================
-    private ResultActions getRoom(long auctionId, long userId) throws Exception {
+    // 세션은 고정된 현재 시각 기준으로 발급된다, @BeforeEach 가 시각을 먼저 고정하므로 발급 직후 유효하다
+    private String loginAs(User user) {
+        return sessionService.issue(user);
+    }
+
+    private ResultActions getRoom(long auctionId, String sessionToken) throws Exception {
         return mockMvc.perform(get("/api/auctions/{auctionId}/room", auctionId)
-                .header("X-User-Id", userId));
+                .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, sessionToken)));
+    }
+
+    private ResultActions getRoomWithoutSession(long auctionId) throws Exception {
+        return mockMvc.perform(get("/api/auctions/{auctionId}/room", auctionId));
     }
 }

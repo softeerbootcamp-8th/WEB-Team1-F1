@@ -42,7 +42,7 @@ class VehicleLookupControllerTest {
 
     // @WebMvcTest 슬라이스는 WebMvcConfigurer 와 HandlerInterceptor 빈을 함께 스캔한다
     // AuthInterceptor 가 들어오면서 그 의존성인 SessionService 가 없어 컨텍스트 로딩이 실패하므로 채워 준다
-    // 이 경로는 화이트리스트에 없어 이 목이 호출되지는 않는다
+    // 이 핸들러는 @LoginUser 를 받지 않아 인터셉터가 공개로 통과시키므로 이 목이 호출되지는 않는다
     @MockitoBean
     private SessionService sessionService;
 

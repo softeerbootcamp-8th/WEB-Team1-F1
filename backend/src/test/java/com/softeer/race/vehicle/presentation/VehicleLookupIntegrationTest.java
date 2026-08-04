@@ -52,7 +52,7 @@ class VehicleLookupIntegrationTest extends IntegrationTestSupport {
     /** 픽스처 201번의 기준가. 그 모델의 신차급 가격이라 응답으로 나가면 안 되는 값이다 */
     private static final long CATALOG_BASE_PRICE = 34_000_000L;
 
-    // 화이트리스트에 이 경로를 넣으면 이 시나리오만 깨진다. 비회원용이라는 결정을 고정하는 유일한 자리다
+    // 핸들러에 @LoginUser 를 붙이면 이 시나리오만 깨진다. 비회원용이라는 결정을 고정하는 유일한 자리다
     @Test
     @DisplayName("시나리오 1 : 세션 쿠키 없이 조회하면 200과 제원을 준다")
     void scenario1_WorksWithoutAuthentication() throws Exception {
