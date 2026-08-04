@@ -15,8 +15,8 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 /**
  * @LoginUser 파라미터에 인터셉터가 심어 둔 주체를 꽂는다.
  * <p>
- * 리졸버가 직접 세션을 조회하지 않는다. 인증 판정이 인터셉터 한 곳에 모이고, @LoginUser를 빼먹은
- * 핸들러도 인터셉터가 막아 주며, 세션 조회가 요청당 한 번으로 보장된다.
+ * 리졸버가 직접 세션을 조회하지 않는다. 인증 판정이 인터셉터 한 곳에 모이고, 세션 조회가
+ * 요청당 한 번으로 보장된다.
  */
 @Component
 public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver {
@@ -38,7 +38,8 @@ public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver 
         Object authenticatedUser =
                 webRequest.getAttribute(AuthInterceptor.LOGIN_USER, RequestAttributes.SCOPE_REQUEST);
 
-        // 인터셉터가 지나지 않는 경로에 @LoginUser를 붙인 실수를 조용한 NPE가 아니라 401로 드러낸다
+        // 인터셉터는 @LoginUser를 보고 인증을 요구하므로 /api/** 안에서는 여기가 비어 있을 수 없다
+        // /api/** 밖에 매핑된 핸들러가 @LoginUser를 붙인 경우를 조용한 NPE가 아니라 401로 드러낸다
         if (authenticatedUser == null) {
             throw new BusinessException(AuthErrorCode.UNAUTHENTICATED);
         }
