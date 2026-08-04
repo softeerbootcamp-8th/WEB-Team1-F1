@@ -1,16 +1,19 @@
 package com.softeer.race.bid.application;
 
+
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.bid.application.dto.BidPlaceInfo;
 import com.softeer.race.bid.domain.Bid;
 import com.softeer.race.bid.domain.BidIncrementTable;
+import com.softeer.race.bid.domain.BidAccepted;
 import com.softeer.race.bid.domain.BidRepository;
 import com.softeer.race.bid.exception.BidErrorCode;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +30,7 @@ public class BidService {
     private final BidRepository bidRepository;
     private final UserRepository userRepository;
     private final BidIncrementService bidIncrementService;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     /**
@@ -69,6 +73,9 @@ public class BidService {
 
         Bid bid = bidRepository.save(Bid.place(auction, bidder, amount));
         auction.acceptBid(amount, acceptedAt);
+
+        // 커밋 뒤에 처리된다, 방송이 잠금 안에서 돌면 그 시간이 대기열 전체에 곱해진다
+        eventPublisher.publishEvent(new BidAccepted(auctionId));
 
         // acceptBid 뒤에 읽어야 연장된 마감이 담긴다.
         return new BidPlaceInfo(bid.getId(), amount, auction.getCurrentEndTime(), acceptedAt);
