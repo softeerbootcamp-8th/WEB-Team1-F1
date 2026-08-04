@@ -84,4 +84,11 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
     List<Long> findClosableIds(@Param("inProgress") AuctionStatus inProgress,
                                @Param("now") LocalDateTime now,
                                Limit limit);
+
+    @Query("""
+             select a 
+             from Auction a join fetch a.post
+             where a.id = :auctionId
+            """)
+    Optional<Auction> findWithPostById(@Param("auctionId") long auctionId);
 }
