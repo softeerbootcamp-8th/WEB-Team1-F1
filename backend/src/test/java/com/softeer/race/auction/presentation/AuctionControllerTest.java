@@ -65,6 +65,7 @@ class AuctionControllerTest extends IntegrationTestSupport {
         LocalDateTime startAt = LocalDateTime.now(clock).plusHours(2).withNano(0);
 
         mockMvc.perform(post("/api/auctions")
+                        .cookie(판매자_쿠키())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson(startAt)))
                 .andExpect(status().isCreated())
@@ -92,6 +93,7 @@ class AuctionControllerTest extends IntegrationTestSupport {
                 """;
 
         mockMvc.perform(post("/api/auctions")
+                        .cookie(판매자_쿠키())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
                 .andExpect(status().isBadRequest())
@@ -104,10 +106,38 @@ class AuctionControllerTest extends IntegrationTestSupport {
         LocalDateTime tooSoon = LocalDateTime.now(clock).plusMinutes(30).withNano(0);
 
         mockMvc.perform(post("/api/auctions")
+                        .cookie(판매자_쿠키())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson(tooSoon)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_START_AT"));
+    }
+
+    @Test
+    @DisplayName("본인 소유가 아닌 차량은 경매글로 등록할 수 없다.")
+    void 등록_타인소유_거부() throws Exception {
+        LocalDateTime startAt = LocalDateTime.now(clock).plusHours(2).withNano(0);
+
+        mockMvc.perform(post("/api/auctions")
+                        .cookie(타인_쿠키())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson(startAt)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("NOT_VEHICLE_OWNER"));
+
+        assertThat(auctionRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("로그인하지 않으면 경매글을 등록할 수 없다.")
+    void 등록_인증없음_거부() throws Exception {
+        LocalDateTime startAt = LocalDateTime.now(clock).plusHours(2).withNano(0);
+
+        mockMvc.perform(post("/api/auctions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson(startAt)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
     }
 
     // ================= 종료된 경매가 남은 차량의 재등록 =================
@@ -125,6 +155,7 @@ class AuctionControllerTest extends IntegrationTestSupport {
         LocalDateTime startAt = LocalDateTime.now(clock).plusHours(2).withNano(0);
 
         mockMvc.perform(post("/api/auctions")
+                        .cookie(판매자_쿠키())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson(startAt)))
                 .andExpect(status().isConflict())

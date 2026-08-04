@@ -40,9 +40,13 @@ public class AuctionService {
      * 경매글과 경매를 한 트랜잭션으로 함께 생성한다
      */
     @Transactional
-    public AuctionCreateInfo create(Long vehicleId, long startPrice, LocalDateTime startAt) {
+    public AuctionCreateInfo create(long sellerId, Long vehicleId, long startPrice, LocalDateTime startAt) {
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new BusinessException(AuctionErrorCode.VEHICLE_NOT_FOUND));
+
+        if (!vehicle.getSeller().getId().equals(sellerId)) {
+            throw new BusinessException(AuctionErrorCode.NOT_VEHICLE_OWNER);
+        }
 
         if (auctionRepository.existsActiveByVehicleId(vehicleId, ACTIVE_STATUSES)) {
             throw new BusinessException(AuctionErrorCode.AUCTION_ALREADY_EXISTS);

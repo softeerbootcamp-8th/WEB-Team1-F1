@@ -8,6 +8,7 @@ import com.softeer.race.auction.exception.AuctionErrorCode;
 import com.softeer.race.auctionpost.domain.AuctionPost;
 import com.softeer.race.auctionpost.domain.AuctionPostRepository;
 import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.user.domain.User;
 import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleImage;
 import com.softeer.race.vehicle.domain.VehicleImageRepository;
@@ -72,13 +73,14 @@ class AuctionServiceTest {
     @Test
     @DisplayName("경매글을 등록하면 경매글과 경매과 함께 저장된다.")
     void create_성공() {
-        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle()));
+        Vehicle vehicle = vehicle(SELLER_ID);
+        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         given(vehicleImageRepository.findFirstByVehicleOrderBySortOrderAsc(any()))
                 .willReturn(Optional.empty());
         given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(auctionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-        service.create(VEHICLE_ID, START_PRICE, VALID_START_AT);
+        service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT);
         then(auctionPostRepository).should().save(any(AuctionPost.class));
         then(auctionRepository).should().save(any(Auction.class));
     }
@@ -86,14 +88,15 @@ class AuctionServiceTest {
     @Test
     @DisplayName("차량 이미지 중 sortOrder가 가장 앞선 이미지가 썸네일이 된다.")
     void create_썸네일_자동_선택() {
-        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle()));
+        Vehicle vehicle = vehicle(SELLER_ID);
+        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         VehicleImage image = vehicleImage("https://cdn/first.jpg");
         given(vehicleImageRepository.findFirstByVehicleOrderBySortOrderAsc(any()))
                 .willReturn(Optional.of(image));
         given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(auctionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-        service.create(VEHICLE_ID, START_PRICE, VALID_START_AT);
+        service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT);
 
         ArgumentCaptor<AuctionPost> captor = ArgumentCaptor.forClass(AuctionPost.class);
         then(auctionPostRepository).should().save(captor.capture());
@@ -102,12 +105,29 @@ class AuctionServiceTest {
     }
 
     @Test
+    @DisplayName("차량 소유자가 아니면 경매글을 등록할 수 없다.")
+    void create_소유자_아님_거부() {
+        long strangerId = SELLER_ID + 1;
+        Vehicle vehicle = vehicle(SELLER_ID);
+        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
+
+        assertThatThrownBy(() -> service.create(strangerId, VEHICLE_ID, START_PRICE, VALID_START_AT))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AuctionErrorCode.NOT_VEHICLE_OWNER);
+
+        then(auctionPostRepository).shouldHaveNoInteractions();
+        then(auctionRepository).should(never()).save(any());
+    }
+
+    @Test
     @DisplayName("이미 진행 중인 경매가 있는 차량은 다시 등록할 수 없다.")
     void create_중복_경매_거부() {
-        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle()));
+        Vehicle vehicle = vehicle(SELLER_ID);
+        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         given(auctionRepository.existsActiveByVehicleId(any(), any())).willReturn(true);
 
-        assertThatThrownBy(() -> service.create(VEHICLE_ID, START_PRICE, VALID_START_AT))
+        assertThatThrownBy(() -> service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT))
                 .isInstanceOf(BusinessException.class);
 
         then(auctionPostRepository).shouldHaveNoInteractions();
@@ -117,14 +137,15 @@ class AuctionServiceTest {
     @Test
     @DisplayName("유찰된 경매는 재등록 판단 대상 상태에서 제외된다.")
     void create_유찰은_활성상태_아님() {
-        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle()));
+        Vehicle vehicle = vehicle(SELLER_ID);
+        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         given(vehicleImageRepository.findFirstByVehicleOrderBySortOrderAsc(any()))
                 .willReturn(Optional.empty());
         given(auctionRepository.existsActiveByVehicleId(any(), any())).willReturn(false);
         given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(auctionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
-        service.create(VEHICLE_ID, START_PRICE, VALID_START_AT);
+        service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT);
 
         ArgumentCaptor<Collection<AuctionStatus>> statusesCaptor = ArgumentCaptor.forClass(Collection.class);
         then(auctionRepository).should().existsActiveByVehicleId(eq(VEHICLE_ID), statusesCaptor.capture());
@@ -139,7 +160,7 @@ class AuctionServiceTest {
     void create_차량_없음_거부() {
         given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.create(VEHICLE_ID, START_PRICE, VALID_START_AT))
+        assertThatThrownBy(() -> service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT))
                 .isInstanceOf(BusinessException.class);
 
         then(auctionPostRepository).shouldHaveNoInteractions();
@@ -264,6 +285,14 @@ class AuctionServiceTest {
 
     private Vehicle vehicle() {
         return mock(Vehicle.class);
+    }
+
+    private Vehicle vehicle(long sellerId) {
+        Vehicle vehicle = mock(Vehicle.class);
+        User seller = mock(User.class);
+        given(seller.getId()).willReturn(sellerId);
+        given(vehicle.getSeller()).willReturn(seller);
+        return vehicle;
     }
 
     private VehicleImage vehicleImage(String url) {
