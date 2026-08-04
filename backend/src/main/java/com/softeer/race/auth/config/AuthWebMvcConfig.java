@@ -42,6 +42,7 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/api/auth/me",
                         "/api/sell",
+                        "/api/visit-quotes",
                         "/api/images/presigned",
                         "/api/vehicles/*/images",
                         // 알림은 전 경로가 본인 것만 다룬다, 세그먼트 수가 달라 ** 로 묶는다
