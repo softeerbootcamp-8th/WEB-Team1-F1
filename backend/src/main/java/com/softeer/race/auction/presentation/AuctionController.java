@@ -28,8 +28,9 @@ public class AuctionController {
 
     @Operation(summary = "경매글 등록", description = "보유 차량으로 경매글을 등록하고 경매를 예약합니다.")
     @PostMapping
-    public ResponseEntity<AuctionCreateResponse> create(@Valid @RequestBody AuctionCreateRequest request) {
-        AuctionCreateInfo info = auctionService.create(request.vehicleId(), request.startPrice(), request.startAt());
+    public ResponseEntity<AuctionCreateResponse> create(@LoginUser AuthenticatedUser authenticatedUser,
+                                                        @Valid @RequestBody AuctionCreateRequest request) {
+        AuctionCreateInfo info = auctionService.create(authenticatedUser.id(), request.vehicleId(), request.startPrice(), request.startAt());
         AuctionCreateResponse response = AuctionCreateResponse.from(info);
 
         return ResponseEntity
