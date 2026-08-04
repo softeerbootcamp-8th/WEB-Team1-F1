@@ -36,8 +36,15 @@ public class NotificationStreamService {
     public void subscribe(long userId, UserSubscriber subscriber) {
         userChannel.subscribe(userId, subscriber);
 
-        // 채널이 아니라 이 구독에만 보낸다, 이미 열려 있던 다른 탭은 자기 배지를 맞춰 둔 상태다
-        subscriber.sendUnreadCount(notificationRepository.countUnread(userId));
+        try {
+            // 채널이 아니라 이 구독에만 보낸다, 이미 열려 있던 다른 탭은 자기 배지를 맞춰 둔 상태다
+            subscriber.sendUnreadCount(notificationRepository.countUnread(userId));
+        } catch (RuntimeException e) {
+            // 등록은 됐는데 응답이 시작되지 못한 구독은 청소로도 걷어낼 수 없다. 컨트롤러가 예외로
+            // 끝나면 해제 콜백이 붙을 기회가 없고, 초기화 전 emitter 는 찔러 봐도 예외를 내지 않는다.
+            userChannel.unsubscribe(userId, subscriber);
+            throw e;
+        }
     }
 
     /**
