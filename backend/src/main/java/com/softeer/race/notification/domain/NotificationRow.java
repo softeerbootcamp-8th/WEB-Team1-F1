@@ -17,6 +17,22 @@ public record NotificationRow(
         LocalDateTime createdAt
 ) {
 
+    /**
+     * 방금 저장한 알림을 전송에 실을 모양으로
+     * <p>
+     * 조회는 JPQL 생성자로 이 record 를 직접 만들지만, 발행 직후에는 엔티티가 손에 있다. 변환을
+     * 여기 두어 조회 경로와 전송 경로가 같은 필드 구성을 쓰게 한다.
+     */
+    public static NotificationRow from(Notification notification) {
+        return new NotificationRow(
+                notification.getId(),
+                notification.getType(),
+                notification.getMessage(),
+                notification.isRead(),
+                notification.getReferenceId(),
+                notification.getCreatedAt());
+    }
+
     /** 알림을 눌렀을 때 갈 곳, 저장하지 않고 내보낼 때마다 만든다 */
     public String link() {
         return type.linkTo(referenceId);
