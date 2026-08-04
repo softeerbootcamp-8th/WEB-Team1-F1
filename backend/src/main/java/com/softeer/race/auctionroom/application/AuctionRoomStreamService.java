@@ -77,8 +77,13 @@ public class AuctionRoomStreamService {
     @Scheduled(fixedDelay = DISCONNECT_INTERVAL_MILLIS, scheduler = SchedulingConfig.ROOM_STREAM)
     public void disconnectClosedRooms() {
         for (long auctionId : roomChannel.subscribedAuctions()) {
-            if (connectionsAreOver(auctionId)) {
-                roomChannel.closeRoom(auctionId);
+            // 한 방의 실패를 그 방에 가둔다, 남은 방은 이번 주기에 그대로 정리한다
+            try {
+                if (connectionsAreOver(auctionId)) {
+                    roomChannel.closeRoom(auctionId);
+                }
+            } catch (Exception e) {
+                log.warn("경매방 연결 종료 실패, 경매 {}", auctionId, e);
             }
         }
     }
