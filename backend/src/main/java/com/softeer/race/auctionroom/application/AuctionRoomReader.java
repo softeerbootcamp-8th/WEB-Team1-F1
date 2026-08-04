@@ -41,6 +41,13 @@ class AuctionRoomReader {
         return auctionRoomRepository.findDetailById(auctionId);
     }
 
+    // 연결을 끊을지만 정하면 되므로 상세 한 행이면 충분하다, 집계와 호가는 읽지 않는다
+    @Transactional(readOnly = true)
+    public Optional<RoomPhase> findPhase(long auctionId) {
+        return auctionRoomRepository.findDetailById(auctionId)
+                .map(detail -> detail.snapshot().phaseAt(LocalDateTime.now(clock)));
+    }
+
     // 결과에는 건수만 나가지만 집계 쿼리 하나로 둘 다 나오므로 그대로 쓴다
     @Transactional(readOnly = true)
     public long countBids(long auctionId) {
