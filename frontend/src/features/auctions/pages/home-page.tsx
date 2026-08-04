@@ -19,7 +19,7 @@ const FEATURES = [
     icon: Search,
     eyebrow: 'PRICE',
     title: '로그인 없이 시세 조회',
-    description: '이름과 번호판을 입력하면 예상 시세를 빠르게 확인할 수 있습니다.',
+    description: '이름과 번호판으로 차량을 확인한 뒤, 현재 주행거리를 반영해 예상 시세를 확인합니다.',
     to: '/quote',
     cta: '시세 확인하기',
   },
@@ -34,7 +34,7 @@ const FEATURES = [
   {
     icon: CarFront,
     eyebrow: 'SELL',
-    title: '이름·번호판으로 판매 접수',
+    title: '차량 정보로 판매 접수',
     description: '복잡한 차량 정보 없이 소유자와 차량을 확인하고 평가사를 연결합니다.',
     to: '/sell',
     cta: '내 차 팔기',
@@ -116,7 +116,7 @@ export function HomePage() {
           <Value
             icon={CarFront}
             title="간결한 판매 접수"
-            description="이름과 번호판 확인 후 필요한 정보는 방문 평가에서 완성합니다."
+            description="이름·번호판 확인 후 필요한 정보는 방문 평가에서 완성합니다."
           />
         </div>
       </section>
