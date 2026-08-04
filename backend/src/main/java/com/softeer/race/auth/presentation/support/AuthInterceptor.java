@@ -2,6 +2,7 @@ package com.softeer.race.auth.presentation.support;
 
 import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.auth.domain.AuthenticatedUser;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -38,6 +39,16 @@ public class AuthInterceptor implements HandlerInterceptor {
         // 그대로 유지한다. 걸러 주지 않으면 OPTIONS가 401이 되고, 브라우저는 실제 요청을 보내지 않는다
         // preflight에는 쿠키가 실리지 않으므로 인증을 요구하는 것 자체가 의미가 없다
         if (CorsUtils.isPreFlightRequest(request)) {
+            return true;
+        }
+
+        // DispatcherServlet.doDispatch 는 applyPreHandle 을 디스패치마다 조건 없이 부른다. 그래서 비동기
+        // 응답이 끝나 돌아오는 ASYNC 디스패치에서도 인증이 다시 돌고, 삼십 분 열려 있는 구독은 그 사이
+        // 세션이 만료될 수 있어 이미 다 내려보낸 응답 위에서 인증 예외가 난다
+        // 인증은 요청당 한 번 도는 관심사다. 같은 관심사를 필터로 구현하면 OncePerRequestFilter 가
+        // shouldNotFilterAsyncDispatch 기본값 true 로 ASYNC 를 건너뛴다, 여기서는 그 기본값을 직접 맞춘다
+        // ASYNC 만 건넌다. FORWARD·INCLUDE·ERROR 까지 넓히면 근거 없이 인증을 우회하는 통로가 는다
+        if (request.getDispatcherType() == DispatcherType.ASYNC) {
             return true;
         }
 

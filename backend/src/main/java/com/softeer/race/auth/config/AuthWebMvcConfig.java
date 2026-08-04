@@ -26,16 +26,19 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
     private final AuthProperties authProperties;
 
     /**
-     * 지금은 인증이 필요한 경로만 화이트리스트로 나열한다. AuctionRoomController가 아직 X-User-Id
-     * 임시 헤더를 쓰고 있어 deny-by-default로 두면 기존 흐름과 통합 테스트가 함께 깨진다.
-     * <p>
-     * TODO X-User-Id를 걷어낼 때 /api/** 를 기본 차단으로 두고 공개 경로만 excludePathPatterns로 뒤집는다.
+     * 인증이 필요한 경로만 화이트리스트로 나열한다. deny-by-default로 뒤집지 않는 이유는 다른 트랙의
+     * 핸들러가 아직 {@code @LoginUser}를 받지 않아, 회원가입·시세 조회·경매 등록이 함께 401이 되기 때문이다.
      * <p>
      * 로그아웃은 넣지 않는다. 이미 만료된 세션의 로그아웃이 401이 되면 멱등성이 깨진다.
      * <p>
      * 인증이 필요한 경로는 여기와 핸들러의 {@code @LoginUser} 파라미터를 <b>둘 다</b> 갖춰야 한다.
      * 여기서만 빠지면 LoginUserArgumentResolver가 401을 던져 안전하게 실패하기는 하지만,
      * 쿠키를 정상적으로 보낸 요청까지 401이 되어 원인을 오해하기 쉽다.
+     * <p>
+     * 예외는 경매방 구독이다. 구독이 내려보내는 방 현황에는 보는 사람에 따라 달라지는 값이 없어
+     * 서버가 누구인지 알 필요가 없고 로그인 여부만 확인하면 된다. 그래서 경로만 등록하고 핸들러는
+     * {@code @LoginUser}를 받지 않는다. 반대로 방 조회는 낙찰자 본인 여부와 내 입찰 표시를 판정해야
+     * 하므로 둘 다 갖춘다.
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -44,9 +47,12 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
                         "/api/sell",
                         // 알림은 전 경로가 본인 것만 다룬다, 세그먼트 수가 달라 ** 로 묶는다
                         "/api/notifications/**",
-                        // 세그먼트 하나만 매치하는 * 다. ** 로 넓히면 /api/auctions/{id} 까지 걸려
-                        // X-User-Id 를 쓰는 경매방 조회가 401 이 된다
-                        "/api/auctions/*/bids");
+                        // 세그먼트 하나만 매치하는 * 다. ** 로 넓히면 로그인 없이 봐야 하는
+                        // 경매 목록 /api/auctions 와 상세까지 걸린다
+                        "/api/auctions/*/bids",
+                        "/api/auctions/*/room",
+                        // /room 등록이 덮지 않는다, * 도 ** 도 아닌 리터럴 세그먼트가 하나 더 붙어 있다
+                        "/api/auctions/*/room/stream");
     }
 
     @Override
