@@ -63,7 +63,7 @@ class VisitQuoteControllerTest {
     void request() throws Exception {
         given(visitQuoteService.request(any(VisitQuoteCommand.class))).willReturn(
                 new VisitQuoteInfo(1L, 1000L, PLATE_NUMBER,
-                        VISIT_DATE, VISIT_ADDRESS, "REQUESTED", 23_200_000L));
+                        VISIT_DATE, VISIT_ADDRESS, "REQUESTED"));
 
         perform(validRequest())
                 .andExpect(status().isCreated())
@@ -73,9 +73,10 @@ class VisitQuoteControllerTest {
                 .andExpect(jsonPath("$.visitDate").value("2026-08-20"))
                 .andExpect(jsonPath("$.visitAddress").value(VISIT_ADDRESS))
                 .andExpect(jsonPath("$.status").value("REQUESTED"))
-                .andExpect(jsonPath("$.estimatedPrice").value(23200000))
                 // 연락처는 신청자가 방금 보낸 값이라 되돌려주지 않는다
-                .andExpect(jsonPath("$.contactPhone").doesNotExist());
+                .andExpect(jsonPath("$.contactPhone").doesNotExist())
+                // 금액은 접수 시점에 산정하지 않는다, 있으면 사용자가 평가사 견적으로 읽는다
+                .andExpect(jsonPath("$.estimatedPrice").doesNotExist());
     }
 
     // 조회 API가 없어 Location에 넣을 주소가 전부 404를 가리키므로 헤더를 붙이지 않기로 했다
@@ -84,7 +85,7 @@ class VisitQuoteControllerTest {
     void requestHasNoLocationHeader() throws Exception {
         given(visitQuoteService.request(any(VisitQuoteCommand.class))).willReturn(
                 new VisitQuoteInfo(1L, 1000L, PLATE_NUMBER,
-                        VISIT_DATE, VISIT_ADDRESS, "REQUESTED", 23_200_000L));
+                        VISIT_DATE, VISIT_ADDRESS, "REQUESTED"));
 
         perform(validRequest())
                 .andExpect(status().isCreated())
@@ -95,13 +96,13 @@ class VisitQuoteControllerTest {
     @DisplayName("필수 필드가 비어 있으면 필드 오류와 함께 400을 반환한다")
     void requestRejectsBlankFields() throws Exception {
         perform("""
-                {"plateNumber": "", "ownerName": "", "mileage": null,
+                {"plateNumber": "", "ownerName": "",
                  "visitAddress": "", "visitDate": null, "contactPhone": ""}
                 """)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
                 .andExpect(jsonPath("$.errors[*].field", hasItems(
-                        "plateNumber", "ownerName", "mileage", "visitAddress", "visitDate", "contactPhone")));
+                        "plateNumber", "ownerName", "visitAddress", "visitDate", "contactPhone")));
     }
 
     @Test
@@ -111,7 +112,7 @@ class VisitQuoteControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
                 .andExpect(jsonPath("$.errors[*].field", hasItems(
-                        "plateNumber", "ownerName", "mileage", "visitAddress", "visitDate", "contactPhone")));
+                        "plateNumber", "ownerName", "visitAddress", "visitDate", "contactPhone")));
     }
 
     // 화면 안내가 "'-'를 제외하고 숫자만"이므로 하이픈은 요청 단계에서 막혀야 한다
@@ -184,7 +185,7 @@ class VisitQuoteControllerTest {
     private static String body(String plateNumber, String ownerName, String visitAddress,
                                String visitDate, String contactPhone) {
         return """
-                {"plateNumber": "%s", "ownerName": "%s", "mileage": 45000,
+                {"plateNumber": "%s", "ownerName": "%s",
                  "visitAddress": "%s", "visitDate": "%s", "contactPhone": "%s"}
                 """.formatted(plateNumber, ownerName, visitAddress, visitDate, contactPhone);
     }

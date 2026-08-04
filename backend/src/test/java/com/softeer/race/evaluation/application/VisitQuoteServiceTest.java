@@ -51,20 +51,11 @@ class VisitQuoteServiceTest {
     private static final long SELLER_ID = 90L;
     private static final String PLATE_NUMBER = "12가3456";
     private static final String OWNER_NAME = "김민수";
-    /** 신청자가 신고하는 값이다. 평가사 방문에서 실측으로 교정된다 */
-    private static final int MILEAGE = 45_000;
     private static final String VISIT_ADDRESS = "서울 성동구 왕십리로 83";
     private static final String CONTACT_PHONE = "01012345678";
 
-    /** 그 모델의 기준가. 개별 차량의 연식·주행거리가 빠진 신차급 값이다 */
+    /** 그 모델의 기준가. 접수 시점에는 쓰지 않는다 — 시세는 평가사가 방문해 산정한다 */
     private static final long BASE_PRICE = 34_000_000L;
-
-    /**
-     * 위 기준가에 2021년식·4.5만km 감가를 반영한 값이다. QuotePolicy를 테스트에서 다시 호출해
-     * 비교하면 정책이 무엇을 계산하든 통과하므로, 손으로 계산한 값을 적어 둔다.
-     * 기준가 3400만 - 연식 5년(25%) 850만 - 주행 4.5만km(6.75%) 229.5만 = 2320.5만 → 만원 절사
-     */
-    private static final long ESTIMATED_PRICE = 23_200_000L;
 
     @Mock
     private VehicleLookup vehicleLookup;
@@ -109,16 +100,15 @@ class VisitQuoteServiceTest {
         Vehicle vehicle = capturedVehicle();
         assertThat(vehicle.getPlateNumber()).isEqualTo(PLATE_NUMBER);
         assertThat(vehicle.getModelYear()).isEqualTo(2021);
-        // 주행거리는 조회기가 아니라 요청에서 온 신고값이다
-        assertThat(vehicle.getMileage()).isEqualTo(MILEAGE);
         assertThat(evaluation.getVehicle()).isSameAs(vehicle);
 
-        // then 4 : 차량의 예상 시세는 기준가가 아니라 감가를 반영한 값이다
-        assertThat(vehicle.getEstimatedPrice()).isEqualTo(ESTIMATED_PRICE);
-        assertThat(vehicle.getEstimatedPrice()).isLessThan(BASE_PRICE);
+        // then 4 : 주행거리와 예상 시세는 비어 있다 — 실측과 산정은 평가사가 방문해서 한다
+        // 여기에 값이 들어가면 검증되지 않은 숫자가 차량에 남고 화면이 그것을 견적으로 읽는다
+        assertThat(vehicle.getMileage()).isNull();
+        assertThat(vehicle.getEstimatedPrice()).isNull();
+        assertThat(BASE_PRICE).isPositive();  // 기준가를 조회했지만 쓰지 않는다는 것을 남긴다
 
-        // then 5 : 응답으로 나가는 금액도 차량에 저장한 값과 같다
-        assertThat(info.estimatedPrice()).isEqualTo(ESTIMATED_PRICE);
+        // then 5 : 응답에도 금액이 없다
         assertThat(info.status()).isEqualTo("REQUESTED");
         assertThat(info.plateNumber()).isEqualTo(PLATE_NUMBER);
     }
@@ -226,7 +216,7 @@ class VisitQuoteServiceTest {
     }
 
     private static VisitQuoteCommand command(LocalDate visitDate) {
-        return new VisitQuoteCommand(SELLER_ID, PLATE_NUMBER, OWNER_NAME, MILEAGE,
+        return new VisitQuoteCommand(SELLER_ID, PLATE_NUMBER, OWNER_NAME,
                 VISIT_ADDRESS, visitDate, CONTACT_PHONE);
     }
 

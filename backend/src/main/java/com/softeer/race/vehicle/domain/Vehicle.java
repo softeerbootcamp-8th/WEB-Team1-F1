@@ -39,8 +39,15 @@ public class Vehicle extends BaseTimeEntity {
     @Column(nullable = false)
     private int modelYear;
 
-    @Column(nullable = false)
-    private int mileage;
+    /**
+     * 진단 전에는 비어 있다. 방문견적 신청은 "이 차를 봐 주세요"라는 예약이라 주행거리를 알 수 없고,
+     * 실측은 평가사가 방문해서 한다. 신청자에게 물어 받아 두면 검증되지 않은 숫자가 차량에 남는다.
+     * <p>
+     * <b>경매가 붙은 차량은 항상 채워져 있다</b>는 불변식이 있다. 판매 신청은 주행거리를 받아 곧바로
+     * 경매를 만들고, 방문견적으로 만들어진 차량은 진단을 거쳐 값이 채워진 뒤에야 출품된다.
+     * 경매 목록과 경매방이 이 값을 원시 int 로 받는 것이 그 불변식에 기대고 있다.
+     */
+    private Integer mileage;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -55,7 +62,7 @@ public class Vehicle extends BaseTimeEntity {
 
     private Long estimatedPrice;
 
-    private Vehicle(User seller, VehicleSpec spec, int mileage, long estimatedPrice) {
+    private Vehicle(User seller, VehicleSpec spec, Integer mileage, Long estimatedPrice) {
         this.seller = seller;
         this.manufacturer = spec.manufacturer();
         this.model = spec.model();
@@ -76,8 +83,9 @@ public class Vehicle extends BaseTimeEntity {
      * <p>
      * <b>주행거리만 예외다.</b> 번호판에 고정된 사실이 아니라 시점에 따라 변하는 값이라 조회기가
      * 들고 있을 수 없어({@link VehicleSpec} 주석 참고) 사용자 신고값을 받는다. 그래서 이 인자는
-     * 위조 가능하고, 낮게 신고하면 예상 시세와 경매 시작가가 함께 부풀려진다. 방문견적 흐름은
-     * 평가사가 방문해 실측하므로 그 지점에서 교정되지만, 평가를 거치지 않는 경로에는 검증이 없다.
+     * 위조 가능하고, 낮게 신고하면 예상 시세와 경매 시작가가 함께 부풀려진다. 이 팩토리를 쓰는
+     * 판매 신청은 평가를 거치지 않고 곧바로 경매가 되어 그 값을 검증할 단계가 없다.
+     * 평가사 실측을 거치는 경로는 {@link #pendingDiagnosis}를 쓴다.
      * <p>
      * spec에 modelYear가 남아 있어 두 int가 뒤바뀔 위험은 없다. mileage는 int이고 estimatedPrice는
      * long이라 순서를 바꿔 넘기면 컴파일되지 않는다.
@@ -88,5 +96,20 @@ public class Vehicle extends BaseTimeEntity {
      */
     public static Vehicle create(User seller, VehicleSpec spec, int mileage, long estimatedPrice) {
         return new Vehicle(seller, spec, mileage, estimatedPrice);
+    }
+
+    /**
+     * 평가사 진단을 기다리는 차량을 만든다. 주행거리와 예상 시세는 비어 있다.
+     * <p>
+     * 방문견적 신청이 쓰는 경로다. 그 시점에 아는 것은 "이 번호판의 차를 봐 달라"는 것뿐이고,
+     * 주행거리는 평가사가 실측하고 시세는 평가사가 산정한다. 신청자에게 물어 받아 두면 검증되지 않은
+     * 값이 차량에 남고, {@link com.softeer.race.quote.domain.QuotePolicy}로 미리 계산해 두면
+     * 아무것도 보증하지 않는 금액이 응답에 실려 나간다.
+     * <p>
+     * {@link #create}와 갈라 두는 이유는 두 경로가 채울 수 있는 값이 다르다는 것을 타입으로
+     * 드러내기 위해서다. 인자에 null 을 넘겨 하나로 합치면 호출자가 무엇을 비워도 되는지 알 수 없다.
+     */
+    public static Vehicle pendingDiagnosis(User seller, VehicleSpec spec) {
+        return new Vehicle(seller, spec, null, null);
     }
 }

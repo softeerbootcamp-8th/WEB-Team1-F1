@@ -11,6 +11,10 @@ import java.time.LocalDate;
  * 신청자가 방금 보낸 값이라 되돌려줄 이유가 없고, 필드가 있으면 로그·캐시로 새어 나갈 경로가 늘어난다.
  * <p>
  * evaluator를 담지 않는다. 접수 직후에는 항상 비어 있어 담아도 null만 나간다.
+ * <p>
+ * <b>예상 시세도 담지 않는다.</b> 접수 시점에는 산정하지 않는다 — 주행거리를 모르는 상태의 금액은
+ * 아무것도 보증하지 않고, 화면에 뜨면 사용자는 그것을 평가사가 제시할 금액으로 읽는다.
+ * 시세는 평가사가 방문해 산정한다.
  */
 public record VisitQuoteInfo(
         Long evaluationId,
@@ -18,15 +22,10 @@ public record VisitQuoteInfo(
         String plateNumber,
         LocalDate visitDate,
         String visitAddress,
-        String status,
-        long estimatedPrice
+        String status
 ) {
 
-    /**
-     * @param estimatedPrice 차량에 저장한 값과 같은 값이어야 한다. Evaluation에서 다시 꺼내지 않고
-     *                       인자로 받는 것은 Evaluation이 금액을 들고 있지 않기 때문이다
-     */
-    public static VisitQuoteInfo from(Evaluation evaluation, long estimatedPrice) {
+    public static VisitQuoteInfo from(Evaluation evaluation) {
         Vehicle vehicle = evaluation.getVehicle();
 
         return new VisitQuoteInfo(
@@ -35,8 +34,7 @@ public record VisitQuoteInfo(
                 vehicle.getPlateNumber(),
                 evaluation.getVisitDate(),
                 evaluation.getVisitAddress(),
-                evaluation.getStatus().name(),
-                estimatedPrice
+                evaluation.getStatus().name()
         );
     }
 }

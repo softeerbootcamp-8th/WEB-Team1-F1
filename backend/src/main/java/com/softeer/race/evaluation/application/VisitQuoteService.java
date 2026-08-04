@@ -7,7 +7,6 @@ import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.domain.EvaluationStatus;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
-import com.softeer.race.quote.domain.QuotePolicy;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
 import com.softeer.race.vehicle.domain.Vehicle;
@@ -23,6 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 방문견적 신청 접수. 예상 시세를 확인한 판매자가 방문 희망 장소 · 날짜 · 연락처를 보내면
  * 차량과 평가 요청을 한 트랜잭션으로 만들고 평가사 배정 대기 상태로 둔다.
+ * <p>
+ * <b>예상 시세를 산정하지 않는다.</b> 이 접수는 "이 차를 봐 주세요"라는 예약이고, 주행거리 실측과
+ * 시세 산정은 평가사가 방문해서 하는 일이다. 여기서 금액을 계산해 응답에 실으면 사용자는 그것을
+ * 평가사가 제시할 금액으로 읽는데, 주행거리를 모르는 상태의 계산은 아무것도 보증하지 않는다.
+ * 그래서 차량은 주행거리 · 예상 시세가 빈 상태로 만들어진다({@code Vehicle.pendingDiagnosis}).
  * <p>
  * 경매글과 경매는 만들지 않는다. 진단이 끝난 뒤에 출품하는 것이 이 흐름의 전제이고, 그래서
  * 판매 신청({@code SellService})과 달리 여기서는 경매가 생기지 않는다. 두 흐름은 지금 병행하며,
@@ -71,17 +75,14 @@ public class VisitQuoteService {
         User seller = userRepository.findById(command.sellerId())
                 .orElseThrow(() -> new BusinessException(EvaluationErrorCode.SELLER_NOT_FOUND));
 
-        // 날짜는 한 번만 읽어 나이 계산과 방문일 검증에 함께 쓴다. 두 번 읽으면 자정을 넘기는 순간
-        // 검증에는 통과한 날짜가 나이 계산에서는 다른 해로 잡히고, 고정 Clock 테스트에서는 재현되지 않는다
         LocalDate today = LocalDate.now(clock);
-
-        // 주행거리는 조회된 제원이 아니라 신청자가 신고한 값이다, 평가사 방문에서 실측으로 교정된다
-        long estimatedPrice = QuotePolicy.estimate(spec.basePrice(),
-                QuotePolicy.ageOf(spec.modelYear(), today.getYear()), command.mileage());
 
         // 번호판 중복은 위에서 상태로만 걸렀다. 반려된 차량은 다시 신청할 수 있어야 하므로
         // 여기서 기존 vehicle 행을 재사용하지 않고 매번 새로 만든다
-        Vehicle vehicle = Vehicle.create(seller, spec, command.mileage(), estimatedPrice);
+        //
+        // spec 에서 쓰는 것은 제조사 · 모델 · 연식 · 연료 · 변속기다. 그 컬럼들이 NOT NULL 이라
+        // 조회를 건너뛸 수는 없다. basePrice 는 쓰지 않는다 — 시세를 산정하지 않으므로 필요가 없다
+        Vehicle vehicle = Vehicle.pendingDiagnosis(seller, spec);
 
         // 저장 전에 조립한다. 방문일 규칙 위반이 Evaluation.request에서 터지므로,
         // 순서를 뒤집으면 거부될 요청이 vehicle insert까지 갔다가 롤백된다
@@ -90,6 +91,6 @@ public class VisitQuoteService {
 
         vehicleRepository.save(vehicle);
 
-        return VisitQuoteInfo.from(evaluationRepository.save(evaluation), estimatedPrice);
+        return VisitQuoteInfo.from(evaluationRepository.save(evaluation));
     }
 }

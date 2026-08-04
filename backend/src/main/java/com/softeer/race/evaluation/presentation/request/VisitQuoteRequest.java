@@ -2,8 +2,6 @@ package com.softeer.race.evaluation.presentation.request;
 
 import com.softeer.race.evaluation.application.dto.command.VisitQuoteCommand;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -33,14 +31,8 @@ public record VisitQuoteRequest(
         @Size(max = VisitQuoteRequest.MAX_OWNER_NAME_LENGTH, message = "소유자명은 50자 이하여야 합니다.")
         String ownerName,
 
-        // Integer 다. 원시 int 로 두면 필드를 빼고 보낸 요청이 400 이 아니라 주행거리 0km 로
-        // 조용히 통과해, 감가가 전혀 없는 시세가 그대로 저장된다
-        @Schema(description = "현재 주행거리(km)", example = "45000")
-        @NotNull
-        @Min(value = 0, message = "주행거리는 0km 이상이어야 합니다.")
-        @Max(value = VisitQuoteRequest.MAX_MILEAGE_KM, message = "주행거리는 999,999km 이하여야 합니다.")
-        Integer mileage,
-
+        // 주행거리를 받지 않는다. 이 요청은 예약이고 실측은 평가사가 한다 —
+        // 여기서 받으면 검증되지 않은 숫자가 차량에 남는다. 시세 조회(/api/quotes)와 다른 점이다
         @Schema(description = "차량이 있는 곳의 주소", example = "서울 성동구 왕십리로 83")
         @NotBlank
         @Size(max = VisitQuoteRequest.MAX_ADDRESS_LENGTH,
@@ -69,9 +61,6 @@ public record VisitQuoteRequest(
     /** QuoteRequest와 같은 값이어야 한다. 두 API가 같은 카탈로그의 같은 컬럼을 대조한다 */
     static final int MAX_OWNER_NAME_LENGTH = 50;
 
-    /** 오타(4500000)를 잡는 그물이다. 시세 조회를 통과한 값이 신청에서 막히면 안 되므로 QuoteRequest와 같은 값이다 */
-    static final int MAX_MILEAGE_KM = 999_999;
-
     /**
      * 인증 주체를 인자로 받는다. Command는 유스케이스 입력 전체이고 행위 주체도 그 입력의 일부다.
      * <p>
@@ -79,7 +68,7 @@ public record VisitQuoteRequest(
      * 섞이면 조회가 실패한다) 다듬고, 번호판과 연락처는 정규식이 공백을 이미 막고 있다.
      */
     public VisitQuoteCommand toCommand(long sellerId) {
-        return new VisitQuoteCommand(sellerId, plateNumber, ownerName.trim(), mileage,
+        return new VisitQuoteCommand(sellerId, plateNumber, ownerName.trim(),
                 visitAddress.trim(), visitDate, contactPhone);
     }
 }

@@ -72,14 +72,9 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
     private static final String OTHER_OWNER_NAME = "이서연";
     private static final String VISIT_ADDRESS = "서울 성동구 왕십리로 83";
     private static final String CONTACT_PHONE = "01012345678";
-    /** 신고값이다. 픽스처 카탈로그에는 주행거리 열이 없다 */
-    private static final int MILEAGE = 45_000;
 
     /** 픽스처 201번의 기준가. 그 모델의 신차급 가격이라 응답으로 나가면 안 되는 값이다 */
     private static final long CATALOG_BASE_PRICE = 34_000_000L;
-
-    /** 예상 시세는 만원 단위로 절사돼 나간다, 원 단위 잔돈이 붙으면 정책을 거치지 않은 값이다 */
-    private static final long DISPLAY_UNIT = 10_000L;
 
     // 고정하지 않은 실제 Clock이다, 방문 날짜를 여기서 상대적으로 만든다
     @Autowired
@@ -100,6 +95,8 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.plateNumber").value(PLATE_NUMBER))
                 .andExpect(jsonPath("$.visitDate").value(visitDate.toString()))
                 .andExpect(jsonPath("$.visitAddress").value(VISIT_ADDRESS))
+                // 접수 시점에는 시세를 산정하지 않는다
+                .andExpect(jsonPath("$.estimatedPrice").doesNotExist())
                 // 연락처는 응답에 실리지 않는다. 필드가 하나 늘는 것만으로 무너지므로 못 박는다
                 .andExpect(jsonPath("$.contactPhone").doesNotExist())
                 .andReturn();
@@ -111,17 +108,13 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
         assertThat(vehicle.get("manufacturer")).isEqualTo("HYUNDAI");
         assertThat(vehicle.get("model")).isEqualTo("그랜저 IG");
         assertThat(vehicle.get("model_year")).isEqualTo(2021);
-        // 주행거리는 카탈로그가 아니라 요청에서 온 신고값이다
-        assertThat(vehicle.get("mileage")).isEqualTo(MILEAGE);
 
-        // then 2 : 예상 시세는 기준가가 아니라 감가를 반영한 값이고, 응답과 차량이 같은 값을 쓴다
-        long estimatedPrice = ((Number) vehicle.get("estimated_price")).longValue();
-        assertThat(estimatedPrice).isLessThan(CATALOG_BASE_PRICE);
-        assertThat(estimatedPrice).isPositive();
-        assertThat(estimatedPrice % DISPLAY_UNIT).isZero();
+        // then 2 : 주행거리와 예상 시세는 비어 있다 — 실측과 산정은 평가사가 방문해서 한다
+        assertThat(vehicle.get("mileage")).isNull();
+        assertThat(vehicle.get("estimated_price")).isNull();
+        // 응답에도 금액이 없다. 기준가가 어디로도 새지 않는다는 것까지 함께 못 박는다
         assertThat(result.getResponse().getContentAsString())
-                .contains("\"estimatedPrice\":" + estimatedPrice)
-                // 기준가는 어디에도 남지 않는다
+                .doesNotContain("estimatedPrice")
                 .doesNotContain(String.valueOf(CATALOG_BASE_PRICE));
 
         // then 3 : 신청은 접수 상태이고 평가사가 배정되지 않았다 — 이것이 "배정 대기"다
@@ -271,10 +264,10 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
                         .cookie(sessionCookie())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"plateNumber": "%s", "ownerName": "%s", "mileage": %d,
+                                {"plateNumber": "%s", "ownerName": "%s",
                                  "visitAddress": "%s", "visitDate": "%s",
                                  "contactPhone": "010-1234-5678"}
-                                """.formatted(PLATE_NUMBER, OWNER_NAME, MILEAGE, VISIT_ADDRESS,
+                                """.formatted(PLATE_NUMBER, OWNER_NAME, VISIT_ADDRESS,
                                 today().plusDays(16))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
@@ -310,9 +303,9 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
 
     private static String body(String plateNumber, String ownerName, LocalDate visitDate) {
         return """
-                {"plateNumber": "%s", "ownerName": "%s", "mileage": %d,
+                {"plateNumber": "%s", "ownerName": "%s",
                  "visitAddress": "%s", "visitDate": "%s", "contactPhone": "%s"}
-                """.formatted(plateNumber, ownerName, MILEAGE, VISIT_ADDRESS, visitDate, CONTACT_PHONE);
+                """.formatted(plateNumber, ownerName, VISIT_ADDRESS, visitDate, CONTACT_PHONE);
     }
 
     // ================= 조회 =================

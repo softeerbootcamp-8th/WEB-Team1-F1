@@ -8,7 +8,12 @@ import java.time.LocalDate;
  * 방문견적 신청 결과. status가 REQUESTED이고 배정된 평가사가 없다는 것이 "접수됨, 배정 대기"다.
  * <p>
  * contactPhone은 넣지 않는다. 신청자가 방금 보낸 값이고, 응답에 실리면 개인정보가 로그·캐시로
- * 새어 나갈 경로가 늘어난다. 기준가도 넣지 않는다 — 예상 시세와 나란히 놓으면 감가율이 역산된다.
+ * 새어 나갈 경로가 늘어난다.
+ * <p>
+ * 금액을 넣지 않는다. 접수 시점에는 시세를 산정하지 않는다 — 평가사가 방문해 실측한 뒤 산정하는 것이
+ * 이 흐름의 존재 이유이고, 여기에 숫자가 있으면 사용자는 그것을 평가사가 제시할 금액으로 읽는다.
+ * <p>
+ * 차량 제원도 넣지 않는다. 앞 단계 시세 조회가 이미 보여준 값이라 되돌려줄 이유가 없다.
  */
 @Schema(description = "방문견적 신청 응답")
 public record VisitQuoteResponse(
@@ -29,16 +34,12 @@ public record VisitQuoteResponse(
         String visitAddress,
 
         @Schema(description = "신청 상태. 접수 직후에는 평가사 배정 대기를 뜻하는 REQUESTED다", example = "REQUESTED")
-        String status,
-
-        @Schema(description = "서버가 산정한 예상 시세", example = "23200000")
-        long estimatedPrice
+        String status
 ) {
 
     public static VisitQuoteResponse from(VisitQuoteInfo info) {
         return new VisitQuoteResponse(
                 info.evaluationId(), info.vehicleId(), info.plateNumber(),
-                info.visitDate(), info.visitAddress(),
-                info.status(), info.estimatedPrice());
+                info.visitDate(), info.visitAddress(), info.status());
     }
 }
