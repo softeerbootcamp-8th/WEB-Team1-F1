@@ -13,6 +13,8 @@ import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
 import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -52,6 +54,10 @@ class AuctionControllerTest extends IntegrationTestSupport {
     private SessionService sessionService;
     @Autowired
     private Clock clock;
+    // @Transactional 테스트라 findById가 1차 캐시의 관리 엔티티를 그대로 돌려줄 수 있다.
+    // flush + clear로 캐시를 비우고 다시 읽어야 실제 DB 반영 여부를 검증하는 셈이 된다.
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Test
     @DisplayName("경매글을 등록하면 경매글과 경매가 저장되고 201을 반환한다.")
@@ -176,6 +182,9 @@ class AuctionControllerTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.startPrice").value(20_000_000))
                 .andExpect(jsonPath("$.startAt").value(newStartAt.format(REQUEST_FORMAT)));
 
+        entityManager.flush();
+        entityManager.clear();
+
         Auction updated = auctionRepository.findById(auction.getId()).orElseThrow();
         assertThat(updated.getStartPrice()).isEqualTo(20_000_000L);
         assertThat(updated.getStartTime()).isEqualTo(newStartAt);
@@ -235,6 +244,9 @@ class AuctionControllerTest extends IntegrationTestSupport {
                         .cookie(판매자_쿠키()))
                 .andExpect(status().isNoContent());
 
+        entityManager.flush();
+        entityManager.clear();
+
         AuctionPost post = auctionPostRepository.findById(auction.getPost().getId()).orElseThrow();
         assertThat(post.getDeletedAt()).isNotNull();
     }
@@ -248,6 +260,9 @@ class AuctionControllerTest extends IntegrationTestSupport {
                         .cookie(판매자_쿠키()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("AUCTION_NOT_ENDED"));
+
+        entityManager.flush();
+        entityManager.clear();
 
         AuctionPost post = auctionPostRepository.findById(auction.getPost().getId()).orElseThrow();
         assertThat(post.getDeletedAt()).isNull();
