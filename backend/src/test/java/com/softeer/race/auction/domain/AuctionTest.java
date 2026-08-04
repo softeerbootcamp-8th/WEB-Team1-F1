@@ -22,6 +22,8 @@ class AuctionTest {
     private static final LocalDateTime START_TIME = LocalDateTime.of(2026, 7, 27, 16, 30);
     // schedule()이 계산하는 마감 = START_TIME + 20분
     private static final LocalDateTime END_TIME = LocalDateTime.of(2026, 7, 27, 16, 50);
+    // schedule()이 계산하는 방 개설 = START_TIME - 30분
+    private static final LocalDateTime ROOM_OPEN_AT = LocalDateTime.of(2026, 7, 27, 16, 0);
 
     private static final User ALICE = User.create(
             "alice", "alice@race.com", "encoded", "김앨리스", "01011112222", "서울 강남구", Role.GENERAL);
@@ -354,6 +356,70 @@ class AuctionTest {
         auction.start(afterEnd);
 
         assertThat(auction.isClosableAt(afterEnd)).isTrue();
+    }
+
+    // ================= 수정 (방 개설 전) =================
+
+    @DisplayName("방 개설 정각부터는 수정할 수 없고, 그 전에는 할 수 있다")
+    @ParameterizedTest(name = "방 개설 {0}초 전 → 수정 가능 {1}")
+    @CsvSource({
+            "1,  true",
+            "0,  false",
+            "-1, false"
+    })
+    void isEditableAt_경계(long secondsBeforeRoomOpen, boolean editable) {
+        Auction auction = scheduled();
+        LocalDateTime now = ROOM_OPEN_AT.minusSeconds(secondsBeforeRoomOpen);
+
+        assertThat(auction.isEditableAt(now)).isEqualTo(editable);
+    }
+
+    @Test
+    @DisplayName("방 개설 전에 수정하면 시작가·시작 시각과 그 파생값(방 개설·마감 시각)이 함께 갱신된다")
+    void updateBeforeRoomOpens_갱신() {
+        Auction auction = scheduled();
+        LocalDateTime now = ROOM_OPEN_AT.minusMinutes(10);
+        LocalDateTime newStartTime = now.plusHours(2);
+
+        auction.updateBeforeRoomOpens(25_000_000L, newStartTime, now);
+
+        assertThat(auction.getStartPrice()).isEqualTo(25_000_000L);
+        assertThat(auction.getStartTime()).isEqualTo(newStartTime);
+        assertThat(auction.getRoomOpenAt()).isEqualTo(newStartTime.minusMinutes(30));
+        assertThat(auction.getCurrentEndTime()).isEqualTo(newStartTime.plusMinutes(20));
+    }
+
+    @Test
+    @DisplayName("방이 열린 뒤에는 수정할 수 없다")
+    void updateBeforeRoomOpens_방개설후_거부() {
+        Auction auction = scheduled();
+
+        assertThatThrownBy(() -> auction.updateBeforeRoomOpens(25_000_000L, ROOM_OPEN_AT.plusHours(2), ROOM_OPEN_AT))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AuctionErrorCode.AUCTION_ROOM_ALREADY_OPEN);
+    }
+
+    // 리드타임 회귀 테스트: 발행 시각이 아니라 "지금(수정 요청 시각)" 기준으로 검사해야 한다.
+    // publishedAt 기준으로 되돌아가면, 발행 후 시간이 오래 지난 뒤에는 리드타임 없이
+    // 임박한 시각으로도 수정이 통과해버린다 (실제로 발견됐던 버그).
+    @Test
+    @DisplayName("발행 후 오래 지났어도 수정 시각의 리드타임은 지금 기준으로 다시 검사한다")
+    void updateBeforeRoomOpens_리드타임은_지금기준() {
+        LocalDateTime publishedAt = LocalDateTime.of(2026, 7, 20, 12, 0);
+        LocalDateTime originalStartTime = LocalDateTime.of(2026, 8, 1, 10, 0);
+        Auction auction = Auction.schedule(
+                AuctionPost.create(null, null, publishedAt), 10_000_000L, originalStartTime);
+
+        // roomOpenAt(8/1 09:30)보다 한참 전이라 편집 가능한 시각이지만,
+        // publishedAt(7/20 12:00) + 1시간은 이미 훌쩍 지난 뒤다
+        LocalDateTime now = LocalDateTime.of(2026, 7, 28, 12, 0);
+        LocalDateTime tooSoonStartTime = now.plusMinutes(10); // 지금부터 10분 뒤, 리드타임 1시간 미달
+
+        assertThatThrownBy(() -> auction.updateBeforeRoomOpens(10_000_000L, tooSoonStartTime, now))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AuctionErrorCode.INVALID_START_AT);
     }
 
     private Auction scheduled() {

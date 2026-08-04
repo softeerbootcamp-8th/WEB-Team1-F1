@@ -45,6 +45,8 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/api/auth/me",
                         "/api/sell",
+                        "/api/images/presigned",
+                        "/api/vehicles/*/images",
                         // 알림은 전 경로가 본인 것만 다룬다, 세그먼트 수가 달라 ** 로 묶는다
                         "/api/notifications/**",
                         // 세그먼트 하나만 매치하는 * 다. ** 로 넓히면 로그인 없이 봐야 하는
@@ -53,6 +55,12 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
                         "/api/auctions/*/room",
                         // /room 등록이 덮지 않는다, * 도 ** 도 아닌 리터럴 세그먼트가 하나 더 붙어 있다
                         "/api/auctions/*/room/stream");
+                        // 세그먼트 하나만 매치하는 * 다. ** 로 넓히면 /api/auctions/{id} 까지 걸려
+                        // X-User-Id 를 쓰는 경매방 조회가 401 이 된다
+                        "/api/auctions/*/bids",
+                        // 경매글 수정·삭제. PATCH/DELETE만 있고 같은 경로를 쓰는 GET이 없어
+                        // /api/auctions(목록 GET)와 달리 메서드 구분 없이 그대로 걸어도 된다
+                        "/api/auctions/*");
     }
 
     @Override

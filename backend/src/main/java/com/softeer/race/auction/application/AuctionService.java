@@ -1,6 +1,7 @@
 package com.softeer.race.auction.application;
 
 import com.softeer.race.auction.application.dto.AuctionCreateInfo;
+import com.softeer.race.auction.application.dto.AuctionUpdateInfo;
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.auction.domain.AuctionStatus;
@@ -59,5 +60,38 @@ public class AuctionService {
                 Auction.schedule(post, startPrice, startAt));
 
         return AuctionCreateInfo.from(auction);
+    }
+
+    @Transactional
+    public AuctionUpdateInfo update(long sellerId, long auctionId, long startPrice, LocalDateTime startAt) {
+
+        Auction auction = auctionRepository.findWithPostById(auctionId)
+                .orElseThrow(() -> new BusinessException(AuctionErrorCode.AUCTION_NOT_FOUND));
+
+
+        if (!auctionRepository.isSeller(auctionId, sellerId)) {
+            throw new BusinessException(AuctionErrorCode.NOT_AUCTION_SELLER);
+        }
+
+        auction.updateBeforeRoomOpens(startPrice, startAt, LocalDateTime.now(clock));
+
+        return AuctionUpdateInfo.from(auction);
+    }
+
+    @Transactional
+    public void delete(long sellerId, long auctionId) {
+
+        Auction auction = auctionRepository.findWithPostById(auctionId)
+                .orElseThrow(() -> new BusinessException(AuctionErrorCode.AUCTION_NOT_FOUND));
+
+        if (!auctionRepository.isSeller(auctionId, sellerId)) {
+            throw new BusinessException(AuctionErrorCode.NOT_AUCTION_SELLER);
+        }
+
+        if (auction.getStatus() != AuctionStatus.ENDED && auction.getStatus() != AuctionStatus.FAILED) {
+            throw new BusinessException(AuctionErrorCode.AUCTION_NOT_ENDED);
+        }
+
+        auction.getPost().delete(LocalDateTime.now(clock));
     }
 }
