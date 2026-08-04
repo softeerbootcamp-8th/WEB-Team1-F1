@@ -26,6 +26,9 @@ public class AuctionRoomSeeder {
     // 번호판의 유일 제약을 피한다, 테이블을 비워도 되돌아가지 않아 앞 테스트가 쓴 값과 겹치지 않는다
     private static final AtomicLong SERIAL = new AtomicLong();
 
+    // 주행거리는 제원이 아니라 신고값이라 spec 이 아니라 Vehicle.create 로 직접 넘긴다
+    private static final int DEFAULT_MILEAGE = 35_000;
+
     private static final long DEFAULT_ESTIMATED_PRICE = 15_000_000L;
     private static final long DEFAULT_START_PRICE = 10_000_000L;
 
@@ -87,7 +90,7 @@ public class AuctionRoomSeeder {
             LocalDateTime publishedAt = startAt.minusDays(1);
 
             Auction auction = TestClock.INSTANCE.at(publishedAt, () -> {
-                Vehicle vehicle = vehicleRepository.save(Vehicle.create(seller, spec(), DEFAULT_ESTIMATED_PRICE));
+                Vehicle vehicle = vehicleRepository.save(Vehicle.create(seller, spec(), DEFAULT_MILEAGE, DEFAULT_ESTIMATED_PRICE));
                 AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, thumbnailUrl, publishedAt));
 
                 return auctionRepository.save(Auction.schedule(post, startPrice, startAt));
@@ -114,7 +117,6 @@ public class AuctionRoomSeeder {
                     Manufacturer.HYUNDAI,
                     model,
                     2022,
-                    35_000,
                     FuelType.GASOLINE,
                     Transmission.AUTOMATIC,
                     DEFAULT_ESTIMATED_PRICE,

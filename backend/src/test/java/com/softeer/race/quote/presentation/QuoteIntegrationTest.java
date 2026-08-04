@@ -40,6 +40,12 @@ class QuoteIntegrationTest extends IntegrationTestSupport {
     // 픽스처의 예상 시세가 이 연도(2026)를 기준으로 계산돼 있다
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 12, 0, 0);
 
+    /**
+     * 주행거리는 카탈로그가 아니라 요청에서 온다. 금액을 검증하는 시나리오는 이 값을 직접 넘기고,
+     * 나머지는 기본값을 쓴다 — 예전처럼 픽스처의 주행거리에 기대면 값의 출처가 보이지 않는다.
+     */
+    private static final int DEFAULT_MILEAGE = 45_000;
+
     @BeforeEach
     void fixClock() {
         fixClockAt(NOW);
@@ -53,7 +59,7 @@ class QuoteIntegrationTest extends IntegrationTestSupport {
         // when : 로그인 없이 호출한다
         ResultActions response = request("12가3456", "김민수");
 
-        // then 1 : 기준가 3400만에서 5년·4.5만km 감가
+        // then 1 : 기준가 3400만에서 5년·신고한 4.5만km 감가
         response.andExpect(status().isOk())
                 .andExpect(jsonPath("$.estimatedPrice").value(23_200_000L));
 
@@ -62,7 +68,8 @@ class QuoteIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.manufacturer").value("HYUNDAI"))
                 .andExpect(jsonPath("$.model").value("그랜저 IG"))
                 .andExpect(jsonPath("$.modelYear").value(2021))
-                .andExpect(jsonPath("$.mileage").value(45_000))
+                // 신고한 주행거리를 그대로 되돌려준다, 화면이 "이 값으로 계산된 시세"임을 보여야 한다
+                .andExpect(jsonPath("$.mileage").value(DEFAULT_MILEAGE))
                 .andExpect(jsonPath("$.fuelType").value("GASOLINE"))
                 .andExpect(jsonPath("$.transmission").value("AUTOMATIC"))
                 .andExpect(jsonPath("$.mainImageUrl")
@@ -75,7 +82,7 @@ class QuoteIntegrationTest extends IntegrationTestSupport {
         // given : 203번은 대표 이미지가 null 이다
 
         // when
-        ResultActions response = request("90마5678", "정하늘");
+        ResultActions response = request("90마5678", "정하늘", 61_000);
 
         // then : 이미지가 없다고 조회가 막히지는 않는다, 화면이 대체 이미지를 고르면 된다
         response.andExpect(status().isOk())
@@ -86,10 +93,10 @@ class QuoteIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("감가가 기준가를 넘기는 차량은 하한선으로 막힌다")
     void flooredEstimate() throws Exception {
-        // given : 204번은 2010년식 32만km 라 감가 합계가 기준가 1800만을 넘긴다
+        // given : 204번은 2010년식이고 32만km 를 신고하면 감가 합계가 기준가 1800만을 넘긴다
 
         // when
-        ResultActions response = request("24바1234", "오래된");
+        ResultActions response = request("24바1234", "오래된", 320_000);
 
         // then : 음수가 아니라 기준가의 20%
         response.andExpect(status().isOk())
@@ -178,11 +185,17 @@ class QuoteIntegrationTest extends IntegrationTestSupport {
         request("12가3456", "   ").andExpect(status().isBadRequest());
     }
 
+    /** 기본 주행거리로 조회한다. 금액을 검증하지 않는 시나리오는 이 값이 무엇이든 무관하다 */
     private ResultActions request(String plateNumber, String ownerName) throws Exception {
+        return request(plateNumber, ownerName, DEFAULT_MILEAGE);
+    }
+
+    private ResultActions request(String plateNumber, String ownerName, int mileage)
+            throws Exception {
         return mockMvc.perform(post("/api/quotes")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"plateNumber": "%s", "ownerName": "%s"}
-                        """.formatted(plateNumber, ownerName)));
+                        {"plateNumber": "%s", "ownerName": "%s", "mileage": %d}
+                        """.formatted(plateNumber, ownerName, mileage)));
     }
 }

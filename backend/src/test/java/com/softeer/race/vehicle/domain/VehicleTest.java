@@ -20,12 +20,12 @@ class VehicleTest {
         // given
         User seller = mock(User.class);
         VehicleSpec spec = new VehicleSpec("12가3456", "김민수",
-                Manufacturer.HYUNDAI, "그랜저 IG", 2021, 45_000,
+                Manufacturer.HYUNDAI, "그랜저 IG", 2021,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
                 34_000_000L, "https://cdn.race.dev/vehicles/grandeur-ig.jpg");
 
         // when
-        Vehicle vehicle = Vehicle.create(seller, spec, 23_200_000L);
+        Vehicle vehicle = Vehicle.create(seller, spec, 45_000, 23_200_000L);
 
         // then
         assertThat(vehicle.getSeller()).isSameAs(seller);
@@ -47,11 +47,11 @@ class VehicleTest {
     @DisplayName("대표 이미지가 없는 제원도 차량으로 만들 수 있다")
     void createWithoutImage() {
         VehicleSpec spec = new VehicleSpec("90마5678", "정하늘",
-                Manufacturer.BMW, "520i", 2020, 61_000,
+                Manufacturer.BMW, "520i", 2020,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
                 68_000_000L, null);
 
-        Vehicle vehicle = Vehicle.create(mock(User.class), spec, 41_370_000L);
+        Vehicle vehicle = Vehicle.create(mock(User.class), spec, 61_000, 41_370_000L);
 
         assertThat(vehicle.getPlateNumber()).isEqualTo("90마5678");
         assertThat(vehicle.getEstimatedPrice()).isEqualTo(41_370_000L);

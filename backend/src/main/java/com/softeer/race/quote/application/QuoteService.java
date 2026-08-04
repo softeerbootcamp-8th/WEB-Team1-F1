@@ -32,6 +32,9 @@ public class QuoteService {
 
         int age = QuotePolicy.ageOf(spec.modelYear(), LocalDate.now(clock).getYear());
 
-        return QuoteInfo.of(spec, QuotePolicy.estimate(spec.basePrice(), age, spec.mileage()));
+        // 주행거리는 조회된 제원이 아니라 요청에 실려 온 신고값이다
+        long estimatedPrice = QuotePolicy.estimate(spec.basePrice(), age, command.mileage());
+
+        return QuoteInfo.of(spec, command.mileage(), estimatedPrice);
     }
 }

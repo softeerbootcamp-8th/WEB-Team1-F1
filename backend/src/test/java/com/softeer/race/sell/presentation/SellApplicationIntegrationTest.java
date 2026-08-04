@@ -70,12 +70,15 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
     /** 예상 시세는 만원 단위로 절사돼 나간다, 원 단위 잔돈이 붙으면 정책을 거치지 않은 값이다 */
     private static final long DISPLAY_UNIT = 10_000L;
 
+    /** 주행거리는 카탈로그가 아니라 신청자가 신고한다. 이 경로에는 실측 검증이 없다 */
+    private static final int MILEAGE = 45_000;
+
     // 고정하지 않은 실제 Clock이다, 시각은 값이 아니라 범위로 검증한다
     @Autowired
     private Clock clock;
 
     @Test
-    @DisplayName("시나리오 1 : 번호판만 보내면 차량 · 이미지 · 경매글 · 경매가 함께 만들어진다")
+    @DisplayName("시나리오 1 : 번호판과 주행거리를 보내면 차량 · 이미지 · 경매글 · 경매가 함께 만들어진다")
     void scenario1_CreatesEverythingFromPlateNumber() throws Exception {
         // given : 픽스처에 차량이 없다
         assertThat(countOf("vehicle")).isZero();
@@ -114,7 +117,8 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
         assertThat(vehicle.get("manufacturer")).isEqualTo("HYUNDAI");
         assertThat(vehicle.get("model")).isEqualTo("그랜저 IG");
         assertThat(vehicle.get("model_year")).isEqualTo(2021);
-        assertThat(vehicle.get("mileage")).isEqualTo(45_000);
+        // 신고한 주행거리가 그대로 저장된다
+        assertThat(vehicle.get("mileage")).isEqualTo(MILEAGE);
         assertThat(vehicle.get("fuel_type")).isEqualTo("GASOLINE");
         assertThat(vehicle.get("transmission")).isEqualTo("AUTOMATIC");
         // 차량에 남는 예상 시세도 시작가와 같은 값이다. 여기에 기준가가 들어가면 목록 카드와
@@ -166,7 +170,7 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.content[0].thumbnailUrl").value(IMAGE_URL))
                 .andExpect(jsonPath("$.content[0].model").value("그랜저 IG"))
                 .andExpect(jsonPath("$.content[0].modelYear").value(2021))
-                .andExpect(jsonPath("$.content[0].mileage").value(45000))
+                .andExpect(jsonPath("$.content[0].mileage").value(MILEAGE))
                 // 목록 카드가 신청 응답과 같은 시작가를 보여줘야 한다, 신차급 기준가가 아니다
                 .andExpect(jsonPath("$.content[0].startPrice").value(startPrice))
                 // 입찰이 없으므로 현재가는 시작가로 채워진다
@@ -268,8 +272,8 @@ class SellApplicationIntegrationTest extends IntegrationTestSupport {
 
     private static String body(String plateNumber) {
         return """
-                {"plateNumber": "%s"}
-                """.formatted(plateNumber);
+                {"plateNumber": "%s", "mileage": %d}
+                """.formatted(plateNumber, MILEAGE);
     }
 
     // ================= 조회 =================

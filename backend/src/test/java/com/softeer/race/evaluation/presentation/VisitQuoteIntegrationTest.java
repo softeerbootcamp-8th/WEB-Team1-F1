@@ -72,6 +72,8 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
     private static final String OTHER_OWNER_NAME = "이서연";
     private static final String VISIT_ADDRESS = "서울 성동구 왕십리로 83";
     private static final String CONTACT_PHONE = "01012345678";
+    /** 신고값이다. 픽스처 카탈로그에는 주행거리 열이 없다 */
+    private static final int MILEAGE = 45_000;
 
     /** 픽스처 201번의 기준가. 그 모델의 신차급 가격이라 응답으로 나가면 안 되는 값이다 */
     private static final long CATALOG_BASE_PRICE = 34_000_000L;
@@ -109,7 +111,8 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
         assertThat(vehicle.get("manufacturer")).isEqualTo("HYUNDAI");
         assertThat(vehicle.get("model")).isEqualTo("그랜저 IG");
         assertThat(vehicle.get("model_year")).isEqualTo(2021);
-        assertThat(vehicle.get("mileage")).isEqualTo(45_000);
+        // 주행거리는 카탈로그가 아니라 요청에서 온 신고값이다
+        assertThat(vehicle.get("mileage")).isEqualTo(MILEAGE);
 
         // then 2 : 예상 시세는 기준가가 아니라 감가를 반영한 값이고, 응답과 차량이 같은 값을 쓴다
         long estimatedPrice = ((Number) vehicle.get("estimated_price")).longValue();
@@ -268,9 +271,10 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
                         .cookie(sessionCookie())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"plateNumber": "%s", "ownerName": "%s", "visitAddress": "%s",
-                                 "visitDate": "%s", "contactPhone": "010-1234-5678"}
-                                """.formatted(PLATE_NUMBER, OWNER_NAME, VISIT_ADDRESS,
+                                {"plateNumber": "%s", "ownerName": "%s", "mileage": %d,
+                                 "visitAddress": "%s", "visitDate": "%s",
+                                 "contactPhone": "010-1234-5678"}
+                                """.formatted(PLATE_NUMBER, OWNER_NAME, MILEAGE, VISIT_ADDRESS,
                                 today().plusDays(16))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
@@ -306,9 +310,9 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
 
     private static String body(String plateNumber, String ownerName, LocalDate visitDate) {
         return """
-                {"plateNumber": "%s", "ownerName": "%s", "visitAddress": "%s",
-                 "visitDate": "%s", "contactPhone": "%s"}
-                """.formatted(plateNumber, ownerName, VISIT_ADDRESS, visitDate, CONTACT_PHONE);
+                {"plateNumber": "%s", "ownerName": "%s", "mileage": %d,
+                 "visitAddress": "%s", "visitDate": "%s", "contactPhone": "%s"}
+                """.formatted(plateNumber, ownerName, MILEAGE, VISIT_ADDRESS, visitDate, CONTACT_PHONE);
     }
 
     // ================= 조회 =================

@@ -53,6 +53,8 @@ class SellServiceTest {
 
     private static final long SELLER_ID = 90L;
     private static final String PLATE_NUMBER = "12가3456";
+    /** 신청자가 신고하는 값이다. 조회된 제원이 아니라 요청에서 온다 */
+    private static final int MILEAGE = 45_000;
     private static final String IMAGE_URL = "https://cdn.race.dev/vehicles/grandeur-ig.jpg";
 
     /** 그 모델의 기준가. 개별 차량의 연식·주행거리가 빠진 신차급 값이다 */
@@ -220,12 +222,12 @@ class SellServiceTest {
     }
 
     private static SellApplicationCommand command() {
-        return new SellApplicationCommand(SELLER_ID, PLATE_NUMBER);
+        return new SellApplicationCommand(SELLER_ID, PLATE_NUMBER, MILEAGE);
     }
 
     private static VehicleSpec spec(String mainImageUrl) {
         return new VehicleSpec(PLATE_NUMBER, "김민수",
-                Manufacturer.HYUNDAI, "그랜저 IG", 2021, 45_000,
+                Manufacturer.HYUNDAI, "그랜저 IG", 2021,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
                 BASE_PRICE, mainImageUrl);
     }

@@ -75,12 +75,13 @@ public class VisitQuoteService {
         // 검증에는 통과한 날짜가 나이 계산에서는 다른 해로 잡히고, 고정 Clock 테스트에서는 재현되지 않는다
         LocalDate today = LocalDate.now(clock);
 
+        // 주행거리는 조회된 제원이 아니라 신청자가 신고한 값이다, 평가사 방문에서 실측으로 교정된다
         long estimatedPrice = QuotePolicy.estimate(spec.basePrice(),
-                QuotePolicy.ageOf(spec.modelYear(), today.getYear()), spec.mileage());
+                QuotePolicy.ageOf(spec.modelYear(), today.getYear()), command.mileage());
 
         // 번호판 중복은 위에서 상태로만 걸렀다. 반려된 차량은 다시 신청할 수 있어야 하므로
         // 여기서 기존 vehicle 행을 재사용하지 않고 매번 새로 만든다
-        Vehicle vehicle = Vehicle.create(seller, spec, estimatedPrice);
+        Vehicle vehicle = Vehicle.create(seller, spec, command.mileage(), estimatedPrice);
 
         // 저장 전에 조립한다. 방문일 규칙 위반이 Evaluation.request에서 터지므로,
         // 순서를 뒤집으면 거부될 요청이 vehicle insert까지 갔다가 롤백된다

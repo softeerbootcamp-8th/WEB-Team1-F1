@@ -24,13 +24,17 @@ public record QuoteInfo(
         long estimatedPrice
 ) {
 
-    public static QuoteInfo of(VehicleSpec spec, long estimatedPrice) {
+    /**
+     * @param mileage 사용자가 신고한 주행거리. spec 이 들고 있지 않아 따로 받는다 —
+     *                되돌려주는 이유는 화면이 "이 주행거리로 계산된 시세"임을 보여줘야 하기 때문이다
+     */
+    public static QuoteInfo of(VehicleSpec spec, int mileage, long estimatedPrice) {
         return new QuoteInfo(
                 spec.plateNumber(),
                 spec.manufacturer(),
                 spec.model(),
                 spec.modelYear(),
-                spec.mileage(),
+                mileage,
                 spec.fuelType(),
                 spec.transmission(),
                 spec.mainImageUrl(),

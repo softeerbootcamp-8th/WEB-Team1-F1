@@ -55,12 +55,12 @@ public class Vehicle extends BaseTimeEntity {
 
     private Long estimatedPrice;
 
-    private Vehicle(User seller, VehicleSpec spec, long estimatedPrice) {
+    private Vehicle(User seller, VehicleSpec spec, int mileage, long estimatedPrice) {
         this.seller = seller;
         this.manufacturer = spec.manufacturer();
         this.model = spec.model();
         this.modelYear = spec.modelYear();
-        this.mileage = spec.mileage();
+        this.mileage = mileage;
         this.fuelType = spec.fuelType();
         this.transmission = spec.transmission();
         this.plateNumber = spec.plateNumber();
@@ -68,20 +68,25 @@ public class Vehicle extends BaseTimeEntity {
     }
 
     /**
-     * 조회된 제원으로 판매자의 차량을 만든다.
+     * 조회된 제원과 신고된 주행거리로 판매자의 차량을 만든다.
      * <p>
-     * 제원을 개별 파라미터로 늘어놓지 않고 {@link VehicleSpec}을 통째로 받는 이유가 둘이다.
-     * 첫째, 클라이언트가 보낸 값으로 차량을 만드는 경로가 타입 수준에서 사라져 "제원은 서버가 재조회해
-     * 채운다"가 컴파일 타임에 강제된다. 둘째, modelYear와 mileage가 둘 다 int라 9-인자 팩토리에서는
-     * 2021과 45000이 서로 뒤바뀌어도 컴파일과 테스트를 모두 통과한다. record를 거치면 그 실패가 없다.
+     * 제원을 개별 파라미터로 늘어놓지 않고 {@link VehicleSpec}을 통째로 받는다. 클라이언트가 보낸
+     * 값으로 제조사·모델·연식·연료·변속기를 채우는 경로가 타입 수준에서 사라져 "그 제원은 서버가
+     * 재조회해 채운다"가 컴파일 타임에 강제된다.
      * <p>
-     * 예상 시세만 spec에서 꺼내지 않고 따로 받는다. {@link VehicleSpec#basePrice()}는 그 모델의
-     * 기준가이고 개별 차량의 연식·주행거리가 빠져 있어, 그대로 넣으면 기준가가 예상 시세로 저장돼
-     * 목록·경매방 응답에 실려 나간다. 감가를 반영하는 것은 정책의 일이라 호출자가 계산해 넘긴다.
+     * <b>주행거리만 예외다.</b> 번호판에 고정된 사실이 아니라 시점에 따라 변하는 값이라 조회기가
+     * 들고 있을 수 없어({@link VehicleSpec} 주석 참고) 사용자 신고값을 받는다. 그래서 이 인자는
+     * 위조 가능하고, 낮게 신고하면 예상 시세와 경매 시작가가 함께 부풀려진다. 방문견적 흐름은
+     * 평가사가 방문해 실측하므로 그 지점에서 교정되지만, 평가를 거치지 않는 경로에는 검증이 없다.
      * <p>
-     * 판매자가 제원을 직접 입력하는 요구가 생기면 그때 오버로드를 추가한다.
+     * spec에 modelYear가 남아 있어 두 int가 뒤바뀔 위험은 없다. mileage는 int이고 estimatedPrice는
+     * long이라 순서를 바꿔 넘기면 컴파일되지 않는다.
+     * <p>
+     * 예상 시세도 spec에서 꺼내지 않고 따로 받는다. {@link VehicleSpec#basePrice()}는 그 모델의
+     * 기준가라 그대로 넣으면 신차급 가격이 예상 시세로 저장돼 목록·경매방 응답에 실려 나간다.
+     * 감가를 반영하는 것은 정책의 일이라 호출자가 계산해 넘긴다.
      */
-    public static Vehicle create(User seller, VehicleSpec spec, long estimatedPrice) {
-        return new Vehicle(seller, spec, estimatedPrice);
+    public static Vehicle create(User seller, VehicleSpec spec, int mileage, long estimatedPrice) {
+        return new Vehicle(seller, spec, mileage, estimatedPrice);
     }
 }

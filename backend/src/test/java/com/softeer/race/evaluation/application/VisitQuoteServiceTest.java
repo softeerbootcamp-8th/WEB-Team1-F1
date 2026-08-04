@@ -51,6 +51,8 @@ class VisitQuoteServiceTest {
     private static final long SELLER_ID = 90L;
     private static final String PLATE_NUMBER = "12가3456";
     private static final String OWNER_NAME = "김민수";
+    /** 신청자가 신고하는 값이다. 평가사 방문에서 실측으로 교정된다 */
+    private static final int MILEAGE = 45_000;
     private static final String VISIT_ADDRESS = "서울 성동구 왕십리로 83";
     private static final String CONTACT_PHONE = "01012345678";
 
@@ -107,7 +109,8 @@ class VisitQuoteServiceTest {
         Vehicle vehicle = capturedVehicle();
         assertThat(vehicle.getPlateNumber()).isEqualTo(PLATE_NUMBER);
         assertThat(vehicle.getModelYear()).isEqualTo(2021);
-        assertThat(vehicle.getMileage()).isEqualTo(45_000);
+        // 주행거리는 조회기가 아니라 요청에서 온 신고값이다
+        assertThat(vehicle.getMileage()).isEqualTo(MILEAGE);
         assertThat(evaluation.getVehicle()).isSameAs(vehicle);
 
         // then 4 : 차량의 예상 시세는 기준가가 아니라 감가를 반영한 값이다
@@ -223,13 +226,13 @@ class VisitQuoteServiceTest {
     }
 
     private static VisitQuoteCommand command(LocalDate visitDate) {
-        return new VisitQuoteCommand(
-                SELLER_ID, PLATE_NUMBER, OWNER_NAME, VISIT_ADDRESS, visitDate, CONTACT_PHONE);
+        return new VisitQuoteCommand(SELLER_ID, PLATE_NUMBER, OWNER_NAME, MILEAGE,
+                VISIT_ADDRESS, visitDate, CONTACT_PHONE);
     }
 
     private static VehicleSpec spec() {
         return new VehicleSpec(PLATE_NUMBER, OWNER_NAME,
-                Manufacturer.HYUNDAI, "그랜저 IG", 2021, 45_000,
+                Manufacturer.HYUNDAI, "그랜저 IG", 2021,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
                 BASE_PRICE, "https://cdn.race.dev/vehicles/grandeur-ig.jpg");
     }

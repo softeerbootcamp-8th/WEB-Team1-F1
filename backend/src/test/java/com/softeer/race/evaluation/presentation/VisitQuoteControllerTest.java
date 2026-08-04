@@ -95,13 +95,13 @@ class VisitQuoteControllerTest {
     @DisplayName("필수 필드가 비어 있으면 필드 오류와 함께 400을 반환한다")
     void requestRejectsBlankFields() throws Exception {
         perform("""
-                {"plateNumber": "", "ownerName": "", "visitAddress": "",
-                 "visitDate": null, "contactPhone": ""}
+                {"plateNumber": "", "ownerName": "", "mileage": null,
+                 "visitAddress": "", "visitDate": null, "contactPhone": ""}
                 """)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
                 .andExpect(jsonPath("$.errors[*].field", hasItems(
-                        "plateNumber", "ownerName", "visitAddress", "visitDate", "contactPhone")));
+                        "plateNumber", "ownerName", "mileage", "visitAddress", "visitDate", "contactPhone")));
     }
 
     @Test
@@ -111,7 +111,7 @@ class VisitQuoteControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
                 .andExpect(jsonPath("$.errors[*].field", hasItems(
-                        "plateNumber", "ownerName", "visitAddress", "visitDate", "contactPhone")));
+                        "plateNumber", "ownerName", "mileage", "visitAddress", "visitDate", "contactPhone")));
     }
 
     // 화면 안내가 "'-'를 제외하고 숫자만"이므로 하이픈은 요청 단계에서 막혀야 한다
@@ -184,8 +184,8 @@ class VisitQuoteControllerTest {
     private static String body(String plateNumber, String ownerName, String visitAddress,
                                String visitDate, String contactPhone) {
         return """
-                {"plateNumber": "%s", "ownerName": "%s", "visitAddress": "%s",
-                 "visitDate": "%s", "contactPhone": "%s"}
+                {"plateNumber": "%s", "ownerName": "%s", "mileage": 45000,
+                 "visitAddress": "%s", "visitDate": "%s", "contactPhone": "%s"}
                 """.formatted(plateNumber, ownerName, visitAddress, visitDate, contactPhone);
     }
 }

@@ -56,9 +56,8 @@ public class VehicleCatalog {
     @Column(nullable = false)
     private int modelYear;
 
-    @Column(nullable = false)
-    private int mileage;
-
+    // 주행거리를 두지 않는다. 시점에 따라 변하는 값이라 원장이 들고 있으면 언제 측정한 값인지
+    // 알 수 없고, 시세 계산에 그 낡은 값이 들어간다. 사용자가 요청마다 신고하는 값으로 옮겼다
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private FuelType fuelType;
@@ -80,14 +79,13 @@ public class VehicleCatalog {
 
     /** 행은 DB에 시드되므로 프로덕션에서는 생성하지 않는다, 테스트에서 조립하기 위한 생성자다 */
     VehicleCatalog(String plateNumber, String ownerName, Manufacturer manufacturer, String model,
-                   int modelYear, int mileage, FuelType fuelType, Transmission transmission,
+                   int modelYear, FuelType fuelType, Transmission transmission,
                    long basePrice, String mainImageUrl) {
         this.plateNumber = plateNumber;
         this.ownerName = ownerName;
         this.manufacturer = manufacturer;
         this.model = model;
         this.modelYear = modelYear;
-        this.mileage = mileage;
         this.fuelType = fuelType;
         this.transmission = transmission;
         this.basePrice = basePrice;
@@ -99,6 +97,6 @@ public class VehicleCatalog {
     // 그러면 domain 의 VehicleSpec 이 infrastructure 를 알게 되어 의존 방향이 뒤집힌다. 그래서 주는 쪽에 둔다.
     VehicleSpec toSpec() {
         return new VehicleSpec(plateNumber, ownerName, manufacturer, model, modelYear,
-                mileage, fuelType, transmission, basePrice, mainImageUrl);
+                fuelType, transmission, basePrice, mainImageUrl);
     }
 }
