@@ -61,7 +61,7 @@ public class InMemoryRoomChannel implements RoomChannel {
 
         // 걷어내기는 정리 작업이라 다시 전송하지 않는다, 전송이 제거를 부르고 제거가 다시 전송을 부르면 재귀가 된다
         // 이미 닫힌 구독의 주인은 방을 떠났으므로 줄어든 접속자 수는 다음 사건에서 맞춰진다
-        remove(auctionId, closed);
+        discard(auctionId, closed);
     }
 
     // 서버는 이 연결에 쓰기만 하고 읽지 않아서, 상대가 끊어도 다음 쓰기 전까지 모른다
@@ -82,7 +82,7 @@ public class InMemoryRoomChannel implements RoomChannel {
             }
 
             if (!closed.isEmpty()) {
-                remove(auctionId, closed);
+                discard(auctionId, closed);
                 sweptAuctions.add(auctionId);
             }
         });
@@ -106,6 +106,13 @@ public class InMemoryRoomChannel implements RoomChannel {
         }
 
         subscribers.forEach(RoomSubscriber::close);
+    }
+
+    // 상대가 사라진 구독을 걷어낸다, 명부에서 빼기만 하면 그 응답은 아무도 끝내지 않아 만료까지 산다
+    // 해제는 이 순서를 지킨다, 명부를 먼저 비워야 끝난 연결의 콜백이 돌아왔을 때 갱신이 돌지 않는다
+    private void discard(long auctionId, Set<RoomSubscriber> closed) {
+        remove(auctionId, closed);
+        closed.forEach(RoomSubscriber::close);
     }
 
     // 마지막 구독이 빠지는 순간과 새 구독이 들어오는 순간이 겹쳐도 새 구독이 유실되지 않게 한 번에 처리한다

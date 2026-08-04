@@ -236,6 +236,31 @@ class InMemoryRoomChannelTest {
     }
 
     @Test
+    @DisplayName("전송에 실패해 걷어낸 구독은 연결도 끝낸다")
+    void discardedSubscriberIsAlsoEnded() {
+        // 명부에서 빼기만 하면 그 응답은 아무도 끝내지 않아 만료까지 산다
+        FakeSubscriber broken = new FakeSubscriber();
+        broken.disconnect();
+        channel.subscribe(AUCTION, broken);
+
+        channel.broadcast(AUCTION, liveState());
+
+        assertThat(broken.closedByServer).isTrue();
+    }
+
+    @Test
+    @DisplayName("찔러 보다 걷어낸 구독도 연결을 끝낸다")
+    void sweptSubscriberIsAlsoEnded() {
+        FakeSubscriber silent = new FakeSubscriber();
+        silent.closeOnPing();
+        channel.subscribe(AUCTION, silent);
+
+        channel.sweepClosed();
+
+        assertThat(silent.closedByServer).isTrue();
+    }
+
+    @Test
     @DisplayName("끊는 도중 되돌아온 해제 콜백에는 방이 이미 비어 있다")
     void roomIsAlreadyEmptyWhenReleaseCallbackReturns() {
         // 연결 하나가 끝나면 해제 콜백이 돌아와 남은 접속자 수를 다시 읽는다
