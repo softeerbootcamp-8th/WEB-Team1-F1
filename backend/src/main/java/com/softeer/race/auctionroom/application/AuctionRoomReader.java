@@ -30,7 +30,7 @@ class AuctionRoomReader {
     }
 
     // 개장 전 방에는 호가도 집계도 없다, 상세만 한 번 읽는다
-    `@Transactional`(readOnly = true)
+    @Transactional(readOnly = true)
     public Optional<RoomOpening> findOpening(long auctionId) {
         return auctionRoomRepository.findDetailById(auctionId)
                 .map(detail -> RoomOpening.of(detail, LocalDateTime.now(clock)));
