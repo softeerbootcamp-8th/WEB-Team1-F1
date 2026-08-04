@@ -44,6 +44,16 @@ public final class MutableClock extends Clock {
         }
     }
 
+    /**
+     * 그 시각에 멈춘 채로 실행하고 원래 시각으로 되돌린다, 돌려줄 값이 없는 호출용
+     */
+    public void runAt(LocalDateTime now, Runnable action) {
+        at(now, () -> {
+            action.run();
+            return null;
+        });
+    }
+
     @Override
     public Instant instant() {
         Instant fixed = fixedAt.get();

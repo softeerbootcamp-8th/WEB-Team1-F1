@@ -3,6 +3,8 @@ package com.softeer.race.support;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.softeer.race.auction.application.AuctionCloser;
+import com.softeer.race.auction.application.AuctionStarter;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.auctionpost.domain.AuctionPostRepository;
 import com.softeer.race.bid.domain.BidRepository;
@@ -72,9 +74,12 @@ public abstract class IntegrationTestSupport {
                        VehicleRepository vehicleRepository,
                        AuctionPostRepository auctionPostRepository,
                        AuctionRepository auctionRepository,
-                       BidRepository bidRepository) {
+                       BidRepository bidRepository,
+                       AuctionStarter auctionStarter,
+                       AuctionCloser auctionCloser) {
         users = new UserSeeder(userRepository);
-        rooms = new AuctionRoomSeeder(vehicleRepository, auctionPostRepository, auctionRepository, bidRepository);
+        rooms = new AuctionRoomSeeder(vehicleRepository, auctionPostRepository, auctionRepository, bidRepository,
+                auctionStarter, auctionCloser);
     }
 
     // 부모 콜백이 자식보다 먼저 돌아, 앞 테스트가 건 시각을 자식이 자기 시각을 걸기 전에 푼다
