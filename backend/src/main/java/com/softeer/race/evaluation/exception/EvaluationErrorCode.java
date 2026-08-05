@@ -32,7 +32,31 @@ public enum EvaluationErrorCode implements ErrorCode {
      */
     PAST_VISIT_DATE(HttpStatus.BAD_REQUEST, "방문 희망 날짜는 오늘 이후여야 합니다."),
 
-    NOT_FOUND(HttpStatus.NOT_FOUND, "평가 정보를 찾을 수 없습니다."),
+    /**
+     * 배정하려는 신청이 없다. 목록에서 고른 id라도 그 사이 신청이 사라질 수 있어 정상 흐름에서도 난다.
+     * <p>
+     * 진단서 첨부·조회도 이 코드를 쓴다. 두 흐름 모두 "지정한 방문견적 신청이 없다"는 같은 상황이라
+     * 코드를 나눌 이유가 없다.
+     */
+    NOT_FOUND(HttpStatus.NOT_FOUND, "방문견적 신청을 찾을 수 없습니다."),
+
+    /**
+     * SELLER_NOT_FOUND와 같은 이유로 둔다 — 인터셉터가 방금 세션을 검증했으므로 정상 흐름에서는
+     * 발생하지 않지만, 코드가 없으면 그 상황이 500 INTERNAL_ERROR가 된다.
+     */
+    EVALUATOR_NOT_FOUND(HttpStatus.NOT_FOUND, "배정받을 회원 정보를 찾을 수 없습니다."),
+
+    /**
+     * 먼저 수락한 평가사가 이미 있다. 이 흐름의 "최초 1명" 규칙이 실제로 작동하는 지점이라
+     * 정상 흐름에서 나는 응답이다 — 목록을 보던 사이 다른 평가사가 먼저 수락하면 여기로 온다.
+     */
+    ALREADY_ASSIGNED(HttpStatus.CONFLICT, "이미 다른 평가사가 배정된 신청입니다."),
+
+    /**
+     * 평가가 이미 끝난(승인·반려) 신청이다. ALREADY_ASSIGNED와 갈라 두는 이유는 화면이 안내할 말이
+     * 다르기 때문이다 — 이쪽은 목록을 다시 봐도 그 건이 돌아오지 않는다.
+     */
+    NOT_ASSIGNABLE(HttpStatus.CONFLICT, "배정할 수 있는 상태의 신청이 아닙니다."),
 
     /**
      * 우리가 발급하지 않았거나, 발급했더라도 문서가 아닌 주소다. 후자를 구분하지 않는 이유는

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -9,8 +9,16 @@ import { getErrorMessage } from '@/lib/axios'
 import { AuthShell } from '../components/auth-shell'
 import { useAuth } from '../auth-context'
 
+interface LoginPageState {
+  returnTo?: {
+    pathname: string
+    state?: unknown
+  }
+}
+
 export function LoginPage() {
   const { login } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -22,7 +30,15 @@ export function LoginPage() {
     try {
       await login({ username, password })
       toast.success('로그인되었습니다')
-      navigate('/')
+      const returnTo = (location.state as LoginPageState | null)?.returnTo
+      if (returnTo?.pathname.startsWith('/') && !returnTo.pathname.startsWith('//')) {
+        navigate(returnTo.pathname, {
+          replace: true,
+          state: returnTo.state,
+        })
+      } else {
+        navigate('/', { replace: true })
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, '로그인에 실패했습니다'))
     } finally {
@@ -37,7 +53,11 @@ export function LoginPage() {
       footer={
         <>
           아직 회원이 아니신가요?{' '}
-          <Link to="/signup" className="text-foreground font-medium underline-offset-4 hover:underline">
+          <Link
+            to="/signup"
+            state={location.state}
+            className="text-foreground font-medium underline-offset-4 hover:underline"
+          >
             회원가입
           </Link>
         </>

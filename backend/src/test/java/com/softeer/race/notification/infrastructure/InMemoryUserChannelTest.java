@@ -1,0 +1,272 @@
+package com.softeer.race.notification.infrastructure;
+
+import com.softeer.race.notification.application.NotificationPush;
+import com.softeer.race.notification.application.UserSubscriber;
+import com.softeer.race.notification.domain.NotificationRow;
+import com.softeer.race.notification.domain.NotificationType;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+
+// 연결 하나가 구독 하나이고, 채널은 실린 내용을 보지 않고 나르기만 한다
+// 경매방 채널과 달리 구독 수를 물어볼 수 없으므로, 걷혔는지는 "다음에 찔러 보는지"로 확인한다
+class InMemoryUserChannelTest {
+
+    private static final long USER = 1L;
+    private static final long OTHER_USER = 2L;
+
+    // 창이 좁아 한 번으로는 못 잡는다, 반복 횟수가 곧 검출력이다
+    private static final int RACE_ROUNDS = 10_000;
+
+    private final InMemoryUserChannel channel = new InMemoryUserChannel();
+
+    @Test
+    @DisplayName("회원의 모든 구독이 같은 알림을 받는다")
+    void everySubscriptionOfTheUserReceivesTheSamePush() {
+        FakeSubscriber phone = new FakeSubscriber();
+        FakeSubscriber desktop = new FakeSubscriber();
+        channel.subscribe(USER, phone);
+        channel.subscribe(USER, desktop);
+
+        NotificationPush push = push();
+        channel.send(USER, push);
+
+        assertThat(phone.received).containsExactly(push);
+        assertThat(desktop.received).containsExactly(push);
+    }
+
+    @Test
+    @DisplayName("다른 회원의 구독에는 가지 않는다")
+    void pushDoesNotLeakToOtherUsers() {
+        FakeSubscriber other = new FakeSubscriber();
+        channel.subscribe(OTHER_USER, other);
+        channel.subscribe(USER, new FakeSubscriber());
+
+        channel.send(USER, push());
+
+        assertThat(other.received).isEmpty();
+    }
+
+    @Test
+    @DisplayName("접속하지 않은 회원에게 보내도 터지지 않는다")
+    void sendingToAbsentUserIsSafe() {
+        Throwable thrown = catchThrowable(() -> channel.send(USER, push()));
+
+        assertThat(thrown).isNull();
+    }
+
+    @Test
+    @DisplayName("같은 구독을 두 번 등록해도 하나다")
+    void subscribeIsIdempotent() {
+        FakeSubscriber subscriber = new FakeSubscriber();
+
+        channel.subscribe(USER, subscriber);
+        channel.subscribe(USER, subscriber);
+        channel.send(USER, push());
+
+        // 두 번 등록됐다면 같은 알림을 두 번 받는다
+        assertThat(subscriber.received).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("해제한 구독은 더 받지 않는다")
+    void unsubscribedSubscriptionStopsReceiving() {
+        FakeSubscriber leaving = new FakeSubscriber();
+        channel.subscribe(USER, leaving);
+
+        channel.unsubscribe(USER, leaving);
+        channel.send(USER, push());
+
+        assertThat(leaving.received).isEmpty();
+    }
+
+    @Test
+    @DisplayName("같은 구독을 두 번 해제해도 결과가 같다")
+    void unsubscribeIsIdempotent() {
+        FakeSubscriber leaving = new FakeSubscriber();
+        channel.subscribe(USER, leaving);
+
+        channel.unsubscribe(USER, leaving);
+        Throwable thrown = catchThrowable(() -> channel.unsubscribe(USER, leaving));
+
+        assertThat(thrown).isNull();
+    }
+
+    @Test
+    @DisplayName("전송 중 닫힌 구독은 걷어낸다")
+    void closedSubscriptionIsRemovedAfterSend() {
+        FakeSubscriber broken = new FakeSubscriber();
+        broken.close();
+        channel.subscribe(USER, broken);
+
+        channel.send(USER, push());
+        // 걷혔으면 청소가 찔러 볼 대상에서도 빠져 있다
+        channel.sweepClosed();
+
+        assertThat(broken.pings).isZero();
+    }
+
+    @Test
+    @DisplayName("닫힌 구독이 있어도 나머지는 알림을 받는다")
+    void openSubscriptionReceivesDespiteClosedPeer() {
+        FakeSubscriber broken = new FakeSubscriber();
+        broken.close();
+        FakeSubscriber alive = new FakeSubscriber();
+        channel.subscribe(USER, broken);
+        channel.subscribe(USER, alive);
+
+        NotificationPush push = push();
+        channel.send(USER, push);
+
+        assertThat(alive.received).containsExactly(push);
+    }
+
+    @Test
+    @DisplayName("모두 닫힌 회원에게 다시 보내도 터지지 않는다")
+    void sendToDrainedUserIsSafe() {
+        FakeSubscriber broken = new FakeSubscriber();
+        broken.close();
+        channel.subscribe(USER, broken);
+
+        channel.send(USER, push());
+        Throwable thrown = catchThrowable(() -> channel.send(USER, push()));
+
+        assertThat(thrown).isNull();
+    }
+
+    @Test
+    @DisplayName("찔러 보기 전에는 살아 있어 보이던 구독도 걷어낸다")
+    void sweepDetectsSilentlyClosedSubscription() {
+        FakeSubscriber silent = new FakeSubscriber();
+        silent.closeOnPing();
+        channel.subscribe(USER, silent);
+
+        channel.sweepClosed();
+        // 첫 청소에서 닫힘이 드러나 걷혔으면 두 번째에는 찔러 보지 않는다
+        channel.sweepClosed();
+
+        assertThat(silent.pings).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("살아 있는 구독은 청소해도 남는다")
+    void sweepKeepsOpenSubscription() {
+        FakeSubscriber alive = new FakeSubscriber();
+        channel.subscribe(USER, alive);
+
+        channel.sweepClosed();
+        channel.sweepClosed();
+
+        assertThat(alive.pings).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("마지막 구독이 빠지는 순간 들어온 구독은 유실되지 않는다")
+    void arrivingSubscriptionSurvivesLastDeparture() throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        int lost = 0;
+
+        try {
+            for (int round = 0; round < RACE_ROUNDS; round++) {
+                FakeSubscriber leaving = new FakeSubscriber();
+                FakeSubscriber arriving = new FakeSubscriber();
+                channel.subscribe(USER, leaving);
+
+                // 마지막 해제와 새 등록을 같은 순간에 풀어 준다
+                CyclicBarrier gate = new CyclicBarrier(2);
+                Future<?> departure = pool.submit(() -> {
+                    await(gate);
+                    channel.unsubscribe(USER, leaving);
+                });
+                Future<?> arrival = pool.submit(() -> {
+                    await(gate);
+                    channel.subscribe(USER, arriving);
+                });
+                departure.get();
+                arrival.get();
+
+                // 들어온 쪽은 받아야 한다, 못 받으면 맵에서 떨어져 나간 집합에 들어간 것이다
+                channel.send(USER, push());
+                if (arriving.received.isEmpty()) {
+                    lost++;
+                }
+                channel.unsubscribe(USER, arriving);
+            }
+        } finally {
+            pool.shutdown();
+        }
+
+        assertThat(lost).isZero();
+    }
+
+    private static void await(CyclicBarrier gate) {
+        try {
+            gate.await();
+        } catch (InterruptedException | BrokenBarrierException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    // 채널은 알림을 나르기만 하고 안을 들여다보지 않으므로, 같은 객체가 갔는지만 확인하면 된다
+    private static NotificationPush push() {
+        return new NotificationPush(
+                new NotificationRow(1L, NotificationType.AUCTION_WON, "낙찰되었습니다.", false, 7L,
+                        LocalDateTime.of(2026, 8, 4, 12, 0)),
+                1L);
+    }
+
+    // 실제 SSE 연결은 상대가 끊어도 써 보기 전까지는 살아 있는 것으로 보인다
+    private static final class FakeSubscriber implements UserSubscriber {
+
+        private final List<NotificationPush> received = new ArrayList<>();
+        private boolean open = true;
+        private boolean closeOnPing;
+        private int pings;
+
+        void close() {
+            open = false;
+        }
+
+        void closeOnPing() {
+            closeOnPing = true;
+        }
+
+        @Override
+        public void send(NotificationPush push) {
+            if (!open) {
+                return;
+            }
+            received.add(push);
+        }
+
+        @Override
+        public void sendUnreadCount(long unreadCount) {
+            // 채널을 거치지 않는 경로라 이 테스트에서 쓰이지 않는다
+        }
+
+        @Override
+        public void ping() {
+            pings++;
+
+            if (closeOnPing) {
+                open = false;
+            }
+        }
+
+        @Override
+        public boolean isOpen() {
+            return open;
+        }
+    }
+}

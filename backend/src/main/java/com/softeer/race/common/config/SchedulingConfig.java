@@ -8,8 +8,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 // 주기 작업을 켜고, 어떤 작업이 어느 스레드에서 도는지를 여기서 정한다.
 //
-// 스케줄러를 둘로 가른 이유는 경매방 브로드캐스트가 소켓 쓰기이기 때문이다.
-// 한 스레드를 나눠 쓰면 안 받아 가는 구독자 하나가 스윕을 붙잡는 동안 마감 확정이 통째로 밀린다.
+// 스케줄러를 셋으로 가른 이유는 소켓 쓰기와 시각 판정을 한 스레드에 섞을 수 없기 때문이다.
+// 나눠 쓰면 안 받아 가는 구독자 하나가 스레드를 붙잡는 동안 마감 확정이나 다른 채널 청소가 통째로 밀린다.
 //
 // 여기에 TaskScheduler 빈을 둔 대가로 부트의 기본 taskScheduler 는 back off 한다.
 // @ConditionalOnMissingBean 이 타입 조건이라 빈 이름을 바꿔도 마찬가지다.
@@ -23,6 +23,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 public class SchedulingConfig {
     public static final String AUCTION_PROGRESS = "auctionProgressTaskScheduler";
     public static final String ROOM_STREAM = "roomStreamTaskScheduler";
+    public static final String NOTIFICATION_STREAM = "notificationStreamTaskScheduler";
 
     @Bean(AUCTION_PROGRESS)
     public ThreadPoolTaskScheduler auctionProgressTaskScheduler() {
@@ -47,5 +48,10 @@ public class SchedulingConfig {
         scheduler.setThreadNamePrefix(namePrefix);
 
         return scheduler;
+    }
+
+    @Bean(NOTIFICATION_STREAM)
+    public ThreadPoolTaskScheduler notificationStreamTaskScheduler() {
+        return threadPool("notification-stream-");
     }
 }

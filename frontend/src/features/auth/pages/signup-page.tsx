@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,7 @@ const onlyDigits = (value: string) => value.replace(/\D/g, '')
 
 export function SignupPage() {
   const { login } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
   const [form, setForm] = useState(INITIAL_FORM)
   const [phone, setPhone] = useState({ area: '', middle: '', last: '' })
@@ -53,7 +54,16 @@ export function SignupPage() {
       // 회원가입은 세션을 발급하지 않아서, 성공 뒤 같은 자격증명으로 다시 로그인해야 한다.
       await login({ username: form.username, password: form.password })
       toast.success('회원가입이 완료되었습니다')
-      navigate('/')
+      const returnTo = (
+        location.state as {
+          returnTo?: { pathname: string; state?: unknown }
+        } | null
+      )?.returnTo
+      if (returnTo?.pathname.startsWith('/') && !returnTo.pathname.startsWith('//')) {
+        navigate(returnTo.pathname, { replace: true, state: returnTo.state })
+      } else {
+        navigate('/', { replace: true })
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, '회원가입에 실패했습니다'))
     } finally {
@@ -68,7 +78,11 @@ export function SignupPage() {
       footer={
         <>
           이미 계정이 있으신가요?{' '}
-          <Link to="/login" className="text-foreground font-medium underline-offset-4 hover:underline">
+          <Link
+            to="/login"
+            state={location.state}
+            className="text-foreground font-medium underline-offset-4 hover:underline"
+          >
             로그인
           </Link>
         </>

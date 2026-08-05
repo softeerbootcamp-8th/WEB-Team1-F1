@@ -5,10 +5,12 @@ import type { QuoteResult } from '@/features/quote/types'
 export async function estimateQuote(
   plateNumber: string,
   ownerName: string,
+  mileage: number,
 ): Promise<QuoteResult> {
   const { data } = await axiosInstance.post<QuoteResult>('/api/quotes', {
     plateNumber,
     ownerName,
+    mileage,
   })
   return data
 }
