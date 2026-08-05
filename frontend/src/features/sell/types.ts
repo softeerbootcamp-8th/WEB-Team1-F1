@@ -10,3 +10,22 @@ export interface SellApplicationResult {
   endAt: string
   status: AuctionStatus
 }
+
+/** POST /api/visit-quotes 요청 계약 */
+export interface VisitQuoteRequest {
+  plateNumber: string
+  ownerName: string
+  visitAddress: string
+  visitDate: string
+  contactPhone: string
+}
+
+/** POST /api/visit-quotes 201 응답 계약 */
+export interface VisitQuoteResponse {
+  evaluationId: number
+  vehicleId: number
+  plateNumber: string
+  visitDate: string
+  visitAddress: string
+  status: 'REQUESTED'
+}

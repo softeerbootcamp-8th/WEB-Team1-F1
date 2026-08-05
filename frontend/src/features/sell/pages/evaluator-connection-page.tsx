@@ -1,52 +1,204 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, LoaderCircle, UserRoundSearch } from 'lucide-react'
+import { ArrowLeft, Check, LoaderCircle, UserRoundSearch } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/common/empty-state'
 import { Button } from '@/components/ui/button'
-import { SchedulePicker } from '@/features/sell/components/schedule-picker'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useAuth } from '@/features/auth/auth-context'
+import { requestVisitQuote } from '@/features/sell/api'
+import type {
+  VisitQuoteRequest,
+  VisitQuoteResponse,
+} from '@/features/sell/types'
 import type { VehicleOwnerValues } from '@/features/vehicle/components/vehicle-owner-form'
+import { VehicleSummary } from '@/features/vehicle/components/vehicle-summary'
+import type { VehicleLookupResponse } from '@/features/vehicle/types'
+import { getErrorMessage } from '@/lib/axios'
 
-const VISIT_HOURS = Array.from({ length: 11 }, (_, i) => 10 + i) // 10~20시
+const CONTACT_PHONE_PATTERN = /^01\d{8,9}$/
+const VISIT_QUOTE_FIELDS: (keyof VisitQuoteRequest)[] = [
+  'plateNumber',
+  'ownerName',
+  'visitAddress',
+  'visitDate',
+  'contactPhone',
+]
 
-type Phase = 'scheduling' | 'confirmed' | 'visiting' | 'inspecting' | 'done'
+interface VisitQuoteDraft {
+  visitAddress: string
+  visitDate: string | null
+  contactPhone: string
+}
 
-const PHASE_ORDER: Phase[] = ['scheduling', 'confirmed', 'visiting', 'inspecting', 'done']
+interface EvaluatorConnectionState extends VehicleOwnerValues {
+  vehicle: VehicleLookupResponse
+  draft?: VisitQuoteDraft
+}
 
-function formatVisitAt(date: Date) {
-  return date.toLocaleString('ko-KR', {
+interface VisitQuoteProblemDetail {
+  code?: string
+  detail?: string
+  errors?: { field: string; message: string }[]
+}
+
+type FieldErrors = Partial<Record<keyof VisitQuoteRequest, string>>
+
+function formatLocalDate(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function parseLocalDate(value: string | null | undefined) {
+  if (!value) return null
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function formatVisitDate(value: string) {
+  return parseLocalDate(value)?.toLocaleDateString('ko-KR', {
+    year: 'numeric',
     month: 'long',
     day: 'numeric',
     weekday: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
   })
 }
 
-export function EvaluatorConnectionPage() {
-  const { state } = useLocation()
-  const navigate = useNavigate()
-  const vehicle = state as VehicleOwnerValues | null
+function isVisitQuoteField(field: string): field is keyof VisitQuoteRequest {
+  return VISIT_QUOTE_FIELDS.includes(field as keyof VisitQuoteRequest)
+}
 
-  const [visitAt, setVisitAt] = useState<Date | null>(null)
-  const [phase, setPhase] = useState<Phase>('scheduling')
+export function EvaluatorConnectionPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { isAuthenticated, isLoading } = useAuth()
+  const pageState = location.state as EvaluatorConnectionState | null
+  const ownerName = pageState?.ownerName ?? ''
+  const plateNumber = pageState?.plateNumber ?? ''
+  const vehicle = pageState?.vehicle
+  const hasVehicle = Boolean(
+    ownerName && plateNumber && vehicle?.plateNumber === plateNumber,
+  )
+
+  const today = useMemo(() => {
+    const date = new Date()
+    date.setHours(0, 0, 0, 0)
+    return date
+  }, [])
+  const [visitDate, setVisitDate] = useState<Date | null>(() =>
+    parseLocalDate(pageState?.draft?.visitDate),
+  )
+  const [visitAddress, setVisitAddress] = useState(
+    pageState?.draft?.visitAddress ?? '',
+  )
+  const [contactPhone, setContactPhone] = useState(
+    pageState?.draft?.contactPhone ?? '',
+  )
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [result, setResult] = useState<VisitQuoteResponse | null>(null)
+
+  const redirectToLogin = useCallback(() => {
+    navigate('/login', {
+      replace: true,
+      state: {
+        returnTo: {
+          pathname: '/sell/evaluator',
+          state: {
+            ownerName,
+            plateNumber,
+            vehicle: vehicle!,
+            draft: {
+              visitAddress,
+              visitDate: visitDate ? formatLocalDate(visitDate) : null,
+              contactPhone,
+            },
+          } satisfies EvaluatorConnectionState,
+        },
+      },
+    })
+  }, [
+    contactPhone,
+    navigate,
+    ownerName,
+    plateNumber,
+    vehicle,
+    visitAddress,
+    visitDate,
+  ])
 
   useEffect(() => {
-    if (phase === 'confirmed') {
-      const id = window.setTimeout(() => setPhase('visiting'), 2000)
-      return () => window.clearTimeout(id)
+    if (hasVehicle && !isLoading && !isAuthenticated) {
+      redirectToLogin()
     }
-    if (phase === 'visiting') {
-      const id = window.setTimeout(() => setPhase('inspecting'), 2500)
-      return () => window.clearTimeout(id)
-    }
-    if (phase === 'inspecting') {
-      const id = window.setTimeout(() => setPhase('done'), 2500)
-      return () => window.clearTimeout(id)
-    }
-  }, [phase])
+  }, [hasVehicle, isAuthenticated, isLoading, redirectToLogin])
 
-  if (!vehicle?.ownerName || !vehicle.plateNumber) {
+  const mutation = useMutation({
+    mutationFn: requestVisitQuote,
+    onSuccess: (response) => {
+      setResult(response)
+      toast.success('방문견적 신청이 접수되었습니다')
+    },
+    onError: (error) => {
+      const response = isAxiosError<VisitQuoteProblemDetail>(error)
+        ? error.response
+        : undefined
+      const body = response?.data
+
+      if (body?.code === 'INVALID_REQUEST') {
+        const nextErrors: FieldErrors = {}
+        body.errors?.forEach(({ field, message }) => {
+          if (isVisitQuoteField(field) && !nextErrors[field]) {
+            nextErrors[field] = message
+          }
+        })
+        setFieldErrors(nextErrors)
+        toast.error(getErrorMessage(error, '입력값을 확인해 주세요'))
+        return
+      }
+
+      if (body?.code === 'EVALUATION_PAST_VISIT_DATE') {
+        const message = getErrorMessage(error, '방문 희망 날짜를 확인해 주세요')
+        setFieldErrors((current) => ({ ...current, visitDate: message }))
+        toast.error(message)
+        return
+      }
+
+      if (body?.code === 'EVALUATION_VEHICLE_NOT_FOUND') {
+        toast.error(
+          getErrorMessage(error, '차량 번호판과 소유자 이름을 확인해 주세요'),
+        )
+        navigate('/sell', {
+          replace: true,
+          state: {
+            ownerName,
+            plateNumber,
+          } satisfies VehicleOwnerValues,
+        })
+        return
+      }
+
+      if (body?.code === 'EVALUATION_DUPLICATE_REQUEST') {
+        toast.error('이미 진행 중인 신청이 있습니다')
+        return
+      }
+
+      if (body?.code === 'AUTH_UNAUTHENTICATED' || response?.status === 401) {
+        toast.error(getErrorMessage(error, '로그인이 필요합니다'))
+        redirectToLogin()
+        return
+      }
+
+      toast.error(getErrorMessage(error, '방문견적 신청에 실패했습니다'))
+    },
+  })
+
+  if (!hasVehicle) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-24">
         <EmptyState
@@ -62,132 +214,212 @@ export function EvaluatorConnectionPage() {
     )
   }
 
-  const stepIndex = PHASE_ORDER.indexOf(phase)
-
-  const goToAuctionPost = () => {
-    navigate('/sell/auction-post', { state: vehicle })
+  if (isLoading || !isAuthenticated) {
+    return (
+      <main
+        className="flex min-h-80 items-center justify-center"
+        aria-label="로그인 확인 중"
+      >
+        <LoaderCircle className="text-primary size-6 animate-spin" />
+      </main>
+    )
   }
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!visitDate) {
+      setFieldErrors((current) => ({
+        ...current,
+        visitDate: '방문 희망 날짜를 선택해 주세요.',
+      }))
+      return
+    }
+
+    setFieldErrors({})
+    mutation.mutate({
+      plateNumber,
+      ownerName: ownerName.trim(),
+      visitAddress: visitAddress.trim(),
+      visitDate: formatLocalDate(visitDate),
+      contactPhone,
+    })
+  }
+
+  const requestComplete = result?.status === 'REQUESTED'
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-14" aria-label="평가사 연결">
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link to="/sell">
-          <ArrowLeft className="size-4" />
-          차량 정보 수정
-        </Link>
-      </Button>
+      {!requestComplete && (
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          <Link to="/sell" state={{ ownerName, plateNumber, vehicle }}>
+            <ArrowLeft className="size-4" />
+            차량 정보 수정
+          </Link>
+        </Button>
+      )}
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_0.8fr]">
         <section className="min-w-0 rounded-2xl border p-7 md:p-10">
           <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-full">
             <UserRoundSearch className="size-6" />
           </div>
-          <p className="text-muted-foreground mt-8 text-sm">평가사 연결</p>
+          <p className="text-muted-foreground mt-8 text-sm">방문견적</p>
 
-          {phase === 'scheduling' ? (
+          {requestComplete ? (
             <>
               <h1 className="mt-2 text-3xl font-semibold">
-                평가사 방문 일정을
-                <br />
-                선택해 주세요.
+                방문견적 신청이 접수됐어요.
               </h1>
-              <div className="mt-8">
-                <SchedulePicker
-                  hours={VISIT_HOURS}
-                  minDateTime={new Date()}
-                  onSelect={setVisitAt}
-                />
-              </div>
-              <Button
-                size="lg"
-                className="mt-8 w-full"
-                disabled={!visitAt}
-                onClick={() => setPhase('confirmed')}
-              >
-                평가사 방문 일정 확정
-              </Button>
+              <p className="text-muted-foreground mt-3 leading-6" aria-live="polite">
+                입력하신 방문 희망 날짜와 주소로 신청이 완료되었습니다.
+              </p>
+              <dl className="bg-muted/50 mt-8 space-y-4 rounded-xl p-5 text-sm">
+                <div>
+                  <dt className="text-muted-foreground">방문 희망 날짜</dt>
+                  <dd className="mt-1 font-medium">{formatVisitDate(result.visitDate)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">방문 주소</dt>
+                  <dd className="mt-1 font-medium">{result.visitAddress}</dd>
+                </div>
+              </dl>
             </>
           ) : (
             <>
               <h1 className="mt-2 text-3xl font-semibold">
-                {phase === 'done' ? '차량 검사가 완료됐어요.' : '평가사를 연결하고 있습니다.'}
+                평가사 방문 정보를
+                <br />
+                입력해 주세요.
               </h1>
-              {visitAt && (
-                <p className="text-muted-foreground mt-2 text-sm" aria-live="polite">
-                  방문 예정: {formatVisitAt(visitAt)}
-                </p>
-              )}
+              <form className="mt-8 space-y-6" onSubmit={submit}>
+                <div>
+                  <Label htmlFor="visit-date">방문 희망 날짜</Label>
+                  <Input
+                    id="visit-date"
+                    type="date"
+                    className="mt-3"
+                    min={formatLocalDate(today)}
+                    value={visitDate ? formatLocalDate(visitDate) : ''}
+                    onChange={(event) => {
+                      setVisitDate(parseLocalDate(event.target.value))
+                      setFieldErrors((current) => ({
+                        ...current,
+                        visitDate: undefined,
+                      }))
+                    }}
+                    aria-invalid={Boolean(fieldErrors.visitDate)}
+                    required
+                  />
+                  {fieldErrors.visitDate && (
+                    <p className="text-destructive mt-2 text-xs" role="alert">
+                      {fieldErrors.visitDate}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="visit-address">방문 주소</Label>
+                  <Input
+                    id="visit-address"
+                    value={visitAddress}
+                    onChange={(event) => {
+                      setVisitAddress(event.target.value)
+                      setFieldErrors((current) => ({
+                        ...current,
+                        visitAddress: undefined,
+                      }))
+                    }}
+                    placeholder="서울 성동구 왕십리로 83"
+                    autoComplete="street-address"
+                    maxLength={200}
+                    aria-invalid={Boolean(fieldErrors.visitAddress)}
+                    required
+                  />
+                  {fieldErrors.visitAddress && (
+                    <p className="text-destructive text-xs" role="alert">
+                      {fieldErrors.visitAddress}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contact-phone">연락처</Label>
+                  <Input
+                    id="contact-phone"
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel-national"
+                    value={contactPhone}
+                    onChange={(event) => {
+                      setContactPhone(event.target.value.replace(/\D/g, '').slice(0, 11))
+                      setFieldErrors((current) => ({
+                        ...current,
+                        contactPhone: undefined,
+                      }))
+                    }}
+                    placeholder="'-' 없이 숫자만"
+                    pattern="^01\d{8,9}$"
+                    maxLength={11}
+                    aria-invalid={Boolean(fieldErrors.contactPhone)}
+                    required
+                  />
+                  {fieldErrors.contactPhone && (
+                    <p className="text-destructive text-xs" role="alert">
+                      {fieldErrors.contactPhone}
+                    </p>
+                  )}
+                </div>
+
+                {(fieldErrors.ownerName || fieldErrors.plateNumber) && (
+                  <p className="text-destructive text-sm" role="alert">
+                    {fieldErrors.ownerName ?? fieldErrors.plateNumber}
+                  </p>
+                )}
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  disabled={
+                    mutation.isPending ||
+                    !visitDate ||
+                    !visitAddress.trim() ||
+                    !CONTACT_PHONE_PATTERN.test(contactPhone)
+                  }
+                >
+                  {mutation.isPending && (
+                    <LoaderCircle className="size-4 animate-spin" />
+                  )}
+                  예약하기
+                </Button>
+              </form>
             </>
           )}
         </section>
 
         <div className="rounded-2xl border p-7 md:p-8">
-          <div className="bg-muted/50 rounded-xl p-5">
-            <p className="font-medium">{vehicle.ownerName}</p>
-            <p className="text-muted-foreground tabular mt-1 text-sm">
-              {vehicle.plateNumber}
-            </p>
-          </div>
+          <VehicleSummary vehicle={vehicle!} />
 
           <ol className="mt-8 space-y-4 text-sm" aria-live="polite">
             <li className="flex items-center gap-3">
               <Check className="text-success size-4" />
-              차량 소유 정보 확인 완료
+              차량 소유 정보 입력 완료
             </li>
             <li
               className={
-                stepIndex >= 1
+                requestComplete
                   ? 'flex items-center gap-3'
                   : 'text-muted-foreground flex items-center gap-3'
               }
             >
-              {stepIndex >= 1 ? (
+              {requestComplete ? (
                 <Check className="text-success size-4" />
               ) : (
                 <span className="size-4 rounded-full border" />
               )}
-              방문 일정 확정
-            </li>
-            <li
-              className={
-                stepIndex >= 2
-                  ? 'flex items-center gap-3'
-                  : 'text-muted-foreground flex items-center gap-3'
-              }
-            >
-              {stepIndex > 2 ? (
-                <Check className="text-success size-4" />
-              ) : stepIndex === 2 ? (
-                <LoaderCircle className="text-primary size-4 animate-spin" />
-              ) : (
-                <span className="size-4 rounded-full border" />
-              )}
-              평가사 방문 중
-            </li>
-            <li
-              className={
-                stepIndex >= 3
-                  ? 'flex items-center gap-3'
-                  : 'text-muted-foreground flex items-center gap-3'
-              }
-            >
-              {stepIndex > 3 ? (
-                <Check className="text-success size-4" />
-              ) : stepIndex === 3 ? (
-                <LoaderCircle className="text-primary size-4 animate-spin" />
-              ) : (
-                <span className="size-4 rounded-full border" />
-              )}
-              차량 검사 완료
+              방문견적 신청 접수
             </li>
           </ol>
-
-          {phase === 'done' && (
-            <Button size="lg" className="mt-8 w-full" onClick={goToAuctionPost}>
-              <ArrowRight className="size-4" />
-              경매글 등록하러 가기
-            </Button>
-          )}
         </div>
       </div>
     </main>

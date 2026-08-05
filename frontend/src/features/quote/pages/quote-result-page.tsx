@@ -27,7 +27,7 @@ export function QuoteResultPage() {
         <EmptyState
           icon={Search}
           title="조회한 시세 정보가 없어요"
-          description="이름과 번호판을 입력하면 예상 시세를 확인할 수 있어요."
+          description="이름과 번호판, 현재 주행거리를 입력하면 예상 시세를 확인할 수 있어요."
           action={
             <Button asChild>
               <Link to="/quote">시세 조회하러 가기</Link>
@@ -115,7 +115,19 @@ export function QuoteResultPage() {
         <Button asChild size="lg" className="flex-1">
           <Link
             to="/sell"
-            state={{ ownerName: data.ownerName, plateNumber: quote.plateNumber }}
+            state={{
+              ownerName: data.ownerName,
+              plateNumber: quote.plateNumber,
+              vehicle: {
+                plateNumber: quote.plateNumber,
+                manufacturer: quote.manufacturer,
+                model: quote.model,
+                modelYear: quote.modelYear,
+                fuelType: quote.fuelType,
+                transmission: quote.transmission,
+                mainImageUrl: quote.mainImageUrl,
+              },
+            }}
           >
             <Tag className="size-4" />
             내 차 팔기

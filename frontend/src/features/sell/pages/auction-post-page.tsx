@@ -32,7 +32,7 @@ export function AuctionPostPage() {
       <main className="mx-auto max-w-3xl px-6 py-24">
         <EmptyState
           title="차량 정보를 먼저 입력해 주세요"
-          description="내 차 팔기에서 이름과 번호판을 입력하면 경매 등록을 진행할 수 있습니다."
+          description="내 차 팔기에서 차량 정보를 입력하면 경매 등록을 진행할 수 있습니다."
           action={
             <Button asChild>
               <Link to="/sell">내 차 팔기로</Link>
