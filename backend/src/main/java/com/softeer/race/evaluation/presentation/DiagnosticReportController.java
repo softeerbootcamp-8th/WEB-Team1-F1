@@ -27,10 +27,8 @@ public class DiagnosticReportController implements DiagnosticReportApi {
      * 이것"이라는 대체이고, 같은 요청을 몇 번 보내도 결과가 같다. 그래서 매번 새 자원이 생기는
      * POST · 201이 맞지 않는다.
      * <p>
-     * {@code authenticatedUser}를 쓰지 않지만 파라미터로 받는다. 인터셉터가 이 파라미터를 보고
-     * 인증을 요구하므로, <b>지우면 인증이 함께 사라진다.</b>
-     * <p>
-     * TODO 인가가 들어오면 이 평가에 배정된 평가사로 좁힌다. 지금은 로그인만 확인한다.
+     * 요청자를 본문이 아니라 세션에서 가져온다. 본문으로 받으면 남의 이름을 대고 진단서를
+     * 올릴 수 있어, 배정된 평가사만 붙일 수 있다는 규칙이 무의미해진다.
      */
     @Override
     @PutMapping
@@ -39,8 +37,8 @@ public class DiagnosticReportController implements DiagnosticReportApi {
             @PathVariable long evaluationId,
             @Valid @RequestBody DiagnosticReportAttachRequest request) {
 
-        return ResponseEntity.ok(DiagnosticReportResponse.from(
-                diagnosticReportService.attach(evaluationId, request.fileUrl())));
+        return ResponseEntity.ok(DiagnosticReportResponse.from(diagnosticReportService.attach(
+                evaluationId, authenticatedUser.id(), request.fileUrl())));
     }
 
     /**

@@ -38,15 +38,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 시나리오
  * <ol>
  *   <li>첨부는 200과 붙은 진단서를 준다</li>
- *   <li>경로의 평가 ID와 본문의 주소가 서비스로 전달된다</li>
+ *   <li>평가 ID는 경로에서, 요청자는 세션에서, 주소는 본문에서 온다</li>
  *   <li>주소가 비면 400</li>
  *   <li>반려된 평가면 409</li>
+ *   <li>다른 평가사가 담당이면 403</li>
+ *   <li>아직 담당자가 없으면 409</li>
  *   <li>조회는 200과 주소를 준다</li>
  *   <li>진단서가 없으면 404</li>
  *   <li>세션이 없으면 401이고 서비스까지 도달하지 않는다</li>
  * </ol>
  * <p>
- * 인가 시나리오가 없다. 지금은 로그인만 확인하므로 403이 나올 경로 자체가 없다.
+ * 자격 판정 자체는 여기서 확인하지 않는다. 그 규칙은 {@code Evaluation}에 있고, 여기서 보는 것은
+ * 각 결과가 어떤 상태 코드로 번역되는지와 요청자가 세션에서 오는지다.
  */
 @WebMvcTest(controllers = DiagnosticReportController.class)
 @Import(GlobalExceptionHandler.class)
@@ -82,7 +85,7 @@ class DiagnosticReportControllerTest {
     @DisplayName("첨부는 200과 붙은 진단서를 준다")
     void attach() throws Exception {
         // given : POST·201이 아니다. 재첨부가 교체라 같은 요청을 몇 번 보내도 결과가 같다
-        given(diagnosticReportService.attach(anyLong(), anyString()))
+        given(diagnosticReportService.attach(anyLong(), anyLong(), anyString()))
                 .willReturn(new DiagnosticReportInfo(EVALUATION_ID, DOCUMENT_URL, ATTACHED_AT));
 
         // when & then
@@ -94,17 +97,18 @@ class DiagnosticReportControllerTest {
     }
 
     @Test
-    @DisplayName("경로의 평가 ID와 본문의 주소가 서비스로 전달된다")
+    @DisplayName("평가 ID는 경로에서, 요청자는 세션에서, 주소는 본문에서 온다")
     void attachCarriesIds() throws Exception {
         // given
-        given(diagnosticReportService.attach(anyLong(), anyString()))
+        given(diagnosticReportService.attach(anyLong(), anyLong(), anyString()))
                 .willReturn(new DiagnosticReportInfo(EVALUATION_ID, DOCUMENT_URL, ATTACHED_AT));
 
         // when
         attachRequest(BODY);
 
-        // then : 평가 ID는 경로에서, 주소는 본문에서 와야 한다
-        then(diagnosticReportService).should().attach(EVALUATION_ID, DOCUMENT_URL);
+        // then : 요청자가 본문에서 오면 남의 이름을 대고 올릴 수 있어
+        //        "배정된 평가사만"이라는 규칙이 무의미해진다
+        then(diagnosticReportService).should().attach(EVALUATION_ID, EVALUATOR_ID, DOCUMENT_URL);
     }
 
     @Test
@@ -124,12 +128,39 @@ class DiagnosticReportControllerTest {
     void attachRejectsEndedEvaluation() throws Exception {
         // given : 400이 아니라 409다. 요청은 올바르고 서버 상태만이 거부 사유다
         willThrow(new BusinessException(EvaluationErrorCode.NOT_DIAGNOSABLE))
-                .given(diagnosticReportService).attach(anyLong(), anyString());
+                .given(diagnosticReportService).attach(anyLong(), anyLong(), anyString());
 
         // when & then
         attachRequest(BODY)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("EVALUATION_NOT_DIAGNOSABLE"));
+    }
+
+    @Test
+    @DisplayName("다른 평가사가 담당이면 403")
+    void attachRejectsOtherEvaluator() throws Exception {
+        // given
+        willThrow(new BusinessException(EvaluationErrorCode.NOT_ASSIGNED_EVALUATOR))
+                .given(diagnosticReportService).attach(anyLong(), anyLong(), anyString());
+
+        // when & then
+        attachRequest(BODY)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("EVALUATION_NOT_ASSIGNED_EVALUATOR"));
+    }
+
+    @Test
+    @DisplayName("아직 담당자가 없으면 403이 아니라 409")
+    void attachRejectsUnassignedEvaluation() throws Exception {
+        // given : 권한이 모자란 것이 아니라 담당자를 정하는 단계를 지나지 않았다.
+        //         요청자가 누구든 답이 같아 403으로 낼 근거가 없다
+        willThrow(new BusinessException(EvaluationErrorCode.EVALUATOR_NOT_ASSIGNED))
+                .given(diagnosticReportService).attach(anyLong(), anyLong(), anyString());
+
+        // when & then
+        attachRequest(BODY)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("EVALUATION_EVALUATOR_NOT_ASSIGNED"));
     }
 
     @Test

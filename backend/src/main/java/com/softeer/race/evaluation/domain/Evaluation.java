@@ -93,7 +93,7 @@ public class Evaluation extends BaseTimeEntity {
     }
 
     /**
-     * 진단 결과를 붙일 수 있는 신청인지.
+     * 이 사람이 진단 결과를 붙일 수 있는지.
      * <p>
      * 반려된 평가를 막는 것은 그 신청이 이미 끝났기 때문이다. 끝난 신청에 진단 결과가 붙으면
      * 상태와 데이터가 어긋나고, 반려 후 재신청으로 생긴 새 평가와 어느 쪽이 유효한지 알 수 없다.
@@ -102,17 +102,29 @@ public class Evaluation extends BaseTimeEntity {
      * {@code APPROVED}에도 붙을 수 있다 — 승인은 방문이 확정됐다는 뜻이고, 진단 결과는 그 방문의
      * 산물이라 오히려 그때 올라온다. 두 규칙을 한 검사로 합치면 승인된 신청에 진단서를 못 붙인다.
      * <p>
-     * <b>누가 붙이는지는 보지 않는다.</b> 배정된 평가사인지를 여기서 물을 수 있게 됐지만, 그것은
-     * 인가이고 이 저장소는 아직 인가 장치가 없다 — {@code EvaluationAssignmentService}가 역할을
-     * 검사하지 않는 것과 같은 상태다. 여기서 보는 것은 신청의 상태뿐이다.
+     * <b>배정을 자격의 증명으로 쓴다.</b> {@code Role.EVALUATOR}인지 따로 묻지 않는다. 진단서를
+     * 붙이려면 이 신청에 배정돼 있어야 하고, 배정은 대기 목록에서 수락해야 받는다. 역할 검사를
+     * 여기 더하면 같은 규칙이 배정과 첨부 두 곳에 생기고, 배정이 역할을 보게 되는 날 한쪽만
+     * 고쳐 어긋난다. 자격을 봐야 할 자리는 <b>배정하는 곳 한 군데</b>다.
      * <p>
-     * TODO 인가가 들어오면 요청자가 이 신청에 배정된 평가사인지 함께 본다.
+     * 배정 전(evaluator == null)과 남의 담당을 갈라 던진다. 앞쪽은 대기 목록에서 수락하면 풀리고
+     * 뒤쪽은 그렇게 해도 풀리지 않아, 화면이 안내할 말이 다르다.
      *
-     * @throws BusinessException 반려되어 끝난 평가면 409
+     * @throws BusinessException 반려되어 끝난 평가면 409({@code NOT_DIAGNOSABLE}),
+     *                           아직 담당자가 없으면 409({@code EVALUATOR_NOT_ASSIGNED}),
+     *                           다른 평가사의 담당이면 403({@code NOT_ASSIGNED_EVALUATOR})
      */
-    public void validateDiagnosable() {
+    public void validateDiagnosableBy(long userId) {
+        // 상태를 먼저 본다. assignTo와 같은 순서다 — 끝난 신청은 누가 물어도 답이 같아,
+        // 담당자부터 따지면 같은 상황이 요청자에 따라 403과 409로 갈린다
         if (!EvaluationStatus.inProgress().contains(status)) {
             throw new BusinessException(EvaluationErrorCode.NOT_DIAGNOSABLE);
+        }
+        if (evaluator == null) {
+            throw new BusinessException(EvaluationErrorCode.EVALUATOR_NOT_ASSIGNED);
+        }
+        if (!evaluator.getId().equals(userId)) {
+            throw new BusinessException(EvaluationErrorCode.NOT_ASSIGNED_EVALUATOR);
         }
     }
 

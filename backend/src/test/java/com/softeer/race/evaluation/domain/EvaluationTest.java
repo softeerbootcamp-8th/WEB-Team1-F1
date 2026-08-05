@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
 @DisplayName("평가 요청")
@@ -20,6 +21,9 @@ class EvaluationTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 4);
     private static final String VISIT_ADDRESS = "서울 성동구 왕십리로 83";
     private static final String CONTACT_PHONE = "01012345678";
+
+    private static final long EVALUATOR_ID = 601L;
+    private static final long OTHER_EVALUATOR_ID = 602L;
 
     @Test
     @DisplayName("접수된 신청은 REQUESTED 상태이고 평가사가 배정되지 않는다")
@@ -103,16 +107,54 @@ class EvaluationTest {
         assertThat(evaluation.getEvaluator()).isSameAs(first);
     }
 
-    // 접수 직후는 REQUESTED라 진단할 수 있다. 배정 여부와 무관하다 —
-    // assignTo와 달리 이 검사는 담당자가 정해졌는지를 보지 않는다
     @Test
-    @DisplayName("진행 중인 신청에는 배정 전이어도 진단 결과를 붙일 수 있다")
-    void validateDiagnosable() {
+    @DisplayName("배정된 평가사는 진단 결과를 붙일 수 있다")
+    void validateDiagnosableBy() {
+        // given
         Evaluation evaluation = requested();
+        evaluation.assignTo(evaluator(EVALUATOR_ID));
 
-        // 누가 붙이는지도 보지 않는다. 역할·배정 검사는 인가라 아직 도입하지 않았다.
-        // 반려된 신청 거부는 REJECTED로 만드는 공개 경로가 없어 통합 테스트가 SQL로 심어 확인한다
-        assertThatCode(evaluation::validateDiagnosable).doesNotThrowAnyException();
+        // when & then : 반려된 신청 거부(NOT_DIAGNOSABLE)는 REJECTED로 만드는 공개 경로가 없어
+        //               픽스처로 상태를 심는 통합테스트가 맡는다
+        assertThatCode(() -> evaluation.validateDiagnosableBy(EVALUATOR_ID))
+                .doesNotThrowAnyException();
+    }
+
+    /**
+     * 진단서를 붙일 자격을 배정으로만 판정하기로 한 결정을 고정한다. 역할을 함께 보지 않으므로
+     * 배정되지 않은 사람은 평가사여도 여기서 떨어진다 — 자격을 보는 자리는 배정하는 곳 한 군데다.
+     */
+    @Test
+    @DisplayName("다른 평가사의 담당이면 NOT_ASSIGNED_EVALUATOR")
+    void validateDiagnosableByRejectsOtherEvaluator() {
+        // given
+        Evaluation evaluation = requested();
+        evaluation.assignTo(evaluator(EVALUATOR_ID));
+
+        // when & then
+        assertThatThrownBy(() -> evaluation.validateDiagnosableBy(OTHER_EVALUATOR_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.NOT_ASSIGNED_EVALUATOR));
+    }
+
+    // 403이 아니라 409다. 권한이 모자란 것이 아니라 담당자를 정하는 단계를 지나지 않았다 —
+    // 요청자가 누구든 답이 같고, 대기 목록에서 수락하면 풀린다.
+    // null 검사를 빠뜨리면 여기서 NPE가 난다
+    @Test
+    @DisplayName("아직 배정 전이면 누구에게도 EVALUATOR_NOT_ASSIGNED")
+    void validateDiagnosableByRejectsUnassigned() {
+        assertThatThrownBy(() -> requested().validateDiagnosableBy(EVALUATOR_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.EVALUATOR_NOT_ASSIGNED));
+    }
+
+    private static User evaluator(long id) {
+        User evaluator = mock(User.class);
+        given(evaluator.getId()).willReturn(id);
+
+        return evaluator;
     }
 
     // 평가가 끝난 신청(NOT_ASSIGNABLE)은 여기서 만들 수 없다. status를 바꾸는 방법이 아직 없어

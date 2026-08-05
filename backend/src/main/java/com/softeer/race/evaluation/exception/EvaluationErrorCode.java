@@ -75,6 +75,24 @@ public enum EvaluationErrorCode implements ErrorCode {
      */
     NOT_DIAGNOSABLE(HttpStatus.CONFLICT, "이미 종료된 평가에는 진단서를 등록할 수 없습니다."),
 
+    /**
+     * 아직 아무도 수락하지 않은 신청이다. 403이 아니라 409인 이유는 <b>요청자가 누구든 같은 답</b>이기
+     * 때문이다 — 권한이 모자란 것이 아니라 담당자를 정하는 단계를 아직 지나지 않았다.
+     * <p>
+     * NOT_ASSIGNED_EVALUATOR와 갈라 두는 것은 화면이 안내할 말이 달라서다. 이쪽은 배정 대기
+     * 목록에서 수락하면 풀리고, 저쪽은 수락해도 풀리지 않는다(이미 임자가 있다).
+     */
+    EVALUATOR_NOT_ASSIGNED(HttpStatus.CONFLICT, "아직 담당 평가사가 정해지지 않은 신청입니다."),
+
+    /**
+     * 다른 평가사가 담당인 신청에 진단서를 붙이려 했다.
+     * <p>
+     * 배정을 자격의 증명으로 쓰므로 이 검사 하나가 "평가사인가"와 "이 건의 담당인가"를 함께
+     * 대신한다 — 배정은 대기 목록에서 수락해야 받는다.
+     */
+    NOT_ASSIGNED_EVALUATOR(HttpStatus.FORBIDDEN,
+            "이 신청에 배정된 평가사만 진단서를 등록할 수 있습니다."),
+
     DIAGNOSTIC_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "등록된 진단서가 없습니다.");
 
     private final HttpStatus status;
