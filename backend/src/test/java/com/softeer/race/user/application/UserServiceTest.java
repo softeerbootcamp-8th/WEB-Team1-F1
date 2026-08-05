@@ -1,17 +1,20 @@
 package com.softeer.race.user.application;
 
+import static com.softeer.race.notification.domain.NotificationType.WELCOME;
 import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_EMAIL;
 import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_USERNAME;
 import static com.softeer.race.user.exception.UserErrorCode.UNSUPPORTED_SIGNUP_ROLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.security.PasswordEncoder;
+import com.softeer.race.notification.application.NotificationPublisher;
 import com.softeer.race.user.application.dto.command.SignUpCommand;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
@@ -24,12 +27,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
     private static final String RAW_PASSWORD = "password123";
     private static final String ENCODED_PASSWORD = "$2a$10$encoded-password";
+    private static final long USER_ID = 1L;
 
     @Mock
     private UserRepository userRepository;
@@ -37,11 +42,14 @@ class UserServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private NotificationPublisher notificationPublisher;
+
     private UserService userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, passwordEncoder);
+        userService = new UserService(userRepository, passwordEncoder, notificationPublisher);
     }
 
     @Test
@@ -49,7 +57,7 @@ class UserServiceTest {
     void signUpStoresEncodedPassword() {
         SignUpCommand command = signUpCommand(Role.GENERAL);
         when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        savesWithId();
 
         userService.signUp(command);
 
@@ -105,6 +113,45 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("회원가입이 완료되면 저장된 회원에게 환영 알림을 발행한다")
+    void signUpPublishesWelcomeNotification() {
+        SignUpCommand command = signUpCommand(Role.GENERAL);
+        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        savesWithId();
+
+        userService.signUp(command);
+
+        // 환영 알림은 가리킬 대상이 없어서 참조를 싣지 않는다, 이동할 곳은 종류가 고정으로 들고 있다
+        verify(notificationPublisher).publish(USER_ID, WELCOME, null);
+    }
+
+    @Test
+    @DisplayName("가입이 거부되면 환영 알림을 발행하지 않는다")
+    void signUpDoesNotPublishWhenRejected() {
+        SignUpCommand command = signUpCommand(Role.EVALUATOR);
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOf(BusinessException.class);
+
+        verify(notificationPublisher, never()).publish(anyLong(), any(), any());
+    }
+
+    @Test
+    @DisplayName("저장이 제약 위반으로 실패하면 환영 알림을 발행하지 않는다")
+    void signUpDoesNotPublishWhenSaveFails() {
+        SignUpCommand command = signUpCommand(Role.GENERAL);
+        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        when(userRepository.save(any(User.class)))
+                .thenThrow(new DataIntegrityViolationException(
+                        "could not execute statement [Unique index or primary key violation: uk_users_email]"));
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOf(BusinessException.class);
+
+        verify(notificationPublisher, never()).publish(anyLong(), any(), any());
+    }
+
+    @Test
     @DisplayName("동시 가입으로 이메일 제약이 위반되면 중복 이메일 예외로 변환한다")
     void signUpConvertsDataIntegrityViolation() {
         SignUpCommand command = signUpCommand(Role.GENERAL);
@@ -130,6 +177,16 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.signUp(command))
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(DUPLICATE_USERNAME));
+    }
+
+    // 실제 저장은 IDENTITY 라 save 시점에 식별자가 붙는다, 발행이 그 값을 쓰므로 대역도 붙여서 돌려준다
+    private void savesWithId() {
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", USER_ID);
+
+            return saved;
+        });
     }
 
     private static SignUpCommand signUpCommand(Role role) {
