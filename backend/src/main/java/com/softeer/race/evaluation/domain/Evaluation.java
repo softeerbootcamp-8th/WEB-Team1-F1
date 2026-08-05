@@ -115,6 +115,21 @@ public class Evaluation extends BaseTimeEntity {
      *                           다른 평가사의 담당이면 403({@code NOT_ASSIGNED_EVALUATOR})
      */
     /**
+     * 이 신청의 상세를 볼 수 있는 사람인지.
+     * <p>
+     * 진단서 조회가 로그인만 확인하는 것과 다르다. 상세에는 <b>방문 주소</b>가 들어 있어 열어 두면
+     * 남의 집 주소가 id를 훑는 것만으로 새어 나간다. 진단서 쪽은 돌려주는 것이 어차피 공개 주소라
+     * 좁혀도 실효가 없었다.
+     * <p>
+     * 판매자를 {@code vehicle.seller}로 찾는 이유는 Evaluation이 신청자를 따로 들고 있지 않아서다.
+     * 차량이 신청마다 새로 만들어지므로 그 차량의 소유자가 곧 이 신청의 판매자다.
+     */
+    public boolean isViewableBy(long userId) {
+        return vehicle.getSeller().getId().equals(userId)
+                || (evaluator != null && evaluator.getId().equals(userId));
+    }
+
+    /**
      * 방문 결과가 제출됐다.
      * <p>
      * {@link #validateDiagnosableBy}와 나눠 둔다. 검증하는 메서드가 상태까지 바꾸면 이름이

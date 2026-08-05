@@ -22,8 +22,10 @@ class EvaluationTest {
     private static final String VISIT_ADDRESS = "서울 성동구 왕십리로 83";
     private static final String CONTACT_PHONE = "01012345678";
 
+    private static final long SELLER_ID = 600L;
     private static final long EVALUATOR_ID = 601L;
     private static final long OTHER_EVALUATOR_ID = 602L;
+    private static final long STRANGER_ID = 603L;
 
     @Test
     @DisplayName("접수된 신청은 REQUESTED 상태이고 평가사가 배정되지 않는다")
@@ -199,6 +201,34 @@ class EvaluationTest {
 
         assertThatCode(() -> evaluation.validateDiagnosableBy(EVALUATOR_ID))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("신청한 판매자와 배정된 평가사는 상세를 볼 수 있다")
+    void isViewableBy() {
+        // given
+        Evaluation evaluation = sellerOwned(SELLER_ID);
+        evaluation.assignTo(evaluator(EVALUATOR_ID));
+
+        // when & then
+        assertThat(evaluation.isViewableBy(SELLER_ID)).isTrue();
+        assertThat(evaluation.isViewableBy(EVALUATOR_ID)).isTrue();
+    }
+
+    // 배정 전에는 evaluator가 null이다. null 검사를 빠뜨리면 여기서 NPE가 난다
+    @Test
+    @DisplayName("무관한 회원은 볼 수 없고, 배정 전이어도 NPE가 나지 않는다")
+    void isViewableByRejectsStranger() {
+        assertThat(sellerOwned(SELLER_ID).isViewableBy(STRANGER_ID)).isFalse();
+    }
+
+    private static Evaluation sellerOwned(long sellerId) {
+        Vehicle vehicle = mock(Vehicle.class);
+        User seller = mock(User.class);
+        given(vehicle.getSeller()).willReturn(seller);
+        given(seller.getId()).willReturn(sellerId);
+
+        return Evaluation.request(vehicle, TODAY.plusDays(16), VISIT_ADDRESS, CONTACT_PHONE, TODAY);
     }
 
     private static User evaluator(long id) {
