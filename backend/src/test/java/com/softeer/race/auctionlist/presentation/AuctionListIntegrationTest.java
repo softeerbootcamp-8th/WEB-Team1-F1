@@ -190,4 +190,37 @@ class AuctionListIntegrationTest extends IntegrationTestSupport {
         // then : 어느 그룹부터 읽을지 정할 수 없다
         response.andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("다른 탭의 커서를 필터와 함께 보내면 400 이다")
+    void rejectsCursorFromDifferentGroup() throws Exception {
+        // given : 예정(2) 커서를 진행중 필터와 함께 보낸다. 탭을 옮기며 커서를 안 버린 경우다
+
+        // when
+        ResultActions response = mockMvc.perform(get("/api/auctions")
+                .param("filter", "LIVE")
+                .param("snapshotAt", "2026-08-03T12:00:00")
+                .param("sortPriority", "2")
+                .param("sortAt", "2026-08-03T12:30:00")
+                .param("auctionId", "104"));
+
+        // then : 진행중만 읽으므로 예정 커서는 버려진다. 조용히 첫 페이지를 주면 화면이 되감긴다
+        response.andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("필터 없이 보낸 커서는 어느 그룹이든 통과한다")
+    void acceptsAnyGroupCursorWithoutFilter() throws Exception {
+        // given : 전체 탭은 그룹을 넘나들며 읽으므로 예정 커서가 정상이다
+
+        // when
+        ResultActions response = mockMvc.perform(get("/api/auctions")
+                .param("snapshotAt", "2026-08-03T12:00:00")
+                .param("sortPriority", "2")
+                .param("sortAt", "2026-08-03T12:30:00")
+                .param("auctionId", "104"));
+
+        // then
+        response.andExpect(status().isOk());
+    }
 }
