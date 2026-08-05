@@ -5,6 +5,7 @@ import { Bell, ChevronRight } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
@@ -48,7 +49,7 @@ export function NotificationBell() {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-[28rem] p-0">
+      <DropdownMenuContent align="end" className="w-[min(28rem,calc(100vw-2rem))] p-0">
         <div className="flex items-center justify-between px-5 py-4">
           <span className="text-base font-semibold">알림</span>
           {unreadCount > 0 && (
@@ -62,7 +63,7 @@ export function NotificationBell() {
           )}
         </div>
 
-        <ScrollArea className="max-h-[32rem]">
+        <ScrollArea viewportClassName="max-h-[32rem]">
           {isLoading && items.length === 0 ? (
             <p className="text-muted-foreground px-5 py-12 text-center text-sm">
               알림을 불러오는 중입니다.
@@ -84,41 +85,43 @@ export function NotificationBell() {
                         보여 주고, 새 탭으로도 열 수 있고, 스크린리더가 "링크"로 읽는다.
                         읽음 처리는 이동에 딸린 부수 효과라 onClick 에 둔다
                       */}
-                      <Link
-                        to={notification.link}
-                        onClick={() => {
-                          setIsOpen(false)
-                          markRead(notification)
-                        }}
-                        className={cn(
-                          'hover:bg-accent group flex gap-3.5 px-5 py-4 transition-colors',
-                          !notification.read && 'bg-accent/40',
-                        )}
-                      >
-                        <span className="bg-muted mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full">
-                          <Icon className="size-5" aria-hidden />
-                        </span>
+                      <DropdownMenuItem asChild>
+                        <Link
+                          to={notification.link}
+                          onClick={() => {
+                            setIsOpen(false)
+                            markRead(notification)
+                          }}
+                          className={cn(
+                            'hover:bg-accent group flex cursor-pointer gap-3.5 rounded-none px-5 py-4 transition-colors',
+                            !notification.read && 'bg-accent/40',
+                          )}
+                        >
+                          <span className="bg-muted mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full">
+                            <Icon className="size-5" aria-hidden />
+                          </span>
 
-                        <span className="min-w-0 flex-1 space-y-1">
-                          <span className="flex items-start gap-2">
-                            <span className="flex-1 text-[0.9375rem] leading-snug font-medium">
-                              {notification.message}
+                          <span className="min-w-0 flex-1 space-y-1">
+                            <span className="flex items-start gap-2">
+                              <span className="flex-1 text-[0.9375rem] leading-snug font-medium">
+                                {notification.message}
+                              </span>
+                              {!notification.read && (
+                                <span className="bg-live mt-1.5 size-2 shrink-0 rounded-full" />
+                              )}
                             </span>
-                            {!notification.read && (
-                              <span className="bg-live mt-1.5 size-2 shrink-0 rounded-full" />
-                            )}
+                            <span className="text-muted-foreground/70 block text-xs">
+                              {formatRelativeTime(notification.createdAt)}
+                            </span>
                           </span>
-                          <span className="text-muted-foreground/70 block text-xs">
-                            {formatRelativeTime(notification.createdAt)}
-                          </span>
-                        </span>
 
-                        {/* 눌렀을 때 어디로 간다는 신호. 호버에서 살짝 밀려 방향감을 준다 */}
-                        <ChevronRight
-                          className="text-muted-foreground/40 group-hover:text-muted-foreground mt-3 size-4 shrink-0 transition-all group-hover:translate-x-0.5"
-                          aria-hidden
-                        />
-                      </Link>
+                          {/* 눌렀을 때 어디로 간다는 신호. 호버에서 살짝 밀려 방향감을 준다 */}
+                          <ChevronRight
+                            className="text-muted-foreground/40 group-hover:text-muted-foreground mt-3 size-4 shrink-0 transition-all group-hover:translate-x-0.5"
+                            aria-hidden
+                          />
+                        </Link>
+                      </DropdownMenuItem>
                     </li>
                   )
                 })}

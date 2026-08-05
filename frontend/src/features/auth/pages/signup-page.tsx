@@ -52,12 +52,13 @@ export function SignupPage() {
     try {
       const phoneNumber = `${phone.area}-${phone.middle}-${phone.last}`
       await signUpRequest({ ...form, phone: phoneNumber, role })
-      // 회원가입은 세션을 발급하지 않아서, 성공 뒤 같은 자격증명으로 다시 로그인해야 한다.
-      await login({ username: form.username, password: form.password })
 
       // 환영 알림은 발행 시점에 구독이 없어 실시간으로 도착하지 못한다.
-      // 표시를 남겨 두면 알림 쪽이 이번 한 번만 대신 안내한다
+      // 표시를 남겨 두면 알림 쪽이 이번 한 번만 대신 안내한다.
       markJustSignedUp()
+
+      // 회원가입은 세션을 발급하지 않아서, 성공 뒤 같은 자격증명으로 다시 로그인해야 한다.
+      await login({ username: form.username, password: form.password })
 
       toast.success('회원가입이 완료되었습니다')
       const returnTo = (

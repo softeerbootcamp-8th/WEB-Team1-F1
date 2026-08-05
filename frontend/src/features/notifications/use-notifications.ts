@@ -105,12 +105,16 @@ export function useNotifications() {
         // 이 알림은 발행 시점에 구독이 없어 실시간으로 올 수 없어서 배지에만 잡히기 때문이다.
         // 문구는 서버가 보관한 것을 그대로 쓰고, 눌렀을 때 동작도 목록에서 누른 것과 같다.
         // 표시는 한 번 읽으면 사라지므로 다음 로그인에는 뜨지 않는다
-        const welcome = page.content[0]
+        if (consumeJustSignedUp()) {
+          const welcome = page.content.find(
+            (notification) => notification.type === 'WELCOME' && !notification.read,
+          )
 
-        if (welcome && !welcome.read && consumeJustSignedUp()) {
-          welcomeTimer = window.setTimeout(() => {
-            showNotificationToast(welcome, () => openRef.current(welcome))
-          }, WELCOME_TOAST_DELAY_MILLIS)
+          if (welcome) {
+            welcomeTimer = window.setTimeout(() => {
+              showNotificationToast(welcome, () => openRef.current(welcome))
+            }, WELCOME_TOAST_DELAY_MILLIS)
+          }
         }
       })
       // 알림은 헤더의 부가 요소라 실패해도 화면을 막지 않는다, 다음 적재가 진실을 준다
