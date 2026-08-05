@@ -99,4 +99,35 @@ public class Evaluation extends BaseTimeEntity {
             throw new BusinessException(EvaluationErrorCode.PAST_VISIT_DATE);
         }
     }
+
+    /**
+     * 이 신청을 수락한 평가사를 담당으로 확정한다. 먼저 수락한 한 명만 성립한다.
+     * <p>
+     * 배정 시각을 따로 저장하지 않는다. {@code BaseTimeEntity.updatedAt}이 그 시각이고, 배정이
+     * 취소되지 않으므로 이 필드가 채워진 뒤 이 행이 다시 바뀌는 것은 평가 결과 제출뿐이다.
+     * 그때 갱신되면 낡는 값을 하나 더 들고 있게 되므로, 배정 시각이 따로 필요해지는 시점에
+     * 컬럼을 만든다.
+     * <p>
+     * <b>평가사 자격은 검사하지 않는다.</b> 호출자가 확인한다. 배정하려면 {@code User} 엔티티를
+     * 조회해야 하니 서비스가 어차피 역할을 볼 수 있고, 배정 대기 목록 조회도 같은 검사를 쓰기 때문에
+     * 두 유스케이스가 공유하는 한 곳에 두는 편이 낫다 — 여기에도 두면 같은 규칙이 두 곳에 생긴다.
+     * <p>
+     * 한 평가사가 같은 날 맡는 건수에도 상한을 두지 않는다.
+     *
+     * @throws BusinessException 평가가 이미 끝난 신청이거나({@code NOT_ASSIGNABLE})
+     *                           다른 평가사가 이미 배정된 경우({@code ALREADY_ASSIGNED})
+     */
+    public void assignTo(User evaluator) {
+        // 상태를 먼저 본다. 이미 배정된 신청은 평가가 끝날 때까지 REQUESTED로 남아 이 관문을
+        // 통과하고 아래에서 걸린다. 반대로 평가가 끝난 건은 배정도 되어 있지만, 그 경우의 원인은
+        // "이미 배정됨"이 아니라 "배정 대상이 아님"이다 — 목록을 다시 봐도 돌아오지 않는 건이다
+        if (status != EvaluationStatus.REQUESTED) {
+            throw new BusinessException(EvaluationErrorCode.NOT_ASSIGNABLE);
+        }
+        if (this.evaluator != null) {
+            throw new BusinessException(EvaluationErrorCode.ALREADY_ASSIGNED);
+        }
+
+        this.evaluator = evaluator;
+    }
 }
