@@ -136,6 +136,10 @@ class AuctionRoomStreamPoolIntegrationTest extends IntegrationTestSupport {
         long auctionId = liveRoom();
         StreamRecorder first = openStream(auctionId);
         awaitSubscribed(auctionId, 1);
+        awaitFirstState(first);
+
+        // 들어오기 전에 받아 둔 개수를 기억한다, 이걸 안 하면 첫 현황만으로 통과해 버린다
+        int beforeCrowd = first.states().size();
 
         // when : 나머지가 같은 순간에 들어온다
         openStreamsAtOnce(auctionId, CROWD - 1);
@@ -150,8 +154,8 @@ class AuctionRoomStreamPoolIntegrationTest extends IntegrationTestSupport {
         // 마지막 현황의 접속자 수가 정확히 사람 수라고 보지는 않는다. 브로드캐스트는 유실을 허용하고
         // 정확한 값은 재조회가 주기로 한 설계라, 동시에 들어오면 마지막으로 나간 방송이 한 박자 이전
         // 숫자를 담을 수 있다. 그건 결함이 아니라 정해 둔 성질이므로 여기서 판정하지 않는다
-        awaitFirstState(first);
-        assertThat(first.states()).isNotEmpty();
+        awaitMoreStates(first, beforeCrowd);
+        assertThat(first.states()).hasSizeGreaterThan(beforeCrowd);
         assertThat(first.states().getLast())
                 .startsWith("data:")
                 .contains("\"auctionId\":" + auctionId)
@@ -254,7 +258,8 @@ class AuctionRoomStreamPoolIntegrationTest extends IntegrationTestSupport {
 
         while (roomChannel.countSubscribers(auctionId) < expected) {
             if (Instant.now().isAfter(deadline)) {
-                throw new IllegalStateException("구독이 " + expected + "개까지 차지 않았다");
+                throw new IllegalStateException(
+                        "구독이 " + expected + "개까지 차지 않았다, 연결에서 난 오류 " + streamErrors());
             }
 
             sleep();
@@ -262,11 +267,16 @@ class AuctionRoomStreamPoolIntegrationTest extends IntegrationTestSupport {
     }
 
     // 명부가 차는 것과 그 현황이 소켓을 타고 와 줄로 잘리는 것은 다른 시점이다
-    // 여기서 던지지 않는다, 못 받으면 뒤따르는 판정이 빈 목록으로 드러내는 편이 낫다
+    // 여기서 던지지 않는다, 못 받으면 뒤따르는 판정이 개수로 드러내는 편이 낫다
     private void awaitFirstState(StreamRecorder recorder) {
+        awaitMoreStates(recorder, 0);
+    }
+
+    // 들어오기 전 개수보다 늘어날 때까지 기다린다, 첫 현황만 보면 뒤에 온 사람들의 방송을 안 봐도 통과한다
+    private void awaitMoreStates(StreamRecorder recorder, int before) {
         Instant deadline = Instant.now().plus(SUBSCRIBE_TIMEOUT);
 
-        while (recorder.states().isEmpty() && Instant.now().isBefore(deadline)) {
+        while (recorder.states().size() <= before && Instant.now().isBefore(deadline)) {
             sleep();
         }
     }
@@ -290,6 +300,13 @@ class AuctionRoomStreamPoolIntegrationTest extends IntegrationTestSupport {
         }
     }
 
+    // 열어 둔 연결 전체에서 난 오류, 등록이 안 찼을 때 원인을 여기서 본다
+    private List<String> streamErrors() {
+        synchronized (opened) {
+            return opened.stream().flatMap(recorder -> recorder.errors.stream()).toList();
+        }
+    }
+
     private long liveRoom() {
         long auctionId = rooms.room(users.user("박판매", Role.GENERAL), NOW.minusMinutes(15)).create();
         openedRooms.add(auctionId);
@@ -301,6 +318,7 @@ class AuctionRoomStreamPoolIntegrationTest extends IntegrationTestSupport {
     private static final class StreamRecorder implements Flow.Subscriber<String> {
 
         private final List<String> lines = Collections.synchronizedList(new ArrayList<>());
+        private final List<String> errors = Collections.synchronizedList(new ArrayList<>());
 
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
@@ -312,8 +330,10 @@ class AuctionRoomStreamPoolIntegrationTest extends IntegrationTestSupport {
             lines.add(line);
         }
 
+        // 삼키면 등록이 안 찼을 때 이유가 어디에도 안 남는다, 실패 메시지가 스스로 설명하게 모아 둔다
         @Override
         public void onError(Throwable throwable) {
+            errors.add(throwable.toString());
         }
 
         @Override
