@@ -5,7 +5,6 @@ import com.softeer.race.support.IntegrationTestSupport;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Limit;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +36,10 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
     // 픽스처가 이 시각을 기준으로 세 그룹에 나뉘도록 짜여 있다
     private static final LocalDateTime SNAPSHOT_AT = LocalDateTime.of(2026, 8, 3, 12, 0, 0);
 
-    private static final Limit UNLIMITED = Limit.of(100);
+    private static final int UNLIMITED = 100;
+
+    // 네이티브 쿼리라 enum 이 아니라 저장된 문자열로 넘긴다
+    private static final String PUBLISHED = PostStatus.PUBLISHED.name();
 
     @Autowired
     private AuctionListRepository auctionListRepository;
@@ -59,7 +61,7 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
     @DisplayName("진행중은 요청한 개수만큼만 읽는다")
     void live_respectsLimit() {
         // when
-        List<AuctionListRow> rows = findLive(AuctionListGroup.LIVE, Limit.of(2));
+        List<AuctionListRow> rows = findLive(AuctionListGroup.LIVE, 2);
 
         // then
         assertThat(ids(rows)).containsExactly(101L, 102L);
@@ -73,7 +75,7 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<AuctionListRow> rows = auctionListRepository.findLivePage(
-                PostStatus.PUBLISHED, SNAPSHOT_AT, cursorSortAt, 102L, UNLIMITED);
+                PUBLISHED, SNAPSHOT_AT, cursorSortAt, 102L, UNLIMITED);
 
         // then : 시각이 같아도 id 가 뒤인 103번이 살아남는다
         // 시각만 비교했다면 103번이 사라지고, >= 로 비교했다면 102번이 다시 나온다
@@ -112,7 +114,7 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
 
         // when : 내림차순이라 커서보다 앞선 시각을 찾는다
         List<AuctionListRow> rows = auctionListRepository.findEndedPage(
-                PostStatus.PUBLISHED, SNAPSHOT_AT, cursorSortAt, 107L, UNLIMITED);
+                PUBLISHED, SNAPSHOT_AT, cursorSortAt, 107L, UNLIMITED);
 
         // then
         assertThat(ids(rows)).containsExactly(106L);
@@ -169,7 +171,7 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
     @DisplayName("카드에 필요한 값이 세 테이블에서 모두 채워진다")
     void mapsAllCardFields() {
         // when
-        AuctionListRow row = findLive(AuctionListGroup.LIVE, Limit.of(1)).getFirst();
+        AuctionListRow row = findLive(AuctionListGroup.LIVE, 1).getFirst();
 
         // then 1 : 경매글에서
         assertThat(row.thumbnailUrl()).isEqualTo("https://cdn.race.dev/101.jpg");
@@ -193,7 +195,7 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
         // given : 102번은 아직 입찰이 없다
 
         // when
-        AuctionListRow row = findLive(AuctionListGroup.LIVE, Limit.of(2)).get(1);
+        AuctionListRow row = findLive(AuctionListGroup.LIVE, 2).get(1);
 
         // then : 시작가로 대체하는 건 서비스의 몫이고 쿼리는 있는 그대로 담는다
         assertThat(row.auctionId()).isEqualTo(102L);
@@ -204,19 +206,19 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
     // ================= 호출 =================
     // 그룹을 처음부터 읽을 때의 커서 시작값은 AuctionListGroup 이 안다
 
-    private List<AuctionListRow> findLive(AuctionListGroup group, Limit limit) {
+    private List<AuctionListRow> findLive(AuctionListGroup group, int limit) {
         return auctionListRepository.findLivePage(
-                PostStatus.PUBLISHED, SNAPSHOT_AT, group.startSortAt(), group.startAuctionId(), limit);
+                PUBLISHED, SNAPSHOT_AT, group.startSortAt(), group.startAuctionId(), limit);
     }
 
-    private List<AuctionListRow> findPending(AuctionListGroup group, Limit limit) {
+    private List<AuctionListRow> findPending(AuctionListGroup group, int limit) {
         return auctionListRepository.findPendingPage(
-                PostStatus.PUBLISHED, SNAPSHOT_AT, group.startSortAt(), group.startAuctionId(), limit);
+                PUBLISHED, SNAPSHOT_AT, group.startSortAt(), group.startAuctionId(), limit);
     }
 
-    private List<AuctionListRow> findEnded(AuctionListGroup group, Limit limit) {
+    private List<AuctionListRow> findEnded(AuctionListGroup group, int limit) {
         return auctionListRepository.findEndedPage(
-                PostStatus.PUBLISHED, SNAPSHOT_AT, group.startSortAt(), group.startAuctionId(), limit);
+                PUBLISHED, SNAPSHOT_AT, group.startSortAt(), group.startAuctionId(), limit);
     }
 
     private List<Long> ids(List<AuctionListRow> rows) {
