@@ -209,6 +209,27 @@ class AuctionListIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("같은 그룹 커서는 필터와 함께 통과하고 그 그룹 안에서만 이어 읽는다")
+    void resumesWithinFilteredGroup() throws Exception {
+        // given : 진행중 103번(마감 12:15)까지 읽은 커서를 진행중 필터와 함께 보낸다
+
+        // when
+        ResultActions response = mockMvc.perform(get("/api/auctions")
+                .param("filter", "LIVE")
+                .param("snapshotAt", "2026-08-03T12:00:00")
+                .param("sortPriority", "1")
+                .param("sortAt", "2026-08-03T12:15:00")
+                .param("auctionId", "103"));
+
+        // then : 필터가 없으면 110 뒤에 예정·종료가 붙는다(resumesFromCursor).
+        // 필터를 거부하기만 하는 검증으로는 이 경로가 통째로 막히므로 성공 사례도 함께 잡아둔다
+        response.andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].auctionId").value(110))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
     @DisplayName("필터 없이 보낸 커서는 어느 그룹이든 통과한다")
     void acceptsAnyGroupCursorWithoutFilter() throws Exception {
         // given : 전체 탭은 그룹을 넘나들며 읽으므로 예정 커서가 정상이다
