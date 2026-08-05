@@ -74,27 +74,27 @@ export function NotificationBell() {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-88 p-0">
-        <div className="flex items-center justify-between px-4 py-3">
-          <span className="text-sm font-semibold">알림</span>
+      <DropdownMenuContent align="end" className="w-[28rem] p-0">
+        <div className="flex items-center justify-between px-5 py-4">
+          <span className="text-base font-semibold">알림</span>
           {unreadCount > 0 && (
             <button
               type="button"
               onClick={markAllRead}
-              className="text-muted-foreground hover:text-foreground text-xs"
+              className="text-muted-foreground hover:text-foreground text-sm"
             >
               모두 읽음
             </button>
           )}
         </div>
 
-        <ScrollArea className="max-h-96">
+        <ScrollArea className="max-h-[32rem]">
           {isLoading && items.length === 0 ? (
-            <p className="text-muted-foreground px-4 py-10 text-center text-sm">
+            <p className="text-muted-foreground px-5 py-12 text-center text-sm">
               알림을 불러오는 중입니다.
             </p>
           ) : items.length === 0 ? (
-            <p className="text-muted-foreground px-4 py-10 text-center text-sm">
+            <p className="text-muted-foreground px-5 py-12 text-center text-sm">
               새로운 알림이 없습니다.
             </p>
           ) : (
@@ -112,23 +112,23 @@ export function NotificationBell() {
                           open(notification)
                         }}
                         className={cn(
-                          'hover:bg-accent flex w-full gap-3 px-4 py-3 text-left transition-colors',
+                          'hover:bg-accent flex w-full gap-3.5 px-5 py-4 text-left transition-colors',
                           !notification.read && 'bg-accent/40',
                         )}
                       >
-                        <span className="bg-muted mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full">
-                          <Icon className="size-4" aria-hidden />
+                        <span className="bg-muted mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full">
+                          <Icon className="size-5" aria-hidden />
                         </span>
-                        <span className="min-w-0 flex-1 space-y-0.5">
+                        <span className="min-w-0 flex-1 space-y-1">
                           <span className="flex items-start gap-2">
-                            <span className="flex-1 text-sm font-medium">
+                            <span className="flex-1 text-[0.9375rem] leading-snug font-medium">
                               {notification.message}
                             </span>
                             {!notification.read && (
-                              <span className="bg-live mt-1.5 size-1.5 shrink-0 rounded-full" />
+                              <span className="bg-live mt-1.5 size-2 shrink-0 rounded-full" />
                             )}
                           </span>
-                          <span className="text-muted-foreground/70 block text-[11px]">
+                          <span className="text-muted-foreground/70 block text-xs">
                             {formatRelativeTime(notification.createdAt)}
                           </span>
                         </span>

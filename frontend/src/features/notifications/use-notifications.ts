@@ -115,10 +115,9 @@ export function useNotifications() {
         setUnreadCount(count)
 
         // 안내는 표시 전용이다. 놓쳐도 알림함에 안 읽음으로 남고, 눌렀을 때만 읽음이 된다.
-        // 전역 토스트 위치(top-center)는 헤더 내비게이션을 가려서 이 토스트만 아래로 옮긴다 —
-        // 알림이 뜨는 동안 화면 이동을 막으면 안 되고, 벨은 어차피 오른쪽 위에 그대로 있다
+        // 위치는 전역 토스트(top-center)를 그대로 쓴다. 헤더 메뉴를 잠깐 가리지만,
+        // 눈에 먼저 들어오는 자리가 화면 위쪽이고 알림은 놓치면 값이 없다
         toast(notification.message, {
-          position: 'bottom-right',
           action: { label: '보기', onClick: () => openRef.current(notification) },
         })
       },
