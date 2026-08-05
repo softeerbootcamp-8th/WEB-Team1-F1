@@ -21,9 +21,13 @@ public enum VehicleErrorCode implements ErrorCode {
     /**
      * 클라이언트가 우리가 발급하지 않은 주소를 보냈다. 이 검사가 없으면 로그인한 사용자가
      * 임의의 외부 주소를 차량 이미지로 박아 넣을 수 있다.
+     * <p>
+     * 우리가 발급했더라도 <b>이미지가 아닌 주소</b>(진단서 PDF 등)면 같은 코드로 떨어진다. 클라이언트
+     * 입장에서는 둘 다 "여기 넣을 수 없는 주소"라 구별해 봐야 할 일이 다르지 않고, 구별해 주면
+     * 어떤 키가 존재하는지를 되물어 확인하는 통로가 된다.
      */
     UNMANAGED_IMAGE_URL(HttpStatus.BAD_REQUEST,
-            "이 서비스에서 발급한 이미지 주소가 아닙니다. 업로드 주소 발급 API가 돌려준 값을 그대로 보내야 합니다.");
+            "이 서비스에서 발급한 이미지 주소가 아닙니다. 업로드 주소 발급 API가 돌려준 이미지 주소를 그대로 보내야 합니다.");
 
     private final HttpStatus status;
     private final String message;

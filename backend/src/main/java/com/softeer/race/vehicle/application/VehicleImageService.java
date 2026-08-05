@@ -1,7 +1,8 @@
 package com.softeer.race.vehicle.application;
 
 import com.softeer.race.common.exception.BusinessException;
-import com.softeer.race.image.domain.ImageStorage;
+import com.softeer.race.storage.domain.FileCategory;
+import com.softeer.race.storage.domain.FileStorage;
 import com.softeer.race.vehicle.application.dto.command.VehicleImageRegisterCommand;
 import com.softeer.race.vehicle.application.dto.info.VehicleImageRegisterInfo;
 import com.softeer.race.vehicle.domain.Vehicle;
@@ -38,7 +39,7 @@ public class VehicleImageService {
 
     private final VehicleRepository vehicleRepository;
     private final VehicleImageRepository vehicleImageRepository;
-    private final ImageStorage imageStorage;
+    private final FileStorage fileStorage;
 
     /**
      * 차량의 사진을 받은 목록으로 통째로 교체한다.
@@ -62,8 +63,13 @@ public class VehicleImageService {
         return VehicleImageRegisterInfo.from(vehicle.getId(), saved);
     }
 
+    /**
+     * 종류를 {@code IMAGE}로 못 박는다. "우리가 발급한 주소인가"만 물으면 진단서 PDF도 우리가
+     * 발급한 것이라 통과해, <b>차량 사진 자리에 문서가 등록된다.</b> 그러면 목록의 첫 장이 대표
+     * 이미지가 되는 규칙 때문에 경매글 썸네일이 PDF 주소가 될 수도 있다.
+     */
     private void validateManaged(String imageUrl) {
-        if (!imageStorage.isManagedUrl(imageUrl)) {
+        if (!fileStorage.isManagedUrl(imageUrl, FileCategory.IMAGE)) {
             throw new BusinessException(VehicleErrorCode.UNMANAGED_IMAGE_URL);
         }
     }
