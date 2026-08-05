@@ -14,14 +14,22 @@
  */
 const KEY = 'race.justSignedUp'
 
-export function markJustSignedUp(): void {
-  sessionStorage.setItem(KEY, '1')
+export function markJustSignedUp(userId: number): void {
+  try {
+    sessionStorage.setItem(KEY, String(userId))
+  } catch {
+    // 환영 안내용 표시는 부가 기능이므로 저장소 오류가 회원가입 성공을 뒤집지 않는다
+  }
 }
 
-/** 표시가 있었으면 지우고 true 를 준다. 두 번째 호출은 false 다 — 로그인마다 뜨면 안 된다. */
-export function consumeJustSignedUp(): boolean {
-  const found = sessionStorage.getItem(KEY) !== null
-  sessionStorage.removeItem(KEY)
+/** 현재 회원의 표시였으면 true다. 누구의 표시든 한 번 확인하면 지워 다른 계정으로 넘어가지 않는다. */
+export function consumeJustSignedUp(userId: number): boolean {
+  try {
+    const markedUserId = sessionStorage.getItem(KEY)
+    sessionStorage.removeItem(KEY)
 
-  return found
+    return markedUserId === String(userId)
+  } catch {
+    return false
+  }
 }

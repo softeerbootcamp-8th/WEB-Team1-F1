@@ -26,7 +26,8 @@ const WELCOME_TOAST_DELAY_MILLIS = 3_000
  * 화면을 옮겨도 연결이 끊기지 않는다. 로그인 상태에서만 열어 브라우저의 도메인당 연결 수를 아낀다.
  */
 export function useNotifications() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
+  const userId = user?.id
   const navigate = useNavigate()
 
   const [items, setItems] = useState<AppNotification[]>([])
@@ -81,7 +82,7 @@ export function useNotifications() {
 
   // 최초 적재. 건수를 따로 묻는 이유는 실시간 연결이 막힌 환경에서도 배지가 맞아야 하기 때문이다
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || userId == null) {
       setItems([])
       setUnreadCount(0)
       setCursor(null)
@@ -105,7 +106,7 @@ export function useNotifications() {
         // 이 알림은 발행 시점에 구독이 없어 실시간으로 올 수 없어서 배지에만 잡히기 때문이다.
         // 문구는 서버가 보관한 것을 그대로 쓰고, 눌렀을 때 동작도 목록에서 누른 것과 같다.
         // 표시는 한 번 읽으면 사라지므로 다음 로그인에는 뜨지 않는다
-        if (consumeJustSignedUp()) {
+        if (consumeJustSignedUp(userId)) {
           const welcome = page.content.find(
             (notification) => notification.type === 'WELCOME' && !notification.read,
           )
@@ -127,7 +128,7 @@ export function useNotifications() {
       cancelled = true
       window.clearTimeout(welcomeTimer)
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, userId])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -157,9 +158,8 @@ export function useNotifications() {
         loadFirstPage().catch(() => undefined)
       },
       onClosed: () => {
-        // 세션이 만료돼 브라우저가 재시도를 포기한 상태다. 조용히 멈춘다 —
-        // 다음 요청이 401을 받으면 인증 흐름이 로그인으로 보낸다
-        setUnreadCount(0)
+        // 연결 종료는 안 읽은 건수의 변경을 뜻하지 않으므로 마지막 서버 값을 유지한다.
+        // 세션이 실제로 만료되면 다음 요청의 401이 인증 상태를 바꾸고 위 비인증 분기가 초기화한다
       },
     })
   }, [isAuthenticated, loadFirstPage])
@@ -173,6 +173,8 @@ export function useNotifications() {
       setItems((prev) => [...prev, ...page.content])
       setCursor(page.nextCursor)
       setHasNext(page.hasNext)
+    } catch {
+      // 추가 조회 실패는 화면을 막지 않는다. 다음 시도나 다음 적재가 진실을 준다
     } finally {
       setIsLoadingMore(false)
     }
