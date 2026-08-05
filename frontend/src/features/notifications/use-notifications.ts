@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { useAuth } from '@/features/auth/auth-context'
+import { consumeJustSignedUp } from '@/lib/signup-welcome'
 import type { AppNotification } from '@/types/domain'
 import {
   fetchNotifications,
@@ -11,6 +12,9 @@ import {
   markNotificationRead,
   subscribeNotifications,
 } from './api'
+
+// 가입 성공 안내가 먼저 뜨고 사라진 뒤에 환영 알림을 보여 준다. 둘이 겹치면 어느 것도 읽히지 않는다
+const WELCOME_TOAST_DELAY_MILLIS = 3_000
 
 /**
  * 헤더 알림의 상태 한 곳. 목록·안 읽은 건수·실시간 구독을 함께 들고 있다.
@@ -42,38 +46,6 @@ export function useNotifications() {
     setHasNext(page.hasNext)
   }, [])
 
-  // 최초 적재. 건수를 따로 묻는 이유는 실시간 연결이 막힌 환경에서도 배지가 맞아야 하기 때문이다
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setItems([])
-      setUnreadCount(0)
-      setCursor(null)
-      setHasNext(false)
-      return
-    }
-
-    let cancelled = false
-    setIsLoading(true)
-
-    Promise.all([fetchNotifications(), fetchUnreadCount()])
-      .then(([page, count]) => {
-        if (cancelled) return
-        setItems(page.content)
-        setCursor(page.nextCursor)
-        setHasNext(page.hasNext)
-        setUnreadCount(count)
-      })
-      // 알림은 헤더의 부가 요소라 실패해도 화면을 막지 않는다, 다음 적재가 진실을 준다
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [isAuthenticated])
-
   /** 읽음으로 바꾸고 그 알림이 가리키는 화면으로 이동한다. */
   const open = useCallback(
     (notification: AppNotification) => {
@@ -92,7 +64,7 @@ export function useNotifications() {
   )
 
   /**
-   * 구독 효과가 open을 직접 의존하지 않도록 최신 함수를 ref에 담아 둔다.
+   * 효과들이 open을 직접 의존하지 않도록 최신 함수를 ref에 담아 둔다.
    * open은 라우터의 navigate에 묶여 있고 navigate는 화면을 옮길 때마다 새 함수가 되는데,
    * 그것을 의존성에 넣으면 화면을 옮길 때마다 연결이 끊기고 다시 붙는다. 실제로 그렇게 동작했다.
    */
@@ -101,6 +73,54 @@ export function useNotifications() {
   useEffect(() => {
     openRef.current = open
   }, [open])
+
+  // 최초 적재. 건수를 따로 묻는 이유는 실시간 연결이 막힌 환경에서도 배지가 맞아야 하기 때문이다
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setItems([])
+      setUnreadCount(0)
+      setCursor(null)
+      setHasNext(false)
+      return
+    }
+
+    let cancelled = false
+    let welcomeTimer: number | undefined
+    setIsLoading(true)
+
+    Promise.all([fetchNotifications(), fetchUnreadCount()])
+      .then(([page, count]) => {
+        if (cancelled) return
+        setItems(page.content)
+        setCursor(page.nextCursor)
+        setHasNext(page.hasNext)
+        setUnreadCount(count)
+
+        // 가입 직후 딱 한 번, 화면이 환영 알림을 대신 안내한다.
+        // 이 알림은 발행 시점에 구독이 없어 실시간으로 올 수 없어서 배지에만 잡히기 때문이다.
+        // 문구는 서버가 보관한 것을 그대로 쓰고, 눌렀을 때 동작도 목록에서 누른 것과 같다.
+        // 표시는 한 번 읽으면 사라지므로 다음 로그인에는 뜨지 않는다
+        const welcome = page.content[0]
+
+        if (welcome && !welcome.read && consumeJustSignedUp()) {
+          welcomeTimer = window.setTimeout(() => {
+            toast(welcome.message, {
+              action: { label: '보기', onClick: () => openRef.current(welcome) },
+            })
+          }, WELCOME_TOAST_DELAY_MILLIS)
+        }
+      })
+      // 알림은 헤더의 부가 요소라 실패해도 화면을 막지 않는다, 다음 적재가 진실을 준다
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(welcomeTimer)
+    }
+  }, [isAuthenticated])
 
   useEffect(() => {
     if (!isAuthenticated) return
