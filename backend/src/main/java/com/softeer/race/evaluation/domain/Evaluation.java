@@ -92,6 +92,30 @@ public class Evaluation extends BaseTimeEntity {
         return new Evaluation(vehicle, visitDate, visitAddress, contactPhone);
     }
 
+    /**
+     * 진단 결과를 붙일 수 있는 신청인지.
+     * <p>
+     * 반려된 평가를 막는 것은 그 신청이 이미 끝났기 때문이다. 끝난 신청에 진단 결과가 붙으면
+     * 상태와 데이터가 어긋나고, 반려 후 재신청으로 생긴 새 평가와 어느 쪽이 유효한지 알 수 없다.
+     * <p>
+     * {@link #assignTo}와 상태 조건이 다르다. 배정은 {@code REQUESTED}만 받지만 진단서는
+     * {@code APPROVED}에도 붙을 수 있다 — 승인은 방문이 확정됐다는 뜻이고, 진단 결과는 그 방문의
+     * 산물이라 오히려 그때 올라온다. 두 규칙을 한 검사로 합치면 승인된 신청에 진단서를 못 붙인다.
+     * <p>
+     * <b>누가 붙이는지는 보지 않는다.</b> 배정된 평가사인지를 여기서 물을 수 있게 됐지만, 그것은
+     * 인가이고 이 저장소는 아직 인가 장치가 없다 — {@code EvaluationAssignmentService}가 역할을
+     * 검사하지 않는 것과 같은 상태다. 여기서 보는 것은 신청의 상태뿐이다.
+     * <p>
+     * TODO 인가가 들어오면 요청자가 이 신청에 배정된 평가사인지 함께 본다.
+     *
+     * @throws BusinessException 반려되어 끝난 평가면 409
+     */
+    public void validateDiagnosable() {
+        if (!EvaluationStatus.inProgress().contains(status)) {
+            throw new BusinessException(EvaluationErrorCode.NOT_DIAGNOSABLE);
+        }
+    }
+
     // 오늘은 허용한다. 당일 방문 요청 자체가 무의미한 입력은 아니고, 배정 단계에서 판단할 일이다.
     // 상한(예: 90일 이내)은 두지 않는다 — 근거 있는 값을 정할 수 없어 임의의 숫자가 된다
     private static void validateVisitDate(LocalDate visitDate, LocalDate today) {

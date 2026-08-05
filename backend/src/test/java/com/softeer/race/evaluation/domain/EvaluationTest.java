@@ -66,4 +66,16 @@ class EvaluationTest {
                 .containsExactlyInAnyOrder(EvaluationStatus.REQUESTED, EvaluationStatus.APPROVED)
                 .doesNotContain(EvaluationStatus.REJECTED);
     }
+
+    // 접수 직후는 REQUESTED라 진단할 수 있다.
+    // 반려된 평가 거부는 REJECTED로 만드는 공개 경로가 없어 통합 테스트가 SQL로 심어 확인한다
+    @Test
+    @DisplayName("진행 중인 신청에는 진단 결과를 붙일 수 있다")
+    void validateDiagnosable() {
+        Evaluation evaluation = Evaluation.request(
+                mock(Vehicle.class), TODAY, VISIT_ADDRESS, CONTACT_PHONE, TODAY);
+
+        // 누가 붙이는지는 보지 않는다. 역할·배정 검사는 인가라 아직 도입하지 않았다
+        assertThatCode(evaluation::validateDiagnosable).doesNotThrowAnyException();
+    }
 }
