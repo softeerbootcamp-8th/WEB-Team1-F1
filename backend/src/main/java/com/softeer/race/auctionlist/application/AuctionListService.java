@@ -110,13 +110,16 @@ public class AuctionListService {
             };
         }
 
+        // 공개 목록은 네이티브라 상태를 문자열로, 개수를 정수로 넘긴다
+        String published = PostStatus.PUBLISHED.name();
+
         return switch (group) {
             case LIVE -> auctionListRepository.findLivePage(
-                    PostStatus.PUBLISHED, snapshotAt, cursorSortAt, cursorAuctionId, limit);
+                    published, snapshotAt, cursorSortAt, cursorAuctionId, need);
             case PENDING -> auctionListRepository.findPendingPage(
-                    PostStatus.PUBLISHED, snapshotAt, cursorSortAt, cursorAuctionId, limit);
+                    published, snapshotAt, cursorSortAt, cursorAuctionId, need);
             case ENDED -> auctionListRepository.findEndedPage(
-                    PostStatus.PUBLISHED, snapshotAt, cursorSortAt, cursorAuctionId, limit);
+                    published, snapshotAt, cursorSortAt, cursorAuctionId, need);
         };
     }
 
