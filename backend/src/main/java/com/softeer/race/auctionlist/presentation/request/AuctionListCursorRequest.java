@@ -19,7 +19,10 @@ public record AuctionListCursorRequest(
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         LocalDateTime sortAt,
 
-        Long auctionId
+        Long auctionId,
+
+        // null이면 전체, 있으면 해당 그룹만
+        AuctionListGroup filter
 ) {
 
     // 일부만 온 커서로는 이어 읽을 지점을 특정할 수 없다.
@@ -33,6 +36,17 @@ public record AuctionListCursorRequest(
     @AssertTrue(message = "커서의 그룹 순번이 올바르지 않습니다.")
     boolean isGroupOrderValid() {
         return sortPriority == null || AuctionListGroup.isValidOrder(sortPriority);
+    }
+
+    // 필터가 걸리면 그 그룹만 읽으므로, 다른 그룹 커서는 이어 읽을 지점이 되지 못하고 버려진다.
+    // 탭을 옮기며 이전 커서를 그대로 보낸 경우라 조용히 첫 페이지를 주면 화면이 되감긴다.
+    @AssertTrue(message = "커서의 그룹이 필터와 일치해야 합니다.")
+    boolean isCursorGroupMatchingFilter() {
+        // 커서 없음·필터 없음·잘못된 순번은 각각 다른 검증이 잡는다
+        if (filter == null || sortPriority == null || !AuctionListGroup.isValidOrder(sortPriority)) {
+            return true;
+        }
+        return AuctionListGroup.ofOrder(sortPriority) == filter;
     }
 
     /**
