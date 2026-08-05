@@ -21,6 +21,10 @@ public class AuctionRoomStreamService {
     // 나간 사람이 이 시간 안에는 접속자에서 빠진다, 프록시가 유휴 연결을 끊는 것도 이 신호가 막는다
     private static final long SWEEP_INTERVAL_MILLIS = 5_000L;
 
+    // 방이 닫히고 이 시간 안에는 남은 연결이 끊긴다, 그동안만 접속자 수가 실제와 어긋난다
+    // 위와 값이 같지만 정해진 이유가 다르다, 한쪽을 바꿔도 다른 쪽은 따라오지 않는다
+    private static final long DISCONNECT_INTERVAL_MILLIS = 5_000L;
+
     private final AuctionRoomReader auctionRoomReader;
     private final RoomChannel roomChannel;
 
@@ -46,9 +50,10 @@ public class AuctionRoomStreamService {
      * 구독을 방에서 빼고 남은 구독에 줄어든 접속자 수를 보낸다
      */
     public void unsubscribe(long auctionId, RoomSubscriber subscriber) {
-        roomChannel.unsubscribe(auctionId, subscriber);
-
-        refresh(auctionId);
+        // 걷어내기와 방 끊기가 먼저 빼 간 뒤에도 이 콜백은 돌아온다, 그때 갱신하면 같은 방을 두 번 읽는다
+        if (roomChannel.unsubscribe(auctionId, subscriber)) {
+            refresh(auctionId);
+        }
     }
 
     /**
@@ -67,6 +72,24 @@ public class AuctionRoomStreamService {
     }
 
     /**
+     * 연결을 열어 두지 않는 단계가 된 방의 구독을 서버가 끊는다
+     */
+    // 구독을 받는 판정과 같은 것을 쓴다, 들어올 수 없게 된 방은 남아 있을 수도 없다
+    @Scheduled(fixedDelay = DISCONNECT_INTERVAL_MILLIS, scheduler = SchedulingConfig.ROOM_STREAM)
+    public void disconnectClosedRooms() {
+        for (long auctionId : roomChannel.subscribedAuctions()) {
+            // 한 방의 실패를 그 방에 가둔다, 남은 방은 이번 주기에 그대로 정리한다
+            try {
+                if (connectionsAreOver(auctionId)) {
+                    roomChannel.closeRoom(auctionId);
+                }
+            } catch (Exception e) {
+                log.warn("경매방 연결 종료 실패, 경매 {}", auctionId, e);
+            }
+        }
+    }
+
+    /**
      * 방에 열려 있는 구독에 현황을 다시 보낸다, 보는 사람이 없으면 조회도 하지 않는다
      */
     public void refresh(long auctionId) {
@@ -77,6 +100,13 @@ public class AuctionRoomStreamService {
         // 구독이 열려 있는 사이에 경매글이 내려갔다면 보낼 현황이 없다
         auctionRoomReader.find(auctionId)
                 .ifPresent(this::broadcast);
+    }
+
+    // 경매글이 내려가 단계를 알 수 없으면 끊을 근거도 없으므로 그대로 둔다
+    private boolean connectionsAreOver(long auctionId) {
+        return auctionRoomReader.findPhase(auctionId)
+                .map(phase -> !phase.allowsConnection())
+                .orElse(false);
     }
 
     private void broadcast(RoomQueryResult result) {

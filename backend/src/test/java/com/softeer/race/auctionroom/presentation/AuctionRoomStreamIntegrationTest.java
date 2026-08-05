@@ -1,5 +1,6 @@
 package com.softeer.race.auctionroom.presentation;
 
+import com.softeer.race.auctionroom.application.RoomChannel;
 import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
@@ -18,11 +19,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * 경매방 현황 구독을 컨트롤러에서 DB까지
@@ -33,6 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 로그인 여부도 여기서 본다. 구독은 누구인지가 아니라 로그인했는지만 확인하므로 검증할 것은
  * 연결이 열리느냐 뿐이고, 그것 역시 응답 객체로는 알 수 없다.
+ * <p>
+ * 서버가 끊은 뒤 응답이 실제로 끝나는지, 두 번째로 디스패처를 통과하며 인증이 이미 나간 응답을 뒤집지 않는지
  */
 @DisplayName("경매방 현황 구독 통합 테스트")
 class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
@@ -40,7 +41,16 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private SessionService sessionService;
 
+    @Autowired
+    private RoomChannel roomChannel;
+
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
+
+    // 연결 만료가 30분이라 대기 상한을 안 주면 끝나지 않은 응답을 30분 기다린다
+    private static final long ASYNC_WAIT_MILLIS = 1_000L;
+
+    // 세션 유효기간이 30분이다, 그보다 뒤로 밀면 구독이 열려 있는 사이 세션이 죽는다
+    private static final long SESSION_EXPIRED_MINUTES = 31L;
 
     // 마감(시작 + 20분)에 결과 확인 5분까지 지난 시각이 되도록 뒤로 물린다
     private static final LocalDateTime CLOSED_START_AT = LocalDateTime.of(2026, 8, 3, 18, 30);
@@ -133,6 +143,68 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
                 request().asyncNotStarted());
     }
 
+    @Test
+    @DisplayName("시나리오 5 : 서버가 방을 끊음 -> 열려 있던 연결이 실제로 끝난다")
+    void scenario5_ServerClosesRoom_ConnectionEnds() throws Exception {
+        // given : 진행 중인 방에 한 사람이 붙어 있다
+        long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
+        MvcResult opened = subscribe(liveAuctionId).andExpect(request().asyncStarted()).andReturn();
+
+        // when : 서버가 그 방을 끊는다
+        roomChannel.closeRoom(liveAuctionId);
+
+        // then : 열린 채로 남아 있던 응답이 끝나 컨테이너로 돌아온다, 안 끝나면 여기서 실패한다
+        awaitEnded(opened);
+        mockMvc.perform(asyncDispatch(opened)).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("시나리오 6 : 구독 중 세션 만료 -> 다 내려간 응답이 인증 때문에 뒤집히지 않는다")
+    void scenario6_SessionExpiredWhileSubscribed_ResponseStands() throws Exception {
+        // given : 붙어 있는 사이 세션 유효기간이 지난다
+        long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
+        MvcResult opened = subscribe(liveAuctionId).andExpect(request().asyncStarted()).andReturn();
+        fixClockAt(NOW.plusMinutes(SESSION_EXPIRED_MINUTES));
+
+        // when : 서버가 끊어 요청이 두 번째로 디스패처를 통과한다, 인증도 이때 다시 돈다
+        roomChannel.closeRoom(liveAuctionId);
+        awaitEnded(opened);
+
+        // then : 상태코드로는 알 수 없다, 응답이 이미 커밋돼 뒤늦은 401 이 200 을 덮지 못한다
+        // 그래서 이 통과에서 인증 예외가 났는지를 본다, 나면 다 내려간 응답 뒤에 오류 본문이 따라붙는다
+        MvcResult dispatched = mockMvc.perform(asyncDispatch(opened))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        assertThat(dispatched.getResolvedException()).isNull();
+    }
+
+    // 끊는 순서가 옳은지는 여기서 볼 수 없다. 해제 콜백이 asyncDispatch 때만 돌아 MockMvc 로는
+    // 순서를 관찰할 수 없고, 그것은 채널 단위테스트가 콜백을 흉내 내어 잡는다
+    @Test
+    @DisplayName("시나리오 7 : 여럿이 있는 방을 끊음 -> 모두의 연결이 끝나고 아무에게도 현황이 더 가지 않는다")
+    void scenario7_ClosingRoom_EndsEveryConnection() throws Exception {
+        // given : 같은 방에 둘이 붙어 있다, 두 번째가 들어오며 첫 번째는 갱신을 한 번 더 받았다
+        long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
+        MvcResult first = subscribe(liveAuctionId).andExpect(request().asyncStarted()).andReturn();
+        MvcResult second = subscribe(liveAuctionId).andExpect(request().asyncStarted()).andReturn();
+
+        int sentToFirst = stateCount(first);
+        int sentToSecond = stateCount(second);
+
+        // when : 서버가 방을 끊는다, 한 명이 끝날 때마다 해제 콜백이 돌아온다
+        roomChannel.closeRoom(liveAuctionId);
+        awaitEnded(first);
+        awaitEnded(second);
+        mockMvc.perform(asyncDispatch(first));
+        mockMvc.perform(asyncDispatch(second));
+
+        // then : 둘 다 끝났고, 끝나는 사이에 현황이 더 실려 나가지도 않았다
+        // 끝내기 전에 닫힘 표시가 먼저 서므로 그 틈에 방송이 와도 그 연결에는 써지지 않는다
+        assertThat(stateCount(first)).isEqualTo(sentToFirst);
+        assertThat(stateCount(second)).isEqualTo(sentToSecond);
+    }
+
     // ================= 준비 ====================
     // 그 사람이 그 금액을 부른 진행 중인 방, 판매자와 시작 시각은 이 테스트가 보지 않는다
     private long liveRoomWithTopBid(String bidderName, long amount) {
@@ -156,6 +228,16 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
     private ResultActions subscribeWithoutSession(long auctionId) throws Exception {
         return mockMvc.perform(get("/api/auctions/{auctionId}/room/stream", auctionId)
                 .accept(MediaType.TEXT_EVENT_STREAM));
+    }
+
+    // 그 연결로 나간 현황의 개수, SSE 는 현황 하나가 data 한 줄이다
+    private static int stateCount(MvcResult opened) {
+        return body(opened).split("data:", -1).length - 1;
+    }
+
+    // 응답이 끝났는지 확인하는 대기다, 상한을 안 주면 spring-test 가 연결 만료 시간만큼 기다린다
+    private static void awaitEnded(MvcResult opened) {
+        opened.getAsyncResult(ASYNC_WAIT_MILLIS);
     }
 
     // 세션은 고정된 현재 시각 기준으로 발급된다, @BeforeEach 가 시각을 먼저 고정하므로 발급 직후 유효하다

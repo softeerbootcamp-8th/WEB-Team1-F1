@@ -130,7 +130,7 @@ class InMemoryRoomChannelTest {
     @DisplayName("전송 중 닫힌 구독은 걷어낸다")
     void closedSubscriberIsRemoved() {
         FakeSubscriber broken = new FakeSubscriber();
-        broken.close();
+        broken.disconnect();
         channel.subscribe(AUCTION, broken);
         channel.subscribe(AUCTION, new FakeSubscriber());
 
@@ -145,7 +145,7 @@ class InMemoryRoomChannelTest {
     @DisplayName("닫힌 구독이 있어도 나머지는 현황을 받는다")
     void openSubscriberReceivesDespiteClosedPeer() {
         FakeSubscriber broken = new FakeSubscriber();
-        broken.close();
+        broken.disconnect();
         FakeSubscriber alive = new FakeSubscriber();
         channel.subscribe(AUCTION, broken);
         channel.subscribe(AUCTION, alive);
@@ -160,7 +160,7 @@ class InMemoryRoomChannelTest {
     @DisplayName("모두 닫힌 방에 다시 보내도 터지지 않는다")
     void broadcastToDrainedRoomIsSafe() {
         FakeSubscriber broken = new FakeSubscriber();
-        broken.close();
+        broken.disconnect();
         channel.subscribe(AUCTION, broken);
 
         channel.broadcast(AUCTION, liveState());
@@ -196,6 +196,124 @@ class InMemoryRoomChannelTest {
         Set<Long> swept = channel.sweepClosed();
 
         assertThat(swept).isEmpty();
+    }
+
+    @Test
+    @DisplayName("방을 끊으면 그 방의 구독이 전부 끝나고 명부에서 빠진다")
+    void closeRoomEndsEverySubscription() {
+        FakeSubscriber first = new FakeSubscriber();
+        FakeSubscriber second = new FakeSubscriber();
+        channel.subscribe(AUCTION, first);
+        channel.subscribe(AUCTION, second);
+
+        channel.closeRoom(AUCTION);
+
+        assertThat(first.closedByServer).isTrue();
+        assertThat(second.closedByServer).isTrue();
+        assertThat(channel.countSubscribers(AUCTION)).isZero();
+    }
+
+    @Test
+    @DisplayName("다른 방의 구독은 끊지 않는다")
+    void closeRoomLeavesOtherRooms() {
+        FakeSubscriber other = new FakeSubscriber();
+        channel.subscribe(OTHER_AUCTION, other);
+        channel.subscribe(AUCTION, new FakeSubscriber());
+
+        channel.closeRoom(AUCTION);
+
+        assertThat(other.closedByServer).isFalse();
+        assertThat(channel.countSubscribers(OTHER_AUCTION)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("아무도 없는 방을 끊어도 터지지 않는다")
+    void closingEmptyRoomIsSafe() {
+        // 주기 작업이 방 목록을 받아 든 사이 마지막 사람이 나갈 수 있다
+        channel.closeRoom(AUCTION);
+
+        assertThat(channel.countSubscribers(AUCTION)).isZero();
+    }
+
+    @Test
+    @DisplayName("해제는 실제로 뺐을 때만 뺐다고 답한다")
+    void unsubscribeTellsWhetherItRemoved() {
+        // 걷어내기가 먼저 빼 간 뒤에 해제 콜백이 돌아오므로, 호출자는 자기가 뺀 것인지 알아야 한다
+        FakeSubscriber leaving = new FakeSubscriber();
+        channel.subscribe(AUCTION, leaving);
+
+        boolean first = channel.unsubscribe(AUCTION, leaving);
+        boolean second = channel.unsubscribe(AUCTION, leaving);
+
+        assertThat(first).isTrue();
+        assertThat(second).isFalse();
+    }
+
+    @Test
+    @DisplayName("걷어낸 구독의 해제가 뒤늦게 와도 뺐다고 답하지 않는다")
+    void unsubscribeAfterDiscardTellsNothingWasRemoved() {
+        FakeSubscriber broken = new FakeSubscriber();
+        broken.disconnect();
+        channel.subscribe(AUCTION, broken);
+        channel.subscribe(AUCTION, new FakeSubscriber());
+
+        channel.broadcast(AUCTION, liveState());
+        boolean removedByCallback = channel.unsubscribe(AUCTION, broken);
+
+        assertThat(removedByCallback).isFalse();
+    }
+
+    @Test
+    @DisplayName("전송에 실패해 걷어낸 구독은 연결도 끝낸다")
+    void discardedSubscriberIsAlsoEnded() {
+        // 명부에서 빼기만 하면 그 응답은 아무도 끝내지 않아 만료까지 산다
+        FakeSubscriber broken = new FakeSubscriber();
+        broken.disconnect();
+        channel.subscribe(AUCTION, broken);
+
+        channel.broadcast(AUCTION, liveState());
+
+        assertThat(broken.closedByServer).isTrue();
+    }
+
+    @Test
+    @DisplayName("찔러 보다 걷어낸 구독도 연결을 끝낸다")
+    void sweptSubscriberIsAlsoEnded() {
+        FakeSubscriber silent = new FakeSubscriber();
+        silent.closeOnPing();
+        channel.subscribe(AUCTION, silent);
+
+        channel.sweepClosed();
+
+        assertThat(silent.closedByServer).isTrue();
+    }
+
+    @Test
+    @DisplayName("끊는 도중 되돌아온 해제 콜백에는 방이 이미 비어 있다")
+    void roomIsAlreadyEmptyWhenReleaseCallbackReturns() {
+        // 연결 하나가 끝나면 해제 콜백이 돌아와 남은 접속자 수를 다시 읽는다
+        // 그때 방이 안 비어 있으면 한 명 끊을 때마다 조회와 방송이 한 번씩 돈다
+        List<Integer> seenWhileCutting = new ArrayList<>();
+        Runnable callback = () -> seenWhileCutting.add(channel.countSubscribers(AUCTION));
+        channel.subscribe(AUCTION, new FakeSubscriber(callback));
+        channel.subscribe(AUCTION, new FakeSubscriber(callback));
+
+        channel.closeRoom(AUCTION);
+
+        assertThat(seenWhileCutting).containsExactly(0, 0);
+    }
+
+    @Test
+    @DisplayName("구독이 남은 방만 목록에 오른다")
+    void subscribedAuctionsListsOnlyOccupiedRooms() {
+        FakeSubscriber leaving = new FakeSubscriber();
+        channel.subscribe(AUCTION, new FakeSubscriber());
+        channel.subscribe(OTHER_AUCTION, leaving);
+        channel.unsubscribe(OTHER_AUCTION, leaving);
+
+        Set<Long> occupied = channel.subscribedAuctions();
+
+        assertThat(occupied).containsExactly(AUCTION);
     }
 
     @Test
@@ -255,10 +373,25 @@ class InMemoryRoomChannelTest {
     private static final class FakeSubscriber implements RoomSubscriber {
 
         private final List<RoomState> received = new ArrayList<>();
+
+        // 실제 연결은 끝나는 순간 해제 콜백이 되돌아온다, 그 되돌아옴을 이 자리에 심는다
+        private final Runnable onClose;
+
         private boolean open = true;
         private boolean closeOnPing;
+        private boolean closedByServer;
 
-        void close() {
+        FakeSubscriber() {
+            this(() -> {
+            });
+        }
+
+        FakeSubscriber(Runnable onClose) {
+            this.onClose = onClose;
+        }
+
+        // 알리지 않고 사라진 상대, 서버가 끝낸 것과 구분한다
+        void disconnect() {
             open = false;
         }
 
@@ -280,6 +413,13 @@ class InMemoryRoomChannelTest {
             if (closeOnPing) {
                 open = false;
             }
+        }
+
+        @Override
+        public void close() {
+            closedByServer = true;
+            open = false;
+            onClose.run();
         }
 
         @Override

@@ -17,10 +17,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
-// 브라우저가 조용히 끊긴 상황은 MockMvc 로 재현되지 않는다, 끊긴 구독을 흉내 낸 것을 채널에 직접 건다
+// 구독을 정리하는 주기 작업 둘을 함께 본다, 조용히 끊긴 것을 걷어내는 쪽과 끝난 방을 서버가 끊는 쪽이다
+// 브라우저가 조용히 끊긴 상황은 MockMvc 로 재현되지 않으므로 끊긴 구독을 흉내 낸 것을 채널에 직접 건다
 // 구독은 우리가 관리하지 않는 바깥 연결이라 대역을 세워도 되고, 채널과 DB 는 실물 그대로 쓴다
-@DisplayName("끊긴 구독 청소 통합 테스트")
-class AuctionRoomSweepIntegrationTest extends IntegrationTestSupport {
+@DisplayName("경매방 구독 정리 통합 테스트")
+class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
 
@@ -145,6 +146,61 @@ class AuctionRoomSweepIntegrationTest extends IntegrationTestSupport {
         assertThat(healthyAlive.lastState().connectedCount()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("걷어낸 뒤 뒤늦게 온 해제는 현황을 다시 보내지 않는다")
+    void lateReleaseAfterSweepDoesNotRefreshAgain() {
+        // given : 한 명이 조용히 사라져 청소가 걷어냈고, 남은 사람은 줄어든 수를 이미 받았다
+        long auctionId = liveRoom();
+        subscribe(auctionId, alive);
+        subscribe(auctionId, gone);
+        gone.disconnect();
+        auctionRoomStreamService.sweepClosedSubscriptions();
+
+        int receivedAfterSweep = alive.received().size();
+
+        // when : 끝난 연결의 해제 콜백이 뒤늦게 돌아온다, 실제 컨테이너에서 나는 그 순서다
+        auctionRoomStreamService.unsubscribe(auctionId, gone);
+
+        // then : 이미 빠진 구독이라 같은 방을 다시 읽지도 보내지도 않는다
+        assertThat(alive.received()).hasSize(receivedAfterSweep);
+    }
+
+    @Test
+    @DisplayName("결과 구간까지 지난 방은 남은 연결을 서버가 끊는다")
+    void closedRoomConnectionsAreCutByServer() {
+        // given : 진행 중일 때 둘이 들어와 있다
+        long auctionId = liveRoom();
+        subscribe(auctionId, alive);
+        subscribe(auctionId, gone);
+
+        // when : 마감 후 결과 구간까지 지나 방이 닫힌다
+        fixClockAt(NOW.plusMinutes(30));
+        auctionRoomStreamService.disconnectClosedRooms();
+
+        // then 1 : 둘 다 서버가 끝냈고 명부에도 남지 않는다
+        assertThat(alive.closedByServer).isTrue();
+        assertThat(gone.closedByServer).isTrue();
+        assertThat(roomChannel.countSubscribers(auctionId)).isZero();
+
+        // then 2 : 끊는 동안 현황을 다시 보내지 않는다, 명부를 먼저 비우므로 갱신할 방이 없다
+        assertThat(alive.received()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("아직 열려 있는 방의 연결은 끊지 않는다")
+    void openRoomKeepsConnections() {
+        // given : 진행 중인 방에 한 사람이 있다
+        long auctionId = liveRoom();
+        subscribe(auctionId, alive);
+
+        // when : 같은 주기 작업이 돈다
+        auctionRoomStreamService.disconnectClosedRooms();
+
+        // then : 볼 것이 남은 방이라 그대로 둔다
+        assertThat(alive.closedByServer).isFalse();
+        assertThat(roomChannel.countSubscribers(auctionId)).isEqualTo(1);
+    }
+
     private long liveRoom() {
         return rooms.room(users.user("박판매", Role.GENERAL), NOW.minusMinutes(15))
                 .create();
@@ -161,6 +217,7 @@ class AuctionRoomSweepIntegrationTest extends IntegrationTestSupport {
 
         private final List<RoomState> received = new ArrayList<>();
         private boolean open = true;
+        private boolean closedByServer;
 
         void disconnect() {
             open = false;
@@ -181,6 +238,12 @@ class AuctionRoomSweepIntegrationTest extends IntegrationTestSupport {
 
         @Override
         public void ping() {
+        }
+
+        @Override
+        public void close() {
+            closedByServer = true;
+            open = false;
         }
 
         @Override
