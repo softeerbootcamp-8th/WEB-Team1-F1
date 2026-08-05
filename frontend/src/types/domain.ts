@@ -76,19 +76,28 @@ export interface Deal {
   updatedAt: string
 }
 
-/** 알림 */
+/**
+ * 알림 종류 — 백엔드 NotificationType과 1:1로 맞춘다.
+ * 종류가 늘면 벨의 아이콘 대응표도 함께 고쳐야 한다. 대응표가 전수라 빠뜨리면 빌드가 깨진다.
+ */
 export type NotificationType =
+  | 'WELCOME'
   | 'EVAL_APPROVED'
   | 'EVAL_REJECTED'
-  | 'WON'
-  | 'DEAL_UPDATED'
+  | 'AUCTION_WON'
+  | 'AUCTION_WON_RESULT'
+  | 'AUCTION_ENDED'
+  | 'AUCTION_SOLD'
+  | 'AUCTION_FAILED'
+  | 'DEAL_STATUS_CHANGED'
 
 export interface AppNotification {
   id: number
   type: NotificationType
-  title: string
-  body: string
-  createdAt: string
+  /** 발행 당시 문구가 그대로 보관된 것. 화면에서 조립하지 않는다 */
+  message: string
   read: boolean
-  link?: string
+  /** 눌렀을 때 갈 곳. 서버가 종류와 참조로 만들어 내려준다 */
+  link: string
+  createdAt: string
 }
