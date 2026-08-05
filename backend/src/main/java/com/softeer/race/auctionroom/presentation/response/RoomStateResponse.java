@@ -70,8 +70,8 @@ public record RoomStateResponse(
                 state.endAt(),
                 state.serverTime(),
                 state.connectedCount(),
-                state.bidderCount(),
-                state.bidCount(),
+                state.stats().bidderCount(),
+                state.stats().bidCount(),
                 state.winnerName() == null ? null : state.winnerName().value(),
                 state.recentBids().stream().map(RoomStateBidResponse::from).toList());
     }

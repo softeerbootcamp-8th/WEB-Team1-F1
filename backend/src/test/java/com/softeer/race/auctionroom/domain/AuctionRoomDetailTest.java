@@ -50,9 +50,23 @@ class AuctionRoomDetailTest {
         assertThat(detail(AuctionStatus.IN_PROGRESS, 11_000_000L, null, null).winningPrice()).isEmpty();
     }
 
+    @Test
+    @DisplayName("입찰이 없으면 현재가는 시작가다")
+    void currentPriceFallsBackToStartPrice() {
+        assertThat(detail(AuctionStatus.IN_PROGRESS, null, null, null).currentPrice()).isEqualTo(START_PRICE);
+    }
+
+    @Test
+    @DisplayName("입찰이 있으면 현재가를 그대로 쓴다")
+    void currentPriceUsesLatestBid() {
+        assertThat(detail(AuctionStatus.IN_PROGRESS, 11_000_000L, null, null).currentPrice())
+                .isEqualTo(11_000_000L);
+    }
+
     // ================= 픽스처 ====================
 
     private static final long WINNER_ID = 7L;
+    private static final long START_PRICE = 10_000_000L;
 
     private static AuctionRoomDetail sold(long winningPrice) {
         return detail(AuctionStatus.ENDED, winningPrice, WINNER_ID, "이준호");
@@ -68,7 +82,7 @@ class AuctionRoomDetailTest {
         return new AuctionRoomDetail(
                 1L,
                 status,
-                10_000_000L,
+                START_PRICE,
                 currentPrice,
                 START_AT.minusMinutes(30),
                 START_AT,

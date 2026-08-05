@@ -189,6 +189,31 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
     }
 
+    @Test
+    @DisplayName("시나리오 5 : 입찰이 없는 경매 -> 방과 목록이 같은 현재가를 보인다")
+    void scenario5_NoBid_SamePriceInRoomAndList() throws Exception {
+        // given : 입찰이 한 건도 없는 진행 중인 방
+        User viewer = users.user("한구경", Role.DEALER);
+        long auctionId = rooms.room(users.user("박판매", Role.GENERAL), START_AT).create();
+
+        // when : 같은 경매를 방과 목록에서 각각 본다
+        ResultActions room = getRoom(auctionId, loginAs(viewer));
+        ResultActions list = mockMvc.perform(get("/api/auctions"));
+
+        // then : 입찰이 없으면 현재가는 시작가다, 두 화면이 각자 해소하므로 같은 값이어야 한다
+        // 단계도 같은 판정을 써야 한다, 갈라지면 같은 경매가 목록과 방에서 다른 배지로 보인다
+        room.andExpectAll(
+                status().isOk(),
+                jsonPath("$.phase").value("LIVE"),
+                jsonPath("$.currentPrice").value(10000000));
+
+        list.andExpectAll(
+                status().isOk(),
+                jsonPath("$.content[0].auctionId").value(auctionId),
+                jsonPath("$.content[0].phase").value("LIVE"),
+                jsonPath("$.content[0].currentPrice").value(10000000));
+    }
+
     // ================= 도메인에 아직 없는 전이 ====================
     // 게시글 삭제는 도메인에 메서드가 없어 여기서만 직접 쓴다
 

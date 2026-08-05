@@ -8,7 +8,6 @@ import com.softeer.race.auctionlist.domain.AuctionListRepository;
 import com.softeer.race.auctionlist.domain.AuctionListRow;
 import com.softeer.race.auctionpost.domain.PostStatus;
 import com.softeer.race.auctionroom.application.RoomChannel;
-import com.softeer.race.auctionroom.domain.AuctionRoomSnapshot;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
@@ -122,12 +121,8 @@ public class AuctionListService {
 
     private AuctionCardInfo toCard(AuctionListRow row, LocalDateTime now) {
         // 단계 판정은 경매방과 한 벌을 쓴다. 복제하면 같은 경매가 두 화면에서 다른 단계로 보일 수 있다.
-        AuctionRoomSnapshot snapshot = new AuctionRoomSnapshot(
-                row.startPrice(), row.currentPrice(),
-                row.roomOpenAt(), row.startTime(), row.currentEndTime());
-
         // 정렬은 snapshotAt 기준이지만 단계는 지금 시각으로 잰다. 깊은 페이지에서도 배지는 맞아야 한다.
-        RoomPhase phase = snapshot.phaseAt(now);
+        RoomPhase phase = RoomPhase.at(now, row.roomOpenAt(), row.startTime(), row.currentEndTime());
 
         // 닫힌 단계는 경매방도 접속자를 세지 않는다. 목록만 다른 수를 보이면 안 된다.
         int connectedCount = phase.allowsConnection()
@@ -141,7 +136,7 @@ public class AuctionListService {
                 row.modelYear(),
                 row.mileage(),
                 row.startPrice(),
-                snapshot.displayPrice(),
+                row.displayPrice(),
                 row.roomOpenAt(),
                 row.startTime(),
                 row.currentEndTime(),

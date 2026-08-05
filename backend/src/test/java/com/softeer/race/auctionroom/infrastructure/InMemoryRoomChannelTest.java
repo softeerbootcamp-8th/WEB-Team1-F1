@@ -1,6 +1,7 @@
 package com.softeer.race.auctionroom.infrastructure;
 
 import com.softeer.race.auctionroom.application.RoomState;
+import com.softeer.race.auctionroom.domain.BidStats;
 import com.softeer.race.auctionroom.application.RoomSubscriber;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import org.junit.jupiter.api.DisplayName;
@@ -366,7 +367,7 @@ class InMemoryRoomChannelTest {
     private static RoomState liveState() {
         return new RoomState(
                 AUCTION, RoomPhase.LIVE, null, null, 0, 0,
-                null, null, null, null, 0, 0, 0, null, List.of());
+                null, null, null, null, 0, new BidStats(0, 0), null, List.of());
     }
 
     // 닫힌 구독을 흉내내려면 열림 여부를 정할 수 있어야 한다

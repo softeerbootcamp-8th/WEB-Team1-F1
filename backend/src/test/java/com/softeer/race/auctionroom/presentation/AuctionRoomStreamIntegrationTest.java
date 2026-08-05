@@ -86,7 +86,12 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
                 .contains("\"currentPrice\":12500000")
                 .contains("\"connectedCount\":1");
 
-        // then 3 : 보는 사람을 가리지 않으므로 내 입찰 표시가 없고, 이름은 마스킹된 채로만 나간다
+        // then 3 : 집계 둘이 방송에도 실린다, 한 사람이 두 번 넣었으므로 건수와 사람 수가 다르다
+        assertThat(afterFirst)
+                .contains("\"bidCount\":2")
+                .contains("\"bidderCount\":1");
+
+        // then 4 : 보는 사람을 가리지 않으므로 내 입찰 표시가 없고, 이름은 마스킹된 채로만 나간다
         assertThat(afterFirst)
                 .contains("\"name\":\"김*현\"")
                 .doesNotContain("\"mine\"")
@@ -96,7 +101,7 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
         // when : 두 번째 사람이 같은 방에 들어온다
         subscribe(liveAuctionId).andExpect(status().isOk());
 
-        // then 4 : 먼저 열려 있던 연결로 늘어난 접속자 수가 흘러 들어간다, 다시 조회하지 않았는데 갱신된다
+        // then 5 : 먼저 열려 있던 연결로 늘어난 접속자 수가 흘러 들어간다, 다시 조회하지 않았는데 갱신된다
         assertThat(body(first))
                 .contains("\"connectedCount\":2")
                 .isNotEqualTo(afterFirst);
@@ -207,10 +212,14 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
 
     // ================= 준비 ====================
     // 그 사람이 그 금액을 부른 진행 중인 방, 판매자와 시작 시각은 이 테스트가 보지 않는다
+    // 한 사람이 두 번 넣는다, 건수와 사람 수가 달라야 두 값이 바꿔 실린 것을 단정이 잡는다
     private long liveRoomWithTopBid(String bidderName, long amount) {
+        User bidder = users.user(bidderName, Role.DEALER);
+
         return rooms
                 .room(users.user("박판매", Role.GENERAL), NOW.minusMinutes(15))
-                .bid(NOW.minusMinutes(1), users.user(bidderName, Role.DEALER), amount)
+                .bid(NOW.minusMinutes(3), bidder, amount - 1_500_000L)
+                .bid(NOW.minusMinutes(1), bidder, amount)
                 .create();
     }
 

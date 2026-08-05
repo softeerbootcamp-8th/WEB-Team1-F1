@@ -16,4 +16,12 @@ public record AuctionListRow(
         LocalDateTime startTime,
         LocalDateTime currentEndTime
 ) {
+
+    /**
+     * 화면에 보일 현재가, 입찰이 없으면 시작가
+     */
+    // 경매방 상세도 같은 규칙을 자기 안에서 푼다. 두 화면이 같은 값을 보이는지는 통합테스트가 지킨다.
+    public long displayPrice() {
+        return currentPrice != null ? currentPrice : startPrice;
+    }
 }
