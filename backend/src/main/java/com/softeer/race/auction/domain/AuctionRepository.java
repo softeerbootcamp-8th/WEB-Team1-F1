@@ -58,6 +58,22 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
     boolean isSeller(@Param("auctionId") long auctionId, @Param("userId") long userId);
 
     /**
+     * 이 경매에 걸린 차량의 판매자 id
+     * <p>
+     * 알림을 보내는 데 필요한 것은 식별자뿐이다. 잠근 경매에서 post → vehicle → seller 를 타면
+     * 잠금을 쥔 채로 조회가 두 번 더 나가서, 잠금 범위를 경매 한 건으로 제한한 findByIdForUpdate 의
+     * 의도가 흐려진다. isSeller 와 같은 경로를 쓰되 존재 여부가 아니라 값을 꺼낸다.
+     */
+    @Query("""
+            select v.seller.id
+            from Auction a
+            join a.post p
+            join p.vehicle v
+            where a.id = :auctionId
+            """)
+    Optional<Long> findSellerIdById(@Param("auctionId") long auctionId);
+
+    /**
      * 시작 시각이 지났는데 아직 예약 상태인 경매의 id
      */
     @Query("""

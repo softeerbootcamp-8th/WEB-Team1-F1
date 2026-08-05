@@ -19,6 +19,7 @@ public class AuctionCloser {
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
     private final Clock clock;
+    private final AuctionEndNotifier auctionEndNotifier;
 
     /**
      * 경매 한 건을 종료한다. 경매 하나가 한 트랜잭션이다.
@@ -37,7 +38,13 @@ public class AuctionCloser {
             return;
         }
 
-        auction.close(topBidderOf(auctionId), now);
+        User topBidder = topBidderOf(auctionId);
+        auction.close(topBidder, now);
+
+        // 종료와 한 트랜잭션에 둔다. 알림만 남거나, 알림 없이 종료되는 경우를 만들지 않는다.
+        // 엔티티가 아니라 식별자를 넘긴다 — 발행이 쓰는 것은 식별자뿐이고, 프록시의 getId 는
+        // 초기화를 일으키지 않아 낙찰자 조회가 추가로 나가지 않는다
+        auctionEndNotifier.notifyEnd(auctionId, topBidder == null ? null : topBidder.getId());
     }
 
     /**
