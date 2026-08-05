@@ -41,8 +41,9 @@ public enum VehicleErrorCode implements ErrorCode {
      * 접두사를 붙여 {@code NOT_FOUND}가 {@code VEHICLE_NOT_FOUND}로 나간다.
      * {@code AuctionErrorCode.VEHICLE_NOT_FOUND}와 <b>같은 문자열</b>이 되는데, 의도한 것이다.
      * 둘 다 "그 id의 차량 행이 없다"는 같은 사실을 말하므로 프론트가 구별할 이유가 없다.
-     * ({@code SellErrorCode.VEHICLE_NOT_FOUND}는 "카탈로그에 없는 번호판"이라 사실이 다르고,
-     * 그래서 그쪽만 {@code SELL_} 접두사로 갈라져 있다.)
+     * <p>
+     * 반면 {@code EvaluationErrorCode.VEHICLE_NOT_FOUND}는 "카탈로그에 없는 번호판"이라 사실이
+     * 다르고, 그래서 {@code EVALUATION_} 접두사로 갈라져 있다.
      */
     @Override
     public String code() {

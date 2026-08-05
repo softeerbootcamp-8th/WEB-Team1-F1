@@ -236,7 +236,7 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
     void scenario9_UnknownPlateNumber() throws Exception {
         request("99하9999", today().plusDays(16))
                 .andExpect(status().isNotFound())
-                // 접두사가 없으면 SellErrorCode·AuctionErrorCode의 같은 이름과 구별할 수 없다
+                // 접두사가 없으면 AuctionErrorCode·VehicleErrorCode의 같은 이름과 구별할 수 없다
                 .andExpect(jsonPath("$.code").value("EVALUATION_VEHICLE_NOT_FOUND"));
 
         assertThat(countOf("vehicle")).isZero();

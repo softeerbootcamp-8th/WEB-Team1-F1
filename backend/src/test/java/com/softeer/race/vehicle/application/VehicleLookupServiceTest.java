@@ -20,10 +20,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("차량 조회 서비스")
@@ -102,22 +100,8 @@ class VehicleLookupServiceTest {
                         assertThat(exception.errorCode()).isEqualTo(VehicleErrorCode.SPEC_NOT_FOUND));
     }
 
-    /**
-     * 소유자명을 받지 않는 조회로 갈아끼우면 실패한다.
-     * <p>
-     * 인증이 없는 조회라 번호판만으로 찾을 수 있게 하면 번호판을 바꿔 넣어보며 소유자명을 알아낼 수
-     * 있다. QuoteServiceTest 가 같은 방어를 하고 있고, 이 API 도 같은 이유로 필요하다.
-     */
-    @Test
-    @DisplayName("소유자명을 대조하지 않는 findByPlateNumber 는 쓰지 않는다")
-    void lookupNeverUsesPlateNumberOnlyQuery() {
-        given(vehicleLookup.find(PLATE_NUMBER, OWNER_NAME)).willReturn(Optional.of(spec(IMAGE_URL)));
-
-        service.lookup(command());
-
-        then(vehicleLookup).should().find(PLATE_NUMBER, OWNER_NAME);
-        then(vehicleLookup).should(never()).findByPlateNumber(any());
-    }
+    // 소유자명을 빼고 조회하는 경로를 막는 테스트가 여기 있었다. 지금은 VehicleLookup 에
+    // 번호판만 받는 메서드가 없어 컴파일러가 대신 막아 준다 — 테스트보다 강한 보증이다
 
     private static VehicleLookupCommand command() {
         return new VehicleLookupCommand(PLATE_NUMBER, OWNER_NAME);

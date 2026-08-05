@@ -113,18 +113,13 @@ class QuoteServiceTest {
     }
 
     /**
-     * 소유자명을 받지 않는 조회를 쓰면 실패한다.
-     * <p>
      * 시세 조회는 인증이 없어서 번호판만으로 조회하면 대입으로 소유자명을 알아낼 수 있다.
-     * 나중에 누가 findByPlateNumber 로 갈아끼우면 이 테스트가 잡는다.
+     * <p>
+     * 그 경로를 막는 override가 여기 있었다. 지금은 {@link VehicleLookup}에 번호판만 받는 메서드가
+     * 아예 없어 컴파일러가 대신 막아 준다.
      */
     private static VehicleLookup lookupReturning(VehicleSpec spec) {
         return new VehicleLookup() {
-
-            @Override
-            public Optional<VehicleSpec> findByPlateNumber(String plateNumber) {
-                throw new AssertionError("시세 조회는 소유자명 없는 조회를 쓸 수 없다");
-            }
 
             @Override
             public Optional<VehicleSpec> find(String plateNumber, String ownerName) {

@@ -104,7 +104,7 @@ public enum EvaluationErrorCode implements ErrorCode {
     }
 
     /**
-     * 접두사를 붙인다. SellErrorCode와 AuctionErrorCode에도 VEHICLE_NOT_FOUND가 있어,
+     * 접두사를 붙인다. AuctionErrorCode와 VehicleErrorCode에도 VEHICLE_NOT_FOUND가 있어,
      * 접두사가 없으면 서로 다른 원인이 프론트에서 구별 불가능한 같은 문자열이 된다.
      */
     @Override
