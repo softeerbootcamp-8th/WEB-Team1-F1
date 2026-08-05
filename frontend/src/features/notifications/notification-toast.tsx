@@ -1,4 +1,4 @@
-import { ChevronRight, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import type { AppNotification } from '@/types/domain'
@@ -27,30 +27,23 @@ export function showNotificationToast(notification: AppNotification, onOpen: () 
 
   toast.custom(
     (id) => (
-      <div className="bg-popover text-popover-foreground border-border relative flex w-[27rem] items-start gap-4 rounded-xl border p-5 shadow-lg">
-        {/* 카드 전체가 이동 영역이다. X 를 덮지 않도록 오른쪽에 여백을 둔다 */}
+      <div className="bg-popover text-popover-foreground border-border relative w-[27rem] overflow-hidden rounded-xl border shadow-lg">
+        {/* 본문 전체가 이동 영역이다. X 를 덮지 않도록 오른쪽에 여백을 둔다 */}
         <button
           type="button"
           onClick={() => {
             toast.dismiss(id)
             onOpen()
           }}
-          className="group flex flex-1 items-start gap-4 pr-6 text-left"
+          className="hover:bg-muted focus-visible:ring-ring flex w-full cursor-pointer items-start gap-4 p-5 pr-16 text-left transition-colors duration-150 focus-visible:ring-2 focus-visible:outline-none"
         >
-          <span className="bg-muted flex size-11 shrink-0 items-center justify-center rounded-full">
+          <span className="bg-muted flex size-11 shrink-0 items-center justify-center rounded-full transition-colors">
             <Icon className="size-5" aria-hidden />
           </span>
 
-          <span className="min-w-0 flex-1 space-y-1.5">
+          <span className="min-w-0 flex-1 py-0.5">
             <span className="block text-base leading-snug font-medium">
               {notification.message}
-            </span>
-            <span className="text-muted-foreground flex items-center gap-0.5 text-sm">
-              확인하기
-              <ChevronRight
-                className="size-4 transition-transform group-hover:translate-x-0.5"
-                aria-hidden
-              />
             </span>
           </span>
         </button>
@@ -59,9 +52,9 @@ export function showNotificationToast(notification: AppNotification, onOpen: () 
           type="button"
           onClick={() => toast.dismiss(id)}
           aria-label="알림 닫기"
-          className="text-muted-foreground/60 hover:text-foreground hover:bg-muted absolute top-2.5 right-2.5 flex size-7 items-center justify-center rounded-md transition-colors"
+          className="text-muted-foreground hover:bg-foreground hover:text-background focus-visible:ring-ring absolute top-2.5 right-2.5 flex size-9 items-center justify-center rounded-lg transition-colors duration-150 focus-visible:ring-2 focus-visible:outline-none"
         >
-          <X className="size-4" aria-hidden />
+          <X className="size-5" strokeWidth={2.25} aria-hidden />
         </button>
       </div>
     ),
