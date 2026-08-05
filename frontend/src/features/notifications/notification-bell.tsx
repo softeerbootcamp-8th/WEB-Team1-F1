@@ -1,16 +1,6 @@
 import { useState } from 'react'
-import {
-  Bell,
-  CheckCheck,
-  CircleOff,
-  CircleX,
-  Gavel,
-  HandCoins,
-  PackageCheck,
-  PartyPopper,
-  Trophy,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Bell, ChevronRight } from 'lucide-react'
 
 import {
   DropdownMenu,
@@ -22,32 +12,16 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/lib/format'
 import { useAuth } from '@/features/auth/auth-context'
-import type { NotificationType } from '@/types/domain'
+import { NOTIFICATION_ICON } from './notification-icon'
 import { useNotifications } from './use-notifications'
-
-/**
- * 종류별 아이콘. 전수 대응표라서 백엔드에 종류가 늘고 타입에 반영되면 여기서 빌드가 깨진다.
- * 기본 아이콘으로 덮으면 새 종류가 아무 표시 없이 조용히 나가므로, 규칙이 아니라 타입으로 막는다.
- */
-const ICON: Record<NotificationType, LucideIcon> = {
-  WELCOME: PartyPopper,
-  EVAL_APPROVED: CheckCheck,
-  EVAL_REJECTED: CircleX,
-  AUCTION_WON: Trophy,
-  AUCTION_WON_RESULT: Trophy,
-  AUCTION_ENDED: Gavel,
-  AUCTION_SOLD: HandCoins,
-  AUCTION_FAILED: CircleOff,
-  DEAL_STATUS_CHANGED: PackageCheck,
-}
 
 // 배지에 그릴 수 있는 최대 숫자. 넘으면 폭이 흔들려 헤더 정렬이 밀린다
 const MAX_BADGE_COUNT = 99
 
-/** 헤더 알림 드롭다운. 안 읽은 건수 배지 + 목록, 누르면 읽음 처리하고 해당 화면으로 이동한다. */
+/** 헤더 알림 드롭다운. 안 읽은 건수 배지 + 목록, 행을 누르면 읽음 처리하고 그 화면으로 이동한다. */
 export function NotificationBell() {
   const { isAuthenticated } = useAuth()
-  const { items, unreadCount, hasNext, isLoading, isLoadingMore, loadMore, markAllRead, open } =
+  const { items, unreadCount, hasNext, isLoading, isLoadingMore, loadMore, markAllRead, markRead } =
     useNotifications()
   const [isOpen, setIsOpen] = useState(false)
 
@@ -101,24 +75,30 @@ export function NotificationBell() {
             <>
               <ul className="divide-border divide-y">
                 {items.map((notification) => {
-                  const Icon = ICON[notification.type]
+                  const Icon = NOTIFICATION_ICON[notification.type]
 
                   return (
                     <li key={notification.id}>
-                      <button
-                        type="button"
+                      {/*
+                        버튼이 아니라 링크다. 이동이 목적이면 링크여야 브라우저가 목적지를 상태바에
+                        보여 주고, 새 탭으로도 열 수 있고, 스크린리더가 "링크"로 읽는다.
+                        읽음 처리는 이동에 딸린 부수 효과라 onClick 에 둔다
+                      */}
+                      <Link
+                        to={notification.link}
                         onClick={() => {
                           setIsOpen(false)
-                          open(notification)
+                          markRead(notification)
                         }}
                         className={cn(
-                          'hover:bg-accent flex w-full gap-3.5 px-5 py-4 text-left transition-colors',
+                          'hover:bg-accent group flex gap-3.5 px-5 py-4 transition-colors',
                           !notification.read && 'bg-accent/40',
                         )}
                       >
                         <span className="bg-muted mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full">
                           <Icon className="size-5" aria-hidden />
                         </span>
+
                         <span className="min-w-0 flex-1 space-y-1">
                           <span className="flex items-start gap-2">
                             <span className="flex-1 text-[0.9375rem] leading-snug font-medium">
@@ -132,7 +112,13 @@ export function NotificationBell() {
                             {formatRelativeTime(notification.createdAt)}
                           </span>
                         </span>
-                      </button>
+
+                        {/* 눌렀을 때 어디로 간다는 신호. 호버에서 살짝 밀려 방향감을 준다 */}
+                        <ChevronRight
+                          className="text-muted-foreground/40 group-hover:text-muted-foreground mt-3 size-4 shrink-0 transition-all group-hover:translate-x-0.5"
+                          aria-hidden
+                        />
+                      </Link>
                     </li>
                   )
                 })}

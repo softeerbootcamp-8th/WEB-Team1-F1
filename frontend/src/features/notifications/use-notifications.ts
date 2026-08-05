@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
 
 import { useAuth } from '@/features/auth/auth-context'
 import { consumeJustSignedUp } from '@/lib/signup-welcome'
@@ -12,6 +11,7 @@ import {
   markNotificationRead,
   subscribeNotifications,
 } from './api'
+import { showNotificationToast } from './notification-toast'
 
 // 가입 성공 안내가 먼저 뜨고 사라진 뒤에 환영 알림을 보여 준다. 둘이 겹치면 어느 것도 읽히지 않는다
 const WELCOME_TOAST_DELAY_MILLIS = 3_000
@@ -46,21 +46,26 @@ export function useNotifications() {
     setHasNext(page.hasNext)
   }, [])
 
-  /** 읽음으로 바꾸고 그 알림이 가리키는 화면으로 이동한다. */
+  /**
+   * 읽음으로 바꾼다. 이동은 하지 않는다.
+   * 목록은 행 자체가 링크라서 이동을 라우터가 맡고, 여기서 또 옮기면 두 번 이동한다.
+   */
+  const markRead = useCallback((notification: AppNotification) => {
+    if (notification.read) return
+
+    setItems((prev) => prev.map((it) => (it.id === notification.id ? { ...it, read: true } : it)))
+    setUnreadCount((prev) => Math.max(0, prev - 1))
+    // 서버가 멱등해서 실패해도 다음 조회가 진실을 준다
+    markNotificationRead(notification.id).catch(() => undefined)
+  }, [])
+
+  /** 읽음으로 바꾸고 그 알림이 가리키는 화면으로 옮긴다. 링크가 아닌 곳(안내 토스트)에서 쓴다. */
   const open = useCallback(
     (notification: AppNotification) => {
-      if (!notification.read) {
-        setItems((prev) =>
-          prev.map((it) => (it.id === notification.id ? { ...it, read: true } : it)),
-        )
-        setUnreadCount((prev) => Math.max(0, prev - 1))
-        // 서버가 멱등해서 실패해도 다음 조회가 진실을 준다
-        markNotificationRead(notification.id).catch(() => undefined)
-      }
-
+      markRead(notification)
       navigate(notification.link)
     },
-    [navigate],
+    [markRead, navigate],
   )
 
   /**
@@ -104,9 +109,7 @@ export function useNotifications() {
 
         if (welcome && !welcome.read && consumeJustSignedUp()) {
           welcomeTimer = window.setTimeout(() => {
-            toast(welcome.message, {
-              action: { label: '보기', onClick: () => openRef.current(welcome) },
-            })
+            showNotificationToast(welcome, () => openRef.current(welcome))
           }, WELCOME_TOAST_DELAY_MILLIS)
         }
       })
@@ -134,12 +137,9 @@ export function useNotifications() {
         )
         setUnreadCount(count)
 
-        // 안내는 표시 전용이다. 놓쳐도 알림함에 안 읽음으로 남고, 눌렀을 때만 읽음이 된다.
         // 위치는 전역 토스트(top-center)를 그대로 쓴다. 헤더 메뉴를 잠깐 가리지만,
         // 눈에 먼저 들어오는 자리가 화면 위쪽이고 알림은 놓치면 값이 없다
-        toast(notification.message, {
-          action: { label: '보기', onClick: () => openRef.current(notification) },
-        })
+        showNotificationToast(notification, () => openRef.current(notification))
       },
       onUnreadCount: setUnreadCount,
       onOpen: () => {
@@ -188,6 +188,6 @@ export function useNotifications() {
     isLoadingMore,
     loadMore,
     markAllRead,
-    open,
+    markRead,
   }
 }
