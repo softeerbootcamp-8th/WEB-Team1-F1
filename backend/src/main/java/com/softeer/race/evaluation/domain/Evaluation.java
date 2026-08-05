@@ -114,6 +114,22 @@ public class Evaluation extends BaseTimeEntity {
      *                           아직 담당자가 없으면 409({@code EVALUATOR_NOT_ASSIGNED}),
      *                           다른 평가사의 담당이면 403({@code NOT_ASSIGNED_EVALUATOR})
      */
+    /**
+     * 방문 결과가 제출됐다.
+     * <p>
+     * {@link #validateDiagnosableBy}와 나눠 둔다. 검증하는 메서드가 상태까지 바꾸면 이름이
+     * 거짓이 되고, 검증만 하고 싶은 호출자가 생겼을 때 부작용을 피할 방법이 없다.
+     * <p>
+     * 여기서 다시 검증하지 않는다. 이 메서드를 부르기 직전에 {@code validateDiagnosableBy}가
+     * 통과했다는 것이 전제다 — 같은 검사를 두 번 하면 어느 쪽이 진짜 관문인지 흐려진다.
+     * <p>
+     * 이미 DIAGNOSED인 상태로 다시 불려도 그대로 둔다. 재제출은 결과를 갈아 끼우는 것이지
+     * 상태를 되돌리거나 새로 만드는 것이 아니다.
+     */
+    public void diagnose() {
+        this.status = EvaluationStatus.DIAGNOSED;
+    }
+
     public void validateDiagnosableBy(long userId) {
         // 상태를 먼저 본다. assignTo와 같은 순서다 — 끝난 신청은 누가 물어도 답이 같아,
         // 담당자부터 따지면 같은 상황이 요청자에 따라 403과 409로 갈린다

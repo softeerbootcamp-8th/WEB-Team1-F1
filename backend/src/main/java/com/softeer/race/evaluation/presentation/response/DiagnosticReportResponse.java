@@ -5,8 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
 /**
- * 진단서 첨부 · 조회 결과. 두 API가 같은 형태를 쓴다 — 첨부의 결과는 "지금 붙어 있는 진단서"이고
- * 그건 조회가 돌려주는 것과 같다.
+ * 진단서 조회 결과. 붙이는 것은 평가 결과 제출이 하고, 여기서는 읽기만 한다.
  */
 @Schema(description = "진단서 응답")
 public record DiagnosticReportResponse(
@@ -25,6 +24,7 @@ public record DiagnosticReportResponse(
 ) {
 
     public static DiagnosticReportResponse from(DiagnosticReportInfo info) {
-        return new DiagnosticReportResponse(info.evaluationId(), info.fileUrl(), info.attachedAt());
+        return new DiagnosticReportResponse(
+                info.evaluationId(), info.fileUrl(), info.attachedAt());
     }
 }

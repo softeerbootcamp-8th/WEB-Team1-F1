@@ -45,7 +45,10 @@ public class DiagnosticReport extends BaseTimeEntity {
     /**
      * 평가에 진단서를 붙인다.
      * <p>
-     * 주소가 우리가 발급한 문서 주소인지는 여기서 보지 않는다. 그 판정은 저장소만 할 수 있어
+     * 키워드는 여기서 받지 않는다. {@link DiagnosticReportKeyword}가 이 진단서를 참조하는
+     * 별도 행이라 진단서가 저장돼 식별자를 가진 뒤에야 만들 수 있다.
+     * <p>
+     * 주소가 우리가 발급한 문서 주소인지도 여기서 보지 않는다. 그 판정은 저장소만 할 수 있어
      * (발급 규칙을 아는 곳이 저장소다) 엔티티가 들고 있을 수 없다. 서비스가 먼저 거른다.
      */
     public static DiagnosticReport attach(Evaluation evaluation, String fileUrl) {
@@ -55,7 +58,7 @@ public class DiagnosticReport extends BaseTimeEntity {
     /**
      * 붙어 있던 진단서를 다른 파일로 갈아 끼운다.
      * <p>
-     * 재첨부를 거부하지 않는 이유는 스캔이 잘못됐거나 페이지가 빠진 진단서를 다시 올리는 일이
+     * 재제출을 거부하지 않는 이유는 스캔이 잘못됐거나 페이지가 빠진 진단서를 다시 올리는 일이
      * 흔하기 때문이다. 409로 막으면 고칠 방법이 없다.
      * <p>
      * 이전 파일은 저장소에 남는다. 차량 사진도 같은 상태이고(등록은 DB 행만 갈아 끼운다),

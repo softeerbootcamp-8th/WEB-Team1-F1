@@ -53,5 +53,11 @@ values (600, 600, 601, DATE_ADD(CURDATE(), INTERVAL 3 DAY), '서울 성동구 �
        (602, 602, NULL, DATE_ADD(CURDATE(), INTERVAL 3 DAY), '서울 성동구 왕십리로 83',
         '01012345678', 'REQUESTED', NULL, NOW(6), NOW(6));
 
+-- 판매 신청이 카탈로그에서 복제해 넣는 제조사 홍보 이미지. 실물이 아니라 자리를 채우던 임시값이다
+-- 결과 제출이 이걸 지우는지 확인해야 한다 — 남겨 두면 대표 이미지 규칙이 sortOrder 최솟값이라
+-- 실물 사진을 등록해도 홍보 이미지가 계속 대표로 남고, 그 상태로 경매 썸네일이 만들어진다
+insert into vehicle_image (id, vehicle_id, image_url, sort_order, created_at, updated_at)
+values (600, 600, 'https://cdn.race.dev/vehicles/catalog.jpg', 1, NOW(6), NOW(6));
+
 -- diagnostic_report는 일부러 심지 않는다
--- 첨부가 행을 만든다는 것이 요구사항이라, 픽스처에 없어야 "만들어졌다"를 증명할 수 있다
+-- 제출이 행을 만든다는 것이 요구사항이라, 픽스처에 없어야 "만들어졌다"를 증명할 수 있다
