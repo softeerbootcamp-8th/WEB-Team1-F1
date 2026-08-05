@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Component
 public class InMemoryRoomChannel implements RoomChannel {
@@ -29,8 +30,8 @@ public class InMemoryRoomChannel implements RoomChannel {
     }
 
     @Override
-    public void unsubscribe(long auctionId, RoomSubscriber subscriber) {
-        remove(auctionId, Set.of(subscriber));
+    public boolean unsubscribe(long auctionId, RoomSubscriber subscriber) {
+        return remove(auctionId, Set.of(subscriber));
     }
 
     @Override
@@ -116,14 +117,20 @@ public class InMemoryRoomChannel implements RoomChannel {
     }
 
     // 마지막 구독이 빠지는 순간과 새 구독이 들어오는 순간이 겹쳐도 새 구독이 유실되지 않게 한 번에 처리한다
-    private void remove(long auctionId, Set<RoomSubscriber> targets) {
+    // 실제로 뺀 것이 있으면 참, 명부에 없던 것만 넘어오면 거짓이다
+    private boolean remove(long auctionId, Set<RoomSubscriber> targets) {
         if (targets.isEmpty()) {
-            return;
+            return false;
         }
 
+        // 판정을 잠금 안에서 해야 뺀 사람과 뺐다고 답하는 사람이 어긋나지 않는다
+        AtomicBoolean removed = new AtomicBoolean();
+
         subscribersByAuction.computeIfPresent(auctionId, (id, subscribers) -> {
-            subscribers.removeAll(targets);
+            removed.set(subscribers.removeAll(targets));
             return subscribers.isEmpty() ? null : subscribers;
         });
+
+        return removed.get();
     }
 }

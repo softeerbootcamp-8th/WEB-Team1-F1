@@ -50,9 +50,10 @@ public class AuctionRoomStreamService {
      * 구독을 방에서 빼고 남은 구독에 줄어든 접속자 수를 보낸다
      */
     public void unsubscribe(long auctionId, RoomSubscriber subscriber) {
-        roomChannel.unsubscribe(auctionId, subscriber);
-
-        refresh(auctionId);
+        // 걷어내기와 방 끊기가 먼저 빼 간 뒤에도 이 콜백은 돌아온다, 그때 갱신하면 같은 방을 두 번 읽는다
+        if (roomChannel.unsubscribe(auctionId, subscriber)) {
+            refresh(auctionId);
+        }
     }
 
     /**

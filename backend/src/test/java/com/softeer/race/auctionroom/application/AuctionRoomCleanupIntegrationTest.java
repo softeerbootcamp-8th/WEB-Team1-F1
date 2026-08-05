@@ -147,6 +147,25 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("걷어낸 뒤 뒤늦게 온 해제는 현황을 다시 보내지 않는다")
+    void lateReleaseAfterSweepDoesNotRefreshAgain() {
+        // given : 한 명이 조용히 사라져 청소가 걷어냈고, 남은 사람은 줄어든 수를 이미 받았다
+        long auctionId = liveRoom();
+        subscribe(auctionId, alive);
+        subscribe(auctionId, gone);
+        gone.disconnect();
+        auctionRoomStreamService.sweepClosedSubscriptions();
+
+        int receivedAfterSweep = alive.received().size();
+
+        // when : 끝난 연결의 해제 콜백이 뒤늦게 돌아온다, 실제 컨테이너에서 나는 그 순서다
+        auctionRoomStreamService.unsubscribe(auctionId, gone);
+
+        // then : 이미 빠진 구독이라 같은 방을 다시 읽지도 보내지도 않는다
+        assertThat(alive.received()).hasSize(receivedAfterSweep);
+    }
+
+    @Test
     @DisplayName("결과 구간까지 지난 방은 남은 연결을 서버가 끊는다")
     void closedRoomConnectionsAreCutByServer() {
         // given : 진행 중일 때 둘이 들어와 있다

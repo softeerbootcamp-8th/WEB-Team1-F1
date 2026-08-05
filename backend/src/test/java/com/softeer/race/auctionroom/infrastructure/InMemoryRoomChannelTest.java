@@ -236,6 +236,34 @@ class InMemoryRoomChannelTest {
     }
 
     @Test
+    @DisplayName("해제는 실제로 뺐을 때만 뺐다고 답한다")
+    void unsubscribeTellsWhetherItRemoved() {
+        // 걷어내기가 먼저 빼 간 뒤에 해제 콜백이 돌아오므로, 호출자는 자기가 뺀 것인지 알아야 한다
+        FakeSubscriber leaving = new FakeSubscriber();
+        channel.subscribe(AUCTION, leaving);
+
+        boolean first = channel.unsubscribe(AUCTION, leaving);
+        boolean second = channel.unsubscribe(AUCTION, leaving);
+
+        assertThat(first).isTrue();
+        assertThat(second).isFalse();
+    }
+
+    @Test
+    @DisplayName("걷어낸 구독의 해제가 뒤늦게 와도 뺐다고 답하지 않는다")
+    void unsubscribeAfterDiscardTellsNothingWasRemoved() {
+        FakeSubscriber broken = new FakeSubscriber();
+        broken.disconnect();
+        channel.subscribe(AUCTION, broken);
+        channel.subscribe(AUCTION, new FakeSubscriber());
+
+        channel.broadcast(AUCTION, liveState());
+        boolean removedByCallback = channel.unsubscribe(AUCTION, broken);
+
+        assertThat(removedByCallback).isFalse();
+    }
+
+    @Test
     @DisplayName("전송에 실패해 걷어낸 구독은 연결도 끝낸다")
     void discardedSubscriberIsAlsoEnded() {
         // 명부에서 빼기만 하면 그 응답은 아무도 끝내지 않아 만료까지 산다
