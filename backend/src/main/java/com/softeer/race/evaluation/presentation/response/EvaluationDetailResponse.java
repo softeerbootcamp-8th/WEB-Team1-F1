@@ -16,7 +16,8 @@ import java.util.List;
  * status와 함께 읽으면 "아직 평가사가 다녀가지 않았다"를 뜻한다. imageUrls에는 그 시점에도
  * 카탈로그 이미지가 들어 있어 비어 있지 않을 수 있다.
  * <p>
- * 연락처는 담지 않는다. 판매자에게는 자기가 적은 번호이고, 평가사는 배정될 때 이미 받는다.
+ * 연락처를 담는다. 배정 응답이 한 번 주고 끝이라 평가사가 그 화면을 닫으면 방문 전에 연락할 번호를
+ * 다시 찾을 데가 없다. 이 API는 판매자와 배정 평가사로 열람이 좁혀져 있어 제3자에게 새지 않는다.
  */
 @Schema(description = "방문견적 신청 상세 응답")
 public record EvaluationDetailResponse(
@@ -34,8 +35,16 @@ public record EvaluationDetailResponse(
         @Schema(description = "방문 주소", example = "서울 성동구 왕십리로 83")
         String visitAddress,
 
+        @Schema(description = "방문 시 연락받을 번호. 담당 평가사가 방문 전 연락에 씁니다",
+                example = "01012345678")
+        String contactPhone,
+
         @Schema(description = "접수 시각", example = "2026-08-05T15:30:00")
         LocalDateTime requestedAt,
+
+        @Schema(description = "담당 평가사 이름. 아직 아무도 수락하지 않았으면 null입니다",
+                example = "박평가")
+        String evaluatorName,
 
         @Schema(description = "차량 ID. 출품할 때 쓴다", example = "1000")
         Long vehicleId,
@@ -81,7 +90,8 @@ public record EvaluationDetailResponse(
     public static EvaluationDetailResponse from(EvaluationDetailInfo info) {
         return new EvaluationDetailResponse(
                 info.evaluationId(), info.status(), info.visitDate(),
-                info.visitAddress(), info.requestedAt(),
+                info.visitAddress(), info.contactPhone(), info.requestedAt(),
+                info.evaluatorName(),
 
                 info.vehicleId(), info.plateNumber(), info.manufacturer(),
                 info.model(), info.modelYear(), info.fuelType(), info.transmission(),

@@ -75,12 +75,29 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.evaluations[0].evaluationId").value(UNASSIGNED_EVALUATION_ID))
                 .andExpect(jsonPath("$.evaluations[2].evaluationId").value(EVALUATION_ID));
 
-        // 다른 판매자에게는 자기 것 하나만 보인다
+        // 다른 판매자에게는 자기 것 하나만 보인다. 아직 아무도 수락하지 않아 assigned가 false다
         lookup("/my-requests", OTHER_SELLER_TOKEN)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.evaluations.length()").value(1))
                 .andExpect(jsonPath("$.evaluations[0].evaluationId")
-                        .value(OTHER_SELLER_EVALUATION_ID));
+                        .value(OTHER_SELLER_EVALUATION_ID))
+                .andExpect(jsonPath("$.evaluations[0].assigned").value(false));
+    }
+
+    /**
+     * 배정은 상태를 바꾸지 않는다(둘이 다른 축이라는 dev의 설계). 그래서 판매자 화면에서
+     * 접수 직후와 평가사가 정해진 뒤를 가르는 것은 {@code assigned} 하나뿐이다.
+     */
+    @Test
+    @DisplayName("배정 여부가 목록에서 구분된다")
+    void findMyRequestsShowsAssignment() throws Exception {
+        lookup("/my-requests", SELLER_TOKEN)
+                .andExpect(status().isOk())
+                // 602(미배정)가 먼저, 600(601에게 배정됨)이 마지막이다
+                .andExpect(jsonPath("$.evaluations[0].status").value("REQUESTED"))
+                .andExpect(jsonPath("$.evaluations[0].assigned").value(false))
+                .andExpect(jsonPath("$.evaluations[2].status").value("REQUESTED"))
+                .andExpect(jsonPath("$.evaluations[2].assigned").value(true));
     }
 
     @Test
@@ -89,7 +106,8 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
         // when & then : 601은 600 · 601을 맡았고 602는 아무도 수락하지 않은 신청이다
         lookup("/my-assignments", EVALUATOR_TOKEN)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.evaluations.length()").value(2));
+                .andExpect(jsonPath("$.evaluations.length()").value(2))
+                .andExpect(jsonPath("$.evaluations[0].assigned").value(true));
 
         // 수락한 적 없는 평가사에게는 빈 배열이다. 배정 대기 목록은 다른 API가 준다
         lookup("/my-assignments", OTHER_EVALUATOR_TOKEN)
@@ -109,7 +127,10 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.estimatedPrice").doesNotExist())
                 .andExpect(jsonPath("$.diagnosticReportUrl").doesNotExist())
                 // 판매 신청이 넣어 둔 카탈로그 이미지는 이 시점에도 있다
-                .andExpect(jsonPath("$.imageUrls.length()").value(1));
+                .andExpect(jsonPath("$.imageUrls.length()").value(1))
+                // 담당 평가사와 연락처는 진단 전에도 나간다. 방문 전에 연락해야 하는 값이다
+                .andExpect(jsonPath("$.evaluatorName").value("박평가"))
+                .andExpect(jsonPath("$.contactPhone").value("01012345678"));
 
         // when : 담당 평가사가 결과를 제출한다
         submitResult().andExpect(status().isOk());
@@ -142,6 +163,16 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
 
         // 없는 신청도 같은 코드다
         lookup("/" + UNKNOWN_EVALUATION_ID, SELLER_TOKEN).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("아직 아무도 수락하지 않은 신청은 담당자가 비어 나간다")
+    void findDetailBeforeAssignment() throws Exception {
+        // 602는 배정 전이다. left join fetch가 아니라 inner join이었다면
+        // 이 신청이 조회 결과에서 통째로 사라져 판매자가 상세를 열 수 없다
+        lookup("/" + UNASSIGNED_EVALUATION_ID, SELLER_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluatorName").doesNotExist());
     }
 
     @Test

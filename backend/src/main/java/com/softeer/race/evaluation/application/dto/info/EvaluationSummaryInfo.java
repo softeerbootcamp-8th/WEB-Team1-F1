@@ -16,6 +16,13 @@ import java.time.LocalDateTime;
  * 그래서 {@code status}가 이 목록의 핵심이다. 판매자는 DIAGNOSED를 보고 출품으로 넘어가고,
  * 평가사는 REQUESTED를 보고 아직 방문하지 않은 건을 가려낸다.
  * <p>
+ * <b>{@code assigned}가 없으면 판매자 화면이 멈춰 보인다.</b> 배정돼도 상태는 REQUESTED 그대로라
+ * (배정과 평가 결과가 다른 축이라는 설계), 이 값이 없으면 접수 직후와 평가사가 정해진 뒤가
+ * 화면에서 똑같다. 판매자는 전화가 오기 전까지 아무 일도 일어나지 않는 줄 안다.
+ * <p>
+ * 평가사 이름까지는 담지 않는다. 목록에서 할 판단은 "진행됐는가"뿐이고, 누가 오는지는 상세를
+ * 열어 확인한다.
+ * <p>
  * <b>contactPhone을 담지 않는다.</b> 담당 평가사에게는 필요한 값이지만 배정이 확정될 때
  * {@link EvaluationAssignmentInfo}가 이미 준다. 목록마다 다시 실어 나르면 개인정보가 로그와
  * 캐시에 남는 면만 넓어진다.
@@ -23,6 +30,7 @@ import java.time.LocalDateTime;
 public record EvaluationSummaryInfo(
         Long evaluationId,
         String status,
+        boolean assigned,
         String plateNumber,
         Manufacturer manufacturer,
         String model,
@@ -38,6 +46,8 @@ public record EvaluationSummaryInfo(
         return new EvaluationSummaryInfo(
                 evaluation.getId(),
                 evaluation.getStatus().name(),
+                // null 검사는 프록시를 초기화하지 않는다. 이름을 읽었다면 건수만큼 쿼리가 늘었을 것이다
+                evaluation.getEvaluator() != null,
                 vehicle.getPlateNumber(),
                 vehicle.getManufacturer(),
                 vehicle.getModel(),

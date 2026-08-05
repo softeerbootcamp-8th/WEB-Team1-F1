@@ -63,6 +63,8 @@ class EvaluationLookupControllerTest {
 
     private static final String DOCUMENT_URL = "https://cdn.race.dev/documents/2026/08/c.pdf";
     private static final String IMAGE_URL = "https://cdn.race.dev/images/2026/08/a.jpg";
+    private static final String CONTACT_PHONE = "01012345678";
+    private static final String EVALUATOR_NAME = "박평가";
 
     @Autowired
     private MockMvc mockMvc;
@@ -91,7 +93,10 @@ class EvaluationLookupControllerTest {
                 .andExpect(jsonPath("$.evaluations[0].evaluationId").value(EVALUATION_ID))
                 .andExpect(jsonPath("$.evaluations[0].status").value("DIAGNOSED"))
                 .andExpect(jsonPath("$.evaluations[0].plateNumber").value("12가3456"))
-                .andExpect(jsonPath("$.evaluations[0].visitDate").value("2026-08-20"));
+                .andExpect(jsonPath("$.evaluations[0].visitDate").value("2026-08-20"))
+                // 배정돼도 status는 REQUESTED로 남으므로 이 값이 없으면
+                // 접수 직후와 평가사가 정해진 뒤가 화면에서 똑같다
+                .andExpect(jsonPath("$.evaluations[0].assigned").value(true));
     }
 
     @Test
@@ -137,7 +142,10 @@ class EvaluationLookupControllerTest {
                 .andExpect(jsonPath("$.estimatedPrice").value(21500000))
                 .andExpect(jsonPath("$.imageUrls[0]").value(IMAGE_URL))
                 .andExpect(jsonPath("$.diagnosticReportUrl").value(DOCUMENT_URL))
-                .andExpect(jsonPath("$.submittedAt").value("2026-08-05T18:00:00"));
+                .andExpect(jsonPath("$.submittedAt").value("2026-08-05T18:00:00"))
+                // 평가사가 방문 전 연락에 쓴다. 배정 응답은 한 번 주고 끝이라 여기가 유일한 재조회처다
+                .andExpect(jsonPath("$.contactPhone").value(CONTACT_PHONE))
+                .andExpect(jsonPath("$.evaluatorName").value(EVALUATOR_NAME));
     }
 
     @Test
@@ -186,7 +194,7 @@ class EvaluationLookupControllerTest {
     }
 
     private static EvaluationSummaryInfo summary() {
-        return new EvaluationSummaryInfo(EVALUATION_ID, "DIAGNOSED", "12가3456",
+        return new EvaluationSummaryInfo(EVALUATION_ID, "DIAGNOSED", true, "12가3456",
                 Manufacturer.HYUNDAI, "그랜저 IG", 2021,
                 VISIT_DATE, "서울 성동구 왕십리로 83", REQUESTED_AT);
     }
@@ -195,7 +203,8 @@ class EvaluationLookupControllerTest {
                                                List<String> imageUrls, String diagnosticReportUrl,
                                                LocalDateTime submittedAt) {
         return new EvaluationDetailInfo(
-                EVALUATION_ID, "DIAGNOSED", VISIT_DATE, "서울 성동구 왕십리로 83", REQUESTED_AT,
+                EVALUATION_ID, "DIAGNOSED", VISIT_DATE, "서울 성동구 왕십리로 83",
+                CONTACT_PHONE, REQUESTED_AT, EVALUATOR_NAME,
                 VEHICLE_ID, "12가3456", Manufacturer.HYUNDAI, "그랜저 IG", 2021,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
                 mileage, estimatedPrice, imageUrls, diagnosticReportUrl, submittedAt);

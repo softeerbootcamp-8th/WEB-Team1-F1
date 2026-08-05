@@ -81,15 +81,19 @@ public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
     List<Evaluation> findByEvaluatorId(@Param("evaluatorId") long evaluatorId);
 
     /**
-     * 상세 조회용. 차량 제원을 함께 보여주므로 vehicle을 붙여 읽는다.
+     * 상세 조회용. 차량 제원과 담당 평가사를 함께 보여주므로 둘 다 붙여 읽는다.
      * <p>
-     * {@code findById}로 대신하지 않는다. 그쪽은 vehicle이 프록시로 남아 상세를 조립하는 동안
-     * 지연 로딩 쿼리가 한 번 더 나간다.
+     * {@code findById}로 대신하지 않는다. 그쪽은 vehicle과 evaluator가 프록시로 남아 상세를
+     * 조립하는 동안 지연 로딩 쿼리가 두 번 더 나간다.
+     * <p>
+     * evaluator는 <b>left join</b>이다. 배정 전에는 비어 있어 inner join으로 붙이면 아직 아무도
+     * 수락하지 않은 신청이 조회 결과에서 통째로 사라진다 — 판매자가 접수 직후 상세를 열 수 없게 된다.
      */
     @Query("""
             select e
             from Evaluation e
             join fetch e.vehicle v
+            left join fetch e.evaluator
             where e.id = :evaluationId
             """)
     Optional<Evaluation> findWithVehicleById(@Param("evaluationId") long evaluationId);

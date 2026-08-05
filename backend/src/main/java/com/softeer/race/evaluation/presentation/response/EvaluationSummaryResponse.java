@@ -22,6 +22,11 @@ public record EvaluationSummaryResponse(
                 allowableValues = {"REQUESTED", "APPROVED", "DIAGNOSED", "REJECTED"})
         String status,
 
+        @Schema(description = "담당 평가사가 정해졌는지. 배정돼도 status는 REQUESTED로 남으므로 "
+                + "이 값으로 구분합니다. 누가 오는지는 상세에서 확인합니다",
+                example = "true")
+        boolean assigned,
+
         @Schema(description = "차량 번호판", example = "12가3456")
         String plateNumber,
 
@@ -46,7 +51,7 @@ public record EvaluationSummaryResponse(
 
     public static EvaluationSummaryResponse from(EvaluationSummaryInfo info) {
         return new EvaluationSummaryResponse(
-                info.evaluationId(), info.status(), info.plateNumber(),
+                info.evaluationId(), info.status(), info.assigned(), info.plateNumber(),
                 info.manufacturer(), info.model(), info.modelYear(),
                 info.visitDate(), info.visitAddress(), info.requestedAt());
     }
