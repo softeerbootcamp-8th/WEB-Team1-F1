@@ -8,6 +8,10 @@ spring:
     password: ${DB_PASSWORD:race}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
+    # 켜 두면 요청이 끝날 때까지 영속성 컨텍스트가 열려 있고 커넥션도 그동안 잡힌다
+    # 경매방 구독은 응답이 끝나지 않는 요청이라 연결 하나가 커넥션 하나를 수십 분 쥔다
+    # 연결 셋에 활성 커넥션이 셋이 되고 그 상태에서 무관한 조회가 500 이 되는 것을 재고 껐다
+    open-in-view: false
     hibernate:
       ddl-auto: create
     show-sql: true
