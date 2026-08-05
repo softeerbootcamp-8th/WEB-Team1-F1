@@ -150,6 +150,7 @@ class AuctionRoomStreamPoolIntegrationTest extends IntegrationTestSupport {
         // 마지막 현황의 접속자 수가 정확히 사람 수라고 보지는 않는다. 브로드캐스트는 유실을 허용하고
         // 정확한 값은 재조회가 주기로 한 설계라, 동시에 들어오면 마지막으로 나간 방송이 한 박자 이전
         // 숫자를 담을 수 있다. 그건 결함이 아니라 정해 둔 성질이므로 여기서 판정하지 않는다
+        awaitFirstState(first);
         assertThat(first.states()).isNotEmpty();
         assertThat(first.states().getLast())
                 .startsWith("data:")
@@ -256,6 +257,16 @@ class AuctionRoomStreamPoolIntegrationTest extends IntegrationTestSupport {
                 throw new IllegalStateException("구독이 " + expected + "개까지 차지 않았다");
             }
 
+            sleep();
+        }
+    }
+
+    // 명부가 차는 것과 그 현황이 소켓을 타고 와 줄로 잘리는 것은 다른 시점이다
+    // 여기서 던지지 않는다, 못 받으면 뒤따르는 판정이 빈 목록으로 드러내는 편이 낫다
+    private void awaitFirstState(StreamRecorder recorder) {
+        Instant deadline = Instant.now().plus(SUBSCRIBE_TIMEOUT);
+
+        while (recorder.states().isEmpty() && Instant.now().isBefore(deadline)) {
             sleep();
         }
     }
