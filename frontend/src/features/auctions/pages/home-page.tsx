@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { AuctionCard } from '@/features/auctions/components/auction-card'
 import { useAuctionList } from '@/features/auctions/use-auction-list'
-import { roomPhaseToStatus } from '@/lib/auction'
 
 const FEATURES = [
   {
@@ -42,10 +41,9 @@ const FEATURES = [
 ]
 
 export function HomePage() {
-  const { cards } = useAuctionList()
-  const liveAuctions = cards
-    .filter((auction) => roomPhaseToStatus(auction.phase) === 'LIVE')
-    .slice(0, 3)
+  // 진행중만 서버에서 걸러 받는다. 첫 페이지에 진행중이 없으면 빈 손이던 문제가 사라진다.
+  const { cards } = useAuctionList({ scope: 'ALL', filter: 'LIVE' })
+  const liveAuctions = cards.slice(0, 3)
 
   return (
     <main aria-label="RACE 홈">

@@ -11,10 +11,12 @@ import type { AuctionListCard as AuctionListCardModel } from '@/features/auction
 
 interface AuctionCardProps {
   auction: AuctionListCardModel
+  /** 카드 하단에 덧붙일 조작 영역. 나의 경매에서 수정·삭제 버튼을 넣는다. */
+  actions?: React.ReactNode
 }
 
 /** 홈/목록 화면의 경매 카드. 썸네일·차종·현재가/시작가·남은시간. */
-export function AuctionCard({ auction }: AuctionCardProps) {
+export function AuctionCard({ auction, actions }: AuctionCardProps) {
   const status = roomPhaseToStatus(auction.phase)
   const isLive = status === 'LIVE'
   const priceLabel = isLive ? '현재가' : status === 'ENDED' ? '낙찰가' : '시작가'
@@ -81,6 +83,8 @@ export function AuctionCard({ auction }: AuctionCardProps) {
             <span className="tabular">실시간 시청 {auction.connectedCount}명</span>
           </div>
         </div>
+
+        {actions && <div className="border-t pt-3">{actions}</div>}
       </div>
     </Card>
   )
