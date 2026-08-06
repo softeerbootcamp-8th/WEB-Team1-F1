@@ -210,7 +210,7 @@ class EvaluationResultServiceTest {
     void submitRejectsUnknownEvaluation() {
         // given
         givenManagedDocument(DOCUMENT_URL);
-        given(evaluationRepository.findById(EVALUATION_ID)).willReturn(Optional.empty());
+        given(evaluationRepository.findByIdForUpdate(EVALUATION_ID)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> evaluationResultService.submit(command(DOCUMENT_URL)))
@@ -225,7 +225,7 @@ class EvaluationResultServiceTest {
     }
 
     private void givenEvaluationFound() {
-        given(evaluationRepository.findById(EVALUATION_ID)).willReturn(Optional.of(evaluation));
+        given(evaluationRepository.findByIdForUpdate(EVALUATION_ID)).willReturn(Optional.of(evaluation));
         given(evaluation.getVehicle()).willReturn(vehicle);
         given(vehicle.getId()).willReturn(VEHICLE_ID);
     }

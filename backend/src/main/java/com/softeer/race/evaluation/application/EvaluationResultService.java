@@ -29,8 +29,10 @@ import org.springframework.transaction.annotation.Transactional;
  * 인가도 묶은 덕에 성립한다. 사진 등록은 {@code vehicleId}만 받아 "배정된 평가사인가"를 물을 수
  * 없지만, 이 유스케이스는 {@code evaluationId} 축이라 그 질문이 가능하다.
  * <p>
- * 잠금을 걸지 않는다. 배정과 달리 "먼저 온 한 명"을 가리는 흐름이 아니라 담당자 한 명만 호출하므로
- * 경합할 상대가 없다.
+ * <b>평가 행을 잠그고 시작한다.</b> 담당자 한 명만 호출하는 흐름이라 경합이 없어 보이지만, 같은
+ * 평가사가 버튼을 두 번 누르거나 탭 두 개에서 보내면 두 요청이 겹친다. 그러면 둘 다 "진단서 없음"을
+ * 읽고 둘 다 insert 해서 {@code evaluation_id} unique 제약에 걸린다 — 배정이 {@code findByIdForUpdate}로
+ * 막는 것과 같은 종류의 경합이고, 여기서는 상대가 남이 아니라 자기 자신이다.
  */
 @Service
 @RequiredArgsConstructor
@@ -44,9 +46,6 @@ public class EvaluationResultService {
 
     /**
      * 방문 결과를 제출한다. 이미 제출된 결과가 있으면 통째로 갈아 끼운다.
-     * <p>
-     * TODO 출품 전환이 붙으면 경매가 생긴 뒤의 재제출을 막는다. 입찰자가 본 주행거리가
-     *      나중에 바뀌면 이미 들어온 입찰의 근거가 사라진다.
      */
     @Transactional
     public EvaluationResultInfo submit(EvaluationResultSubmitCommand command) {
@@ -54,7 +53,10 @@ public class EvaluationResultService {
         // 사진이 지워진 뒤에 진단서 주소가 잘못된 것을 발견하는 순서가 되지 않게 한다
         validateManagedDocument(command.diagnosticReportUrl());
 
-        Evaluation evaluation = evaluationRepository.findById(command.evaluationId())
+        // 잠그고 읽는다. 진단서 조회와 저장 사이에 창이 있어, 잠금 없이 두면 동시에 들어온 두
+        // 제출이 모두 "진단서 없음"을 읽고 둘 다 insert 한다. evaluation_id 가 unique 라
+        // 뒤엣것이 제약 위반으로 500 이 된다 — 같은 평가사가 버튼을 두 번 누르면 성립한다
+        Evaluation evaluation = evaluationRepository.findByIdForUpdate(command.evaluationId())
                 .orElseThrow(() -> new BusinessException(EvaluationErrorCode.NOT_FOUND));
 
         evaluation.validateDiagnosableBy(command.evaluatorId());
