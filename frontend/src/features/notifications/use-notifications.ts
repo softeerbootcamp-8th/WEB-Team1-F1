@@ -80,6 +80,10 @@ export function useNotifications() {
   // 순간의 것이라, 그 뒤에 온 값을 덮으면 배지가 실제보다 낮아진다
   const countChangedSinceLoad = useRef(false)
 
+  // 최초 적재가 아직 오는 중인지. 목록 조회와 구독은 따로 출발해서 어느 쪽이 먼저 서버에 닿을지
+  // 정해져 있지 않다. 조회가 늦으면 연결 직후 건수보다 오래된 목록이 나중에 도착한다
+  const firstLoadInFlight = useRef(false)
+
   const loadFirstPage = useCallback(async () => {
     const startedAt = generation.current
     const page = await fetchNotifications()
@@ -133,6 +137,7 @@ export function useNotifications() {
     // 회원이 바뀔 때도 지난다. 먼저 비워야 아래 병합이 이전 회원의 알림을 새 회원 목록에 섞지 않는다
     generation.current += 1
     countChangedSinceLoad.current = false
+    firstLoadInFlight.current = false
     setItems([])
     setUnreadCount(0)
     setCursor(null)
@@ -142,6 +147,7 @@ export function useNotifications() {
 
     let cancelled = false
     let welcomeTimer: number | undefined
+    firstLoadInFlight.current = true
     setIsLoading(true)
 
     Promise.all([fetchNotifications(), fetchUnreadCount()])
@@ -175,6 +181,7 @@ export function useNotifications() {
       // 알림은 헤더의 부가 요소라 실패해도 화면을 막지 않는다, 다음 적재가 진실을 준다
       .catch(() => undefined)
       .finally(() => {
+        firstLoadInFlight.current = false
         if (!cancelled) setIsLoading(false)
       })
 
@@ -210,7 +217,11 @@ export function useNotifications() {
 
         if (initialCountPending.current) {
           initialCountPending.current = false
-          return
+
+          // 최초 적재가 아직 오는 중이면 그 응답이 이 건수보다 오래된 것일 수 있다. 걸러 내면
+          // 배지는 맞는데 목록만 안 읽음으로 남으므로, 그때는 걸러 내지 않고 다시 읽는다.
+          // 재연결은 적재가 끝난 뒤라 이 조건에 걸리지 않아 조회가 두 번 나가지 않는다
+          if (!firstLoadInFlight.current) return
         }
 
         // 다른 화면에서 읽음이 바뀌었다는 뜻이다. 배지만 맞추면 목록에는 안 읽음 표시가 그대로 남는다.
