@@ -1,5 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
+import com.softeer.race.auction.application.AuctionCloser;
 import com.softeer.race.auction.application.AuctionStarter;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import com.softeer.race.support.IntegrationTestSupport;
@@ -27,8 +28,15 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     // 방은 열려 있고 입찰만 아직 시작되지 않은 시각이다, 개장은 시작 30분 전이다
     private static final LocalDateTime START_AT = NOW.plusMinutes(10);
 
+    // 이미 시작된 방의 시작 시각과 그 방의 마감, 경매는 시작 20분 뒤에 마감된다
+    private static final LocalDateTime STARTED_AT = NOW.minusMinutes(15);
+    private static final LocalDateTime END_AT = STARTED_AT.plusMinutes(20);
+
     @Autowired
     private AuctionStarter auctionStarter;
+
+    @Autowired
+    private AuctionCloser auctionCloser;
 
     @Autowired
     private AuctionRoomStreamService auctionRoomStreamService;
@@ -67,9 +75,64 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.LIVE);
     }
 
+    @Test
+    @DisplayName("마감 시각이 지나 낙찰이 확정되면 결과 현황과 낙찰자가 나간다")
+    void closeReachesWatchers() {
+        // given : 입찰이 한 건 들어온 진행중 방을 한 사람이 보고 있다
+        auctionId = liveRoomWithBid();
+        startAuction();
+        auctionRoomStreamService.subscribe(auctionId, watcher);
+        assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.LIVE);
+
+        // when : 마감 시각이 지나 낙찰자가 확정된다
+        fixClockAt(END_AT);
+        auctionCloser.close(auctionId);
+
+        // then 1 : 다시 조회하지 않았는데 결과 단계로 바뀐 현황이 흘러 들어간다
+        assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.RESULT);
+
+        // then 2 : 확정된 낙찰자가 마스킹된 이름으로 함께 실린다
+        assertThat(watcher.lastState().winnerName().value()).isEqualTo("김*찰");
+    }
+
+    @Test
+    @DisplayName("입찰 없이 끝난 방에도 결과 현황이 나가고 낙찰자는 없다")
+    void unsoldCloseReachesWatchers() {
+        // given : 입찰이 한 건도 없는 진행중 방을 한 사람이 보고 있다
+        auctionId = liveRoom();
+        startAuction();
+        auctionRoomStreamService.subscribe(auctionId, watcher);
+
+        // when : 마감 시각이 지나 유찰로 끝난다
+        fixClockAt(END_AT);
+        auctionCloser.close(auctionId);
+
+        // then 1 : 낙찰이 없어도 끝났다는 사실은 보고 있던 사람에게 닿는다
+        assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.RESULT);
+
+        // then 2 : 낙찰자는 없다, 화면은 이것으로 유찰을 안다
+        assertThat(watcher.lastState().winnerName()).isNull();
+    }
+
     private long waitingRoom() {
         return rooms.room(users.user("박판매", Role.GENERAL), START_AT)
                 .create();
+    }
+
+    private long liveRoom() {
+        return rooms.room(users.user("박판매", Role.GENERAL), STARTED_AT)
+                .create();
+    }
+
+    private long liveRoomWithBid() {
+        return rooms.room(users.user("박판매", Role.GENERAL), STARTED_AT)
+                .bid(NOW.minusMinutes(10), users.user("김입찰", Role.DEALER), 12_500_000L)
+                .create();
+    }
+
+    // 확정은 진행중인 경매만 받는다, 스케줄러가 밟는 순서를 그대로 밟아 상태를 올려 둔다
+    private void startAuction() {
+        auctionStarter.start(auctionId);
     }
 
     // 받은 현황만 기록하면 되는 구독, 끊김은 이 테스트가 보지 않는다

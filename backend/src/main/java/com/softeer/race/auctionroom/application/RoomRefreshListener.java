@@ -1,5 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
+import com.softeer.race.auction.domain.AuctionClosed;
 import com.softeer.race.auction.domain.AuctionStarted;
 import com.softeer.race.bid.domain.BidAccepted;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,11 @@ class RoomRefreshListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onAuctionStarted(AuctionStarted event) {
         refresh(event.auctionId(), "경매 시작");
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAuctionClosed(AuctionClosed event) {
+        refresh(event.auctionId(), "경매 마감");
     }
 
     private void refresh(long auctionId, String cause) {
