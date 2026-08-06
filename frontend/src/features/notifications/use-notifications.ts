@@ -17,6 +17,34 @@ import { showNotificationToast } from './notification-toast'
 const WELCOME_TOAST_DELAY_MILLIS = 3_000
 
 /**
+ * 서버가 준 목록과 화면이 들고 있던 목록을 합친다.
+ *
+ * 조회 응답은 요청이 서버에 닿은 순간의 사진이라, 그 뒤에 실시간으로 받은 알림이 빠져 있다.
+ * 통째로 바꾸면 그 알림이 화면에서 사라진다. 연결 수명이 10분이라 정상 동작 중에도 주기적으로
+ * 목록을 다시 읽으므로, 드물게 열리는 창이 아니라 상시 열리는 창이다.
+ *
+ * 읽음은 한쪽이라도 읽음이면 읽음으로 둔다. 읽음을 되돌리는 API가 없어 단방향이라 이 규칙이
+ * 정보를 잃지 않는다. 서버 값으로 덮으면 방금 눌러 둔 알림이 안 읽음으로 되살아나고, 화면 값만
+ * 지키면 다른 탭에서 읽은 것이 영영 반영되지 않는다.
+ */
+function mergeById(current: AppNotification[], incoming: AppNotification[]): AppNotification[] {
+  const merged = new Map<number, AppNotification>()
+
+  for (const notification of [...current, ...incoming]) {
+    const seen = merged.get(notification.id)
+
+    // 읽음 말고는 나중에 온 서버 값이 이긴다, 문구와 링크의 진실은 서버 한 곳이다
+    merged.set(
+      notification.id,
+      seen ? { ...notification, read: seen.read || notification.read } : notification,
+    )
+  }
+
+  // 이어 읽기가 내림차순을 전제로 서 있다, 합치면서 순서가 흐트러지면 다음 페이지가 엉뚱한 자리에 붙는다
+  return [...merged.values()].sort((a, b) => b.id - a.id)
+}
+
+/**
  * 헤더 알림의 상태 한 곳. 목록·안 읽은 건수·실시간 구독을 함께 들고 있다.
  *
  * 조회 캐시(react-query)를 쓰지 않는 것은 이 프로젝트가 feature 훅에 상태를 두는 방식으로
@@ -42,7 +70,9 @@ export function useNotifications() {
 
   const loadFirstPage = useCallback(async () => {
     const page = await fetchNotifications()
-    setItems(page.content)
+    setItems((prev) => mergeById(prev, page.content))
+    // 더 읽어 둔 뒤였다면 이어 읽기 지점이 앞으로 돌아간다. 다시 읽은 몫은 병합이 걸러 내므로
+    // 목록이 어긋나지는 않고, 지점을 따로 기억하는 값을 하나 더 두는 것보다 단순하다
     setCursor(page.nextCursor)
     setHasNext(page.hasNext)
   }, [])
@@ -82,13 +112,13 @@ export function useNotifications() {
 
   // 최초 적재. 건수를 따로 묻는 이유는 실시간 연결이 막힌 환경에서도 배지가 맞아야 하기 때문이다
   useEffect(() => {
-    if (!isAuthenticated || userId == null) {
-      setItems([])
-      setUnreadCount(0)
-      setCursor(null)
-      setHasNext(false)
-      return
-    }
+    // 회원이 바뀔 때도 지난다. 먼저 비워야 아래 병합이 이전 회원의 알림을 새 회원 목록에 섞지 않는다
+    setItems([])
+    setUnreadCount(0)
+    setCursor(null)
+    setHasNext(false)
+
+    if (!isAuthenticated || userId == null) return
 
     let cancelled = false
     let welcomeTimer: number | undefined
@@ -97,7 +127,8 @@ export function useNotifications() {
     Promise.all([fetchNotifications(), fetchUnreadCount()])
       .then(([page, count]) => {
         if (cancelled) return
-        setItems(page.content)
+        // 이 조회가 다녀오는 사이에 실시간으로 도착한 알림이 있을 수 있다
+        setItems((prev) => mergeById(prev, page.content))
         setCursor(page.nextCursor)
         setHasNext(page.hasNext)
         setUnreadCount(count)
@@ -130,8 +161,10 @@ export function useNotifications() {
     }
   }, [isAuthenticated, userId])
 
+  // 로그인 여부만 보면 회원이 바뀌어도 이전 회원의 연결이 그대로 열려 있다. 지금은 로그아웃 없이
+  // 회원이 바뀌는 경로가 없어 재현되지 않지만, 계정 전환이 생기는 순간 조용히 깨질 자리다
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated || userId == null) return
 
     connectedOnce.current = false
 
@@ -162,7 +195,7 @@ export function useNotifications() {
         // 세션이 실제로 만료되면 다음 요청의 401이 인증 상태를 바꾸고 위 비인증 분기가 초기화한다
       },
     })
-  }, [isAuthenticated, loadFirstPage])
+  }, [isAuthenticated, userId, loadFirstPage])
 
   const loadMore = useCallback(async () => {
     if (cursor == null || isLoadingMore) return
@@ -170,7 +203,8 @@ export function useNotifications() {
     setIsLoadingMore(true)
     try {
       const page = await fetchNotifications(cursor)
-      setItems((prev) => [...prev, ...page.content])
+      // 이어 읽기 지점이 앞으로 돌아간 뒤라면 이미 들고 있는 몫이 딸려 온다, 붙이지 않고 합친다
+      setItems((prev) => mergeById(prev, page.content))
       setCursor(page.nextCursor)
       setHasNext(page.hasNext)
     } catch {
