@@ -205,6 +205,10 @@ class WelcomeNotificationIntegrationTest extends IntegrationTestSupport {
         }
 
         @Override
+        public void close() {
+        }
+
+        @Override
         public boolean isOpen() {
             return true;
         }

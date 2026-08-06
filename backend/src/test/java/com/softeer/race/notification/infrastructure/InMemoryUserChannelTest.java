@@ -107,7 +107,7 @@ class InMemoryUserChannelTest {
     @DisplayName("전송 중 닫힌 구독은 걷어낸다")
     void closedSubscriptionIsRemovedAfterSend() {
         FakeSubscriber broken = new FakeSubscriber();
-        broken.close();
+        broken.disconnect();
         channel.subscribe(USER, broken);
 
         channel.send(USER, push());
@@ -121,7 +121,7 @@ class InMemoryUserChannelTest {
     @DisplayName("닫힌 구독이 있어도 나머지는 알림을 받는다")
     void openSubscriptionReceivesDespiteClosedPeer() {
         FakeSubscriber broken = new FakeSubscriber();
-        broken.close();
+        broken.disconnect();
         FakeSubscriber alive = new FakeSubscriber();
         channel.subscribe(USER, broken);
         channel.subscribe(USER, alive);
@@ -136,7 +136,7 @@ class InMemoryUserChannelTest {
     @DisplayName("모두 닫힌 회원에게 다시 보내도 터지지 않는다")
     void sendToDrainedUserIsSafe() {
         FakeSubscriber broken = new FakeSubscriber();
-        broken.close();
+        broken.disconnect();
         channel.subscribe(USER, broken);
 
         channel.send(USER, push());
@@ -169,6 +169,60 @@ class InMemoryUserChannelTest {
         channel.sweepClosed();
 
         assertThat(alive.pings).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("전송 중 닫힌 구독은 걷어내면서 응답까지 끝낸다")
+    void closedSubscriptionIsEndedAfterSend() {
+        FakeSubscriber broken = new FakeSubscriber();
+        broken.disconnect();
+        channel.subscribe(USER, broken);
+
+        channel.send(USER, push());
+
+        // 명부에서 빼기만 하면 그 응답은 아무도 끝내지 않는다.
+        // 상대는 연결이 살아 있다고 믿고 기다리므로 다시 붙지도 않는다
+        assertThat(broken.closes).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("청소에서 드러난 구독도 응답까지 끝낸다")
+    void silentlyClosedSubscriptionIsEndedAfterSweep() {
+        FakeSubscriber silent = new FakeSubscriber();
+        silent.closeOnPing();
+        channel.subscribe(USER, silent);
+
+        channel.sweepClosed();
+
+        assertThat(silent.closes).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("닫힌 구독을 끝내도 같은 회원의 살아 있는 구독은 그대로다")
+    void endingBrokenSubscriptionKeepsPeerOpen() {
+        FakeSubscriber broken = new FakeSubscriber();
+        broken.disconnect();
+        FakeSubscriber alive = new FakeSubscriber();
+        channel.subscribe(USER, broken);
+        channel.subscribe(USER, alive);
+
+        channel.send(USER, push());
+
+        // 한 탭의 전송 실패가 다른 탭의 연결을 끊으면 안 된다
+        assertThat(alive.closes).isZero();
+        assertThat(alive.isOpen()).isTrue();
+    }
+
+    @Test
+    @DisplayName("해제는 응답을 끝내지 않는다")
+    void unsubscribeDoesNotEndTheResponse() {
+        FakeSubscriber leaving = new FakeSubscriber();
+        channel.subscribe(USER, leaving);
+
+        channel.unsubscribe(USER, leaving);
+
+        // 해제를 부르는 쪽은 이미 끝난 응답의 콜백이거나, 아직 시작도 안 한 구독의 롤백이다
+        assertThat(leaving.closes).isZero();
     }
 
     @Test
@@ -233,8 +287,10 @@ class InMemoryUserChannelTest {
         private boolean open = true;
         private boolean closeOnPing;
         private int pings;
+        private int closes;
 
-        void close() {
+        // 상대가 끊긴 상태로 만든다, 서버가 응답을 끝내는 close() 와는 방향이 반대다
+        void disconnect() {
             open = false;
         }
 
@@ -262,6 +318,12 @@ class InMemoryUserChannelTest {
             if (closeOnPing) {
                 open = false;
             }
+        }
+
+        @Override
+        public void close() {
+            open = false;
+            closes++;
         }
 
         @Override
