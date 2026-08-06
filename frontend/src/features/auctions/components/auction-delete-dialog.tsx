@@ -45,7 +45,9 @@ export function AuctionDeleteDialog({
   }
 
   return (
-    <Dialog open={!!auction} onOpenChange={onOpenChange}>
+    // 삭제 중에는 닫지 않는다. 바깥 클릭·Esc로 닫아도 요청은 계속 가서,
+    // 되돌릴 수 없는 작업이 사용자가 취소했다고 믿는 사이에 완료된다.
+    <Dialog open={!!auction} onOpenChange={(open) => !isSubmitting && onOpenChange(open)}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>경매글을 삭제할까요?</DialogTitle>
@@ -55,7 +57,11 @@ export function AuctionDeleteDialog({
         </DialogHeader>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            disabled={isSubmitting}
+            onClick={() => onOpenChange(false)}
+          >
             취소
           </Button>
           <Button variant="destructive" onClick={submit} disabled={isSubmitting}>

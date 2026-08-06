@@ -84,7 +84,9 @@ export function AuctionEditDialog({
   }
 
   return (
-    <Dialog open={!!auction} onOpenChange={onOpenChange}>
+    // 저장 중에는 닫지 않는다. 닫아도 요청은 계속 가서, 성공하면 취소한 줄 아는 사용자에게
+    // "수정했습니다" 토스트가 뜬다. 바깥 클릭·Esc도 같은 경로라 여기서 함께 막힌다.
+    <Dialog open={!!auction} onOpenChange={(open) => !isSubmitting && onOpenChange(open)}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>경매글 수정</DialogTitle>
@@ -141,7 +143,11 @@ export function AuctionEditDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            disabled={isSubmitting}
+            onClick={() => onOpenChange(false)}
+          >
             취소
           </Button>
           <Button onClick={submit} disabled={!canSubmit}>

@@ -28,15 +28,22 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'ENDED', label: '종료' },
 ]
 
-const EMPTY_MESSAGE: Record<AuctionListScope, { title: string; description: string }> = {
-  ALL: {
-    title: '해당 상태의 경매가 없습니다',
+/**
+ * 빈 목록 문구. 범위만 보고 고르면 "나의 경매 + 진행중"에 결과가 없을 때
+ * 경매를 여러 건 갖고 있는 사람에게도 "등록한 경매가 없습니다"라고 말하게 된다.
+ */
+function emptyMessage(scope: AuctionListScope, filter: Filter) {
+  if (scope === 'MINE' && filter === 'ALL') {
+    return {
+      title: '등록한 경매가 없습니다',
+      description: '내 차 팔기에서 차량을 등록하면 여기에 표시됩니다.',
+    }
+  }
+
+  return {
+    title: scope === 'MINE' ? '해당 상태의 내 경매가 없습니다' : '해당 상태의 경매가 없습니다',
     description: '다른 필터를 선택해 보세요.',
-  },
-  MINE: {
-    title: '등록한 경매가 없습니다',
-    description: '내 차 팔기에서 차량을 등록하면 여기에 표시됩니다.',
-  },
+  }
 }
 
 export function AuctionsPage() {
@@ -91,7 +98,7 @@ export function AuctionsPage() {
             </p>
           </div>
           <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
-            <TabsList>
+            <TabsList aria-label="경매 상태 필터">
               {FILTERS.map((item) => (
                 <TabsTrigger key={item.value} value={item.value}>
                   {item.label}
@@ -134,7 +141,7 @@ export function AuctionsPage() {
           ))}
         </ul>
       ) : cards.length === 0 ? (
-        <EmptyState icon={SearchX} {...EMPTY_MESSAGE[scope]} />
+        <EmptyState icon={SearchX} {...emptyMessage(scope, filter)} />
       ) : (
         <>
           <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

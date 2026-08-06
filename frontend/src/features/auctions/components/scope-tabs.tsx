@@ -23,7 +23,10 @@ export function ScopeTabs({ value, onChange }: ScopeTabsProps) {
       onValueChange={(next) => onChange(next as AuctionListScope)}
       className="w-full"
     >
-      <TabsList className="bg-muted/40 grid h-14 w-full grid-cols-2 rounded-lg p-0">
+      <TabsList
+        aria-label="경매 범위 선택"
+        className="bg-muted/40 grid h-14 w-full grid-cols-2 rounded-lg p-0"
+      >
         {SCOPES.map((scope) => (
           <TabsTrigger
             key={scope.value}
