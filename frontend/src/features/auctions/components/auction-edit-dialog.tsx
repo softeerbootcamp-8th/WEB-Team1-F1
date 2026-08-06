@@ -62,7 +62,11 @@ export function AuctionEditDialog({
   const minStartAt = toLocalInputValue(new Date(Date.now() + MIN_START_LEAD_TIME_MS))
   const priceInWon = Number(priceManwon || 0) * 10000
   const hasPrice = priceManwon !== ''
-  const canSubmit = !!auction && !!startAt && hasPrice && !isSubmitting
+
+  // 입력의 min 속성은 폼 제출 경로에서만 걸린다. 여기는 버튼 onClick으로 보내므로 직접 막는다.
+  // 두 값 모두 'YYYY-MM-DDTHH:mm' 고정 폭이라 문자열 비교가 곧 시간 비교다.
+  const isStartAtValid = !!startAt && startAt >= minStartAt
+  const canSubmit = !!auction && isStartAtValid && hasPrice && !isSubmitting
 
   const submit = async () => {
     if (!auction || !canSubmit) return
@@ -135,10 +139,18 @@ export function AuctionEditDialog({
               min={minStartAt}
               value={startAt}
               onChange={(event) => setStartAt(event.target.value)}
+              aria-invalid={!!startAt && !isStartAtValid}
             />
-            <p className="text-muted-foreground text-xs">
-              지금부터 1시간 뒤 이후로만 지정할 수 있습니다. 경매방은 시작 30분 전에 열립니다.
-            </p>
+            {/* 저장 버튼만 비활성화하면 왜 눌리지 않는지 알 수 없다. 이유를 여기서 밝힌다. */}
+            {!!startAt && !isStartAtValid ? (
+              <p className="text-destructive text-xs">
+                지금부터 1시간 뒤 이후로 지정해 주세요.
+              </p>
+            ) : (
+              <p className="text-muted-foreground text-xs">
+                지금부터 1시간 뒤 이후로만 지정할 수 있습니다. 경매방은 시작 30분 전에 열립니다.
+              </p>
+            )}
           </div>
         </div>
 
