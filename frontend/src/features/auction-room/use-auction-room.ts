@@ -28,10 +28,14 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
   const [error, setError] = useState(false)
   const [flashKey, setFlashKey] = useState(0)
   const [extended, setExtended] = useState(false)
+  // 서버 시각 - 이 브라우저 시계. 마감 시각은 서버가 정하는데 남은 시간을 브라우저 시계로 세면
+  // 시계가 틀어진 사람은 다른 마감을 본다. 응답이 실어 주는 서버 시각으로 그 차이를 메운다
+  const [clockOffset, setClockOffset] = useState(0)
 
   const myBidAmounts = useRef<Set<number>>(new Set())
   const prevPrice = useRef<number | null>(null)
   const prevEndAt = useRef<string | null>(null)
+  const extendedTimer = useRef<number | null>(null)
 
   useEffect(() => {
     fetchBidIncrementBands()
@@ -39,22 +43,39 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
       .catch(() => setBands([]))
   }, [])
 
+  // 연장이 잇달아 일어나면 먼저 건 타이머가 나중 연장의 표시를 조기에 끈다, 앞의 것을 취소하고 다시 건다
+  const markExtended = useCallback(() => {
+    setExtended(true)
+    if (extendedTimer.current !== null) {
+      window.clearTimeout(extendedTimer.current)
+    }
+    extendedTimer.current = window.setTimeout(() => setExtended(false), EXTENDED_FLAG_MS)
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (extendedTimer.current !== null) {
+        window.clearTimeout(extendedTimer.current)
+      }
+    },
+    [],
+  )
+
   const mergeStreamState = useCallback((state: RoomStreamState) => {
     if (prevPrice.current !== null && state.currentPrice > prevPrice.current) {
       setFlashKey((k) => k + 1)
     }
     if (prevEndAt.current !== null && state.endAt !== prevEndAt.current) {
-      setExtended(true)
-      window.setTimeout(() => setExtended(false), EXTENDED_FLAG_MS)
+      markExtended()
     }
     prevPrice.current = state.currentPrice
     prevEndAt.current = state.endAt
+    setClockOffset(new Date(state.serverTime).getTime() - Date.now())
 
     setRoom({
       auctionId: state.auctionId,
       phase: state.phase,
       vehicle: state.vehicle,
-      thumbnailUrl: state.thumbnailUrl,
       startPrice: state.startPrice,
       currentPrice: state.currentPrice,
       openAt: state.openAt,
@@ -65,18 +86,28 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
       bidderCount: state.bidderCount,
       bidCount: state.bidCount,
       winner:
-        state.winnerName == null
+        state.winner == null
           ? null
-          : { name: state.winnerName, mine: myBidAmounts.current.has(state.currentPrice) },
+          : { name: state.winner.name, mine: myBidAmounts.current.has(state.currentPrice) },
       recentBids: state.recentBids.map((b) => ({
         ...b,
         mine: myBidAmounts.current.has(b.amount),
       })),
     })
-  }, [])
+  }, [markExtended])
 
   useEffect(() => {
     if (userId == null) return
+
+    // ref 는 컴포넌트 인스턴스에 붙어 있어 다른 방으로 옮겨도 살아남는다. 비우지 않으면 이전 방에서
+    // 부른 금액이 새 방의 같은 금액을 내 것으로 만들어, 남이 낙찰받은 방에 내 이름이 뜬다
+    myBidAmounts.current.clear()
+    prevPrice.current = null
+    prevEndAt.current = null
+    // 이전 방의 차량과 가격이 새 응답이 올 때까지 그려지는 것도 같은 이유다
+    setRoom(null)
+    setExtended(false)
+
     let cancelled = false
     let unsubscribe: (() => void) | null = null
     let retryTimer: number | null = null
@@ -93,6 +124,7 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
 
           prevPrice.current = view.currentPrice
           prevEndAt.current = view.endAt
+          setClockOffset(new Date(view.serverTime).getTime() - Date.now())
           setRoom(view)
           setError(false)
 
@@ -127,12 +159,31 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
 
   const bid = useCallback(
     async (amount: number) => {
-      await placeBid(auctionId, amount)
-      // 스트림이 곧 밀어주는 값에 mine을 붙일 수 있도록 미리 기억해둔다.
+      // 요청을 보내기 전에 적는다. 서버는 커밋 시점에 방송하고 그 방송이 이 응답보다 먼저 닿아,
+      // 응답을 받고 적으면 내 호가가 남의 것으로 그려진 뒤다.
+      // 실패하면 지운다 — 남겨두면 같은 금액을 부른 남의 호가에 내 표시가 붙는다.
       myBidAmounts.current.add(amount)
+
+      let result
+      try {
+        result = await placeBid(auctionId, amount)
+      } catch (error) {
+        myBidAmounts.current.delete(amount)
+        throw error
+      }
+
+      setClockOffset(new Date(result.serverTime).getTime() - Date.now())
+
+      // 마감 직전 입찰은 마감을 뒤로 민다. 그 새 마감이 이 응답에 실려 오므로 스트림을 기다리지
+      // 않고 바로 반영한다 — 기다리는 사이 화면은 이미 지난 마감을 향해 카운트다운한다.
+      if (result.endAt !== prevEndAt.current) {
+        prevEndAt.current = result.endAt
+        markExtended()
+        setRoom((prev) => (prev == null ? prev : { ...prev, endAt: result.endAt }))
+      }
     },
-    [auctionId],
+    [auctionId, markExtended],
   )
 
-  return { room, increment, nextMin, flashKey, extended, error, placeBid: bid }
+  return { room, increment, nextMin, flashKey, extended, error, clockOffset, placeBid: bid }
 }

@@ -4,8 +4,9 @@ import { ArrowLeft, Eye, Gavel, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/empty-state'
 import { StatusBadge } from '@/components/common/status-badge'
-import { formatKRW } from '@/lib/format'
+import { formatClock, formatKRW } from '@/lib/format'
 import { roomPhaseToStatus } from '@/lib/auction'
+import { MANUFACTURER_LABEL } from '@/features/quote/types'
 import { useAuth } from '@/features/auth/auth-context'
 
 import { useAuctionRoom } from '../use-auction-room'
@@ -46,10 +47,8 @@ export function AuctionRoomPage() {
 }
 
 function RoomContent({ auctionId, userId }: { auctionId: number; userId: number }) {
-  const { room, increment, nextMin, flashKey, extended, error, placeBid } = useAuctionRoom(
-    auctionId,
-    userId,
-  )
+  const { room, increment, nextMin, flashKey, extended, error, clockOffset, placeBid } =
+    useAuctionRoom(auctionId, userId)
 
   if (error) {
     return (
@@ -89,7 +88,7 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
             <span className="text-muted-foreground text-sm">{room.vehicle.modelYear}년</span>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            {room.vehicle.model}
+            {MANUFACTURER_LABEL[room.vehicle.manufacturer]} {room.vehicle.model}
           </h1>
         </div>
       </div>
@@ -98,8 +97,8 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
 
       {room.phase === 'WAITING' && (
         <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-          <WaitingRoom room={room} />
-          <CarDetail vehicle={room.vehicle} thumbnailUrl={room.thumbnailUrl} />
+          <WaitingRoom room={room} clockOffset={clockOffset} />
+          <CarDetail vehicle={room.vehicle} />
         </div>
       )}
 
@@ -110,6 +109,7 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
           nextMin={nextMin}
           flashKey={flashKey}
           extended={extended}
+          clockOffset={clockOffset}
           placeBid={placeBid}
         />
       )}
@@ -126,6 +126,7 @@ function LiveRoom({
   nextMin,
   flashKey,
   extended,
+  clockOffset,
   placeBid,
 }: {
   room: AuctionRoomView
@@ -133,6 +134,7 @@ function LiveRoom({
   nextMin: number
   flashKey: number
   extended: boolean
+  clockOffset: number
   placeBid: (amount: number) => Promise<void>
 }) {
   return (
@@ -140,13 +142,15 @@ function LiveRoom({
       <PriceBoard
         currentPrice={room.currentPrice}
         startPrice={room.startPrice}
+        startAt={room.startAt}
         endAt={room.endAt}
         extended={extended}
+        clockOffset={clockOffset}
         flashKey={flashKey}
       />
 
       <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-        <CarDetail vehicle={room.vehicle} thumbnailUrl={room.thumbnailUrl} />
+        <CarDetail vehicle={room.vehicle} />
 
         <div className="space-y-4">
           <dl className="grid grid-cols-2 gap-3">
@@ -188,9 +192,16 @@ function LiveRoom({
 
 /** 종료(결과 보기/마감) 화면 */
 function EndedResult({ room }: { room: AuctionRoomView }) {
+  const { user } = useAuth()
+
+  // 서버는 낙찰자 이름을 누구에게나 마스킹해서 내려준다. 본인에게만은 실명이 자연스러운데,
+  // 그 이름은 서버에 다시 물을 것 없이 내 세션이 이미 들고 있다
+  const winnerName =
+    room.winner?.mine && user ? user.realName : room.winner?.name
+
   return (
     <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-      <CarDetail vehicle={room.vehicle} thumbnailUrl={room.thumbnailUrl} />
+      <CarDetail vehicle={room.vehicle} />
       <div className="flex flex-col gap-4">
         <div className="rounded-xl border p-6 text-center">
           {room.winner ? (
@@ -203,7 +214,9 @@ function EndedResult({ room }: { room: AuctionRoomView }) {
                 {formatKRW(room.currentPrice)}
               </p>
               <p className="text-muted-foreground mt-2 text-sm">
-                낙찰자 {room.winner.name} · 입찰 {room.bidCount}건
+                낙찰자 {winnerName}
+                {room.winner.mine && <span className="text-foreground font-medium"> (나)</span>} ·
+                입찰 {room.bidCount}건
               </p>
               {room.winner.mine && (
                 <Button asChild className="mt-5 w-full">
@@ -215,6 +228,21 @@ function EndedResult({ room }: { room: AuctionRoomView }) {
             <p className="text-muted-foreground">입찰 없이 유찰됐어요.</p>
           )}
         </div>
+
+        <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border bg-border">
+          <div className="bg-card p-4">
+            <dt className="text-muted-foreground text-xs">시작가</dt>
+            <dd className="tabular mt-1 font-semibold">{formatKRW(room.startPrice)}</dd>
+          </div>
+          <div className="bg-card p-4">
+            <dt className="text-muted-foreground text-xs">입찰 참여자</dt>
+            <dd className="tabular mt-1 font-semibold">{room.bidderCount}명</dd>
+          </div>
+          <div className="bg-card p-4">
+            <dt className="text-muted-foreground text-xs">마감</dt>
+            <dd className="tabular mt-1 font-semibold">{formatClock(room.endAt)}</dd>
+          </div>
+        </dl>
       </div>
     </div>
   )

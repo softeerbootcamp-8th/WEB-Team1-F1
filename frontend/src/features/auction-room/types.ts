@@ -1,14 +1,17 @@
 import type { RoomPhase } from '@/features/auctions/types'
+// 차량 제원 어휘는 시세 조회 화면이 먼저 정의했고 백엔드 enum과 같은 값이라 그대로 쓴다
+import type { FuelType, Manufacturer } from '@/features/quote/types'
 import type { UserRole } from '@/types/domain'
 
 export type { RoomPhase }
 
 export interface RoomVehicle {
-  manufacturer: string
+  manufacturer: Manufacturer
   model: string
   modelYear: number
   mileage: number
-  fuelType: string
+  fuelType: FuelType
+  thumbnailUrl: string | null
 }
 
 export interface RecentBid {
@@ -29,7 +32,6 @@ export interface AuctionRoomView {
   auctionId: number
   phase: RoomPhase
   vehicle: RoomVehicle
-  thumbnailUrl: string | null
   startPrice: number
   currentPrice: number
   openAt: string
@@ -51,12 +53,16 @@ export interface RoomStreamBid {
   bidAt: string
 }
 
+/** 실시간은 방 전체에 같은 값이 나가 낙찰자에도 본인 여부가 없다 */
+export interface RoomStreamWinner {
+  name: string
+}
+
 /** 백엔드 RoomStateResponse와 동일한 필드 — GET /room/stream이 매번 전체 상태를 통째로 밀어준다 */
 export interface RoomStreamState {
   auctionId: number
   phase: RoomPhase
   vehicle: RoomVehicle
-  thumbnailUrl: string | null
   startPrice: number
   currentPrice: number
   openAt: string
@@ -66,7 +72,7 @@ export interface RoomStreamState {
   connectedCount: number
   bidderCount: number
   bidCount: number
-  winnerName: string | null
+  winner: RoomStreamWinner | null
   recentBids: RoomStreamBid[]
 }
 
