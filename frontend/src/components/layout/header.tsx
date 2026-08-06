@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { LogOut, User as UserIcon } from 'lucide-react'
+import { ClipboardCheck, ListChecks, LogOut, User as UserIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -27,9 +27,16 @@ const NAV = [
   { to: '/mypage', label: '마이페이지' },
 ]
 
+const EVALUATOR_NAV = [
+  { to: '/', label: '홈', end: true },
+  { to: '/evaluations/assignable', label: '배정 대기' },
+  { to: '/evaluations/my', label: '내 담당' },
+]
+
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
+  const navigation = user?.role === 'EVALUATOR' ? EVALUATOR_NAV : NAV
 
   return (
     <header className="bg-background/80 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-40 border-b backdrop-blur">
@@ -41,7 +48,7 @@ export function Header() {
 
         {/* 데스크톱 내비게이션 */}
         <nav className="hidden items-center gap-1 md:flex" aria-label="주요 메뉴">
-          {NAV.map((item) => (
+          {navigation.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -85,6 +92,19 @@ export function Header() {
                   </Badge>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {user.role === 'EVALUATOR' && (
+                  <>
+                    <DropdownMenuItem onClick={() => navigate('/evaluations/assignable')}>
+                      <ListChecks className="size-4" />
+                      배정 대기 목록
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/evaluations/my')}>
+                      <ClipboardCheck className="size-4" />
+                      내 담당 목록
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={() => navigate('/mypage')}>
                   <UserIcon className="size-4" />
                   마이페이지

@@ -12,9 +12,13 @@ import { AuctionPostPage } from '@/features/sell/pages/auction-post-page'
 import { SellResultPage } from '@/features/sell/pages/sell-result-page'
 import { PriceQuotePage } from '@/features/quote/pages/price-quote-page'
 import { QuoteResultPage } from '@/features/quote/pages/quote-result-page'
-import { MyPageComingSoon } from '@/features/deals/pages/mypage-coming-soon'
+import { MyPage } from '@/features/deals/pages/mypage'
 import { LoginPage } from '@/features/auth/pages/login-page'
 import { SignupPage } from '@/features/auth/pages/signup-page'
+import { AssignableEvaluationsPage } from '@/features/evaluations/pages/assignable-evaluations-page'
+import { MyAssignmentsPage } from '@/features/evaluations/pages/my-assignments-page'
+import { EvaluationResultPage } from '@/features/evaluations/pages/evaluation-result-page'
+import { MyRequestDetailPage } from '@/features/evaluations/pages/my-request-detail-page'
 
 export function AppRouter() {
   return (
@@ -34,7 +38,11 @@ export function AppRouter() {
         <Route path="/sell/evaluator" element={<EvaluatorConnectionPage />} />
         <Route path="/sell/auction-post" element={<AuctionPostPage />} />
         <Route path="/sell/result" element={<SellResultPage />} />
-        <Route path="/mypage" element={<MyPageComingSoon />} />
+        <Route path="/evaluations/assignable" element={<AssignableEvaluationsPage />} />
+        <Route path="/evaluations/my" element={<MyAssignmentsPage />} />
+        <Route path="/evaluations/:evaluationId/result" element={<EvaluationResultPage />} />
+        <Route path="/mypage" element={<MyPage />} />
+        <Route path="/mypage/evaluations/:evaluationId" element={<MyRequestDetailPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
