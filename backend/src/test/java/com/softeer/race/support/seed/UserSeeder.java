@@ -30,7 +30,6 @@ public class UserSeeder {
                 "pw",
                 realName,
                 "010%08d".formatted(serial),
-                "서울 강남구",
                 role)));
     }
 }

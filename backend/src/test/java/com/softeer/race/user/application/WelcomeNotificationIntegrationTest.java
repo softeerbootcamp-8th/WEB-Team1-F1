@@ -165,7 +165,6 @@ class WelcomeNotificationIntegrationTest extends IntegrationTestSupport {
                 "password123",
                 "김레이스",
                 "010-1234-5678",
-                "서울시 강남구 테헤란로 123",
                 Role.GENERAL);
     }
 

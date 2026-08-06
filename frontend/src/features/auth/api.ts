@@ -18,7 +18,6 @@ export interface SignUpPayload {
   password: string
   realName: string
   phone: string
-  address: string
   role: SelfSignUpRole
 }
 

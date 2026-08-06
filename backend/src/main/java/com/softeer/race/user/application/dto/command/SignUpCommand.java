@@ -13,7 +13,6 @@ public record SignUpCommand(
         String password,
         String realName,
         String phone,
-        String address,
         Role role
 ) {
 }

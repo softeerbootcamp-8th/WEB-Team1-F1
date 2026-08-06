@@ -4,12 +4,12 @@
 -- id는 다른 픽스처(51 · 81 · 90 · 100번대 · 카탈로그 200번대)와 겹치지 않게 70번대를 쓴다
 
 -- 비밀번호는 이 테스트에서 쓰지 않는다, 로그인 대신 세션을 직접 심기 때문이다
-insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
 values (71, 'notif_me', 'notif-me@race.dev', 'pw',
-        '김알림', '01000000071', '서울 마포구', 'GENERAL',
+        '김알림', '01000000071', 'GENERAL',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00'),
        (72, 'notif_other', 'notif-other@race.dev', 'pw',
-        '박타인', '01000000072', '서울 용산구', 'DEALER',
+        '박타인', '01000000072', 'DEALER',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00');
 
 -- PK는 쿠키로 보낼 원문 토큰의 SHA-256 hex다

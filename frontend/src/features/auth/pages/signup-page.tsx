@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { getErrorMessage } from '@/lib/axios'
 import { markJustSignedUp } from '@/lib/signup-welcome'
 import { AuthShell } from '../components/auth-shell'
@@ -19,7 +18,6 @@ const INITIAL_FORM = {
   email: '',
   password: '',
   realName: '',
-  address: '',
 }
 
 const onlyDigits = (value: string) => value.replace(/\D/g, '')
@@ -31,7 +29,6 @@ export function SignupPage() {
   const [form, setForm] = useState(INITIAL_FORM)
   const [phone, setPhone] = useState({ area: '', middle: '', last: '' })
   const [role, setRole] = useState<SelfSignUpRole>('GENERAL')
-  const [agree, setAgree] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -43,10 +40,6 @@ export function SignupPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!agree) {
-      toast.error('약관에 동의해 주세요')
-      return
-    }
 
     setIsSubmitting(true)
     try {
@@ -81,7 +74,6 @@ export function SignupPage() {
   return (
     <AuthShell
       title="회원가입"
-      subtitle="30초 만에 시작하기"
       footer={
         <>
           이미 계정이 있으신가요?{' '}
@@ -187,28 +179,6 @@ export function SignupPage() {
             />
           </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="address">{role === 'DEALER' ? '사업장 주소' : '주소'}</Label>
-          <Input
-            id="address"
-            autoComplete="street-address"
-            value={form.address}
-            onChange={set('address')}
-            placeholder="서울시 강남구 테헤란로 123"
-            maxLength={255}
-            required
-          />
-        </div>
-        <label className="flex items-start gap-2.5 text-sm">
-          <Checkbox
-            checked={agree}
-            onCheckedChange={(v) => setAgree(v === true)}
-            className="mt-0.5"
-          />
-          <span className="text-muted-foreground">
-            이용약관 및 개인정보처리방침에 동의합니다.
-          </span>
-        </label>
         <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
           회원가입
         </Button>

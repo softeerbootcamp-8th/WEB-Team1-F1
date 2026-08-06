@@ -14,8 +14,8 @@
 --
 -- status 는 전부 SCHEDULED 로 둔다. 실제 단계와 어긋난 값이어도 시각으로만 판정하는지 보기 위함이다.
 
-insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
-values (100, 'listseller', 'listseller@race.dev', 'pw', '박판매', '01000000001', '서울 강남구', 'GENERAL',
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
+values (100, 'listseller', 'listseller@race.dev', 'pw', '박판매', '01000000001', 'GENERAL',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00');
 
 insert into vehicle (id, seller_id, manufacturer, model, model_year, mileage, fuel_type, transmission, plate_number, estimated_price, main_photo_url, created_at, updated_at)
