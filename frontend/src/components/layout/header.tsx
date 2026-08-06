@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/features/notifications/notification-bell'
 import { ROLE_LABEL, useAuth } from '@/features/auth/auth-context'
+import { BrandLogo } from '@/components/common/brand-logo'
 
 const NAV = [
   { to: '/', label: '홈', end: true },
@@ -42,8 +43,8 @@ export function Header() {
     <header className="bg-background/80 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-40 border-b backdrop-blur">
       <div className="mx-auto flex h-(--spacing-header) max-w-7xl items-center gap-8 px-6">
         {/* 로고 */}
-        <Link to="/" className="flex items-center gap-2" aria-label="RACE 홈으로">
-          <span className="text-2xl font-bold tracking-[0.06em]">RACE</span>
+        <Link to="/" className="flex items-center" aria-label="RACE 홈으로">
+          <BrandLogo className="h-9" />
         </Link>
 
         {/* 데스크톱 내비게이션 */}
