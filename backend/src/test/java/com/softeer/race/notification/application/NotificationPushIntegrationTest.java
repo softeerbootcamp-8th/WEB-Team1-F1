@@ -287,6 +287,11 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
         }
 
         @Override
+        public void close() {
+            open = false;
+        }
+
+        @Override
         public boolean isOpen() {
             return open;
         }

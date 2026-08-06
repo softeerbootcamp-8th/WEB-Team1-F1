@@ -107,6 +107,11 @@ class NotificationStreamServiceTest {
         }
 
         @Override
+        public void close() {
+            throw new UnsupportedOperationException("해제는 응답을 끝내지 않는다");
+        }
+
+        @Override
         public boolean isOpen() {
             return true;
         }

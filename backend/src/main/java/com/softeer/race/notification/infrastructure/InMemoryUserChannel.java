@@ -56,7 +56,7 @@ public class InMemoryUserChannel implements UserChannel {
         }
 
         // 걷어내기는 정리 작업이라 다시 전송하지 않는다
-        remove(userId, closed);
+        discard(userId, closed);
     }
 
     // 서버는 이 연결에 쓰기만 하고 읽지 않아서, 상대가 끊어도 다음 쓰기 전까지 모른다
@@ -74,8 +74,15 @@ public class InMemoryUserChannel implements UserChannel {
                 }
             }
 
-            remove(userId, closed);
+            discard(userId, closed);
         });
+    }
+    
+    // 상대가 사라진 구독을 걷어낸다, 명부에서 빼기만 하면 그 응답은 아무도 끝내지 않아 만료까지 산다
+    // 순서를 지킨다, 명부를 먼저 비워야 끝낸 연결의 해제 콜백이 돌아왔을 때 할 일이 없다
+    private void discard(long userId, Set<UserSubscriber> closed) {
+        remove(userId, closed);
+        closed.forEach(UserSubscriber::close);
     }
 
     // 마지막 구독이 빠지는 순간과 새 구독이 들어오는 순간이 겹쳐도 새 구독이 유실되지 않게 한 번에 처리한다
