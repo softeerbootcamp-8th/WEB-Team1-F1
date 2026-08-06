@@ -116,7 +116,14 @@ function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicle }) {
     String(Math.floor(vehicle.estimatedPrice / 10000)),
   )
   const startPriceNumber = Number(priceManwon || 0) * 10000
-  const isStartPriceValid = priceManwon !== '' && startPriceNumber > 0
+  // 자릿수도 함께 본다. onChange 는 6자리로 자르지만 초기값은 그 경로를 타지 않는다 —
+  // 진단 시세는 평가사가 직접 부르는 값이라(Vehicle.completeDiagnosis) 오타로 큰 수가 들어올 수
+  // 있고, 서버에 상한이 없어(@PositiveOrZero) 그대로 등록되면 막을 곳이 없다.
+  // 값을 지우지는 않는다. 서버가 준 시세를 보여 줘야 얼마를 잘못 받았는지 알 수 있다.
+  const isStartPriceValid =
+    priceManwon !== '' &&
+    priceManwon.length <= MAX_PRICE_DIGITS &&
+    startPriceNumber > 0
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -213,11 +220,14 @@ function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicle }) {
                   onChange={(event) =>
                     // 숫자만 남기고 앞자리 0을 정리한다. 자릿수를 막지 않으면 "1232만4341원"을
                     // 통째로 붙여넣었을 때 숫자만 이어붙어 1,232억짜리 경매가 만들어진다.
+                    //
+                    // 자르기가 0 제거보다 뒤에 온다. 순서를 바꾸면 "0000001"을 붙여넣었을 때
+                    // 앞 6자리("000000")만 남고 그게 "0"으로 정리되어 사용자가 넣은 1이 사라진다.
                     setPriceManwon(
                       event.target.value
                         .replace(/\D/g, '')
-                        .slice(0, MAX_PRICE_DIGITS)
-                        .replace(/^0+(?=\d)/, ''),
+                        .replace(/^0+(?=\d)/, '')
+                        .slice(0, MAX_PRICE_DIGITS),
                     )
                   }
                   className="bg-background text-foreground tabular h-12 pr-16 !text-xl font-semibold"
