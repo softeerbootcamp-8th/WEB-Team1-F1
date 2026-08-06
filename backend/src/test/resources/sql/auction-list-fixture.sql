@@ -19,27 +19,27 @@ values (100, 'listseller', 'listseller@race.dev', 'pw', '박판매', '0100000000
         '2026-07-01 10:00:00', '2026-07-01 10:00:00');
 
 insert into vehicle (id, seller_id, manufacturer, model, model_year, mileage, fuel_type, transmission,
-                     plate_number, estimated_price, created_at, updated_at)
+                     plate_number, estimated_price, main_photo_url, created_at, updated_at)
 values (101, 100, 'HYUNDAI', '아반떼 CN7', 2022, 35000, 'GASOLINE', 'AUTOMATIC', '01가1111', 15000000,
-        '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+        'https://cdn.race.dev/101.jpg', '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
        (102, 100, 'KIA', '쏘렌토 하이브리드', 2023, 18450, 'HYBRID', 'AUTOMATIC', '02가2222', 38000000,
-        '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+        'https://cdn.race.dev/102.jpg', '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
        (103, 100, 'KIA', 'EV6 롱레인지', 2022, 27800, 'ELECTRIC', 'AUTOMATIC', '03가3333', 34000000,
-        '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+        'https://cdn.race.dev/103.jpg', '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
        (104, 100, 'GENESIS', 'G80', 2021, 62100, 'GASOLINE', 'AUTOMATIC', '04가4444', 42000000,
-        '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+        'https://cdn.race.dev/104.jpg', '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
        (105, 100, 'BMW', '520i', 2020, 71000, 'GASOLINE', 'AUTOMATIC', '05가5555', 29000000,
-        '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+        'https://cdn.race.dev/105.jpg', '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
        (106, 100, 'TESLA', '모델3', 2021, 40000, 'ELECTRIC', 'AUTOMATIC', '06가6666', 33000000,
-        '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+        'https://cdn.race.dev/106.jpg', '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
        (107, 100, 'TOYOTA', '캠리', 2019, 88000, 'HYBRID', 'AUTOMATIC', '07가7777', 21000000,
-        '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+        'https://cdn.race.dev/107.jpg', '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
        (108, 100, 'HONDA', 'CR-V', 2020, 55000, 'GASOLINE', 'AUTOMATIC', '08가8888', 25000000,
-        '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+        'https://cdn.race.dev/108.jpg', '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
        (109, 100, 'VOLVO', 'XC60', 2022, 31000, 'DIESEL', 'AUTOMATIC', '09가9999', 45000000,
-        '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+        'https://cdn.race.dev/109.jpg', '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
        (110, 100, 'AUDI', 'A6', 2021, 47000, 'GASOLINE', 'AUTOMATIC', '10가1010', 39000000,
-        '2026-08-01 09:00:00', '2026-08-01 09:00:00');
+        'https://cdn.race.dev/110.jpg', '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
 insert into auction_post (id, vehicle_id, thumbnail_url, post_status, published_at, deleted_at, created_at, updated_at)
 values (101, 101, 'https://cdn.race.dev/101.jpg', 'PUBLISHED', '2026-08-01 09:00:00', null,
