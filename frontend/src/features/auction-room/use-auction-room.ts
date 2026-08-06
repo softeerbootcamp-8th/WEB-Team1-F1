@@ -131,9 +131,18 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
 
   const bid = useCallback(
     async (amount: number) => {
-      const result = await placeBid(auctionId, amount)
-      // 스트림이 곧 밀어주는 값에 mine을 붙일 수 있도록 미리 기억해둔다.
+      // 요청을 보내기 전에 적는다. 서버는 커밋 시점에 방송하고 그 방송이 이 응답보다 먼저 닿아,
+      // 응답을 받고 적으면 내 호가가 남의 것으로 그려진 뒤다.
+      // 실패하면 지운다 — 남겨두면 같은 금액을 부른 남의 호가에 내 표시가 붙는다.
       myBidAmounts.current.add(amount)
+
+      let result
+      try {
+        result = await placeBid(auctionId, amount)
+      } catch (error) {
+        myBidAmounts.current.delete(amount)
+        throw error
+      }
 
       setClockOffset(new Date(result.serverTime).getTime() - Date.now())
 
