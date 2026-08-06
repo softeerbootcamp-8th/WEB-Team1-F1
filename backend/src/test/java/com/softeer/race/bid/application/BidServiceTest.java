@@ -139,7 +139,7 @@ class BidServiceTest {
     }
 
     private User bidder() {
-        return User.create("bidder", "bidder@race.dev", "pw", "김입찰", "01000000011", "서울", Role.DEALER);
+        return User.create("bidder", "bidder@race.dev", "pw", "김입찰", "01000000011", Role.DEALER);
     }
 
     /** 호출할 때가 아니라 advance 를 부를 때만 흐르는 시계, 잠금 대기를 흉내 낸다 */

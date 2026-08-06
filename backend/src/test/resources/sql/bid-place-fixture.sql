@@ -3,15 +3,15 @@
 -- id는 다른 픽스처(1·2·3·8번대)와 겹치지 않게 5번대를 쓴다
 -- username·email 에 유일 제약이 있고 같은 컨텍스트를 공유하므로 값도 겹치지 않게 나눈다
 
-insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
-values (51, 'bid_seller', 'bid_seller@race.dev', 'pw', '박판매', '01000000051', '서울 강남구', 'GENERAL',
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
+values (51, 'bid_seller', 'bid_seller@race.dev', 'pw', '박판매', '01000000051', 'GENERAL',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00'),
-       (52, 'bid_alice', 'bid_alice@race.dev', 'pw', '김앨리스', '01000000052', '서울 마포구', 'DEALER',
+       (52, 'bid_alice', 'bid_alice@race.dev', 'pw', '김앨리스', '01000000052', 'DEALER',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00'),
-       (53, 'bid_bob', 'bid_bob@race.dev', 'pw', '이밥', '01000000053', '서울 성동구', 'DEALER',
+       (53, 'bid_bob', 'bid_bob@race.dev', 'pw', '이밥', '01000000053', 'DEALER',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00'),
        -- 공개 가입으로는 만들 수 없는 역할이라 여기서만 세운다, 서비스가 위촉하는 자리다
-       (54, 'bid_evaluator', 'bid_evaluator@race.dev', 'pw', '최평가', '01000000054', '서울 종로구', 'EVALUATOR',
+       (54, 'bid_evaluator', 'bid_evaluator@race.dev', 'pw', '최평가', '01000000054', 'EVALUATOR',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00');
 
 -- 쿠키로 오갈 원문 토큰의 SHA-256 hex 가 PK 다, auth-session-fixture.sql 과 같은 방식이다

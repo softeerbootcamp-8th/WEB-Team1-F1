@@ -45,7 +45,6 @@ public class UserService {
                 encodedPassword,
                 command.realName(),
                 command.phone(),
-                command.address(),
                 command.role());
 
         User savedUser = save(user);

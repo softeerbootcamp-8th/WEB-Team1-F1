@@ -26,7 +26,7 @@ class AuctionTest {
     private static final LocalDateTime ROOM_OPEN_AT = LocalDateTime.of(2026, 7, 27, 16, 0);
 
     private static final User ALICE = User.create(
-            "alice", "alice@race.com", "encoded", "김앨리스", "01011112222", "서울 강남구", Role.GENERAL);
+            "alice", "alice@race.com", "encoded", "김앨리스", "01011112222", Role.GENERAL);
 
     @Test
     @DisplayName("경매를 예약하면 방 개설은 시작 30분 전, 마감은 시작 20분 후가 된다.")

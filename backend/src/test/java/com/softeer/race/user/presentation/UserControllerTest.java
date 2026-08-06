@@ -70,7 +70,6 @@ class UserControllerTest {
                                   "password": "123",
                                   "realName": "김레이스",
                                   "phone": "010-1234-5678",
-                                  "address": "서울시 강남구 테헤란로 123",
                                   "role": "GENERAL"
                                 }
                                 """))
@@ -157,7 +156,6 @@ class UserControllerTest {
                   "password": "password123",
                   "realName": "김레이스",
                   "phone": "010-1234-5678",
-                  "address": "서울시 강남구 테헤란로 123",
                   "role": "GENERAL"
                 }
                 """;

@@ -14,17 +14,17 @@
 
 -- 평가사 두 명. 한 신청을 두고 경합하는 상황을 만들려면 두 명이 필요하다
 -- 비밀번호는 쓰지 않는다, 로그인 대신 세션을 직접 심기 때문이다
-insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
 values (500, 'assign_kim', 'assign-kim@race.dev', 'pw',
-        '김평가', '01000000500', '서울 성동구', 'EVALUATOR', NOW(6), NOW(6)),
+        '김평가', '01000000500', 'EVALUATOR', NOW(6), NOW(6)),
        (501, 'assign_lee', 'assign-lee@race.dev', 'pw',
-        '이평가', '01000000501', '서울 광진구', 'EVALUATOR', NOW(6), NOW(6));
+        '이평가', '01000000501', 'EVALUATOR', NOW(6), NOW(6));
 
 -- 판매자. 인가가 아직 없어 이 계정으로도 목록 조회와 수락이 통과한다는 것을 이 계정으로 확인한다
 -- (자기 차량의 신청을 스스로 수락하는 것까지 지금은 막히지 않는다)
-insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
 values (502, 'assign_park', 'assign-park@race.dev', 'pw',
-        '박판매', '01000000502', '서울 강남구', 'GENERAL', NOW(6), NOW(6));
+        '박판매', '01000000502', 'GENERAL', NOW(6), NOW(6));
 
 -- PK 는 쿠키로 보낼 원문 토큰의 SHA-256 hex 다
 -- 만료 시각을 하드코딩하지 않는다, 그 날짜가 지나는 순간 전 시나리오가 401 이 된다

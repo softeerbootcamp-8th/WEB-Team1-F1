@@ -15,8 +15,8 @@
 -- 시작 전이에는 잡히고 종료에는 잡히지 않아야 한다. 스케줄러가 오래 멈췄다 재개했을 때
 -- 한 주기 안에서 SCHEDULED → IN_PROGRESS → ENDED 로 스스로 복구되는 근거다.
 
-insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
-values (300, 'progressseller', 'progress@race.dev', 'pw', '박진행', '01000000300', '서울 강남구', 'GENERAL',
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
+values (300, 'progressseller', 'progress@race.dev', 'pw', '박진행', '01000000300', 'GENERAL',
         '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
 insert into vehicle (id, seller_id, manufacturer, model, model_year, mileage, fuel_type, transmission,

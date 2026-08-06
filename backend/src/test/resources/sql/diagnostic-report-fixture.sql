@@ -10,18 +10,18 @@
 --
 -- 602가 필요한 이유는 "평가사면 통과"와 "이 건의 담당이면 통과"를 갈라 보기 위해서다.
 -- 평가사 계정 하나로는 두 규칙이 같은 결과를 내 어느 쪽이 지켜지는지 알 수 없다
-insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
 values (600, 'report_seller', 'report_seller@race.dev', 'pw',
-        '김판매', '01000000600', '서울 성동구', 'GENERAL', NOW(6), NOW(6)),
+        '김판매', '01000000600', 'GENERAL', NOW(6), NOW(6)),
        (601, 'report_eval', 'report_eval@race.dev', 'pw',
-        '박평가', '01000000601', '서울 광진구', 'EVALUATOR', NOW(6), NOW(6)),
+        '박평가', '01000000601', 'EVALUATOR', NOW(6), NOW(6)),
        (602, 'report_eval2', 'report_eval2@race.dev', 'pw',
-        '최평가', '01000000602', '서울 마포구', 'EVALUATOR', NOW(6), NOW(6)),
+        '최평가', '01000000602', 'EVALUATOR', NOW(6), NOW(6)),
        (603, 'report_other', 'report_other@race.dev', 'pw',
-        '이무관', '01000000603', '서울 용산구', 'GENERAL', NOW(6), NOW(6)),
+        '이무관', '01000000603', 'GENERAL', NOW(6), NOW(6)),
 -- 다른 판매자. 목록이 요청자 것만 돌려주는지 확인하려면 남의 신청이 하나는 있어야 한다
        (604, 'report_seller2', 'report_seller2@race.dev', 'pw',
-        '정판매', '01000000604', '서울 서초구', 'GENERAL', NOW(6), NOW(6));
+        '정판매', '01000000604', 'GENERAL', NOW(6), NOW(6));
 
 -- PK는 쿠키로 보낼 원문 토큰의 SHA-256 hex다
 -- 만료 시각을 하드코딩하지 않는다, 그 날짜가 지나는 순간 전 시나리오가 401이 된다

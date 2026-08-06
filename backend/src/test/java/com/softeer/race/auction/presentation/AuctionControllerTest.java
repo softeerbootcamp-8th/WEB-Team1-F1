@@ -183,7 +183,7 @@ class AuctionControllerTest extends IntegrationTestSupport {
 
     private User 낙찰자() {
         return userRepository.save(User.create(
-                "winner", "winner@race.com", "pw", "이낙찰", "01099998888", "서울 마포구", Role.DEALER));
+                "winner", "winner@race.com", "pw", "이낙찰", "01099998888", Role.DEALER));
     }
 
     private String requestJson(LocalDateTime startAt) {
@@ -334,7 +334,7 @@ class AuctionControllerTest extends IntegrationTestSupport {
 
     private Cookie 타인_쿠키() {
         User stranger = userRepository.save(User.create(
-                "stranger", "stranger@race.com", "pw", "김타인", "01055556666", "서울 송파구", Role.GENERAL));
+                "stranger", "stranger@race.com", "pw", "김타인", "01055556666", Role.GENERAL));
         return new Cookie(SessionCookieFactory.COOKIE_NAME, sessionService.issue(stranger));
     }
 
