@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Gavel, LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/common/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useAuth } from '@/features/auth/auth-context'
 import { fetchEvaluationDetail } from '@/features/evaluations/api'
 import type { FuelType, Manufacturer, Transmission } from '@/features/quote/types'
 import { MANUFACTURER_LABEL } from '@/features/quote/types'
@@ -19,7 +20,7 @@ import { formatKRW } from '@/lib/format'
 const AUCTION_START_HOURS = Array.from({ length: 15 }, (_, i) => 10 + i) // 10시~24시(자정)
 const MIN_LEAD_TIME_MS = 60 * 60 * 1000
 
-interface EvaluatedVehicleState {
+interface EvaluatedVehicle {
   vehicleId: number
   estimatedPrice: number
   plateNumber: string
@@ -30,18 +31,6 @@ interface EvaluatedVehicleState {
   transmission: Transmission
   mileage: number | null
   imageUrls: string[]
-}
-
-function isEvaluatedVehicle(value: unknown): value is EvaluatedVehicleState {
-  if (!value || typeof value !== 'object') return false
-  const candidate = value as Partial<EvaluatedVehicleState>
-  return Boolean(
-    Number.isInteger(candidate.vehicleId) &&
-      candidate.vehicleId! > 0 &&
-      Number.isSafeInteger(candidate.estimatedPrice) &&
-      candidate.estimatedPrice! > 0 &&
-      candidate.plateNumber,
-  )
 }
 
 function formatStartAt(date: Date) {
@@ -66,19 +55,18 @@ function formatLocalDateTime(date: Date) {
 }
 
 export function AuctionPostPage() {
-  const { state } = useLocation()
+  const { user } = useAuth()
   const [searchParams] = useSearchParams()
-  const stateVehicle = isEvaluatedVehicle(state) ? state : null
   const evaluationId = Number(searchParams.get('evaluationId'))
   const hasEvaluationId = Number.isInteger(evaluationId) && evaluationId > 0
 
   const { data, isLoading } = useQuery({
-    queryKey: ['evaluations', 'detail', evaluationId],
+    queryKey: ['evaluations', 'detail', user?.id, evaluationId],
     queryFn: () => fetchEvaluationDetail(evaluationId),
-    enabled: !stateVehicle && hasEvaluationId,
+    enabled: user != null && hasEvaluationId,
   })
 
-  if (!stateVehicle && hasEvaluationId && isLoading) {
+  if (user != null && hasEvaluationId && isLoading) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
         <LoaderCircle
@@ -89,11 +77,10 @@ export function AuctionPostPage() {
     )
   }
 
-  const notificationVehicle =
+  const vehicle =
     data?.status === 'APPROVED' && data.estimatedPrice !== null
       ? { ...data, estimatedPrice: data.estimatedPrice }
       : null
-  const vehicle = stateVehicle ?? notificationVehicle
 
   if (!vehicle) {
     return (
@@ -114,7 +101,7 @@ export function AuctionPostPage() {
   return <AuctionPostForm vehicle={vehicle} />
 }
 
-function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicleState }) {
+function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicle }) {
   const navigate = useNavigate()
   const [startAt, setStartAt] = useState<Date | null>(null)
   const [startPrice, setStartPrice] = useState(String(vehicle.estimatedPrice))

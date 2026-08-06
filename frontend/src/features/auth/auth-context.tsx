@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { User, UserRole } from '@/types/domain'
 import { fetchMe, loginRequest, logoutRequest, type LoginPayload } from './api'
 
@@ -27,6 +28,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -46,7 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await logoutRequest()
     setUser(null)
-  }, [])
+    queryClient.clear()
+  }, [queryClient])
 
   const value = useMemo<AuthState>(
     () => ({ user, isAuthenticated: !!user, isLoading, login, logout, setUser }),
