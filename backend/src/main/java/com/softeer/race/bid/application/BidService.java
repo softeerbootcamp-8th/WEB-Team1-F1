@@ -45,6 +45,12 @@ public class BidService {
                 .orElseThrow(() -> new BusinessException(BidErrorCode.BIDDER_NOT_FOUND));
 
         // 자격을 금액보다 먼저 본다. 금액을 바꿔도 성립하지 않는 거절이다.
+        // 평가사는 그 차를 직접 보고 시세를 매긴 사람이라 같은 차의 입찰에 설 수 없다.
+        // 읽어 온 회원만 보면 되므로 판매자 검사보다 위다.
+        if (bidder.isEvaluator()) {
+            throw new BusinessException(BidErrorCode.EVALUATOR_CANNOT_BID);
+        }
+
         if (auctionRepository.isSeller(auctionId, bidderId)) {
             throw new BusinessException(BidErrorCode.SELLER_CANNOT_BID);
         }

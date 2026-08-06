@@ -74,7 +74,7 @@ public record AuctionRoomDetail(
      * 화면에 보일 차량 요약
      */
     public VehicleSummary vehicle() {
-        return new VehicleSummary(manufacturer, model, modelYear, mileage, fuelType);
+        return new VehicleSummary(manufacturer, model, modelYear, mileage, fuelType, thumbnailUrl);
     }
 
     /**

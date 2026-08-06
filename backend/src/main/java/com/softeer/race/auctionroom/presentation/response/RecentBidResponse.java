@@ -7,12 +7,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
-@Schema(description = "호가 한 건")
+@Schema(description = "호가 한 건, 실시간 구독으로 오는 것과 같고 내 입찰 표시만 더 붙는다")
 public record RecentBidResponse(
         @Schema(description = "가운데를 마스킹한 입찰자 이름", example = "김*현")
         String name,
 
-        @Schema(description = "입찰자 역할, 배지 문구는 화면이 정한다", example = "DEALER")
+        @Schema(description = "입찰자 역할, DEALER 아니면 GENERAL 이다", example = "DEALER")
         Role role,
 
         @Schema(description = "입찰 금액", example = "12500000")

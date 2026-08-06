@@ -72,7 +72,7 @@ class RoomOpeningIntegrationTest extends IntegrationTestSupport {
         response.andExpectAll(
                 jsonPath("$.vehicle.manufacturer").value("HYUNDAI"),
                 jsonPath("$.vehicle.model").value("더 뉴 셀토스"),
-                jsonPath("$.thumbnailUrl").value("https://cdn.race.dev/seltos-1.jpg"),
+                jsonPath("$.vehicle.thumbnailUrl").value("https://cdn.race.dev/seltos-1.jpg"),
                 jsonPath("$.startPrice").value(18000000));
 
         // then 4 : 아직 아무 일도 일어나지 않은 방이라 실시간 값이 나갈 자리가 없다
@@ -82,6 +82,9 @@ class RoomOpeningIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.currentPrice").doesNotHaveJsonPath(),
                 jsonPath("$.recentBids").doesNotHaveJsonPath(),
                 jsonPath("$.phase").doesNotHaveJsonPath());
+
+        // then 5 : 차량 정보는 한 덩어리로 온다, 사진이 최상위에 남으면 화면이 두 군데서 조립한다
+        response.andExpect(jsonPath("$.thumbnailUrl").doesNotHaveJsonPath());
     }
 
     @Test
