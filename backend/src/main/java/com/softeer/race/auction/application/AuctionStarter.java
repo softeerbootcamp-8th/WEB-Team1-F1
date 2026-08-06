@@ -2,7 +2,9 @@ package com.softeer.race.auction.application;
 
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionRepository;
+import com.softeer.race.auction.domain.AuctionStarted;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +16,7 @@ import java.time.LocalDateTime;
 public class AuctionStarter {
 
     private final AuctionRepository auctionRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     @Transactional
@@ -32,5 +35,8 @@ public class AuctionStarter {
         }
 
         auction.start(now);
+
+        // 전이가 실제로 일어났을 때만 알린다, 위에서 되돌아간 경우는 알릴 사건이 없다
+        eventPublisher.publishEvent(new AuctionStarted(auctionId));
     }
 }
