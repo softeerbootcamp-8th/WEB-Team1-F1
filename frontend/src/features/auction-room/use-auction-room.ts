@@ -46,7 +46,7 @@ const ENTRY_BY_ERROR_CODE: Record<string, RoomEntry> = {
  * 구독으로 받는다(백엔드 문서 — 반복 조회가 아니라 구독). 스트림은 보는 사람을 가리지 않아
  * 내 입찰 표시가 없으므로, 최초 조회에서 알아낸 내 입찰 금액을 기억해뒀다가 직접 표시한다.
  */
-export function useAuctionRoom(auctionId: number, userId: number | null) {
+export function useAuctionRoom(auctionId: number) {
   const [room, setRoom] = useState<AuctionRoomView | null>(null)
   const [bands, setBands] = useState<BidIncrementBand[]>([])
   // 진입 결과, 들어갈 수 없으면 사유까지 들고 있어야 화면이 개장 안내나 결과로 옮겨갈 수 있다
@@ -124,8 +124,6 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
   }, [markExtended])
 
   useEffect(() => {
-    if (userId == null) return
-
     // ref 는 컴포넌트 인스턴스에 붙어 있어 다른 방으로 옮겨도 살아남는다. 비우지 않으면 이전 방에서
     // 부른 금액이 새 방의 같은 금액을 내 것으로 만들어, 남이 낙찰받은 방에 내 이름이 뜬다
     myBidAmounts.current.clear()
@@ -216,7 +214,7 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
     }
 
     const connect = () => {
-      fetchAuctionRoom(auctionId, userId)
+      fetchAuctionRoom(auctionId)
         .then((view) => {
           if (cancelled) return
 
@@ -270,7 +268,7 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
       unsubscribe?.()
       if (reentryTimer !== null) window.clearTimeout(reentryTimer)
     }
-  }, [auctionId, userId, mergeStreamState])
+  }, [auctionId, mergeStreamState])
 
   const increment = room ? incrementForPrice(room.currentPrice, bands) : 0
   // 첫 입찰은 시작가 그대로가 최소금액이다 — bidCount가 0이면 currentPrice가 곧 startPrice.

@@ -25,8 +25,7 @@ export function AuctionRoomPage() {
 
   if (authLoading) return null
 
-  // 경매방 조회는 아직 세션이 아니라 X-User-Id 임시 헤더로 "누구의 시점인지"를 받는다 —
-  // 익명 조회 자체가 지원되지 않아, 화면 단에서 로그인부터 요구한다.
+  // 서버가 경매방을 로그인한 사람에게만 열어 준다, 화면 단에서 먼저 로그인을 요구해 401 을 피한다
   if (!isAuthenticated || !user) {
     return (
       <main aria-label="경매방" className="mx-auto max-w-3xl px-6 py-24">
@@ -43,7 +42,8 @@ export function AuctionRoomPage() {
     )
   }
 
-  return <RoomContent auctionId={auctionId} userId={user.id} />
+  // 계정이 바뀌면 방을 새로 세운다. 내 입찰 표시 같은 상태가 이전 사람의 것으로 남으면 안 된다
+  return <RoomContent key={user.id} auctionId={auctionId} />
 }
 
 /**
@@ -94,7 +94,7 @@ function RoomNotice({ title, description }: { title: string; description: string
   )
 }
 
-function RoomContent({ auctionId, userId }: { auctionId: number; userId: number }) {
+function RoomContent({ auctionId }: { auctionId: number }) {
   const {
     room,
     entry,
@@ -106,7 +106,7 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
     extended,
     clockOffset,
     placeBid,
-  } = useAuctionRoom(auctionId, userId)
+  } = useAuctionRoom(auctionId)
 
   if (entry === 'NOT_OPEN_YET' && opening) {
     return (
