@@ -17,6 +17,15 @@ export interface AuctionListCard {
   connectedCount: number
 }
 
+/**
+ * 목록을 어느 범위로 볼지. 전체는 GET /api/auctions, 나의 경매는 GET /api/auctions/me.
+ * 범위가 다르면 아예 다른 목록이라 커서를 공유하지 않는다.
+ */
+export type AuctionListScope = 'ALL' | 'MINE'
+
+/** 백엔드 AuctionListGroup — 목록의 상태 필터이자 커서의 그룹 순번(진행중 1, 예정 2, 종료 3) */
+export type AuctionListGroup = 'LIVE' | 'PENDING' | 'ENDED'
+
 /** 다음 페이지 요청에 그대로 돌려보낼 커서 */
 export interface AuctionListCursor {
   snapshotAt: string

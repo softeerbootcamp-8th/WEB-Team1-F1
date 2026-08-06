@@ -8,10 +8,21 @@ export function formatKRW(value: number): string {
   return `${value.toLocaleString('ko-KR')}원`
 }
 
-/** 만원 단위 축약. ex) 12_500_000 → "1,250만" */
+/**
+ * 만원 단위 축약. 억을 넘으면 억으로 끊는다.
+ * ex) 12_500_000 → "1,250만", 100_000_000 → "1억", 134_000_000 → "1억 3,400만"
+ *
+ * 억 이상을 "10,000만"으로 쓰면 자릿수를 세어야 금액을 알 수 있어서다.
+ */
 export function formatManwon(value: number): string {
   const man = Math.round(value / 10000)
-  return `${man.toLocaleString('ko-KR')}만`
+  if (man < 10000) return `${man.toLocaleString('ko-KR')}만`
+
+  const eok = Math.floor(man / 10000)
+  const rest = man % 10000
+  return rest === 0
+    ? `${eok.toLocaleString('ko-KR')}억`
+    : `${eok.toLocaleString('ko-KR')}억 ${rest.toLocaleString('ko-KR')}만`
 }
 
 /** 주행거리. ex) 45123 → "45,123km" */

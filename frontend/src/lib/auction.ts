@@ -1,5 +1,5 @@
 import type { AuctionStatus, DealStatus } from '@/types/domain'
-import type { RoomPhase } from '@/features/auctions/types'
+import type { AuctionListGroup, RoomPhase } from '@/features/auctions/types'
 import type { BidIncrementBand } from '@/features/auction-room/types'
 
 /**
@@ -34,6 +34,31 @@ export function roomPhaseToStatus(phase: RoomPhase): AuctionStatus {
   if (phase === 'NOT_OPEN' || phase === 'WAITING') return 'SCHEDULED'
   return 'ENDED'
 }
+
+/** 화면의 상태 탭을 목록 API의 filter 값으로. 서버는 "예정"을 PENDING이라 부른다. */
+export function statusToListGroup(status: AuctionStatus): AuctionListGroup {
+  return status === 'SCHEDULED' ? 'PENDING' : status
+}
+
+/**
+ * 수정 가능 여부. 서버는 경매방이 열리기 전(now < roomOpenAt)만 허용하고,
+ * 그 구간이 곧 NOT_OPEN 단계다. 방이 열린 뒤 요청은 서버가 거부한다.
+ */
+export function canEditAuction(phase: RoomPhase): boolean {
+  return phase === 'NOT_OPEN'
+}
+
+/**
+ * 삭제 가능 여부. 서버는 낙찰·유찰로 끝난 경매만 지울 수 있게 한다.
+ * 단계는 시각으로 재는 값이라 마감 직후엔 서버의 상태 전환이 아직 안 끝났을 수 있고,
+ * 그때는 서버가 거부하므로 응답 메시지를 그대로 보여준다.
+ */
+export function canDeleteAuction(phase: RoomPhase): boolean {
+  return phase === 'RESULT' || phase === 'CLOSED'
+}
+
+/** 경매 시작 시각 최소 리드타임(서버 MIN_LEAD_TIME_HOURS와 같은 1시간) */
+export const MIN_START_LEAD_TIME_MS = 60 * 60 * 1000
 
 /** 거래 파이프라인 단계 순서 (진행률 계산용) */
 export const DEAL_FLOW: DealStatus[] = [
