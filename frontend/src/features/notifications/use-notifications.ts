@@ -68,6 +68,10 @@ export function useNotifications() {
   // 첫 연결의 onopen과 재연결의 onopen을 구분한다. 첫 연결은 아래 최초 적재와 겹친다
   const connectedOnce = useRef(false)
 
+  // 연결 직후 서버가 건수를 한 번 보낸다. 그건 읽음이 바뀌어서 온 것이 아니라 배지를 맞추려는 것이라
+  // 목록까지 다시 읽으면 재연결마다 조회가 두 번 나간다 — onOpen이 이미 읽고 있다
+  const initialCountPending = useRef(false)
+
   // 회원이 바뀌거나 로그아웃하면 올린다. 이미 나간 조회는 취소할 수 없어서, 늦게 도착한 응답이
   // 지난 회원의 알림을 새 목록에 섞지 않도록 시작 시점의 값과 도착 시점의 값을 비교한다
   const generation = useRef(0)
@@ -186,6 +190,7 @@ export function useNotifications() {
     if (!isAuthenticated || userId == null) return
 
     connectedOnce.current = false
+    initialCountPending.current = false
 
     return subscribeNotifications({
       onNotification: ({ notification, unreadCount: count }) => {
@@ -202,8 +207,21 @@ export function useNotifications() {
       onUnreadCount: (count) => {
         countChangedSinceLoad.current = true
         setUnreadCount(count)
+
+        if (initialCountPending.current) {
+          initialCountPending.current = false
+          return
+        }
+
+        // 다른 화면에서 읽음이 바뀌었다는 뜻이다. 배지만 맞추면 목록에는 안 읽음 표시가 그대로 남는다.
+        // 어느 알림이 읽혔는지를 실어 보내지 않는 것은 모두 읽음처럼 여러 건이 한꺼번에 바뀌는
+        // 경우까지 담으면 전달 내용이 커지기 때문이다. 한 페이지는 10건이라 다시 읽는 편이 싸다
+        loadFirstPage().catch(() => undefined)
       },
       onOpen: () => {
+        // 곧 도착할 건수는 이 연결이 열려서 오는 것이다
+        initialCountPending.current = true
+
         if (!connectedOnce.current) {
           connectedOnce.current = true
           return
