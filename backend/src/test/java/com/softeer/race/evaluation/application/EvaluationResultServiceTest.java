@@ -99,7 +99,11 @@ class EvaluationResultServiceTest {
                 .willReturn(Optional.empty());
         given(diagnosticReportRepository.save(any(DiagnosticReport.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
-        given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
+        given(evaluation.getStatus()).willReturn(EvaluationStatus.REQUESTED);
+        willAnswer(invocation -> {
+            given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
+            return null;
+        }).given(evaluation).approve();
 
         // when
         EvaluationResultInfo info = evaluationResultService.submit(command(DOCUMENT_URL));
