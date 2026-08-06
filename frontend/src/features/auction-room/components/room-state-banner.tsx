@@ -49,22 +49,22 @@ export function RoomStateBanner({ mode }: { mode: RoomStateMode }) {
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border px-4 py-3',
+        'flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl border px-6 py-5',
         meta.className,
       )}
     >
       {mode === 'LIVE' ? (
         <span
-          className="bg-status-live size-2 rounded-full"
+          className="bg-status-live size-3 rounded-full"
           style={{ animation: 'var(--animate-live-pulse)' }}
           aria-hidden
         />
       ) : (
-        <Icon className="size-4" aria-hidden />
+        <Icon className="size-6" aria-hidden />
       )}
-      <span className="text-sm font-semibold">{meta.label}</span>
+      <span className="text-xl font-bold">{meta.label}</span>
       {/* 좁은 화면에서는 제목과 한 줄에 들어가야 해서 설명은 접는다 */}
-      <span className="hidden text-xs opacity-80 sm:inline">{meta.hint}</span>
+      <span className="hidden text-sm opacity-80 sm:inline">{meta.hint}</span>
     </div>
   )
 }
