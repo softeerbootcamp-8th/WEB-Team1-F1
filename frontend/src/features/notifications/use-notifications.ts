@@ -68,8 +68,21 @@ export function useNotifications() {
   // 첫 연결의 onopen과 재연결의 onopen을 구분한다. 첫 연결은 아래 최초 적재와 겹친다
   const connectedOnce = useRef(false)
 
+  // 회원이 바뀌거나 로그아웃하면 올린다. 이미 나간 조회는 취소할 수 없어서, 늦게 도착한 응답이
+  // 지난 회원의 알림을 새 목록에 섞지 않도록 시작 시점의 값과 도착 시점의 값을 비교한다
+  const generation = useRef(0)
+
+  // 최초 적재가 다녀오는 사이에 건수가 달라졌는지. 조회가 담아 오는 값은 요청이 서버에 닿은
+  // 순간의 것이라, 그 뒤에 온 값을 덮으면 배지가 실제보다 낮아진다
+  const countChangedSinceLoad = useRef(false)
+
   const loadFirstPage = useCallback(async () => {
+    const startedAt = generation.current
     const page = await fetchNotifications()
+
+    // 그사이 회원이 바뀌었으면 이 응답은 지난 회원의 것이다
+    if (startedAt !== generation.current) return
+
     setItems((prev) => mergeById(prev, page.content))
     // 더 읽어 둔 뒤였다면 이어 읽기 지점이 앞으로 돌아간다. 다시 읽은 몫은 병합이 걸러 내므로
     // 목록이 어긋나지는 않고, 지점을 따로 기억하는 값을 하나 더 두는 것보다 단순하다
@@ -85,6 +98,7 @@ export function useNotifications() {
     if (notification.read) return
 
     setItems((prev) => prev.map((it) => (it.id === notification.id ? { ...it, read: true } : it)))
+    countChangedSinceLoad.current = true
     setUnreadCount((prev) => Math.max(0, prev - 1))
     // 서버가 멱등해서 실패해도 다음 조회가 진실을 준다
     markNotificationRead(notification.id).catch(() => undefined)
@@ -113,6 +127,8 @@ export function useNotifications() {
   // 최초 적재. 건수를 따로 묻는 이유는 실시간 연결이 막힌 환경에서도 배지가 맞아야 하기 때문이다
   useEffect(() => {
     // 회원이 바뀔 때도 지난다. 먼저 비워야 아래 병합이 이전 회원의 알림을 새 회원 목록에 섞지 않는다
+    generation.current += 1
+    countChangedSinceLoad.current = false
     setItems([])
     setUnreadCount(0)
     setCursor(null)
@@ -131,7 +147,10 @@ export function useNotifications() {
         setItems((prev) => mergeById(prev, page.content))
         setCursor(page.nextCursor)
         setHasNext(page.hasNext)
-        setUnreadCount(count)
+
+        // 실시간 연결이 살아 있으면 연결 직후 건수가 이미 도착해 있다. 그쪽이 더 나중 값이라
+        // 여기서 덮지 않는다. 연결이 막힌 환경에서는 아무도 건수를 주지 않으므로 이 값이 쓰인다
+        if (!countChangedSinceLoad.current) setUnreadCount(count)
 
         // 가입 직후 딱 한 번, 화면이 환영 알림을 대신 안내한다.
         // 이 알림은 발행 시점에 구독이 없어 실시간으로 올 수 없어서 배지에만 잡히기 때문이다.
@@ -173,13 +192,17 @@ export function useNotifications() {
         setItems((prev) =>
           prev.some((it) => it.id === notification.id) ? prev : [notification, ...prev],
         )
+        countChangedSinceLoad.current = true
         setUnreadCount(count)
 
         // 위치는 전역 토스트(top-center)를 그대로 쓴다. 헤더 메뉴를 잠깐 가리지만,
         // 눈에 먼저 들어오는 자리가 화면 위쪽이고 알림은 놓치면 값이 없다
         showNotificationToast(notification, () => openRef.current(notification))
       },
-      onUnreadCount: setUnreadCount,
+      onUnreadCount: (count) => {
+        countChangedSinceLoad.current = true
+        setUnreadCount(count)
+      },
       onOpen: () => {
         if (!connectedOnce.current) {
           connectedOnce.current = true
@@ -200,9 +223,14 @@ export function useNotifications() {
   const loadMore = useCallback(async () => {
     if (cursor == null || isLoadingMore) return
 
+    const startedAt = generation.current
     setIsLoadingMore(true)
     try {
       const page = await fetchNotifications(cursor)
+
+      // 그사이 회원이 바뀌었으면 이 응답은 지난 회원의 것이다
+      if (startedAt !== generation.current) return
+
       // 이어 읽기 지점이 앞으로 돌아간 뒤라면 이미 들고 있는 몫이 딸려 온다, 붙이지 않고 합친다
       setItems((prev) => mergeById(prev, page.content))
       setCursor(page.nextCursor)
@@ -216,6 +244,7 @@ export function useNotifications() {
 
   const markAllRead = useCallback(() => {
     setItems((prev) => prev.map((it) => ({ ...it, read: true })))
+    countChangedSinceLoad.current = true
     setUnreadCount(0)
     markAllNotificationsRead().catch(() => undefined)
   }, [])
