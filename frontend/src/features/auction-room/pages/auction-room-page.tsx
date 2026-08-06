@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { ArrowLeft, Eye, Gavel, Trophy } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -27,19 +27,7 @@ export function AuctionRoomPage() {
 
   // 서버가 경매방을 로그인한 사람에게만 열어 준다, 화면 단에서 먼저 로그인을 요구해 401 을 피한다
   if (!isAuthenticated || !user) {
-    return (
-      <main aria-label="경매방" className="mx-auto max-w-3xl px-6 py-24">
-        <EmptyState
-          title="로그인이 필요합니다"
-          description="경매방은 로그인 후 볼 수 있어요."
-          action={
-            <Button asChild>
-              <Link to="/login">로그인</Link>
-            </Button>
-          }
-        />
-      </main>
-    )
+    return <SignInNotice description="경매방은 로그인 후 볼 수 있어요." />
   }
 
   // 계정이 바뀌면 방을 새로 세운다. 내 입찰 표시 같은 상태가 이전 사람의 것으로 남으면 안 된다
@@ -74,6 +62,27 @@ function RoomHeading({ vehicle, mode }: { vehicle: RoomVehicle; mode: RoomStateM
         <RoomStateBanner mode={mode} />
       </div>
     </>
+  )
+}
+
+/** 로그인해야 볼 수 있다는 안내, 로그인 뒤 보던 경매방으로 돌아온다 */
+function SignInNotice({ description }: { description: string }) {
+  const location = useLocation()
+
+  return (
+    <main aria-label="경매방" className="mx-auto max-w-3xl px-6 py-24">
+      <EmptyState
+        title="로그인이 필요합니다"
+        description={description}
+        action={
+          <Button asChild>
+            <Link to="/login" state={{ returnTo: { pathname: location.pathname } }}>
+              로그인
+            </Link>
+          </Button>
+        }
+      />
+    </main>
   )
 }
 
@@ -131,6 +140,10 @@ function RoomContent({ auctionId }: { auctionId: number }) {
         <EndedResult summary={endedFromResult(result)} />
       </main>
     )
+  }
+
+  if (entry === 'SIGNED_OUT') {
+    return <SignInNotice description="로그인이 풀렸어요. 다시 로그인하면 이 경매방으로 돌아옵니다." />
   }
 
   if (entry === 'UNSTABLE') {

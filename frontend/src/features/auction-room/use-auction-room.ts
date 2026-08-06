@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { incrementForPrice } from '@/lib/auction'
-import { getErrorCode } from '@/lib/axios'
+import { getErrorCode, getErrorStatus } from '@/lib/axios'
 import {
   fetchAuctionRoom,
   fetchBidIncrementBands,
@@ -20,6 +20,8 @@ import type {
 } from '@/features/auction-room/types'
 
 const EXTENDED_FLAG_MS = 4000
+const HTTP_UNAUTHORIZED = 401
+const CONNECTABLE_PHASES = new Set(['WAITING', 'LIVE', 'RESULT'])
 
 // 개장 시각을 우리가 먼저 지나쳤다고 판단해도 서버는 아직 아닐 수 있다, 조금 늦게 두드린다
 const REENTRY_BUFFER_MS = 500
@@ -32,7 +34,6 @@ const MAX_REENTRY_ATTEMPTS = 5
 function backoffMs(attempt: number): number {
   return REENTRY_BUFFER_MS * 2 ** attempt * (0.8 + Math.random() * 0.4)
 }
-const CONNECTABLE_PHASES = new Set(['WAITING', 'LIVE', 'RESULT'])
 
 // 방에 들어갈 수 없는 사유는 서버가 코드로 알려준다, 화면이 시각을 보고 스스로 정하지 않는다
 const ENTRY_BY_ERROR_CODE: Record<string, RoomEntry> = {
@@ -244,6 +245,12 @@ export function useAuctionRoom(auctionId: number) {
         })
         .catch((error: unknown) => {
           if (cancelled) return
+
+          // 인증 실패는 HTTP 가 이미 뜻을 정해 둔 실패다, 어떤 도메인 코드가 붙어 오든 할 일은 같다
+          if (getErrorStatus(error) === HTTP_UNAUTHORIZED) {
+            setEntry('SIGNED_OUT')
+            return
+          }
 
           const reason = ENTRY_BY_ERROR_CODE[getErrorCode(error) ?? ''] ?? 'BROKEN'
 
