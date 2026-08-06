@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { getErrorMessage } from '@/lib/axios'
 import { markJustSignedUp } from '@/lib/signup-welcome'
 import { AuthShell } from '../components/auth-shell'
@@ -30,7 +29,6 @@ export function SignupPage() {
   const [form, setForm] = useState(INITIAL_FORM)
   const [phone, setPhone] = useState({ area: '', middle: '', last: '' })
   const [role, setRole] = useState<SelfSignUpRole>('GENERAL')
-  const [agree, setAgree] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -42,10 +40,6 @@ export function SignupPage() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!agree) {
-      toast.error('약관에 동의해 주세요')
-      return
-    }
 
     setIsSubmitting(true)
     try {
@@ -186,16 +180,6 @@ export function SignupPage() {
             />
           </div>
         </div>
-        <label className="flex items-start gap-2.5 text-sm">
-          <Checkbox
-            checked={agree}
-            onCheckedChange={(v) => setAgree(v === true)}
-            className="mt-0.5"
-          />
-          <span className="text-muted-foreground">
-            이용약관 및 개인정보처리방침에 동의합니다.
-          </span>
-        </label>
         <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
           회원가입
         </Button>
