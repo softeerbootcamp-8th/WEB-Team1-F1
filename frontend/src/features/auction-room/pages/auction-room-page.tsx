@@ -16,6 +16,7 @@ import { BidLedger } from '../components/bid-ledger'
 import { WaitingRoom } from '../components/waiting-room'
 import { RoomNotOpen } from '../components/room-not-open'
 import { CarDetail } from '../components/car-detail'
+import { RoomStateBanner } from '../components/room-state-banner'
 import type { AuctionRoomView, RoomResultView, RoomVehicle, RoomWinner } from '../types'
 import type { AuctionStatus } from '@/types/domain'
 
@@ -111,6 +112,7 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
         className="mx-auto max-w-7xl px-6 py-8"
       >
         <RoomHeading vehicle={opening.vehicle} status="SCHEDULED" />
+        <RoomStateBanner mode="NOT_OPEN" />
 
         <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
           <RoomNotOpen opening={opening} clockOffset={clockOffset} />
@@ -124,6 +126,7 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
     return (
       <main aria-label={`${result.vehicle.model} 경매`} className="mx-auto max-w-7xl px-6 py-8">
         <RoomHeading vehicle={result.vehicle} status="ENDED" />
+        <RoomStateBanner mode="CLOSED" />
         <EndedResult summary={endedFromResult(result)} />
       </main>
     )
@@ -142,6 +145,7 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
   return (
     <main aria-label={`${room.vehicle.model} 경매`} className="mx-auto max-w-7xl px-6 py-8">
       <RoomHeading vehicle={room.vehicle} status={status} />
+      <RoomStateBanner mode={room.phase === 'NOT_OPEN' ? 'NOT_OPEN' : room.phase} />
 
       {room.phase === 'WAITING' && (
         <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
@@ -285,8 +289,10 @@ function EndedResult({ summary }: { summary: EndedSummary }) {
   // 그 이름은 서버에 다시 물을 것 없이 내 세션이 이미 들고 있다
   const winnerName = summary.winner?.mine && user ? user.realName : summary.winner?.name
 
+  // 시작가와 입찰 건수는 어느 출처로 오든 있다, 뒤의 둘은 방이 아직 열려 있을 때만 온다
   const facts: { label: string; value: string }[] = [
     { label: '시작가', value: formatKRW(summary.startPrice) },
+    { label: '입찰', value: `${summary.bidCount}건` },
     ...(summary.bidderCount === undefined
       ? []
       : [{ label: '입찰 참여자', value: `${summary.bidderCount}명` }]),
@@ -323,7 +329,7 @@ function EndedResult({ summary }: { summary: EndedSummary }) {
           )}
         </div>
 
-        <dl className="grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-3">
+        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border">
           {facts.map((fact) => (
             <div key={fact.label} className="bg-card p-4">
               <dt className="text-muted-foreground text-xs">{fact.label}</dt>
