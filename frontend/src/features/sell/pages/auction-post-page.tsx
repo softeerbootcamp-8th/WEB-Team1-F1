@@ -1,14 +1,47 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { ArrowLeft, Check, Gavel } from 'lucide-react'
+import { useMutation } from '@tanstack/react-query'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ArrowLeft, Gavel, LoaderCircle } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/common/empty-state'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { createAuction } from '@/features/sell/api'
 import { SchedulePicker } from '@/features/sell/components/schedule-picker'
-import type { VehicleOwnerValues } from '@/features/vehicle/components/vehicle-owner-form'
+import type { FuelType, Manufacturer, Transmission } from '@/features/quote/types'
+import { MANUFACTURER_LABEL } from '@/features/quote/types'
+import { getErrorMessage } from '@/lib/axios'
+import { formatKRW } from '@/lib/format'
 
 const AUCTION_START_HOURS = Array.from({ length: 15 }, (_, i) => 10 + i) // 10시~24시(자정)
 const MIN_LEAD_TIME_MS = 60 * 60 * 1000
+
+interface EvaluatedVehicleState {
+  vehicleId: number
+  estimatedPrice: number
+  plateNumber: string
+  manufacturer: Manufacturer
+  model: string
+  modelYear: number
+  fuelType: FuelType
+  transmission: Transmission
+  mileage: number | null
+  imageUrls: string[]
+}
+
+function isEvaluatedVehicle(value: unknown): value is EvaluatedVehicleState {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Partial<EvaluatedVehicleState>
+  return Boolean(
+    Number.isInteger(candidate.vehicleId) &&
+      candidate.vehicleId! > 0 &&
+      Number.isSafeInteger(candidate.estimatedPrice) &&
+      candidate.estimatedPrice! > 0 &&
+      candidate.plateNumber,
+  )
+}
 
 function formatStartAt(date: Date) {
   return date.toLocaleString('ko-KR', {
@@ -20,39 +53,63 @@ function formatStartAt(date: Date) {
   })
 }
 
+/** Date를 UTC로 바꾸지 않고 백엔드 LocalDateTime 형식으로 직렬화한다. */
+function formatLocalDateTime(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+  const second = String(date.getSeconds()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hour}:${minute}:${second}`
+}
+
 export function AuctionPostPage() {
   const { state } = useLocation()
-  const vehicle = state as VehicleOwnerValues | null
+  const navigate = useNavigate()
+  const vehicle = isEvaluatedVehicle(state) ? state : null
 
   const [startAt, setStartAt] = useState<Date | null>(null)
-  const [submitted, setSubmitted] = useState(false)
+  const [startPrice, setStartPrice] = useState(() =>
+    vehicle ? String(vehicle.estimatedPrice) : '',
+  )
+  const startPriceNumber = Number(startPrice)
+  const isStartPriceValid =
+    Number.isSafeInteger(startPriceNumber) && startPriceNumber > 0
 
-  if (!vehicle?.ownerName || !vehicle.plateNumber) {
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!vehicle || !startAt || !isStartPriceValid) {
+        throw new Error('차량 정보와 경매 시작가·시각을 확인해 주세요.')
+      }
+      return createAuction({
+        vehicleId: vehicle.vehicleId,
+        startPrice: startPriceNumber,
+        startAt: formatLocalDateTime(startAt),
+      })
+    },
+    onSuccess: (result) => {
+      toast.success('경매가 등록되었습니다')
+      navigate('/sell/result', { replace: true, state: result })
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error && !('response' in error)
+          ? error.message
+          : getErrorMessage(error, '경매를 등록하지 못했습니다'),
+      )
+    },
+  })
+
+  if (!vehicle) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-24">
         <EmptyState
-          title="차량 정보를 먼저 입력해 주세요"
-          description="내 차 팔기에서 차량 정보를 입력하면 경매 등록을 진행할 수 있습니다."
+          title="진단이 완료된 차량 정보가 필요합니다"
+          description="마이페이지에서 방문견적 결과를 확인한 뒤 경매 등록을 진행해 주세요."
           action={
             <Button asChild>
-              <Link to="/sell">내 차 팔기로</Link>
-            </Button>
-          }
-        />
-      </main>
-    )
-  }
-
-  if (submitted && startAt) {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-24" aria-label="경매글 등록 완료">
-        <EmptyState
-          icon={Check}
-          title="경매글이 등록됐어요"
-          description={`${formatStartAt(startAt)}에 경매가 시작됩니다.`}
-          action={
-            <Button asChild>
-              <Link to="/mypage">마이페이지에서 확인</Link>
+              <Link to="/mypage">마이페이지로</Link>
             </Button>
           }
         />
@@ -63,9 +120,9 @@ export function AuctionPostPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-14" aria-label="경매글 등록">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link to="/sell">
+        <Link to="/mypage">
           <ArrowLeft className="size-4" />
-          내 차 팔기로
+          마이페이지로
         </Link>
       </Button>
 
@@ -93,7 +150,9 @@ export function AuctionPostPage() {
         <section className="bg-foreground text-background flex min-h-72 flex-col justify-between rounded-2xl p-8">
           <div>
             <p className="text-background/55 text-sm">경매 차량</p>
-            <p className="mt-3 text-2xl font-semibold">{vehicle.ownerName}</p>
+            <p className="mt-3 text-2xl font-semibold">
+              {MANUFACTURER_LABEL[vehicle.manufacturer]} {vehicle.model}
+            </p>
             <p className="text-background/55 tabular mt-1 text-sm">
               {vehicle.plateNumber}
             </p>
@@ -101,17 +160,42 @@ export function AuctionPostPage() {
             <p className="tabular mt-1 text-lg font-semibold">
               {startAt ? formatStartAt(startAt) : '아직 선택하지 않았어요'}
             </p>
+            <div className="mt-6 space-y-2">
+              <Label htmlFor="auction-start-price" className="text-background/55">
+                경매 시작가
+              </Label>
+              <Input
+                id="auction-start-price"
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                value={startPrice}
+                onChange={(event) => setStartPrice(event.target.value)}
+                className="bg-background text-foreground"
+                aria-invalid={startPrice.length > 0 && !isStartPriceValid}
+              />
+              <p className="text-background/55 text-xs">
+                {isStartPriceValid
+                  ? `진단 시세 ${formatKRW(vehicle.estimatedPrice)} · 등록 시작가 ${formatKRW(startPriceNumber)}`
+                  : '0보다 큰 원 단위 정수를 입력해 주세요.'}
+              </p>
+            </div>
           </div>
 
           <Button
             size="lg"
             className="mt-8 w-full"
             variant="secondary"
-            disabled={!startAt}
-            onClick={() => setSubmitted(true)}
+            disabled={!startAt || !isStartPriceValid || mutation.isPending}
+            onClick={() => mutation.mutate()}
           >
-            <Gavel className="size-4" />
-            경매 등록하기
+            {mutation.isPending ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <Gavel className="size-4" />
+            )}
+            {mutation.isPending ? '등록 중...' : '경매 등록하기'}
           </Button>
         </section>
       </div>
