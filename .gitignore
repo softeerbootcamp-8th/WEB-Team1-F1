@@ -4,6 +4,9 @@
 .claude/
 .env
 
+# Local temporary artifacts
+/tmp/
+
 # macOS
 .DS_Store
 
