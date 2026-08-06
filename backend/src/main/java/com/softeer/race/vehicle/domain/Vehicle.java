@@ -2,16 +2,7 @@ package com.softeer.race.vehicle.domain;
 
 import com.softeer.race.common.domain.BaseTimeEntity;
 import com.softeer.race.user.domain.User;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -131,5 +122,12 @@ public class Vehicle extends BaseTimeEntity {
     public void completeDiagnosis(int mileage, long estimatedPrice) {
         this.mileage = mileage;
         this.estimatedPrice = estimatedPrice;
+    }
+
+    /**
+     * 평가사가 진단을 끝내야 mileage 랑 estimatedPrice를 채우므로 이 판정이 곧 승인 여부다.
+     */
+    public boolean isDiagnosed() {
+        return mileage != null && estimatedPrice != null;
     }
 }

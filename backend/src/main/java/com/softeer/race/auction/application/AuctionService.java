@@ -48,6 +48,10 @@ public class AuctionService {
             throw new BusinessException(AuctionErrorCode.NOT_VEHICLE_OWNER);
         }
 
+        if (!vehicle.isDiagnosed()) {
+            throw new BusinessException(AuctionErrorCode.VEHICLE_NOT_APPROVED);
+        }
+
         if (auctionRepository.existsActiveByVehicleId(vehicleId, ACTIVE_STATUSES)) {
             throw new BusinessException(AuctionErrorCode.AUCTION_ALREADY_EXISTS);
         }
