@@ -12,11 +12,10 @@ class AuctionPostTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 27, 15, 0);
 
     @Test
-    @DisplayName("경매글은 발행 상태로 생성된다.")
-    void create_발행상태() {
+    @DisplayName("경매글은 발행 시각을 갖고 생성된다.")
+    void create_발행시각_채움() {
         AuctionPost post = AuctionPost.create(null, NOW);
 
-        assertThat(post.getPostStatus()).isEqualTo(PostStatus.PUBLISHED);
         assertThat(post.getPublishedAt()).isEqualTo(NOW);
     }
 

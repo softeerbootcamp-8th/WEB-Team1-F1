@@ -38,12 +38,12 @@ values (51, 51, 'HYUNDAI', '그랜저 IG', 2021, 45000, 'GASOLINE', 'AUTOMATIC',
        (53, 51, 'GENESIS', 'G80 RG3', 2023, 21000, 'GASOLINE', 'AUTOMATIC',
         '53다3333', 45000000, '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
-insert into auction_post (id, vehicle_id, post_status, published_at, created_at, updated_at)
-values (51, 51, 'PUBLISHED', '2026-08-01 09:00:00',
+insert into auction_post (id, vehicle_id, published_at, created_at, updated_at)
+values (51, 51, '2026-08-01 09:00:00',
         '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (52, 52, 'PUBLISHED', '2026-08-01 09:00:00',
+       (52, 52, '2026-08-01 09:00:00',
         '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (53, 53, 'PUBLISHED', '2026-08-01 09:00:00',
+       (53, 53, '2026-08-01 09:00:00',
         '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
 -- status 는 전부 SCHEDULED 로 둔다

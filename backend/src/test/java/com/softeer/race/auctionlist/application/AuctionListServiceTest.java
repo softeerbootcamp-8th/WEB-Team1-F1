@@ -27,7 +27,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -90,9 +89,9 @@ class AuctionListServiceTest {
 
         // then : 필요 없는 왕복을 하지 않는다
         then(auctionListRepository).should(never())
-                .findPendingPage(anyString(), any(), any(), anyLong(), anyInt());
+                .findPendingPage(any(), any(), anyLong(), anyInt());
         then(auctionListRepository).should(never())
-                .findEndedPage(anyString(), any(), any(), anyLong(), anyInt());
+                .findEndedPage(any(), any(), anyLong(), anyInt());
     }
 
     @Test
@@ -107,7 +106,7 @@ class AuctionListServiceTest {
 
         // then : 예정에는 21이 아니라 남은 16을 요청해야 페이지가 정확히 21에서 멈춘다
         ArgumentCaptor<Integer> limit = ArgumentCaptor.forClass(Integer.class);
-        verify(auctionListRepository).findPendingPage(anyString(), any(), any(), anyLong(), limit.capture());
+        verify(auctionListRepository).findPendingPage(any(), any(), anyLong(), limit.capture());
         assertThat(limit.getValue()).isEqualTo(16);
     }
 
@@ -148,7 +147,7 @@ class AuctionListServiceTest {
 
         // then 1 : 지나온 진행중은 아예 조회하지 않는다
         then(auctionListRepository).should(never())
-                .findLivePage(anyString(), any(), any(), anyLong(), anyInt());
+                .findLivePage(any(), any(), anyLong(), anyInt());
 
         // then 2 : 예정에는 커서 값이 그대로 넘어가야 한다.
         // 여기에 시작값이 넘어가면 이전 페이지를 다시 읽어 무한 스크롤이 첫 페이지에 갇힌다
@@ -210,7 +209,7 @@ class AuctionListServiceTest {
         // then : 이 값이 흔들리면 그 사이 단계가 바뀐 경매가 자리를 옮겨 커서가 어긋난다
         assertThat(info.nextCursor().snapshotAt()).isEqualTo(frozen);
         then(auctionListRepository).should()
-                .findLivePage(anyString(), eq(frozen), any(), anyLong(), anyInt());
+                .findLivePage(eq(frozen), any(), anyLong(), anyInt());
     }
 
     // ================= 페이지 경계 =================
@@ -282,7 +281,7 @@ class AuctionListServiceTest {
 
         // then
         then(auctionListRepository).should()
-                .findLivePage(anyString(), eq(NOW), any(), anyLong(), anyInt());
+                .findLivePage(eq(NOW), any(), anyLong(), anyInt());
     }
 
     // ================= 카드 =================
@@ -348,9 +347,9 @@ class AuctionListServiceTest {
 
         // then : 모자란 만큼 다음 그룹에서 채우면 "진행중" 탭에 예정 경매가 섞여 나온다
         then(auctionListRepository).should(never())
-                .findPendingPage(anyString(), any(), any(), anyLong(), anyInt());
+                .findPendingPage(any(), any(), anyLong(), anyInt());
         then(auctionListRepository).should(never())
-                .findEndedPage(anyString(), any(), any(), anyLong(), anyInt());
+                .findEndedPage(any(), any(), anyLong(), anyInt());
     }
 
     @Test
@@ -364,7 +363,7 @@ class AuctionListServiceTest {
 
         // then : 진행중부터 훑지 않는다. 종료는 내림차순이라 위쪽 끝에서 출발한다
         then(auctionListRepository).should(never())
-                .findLivePage(anyString(), any(), any(), anyLong(), anyInt());
+                .findLivePage(any(), any(), anyLong(), anyInt());
         assertCursorPassedToEnded(DESC_START, Long.MAX_VALUE);
     }
 
@@ -381,9 +380,9 @@ class AuctionListServiceTest {
 
         // then : 공개 목록 쿼리를 쓰면 남의 경매까지 섞인다
         then(auctionListRepository).should(never())
-                .findLivePage(anyString(), any(), any(), anyLong(), anyInt());
+                .findLivePage(any(), any(), anyLong(), anyInt());
         verify(auctionListRepository)
-                .findMyLivePage(any(), eq(SELLER_ID), any(), any(), anyLong(), any());
+                .findMyLivePage(eq(SELLER_ID), any(), any(), anyLong(), any());
     }
 
     @Test
@@ -397,35 +396,35 @@ class AuctionListServiceTest {
 
         // then
         then(auctionListRepository).should(never())
-                .findMyLivePage(any(), anyLong(), any(), any(), anyLong(), any());
+                .findMyLivePage(anyLong(), any(), any(), anyLong(), any());
         then(auctionListRepository).should(never())
-                .findMyPendingPage(any(), anyLong(), any(), any(), anyLong(), any());
+                .findMyPendingPage(anyLong(), any(), any(), anyLong(), any());
         verify(auctionListRepository)
-                .findMyEndedPage(any(), eq(SELLER_ID), any(), any(), anyLong(), any());
+                .findMyEndedPage(eq(SELLER_ID), any(), any(), anyLong(), any());
     }
 
     // ================= 목 설정 =================
 
     private void givenMyLive(List<AuctionListRow> rows) {
-        given(auctionListRepository.findMyLivePage(any(), anyLong(), any(), any(), anyLong(), any()))
+        given(auctionListRepository.findMyLivePage(anyLong(), any(), any(), anyLong(), any()))
                 .willReturn(rows);
     }
 
     private void givenMyEnded(List<AuctionListRow> rows) {
-        given(auctionListRepository.findMyEndedPage(any(), anyLong(), any(), any(), anyLong(), any()))
+        given(auctionListRepository.findMyEndedPage(anyLong(), any(), any(), anyLong(), any()))
                 .willReturn(rows);
     }
 
     private void givenLive(List<AuctionListRow> rows) {
-        given(auctionListRepository.findLivePage(anyString(), any(), any(), anyLong(), anyInt())).willReturn(rows);
+        given(auctionListRepository.findLivePage(any(), any(), anyLong(), anyInt())).willReturn(rows);
     }
 
     private void givenPending(List<AuctionListRow> rows) {
-        given(auctionListRepository.findPendingPage(anyString(), any(), any(), anyLong(), anyInt())).willReturn(rows);
+        given(auctionListRepository.findPendingPage(any(), any(), anyLong(), anyInt())).willReturn(rows);
     }
 
     private void givenEnded(List<AuctionListRow> rows) {
-        given(auctionListRepository.findEndedPage(anyString(), any(), any(), anyLong(), anyInt())).willReturn(rows);
+        given(auctionListRepository.findEndedPage(any(), any(), anyLong(), anyInt())).willReturn(rows);
     }
 
     private void assertCursorPassedToPending(LocalDateTime expectedSortAt, long expectedId) {
@@ -433,7 +432,7 @@ class AuctionListServiceTest {
         ArgumentCaptor<Long> id = ArgumentCaptor.forClass(Long.class);
 
         verify(auctionListRepository)
-                .findPendingPage(anyString(), any(), sortAt.capture(), id.capture(), anyInt());
+                .findPendingPage(any(), sortAt.capture(), id.capture(), anyInt());
 
         assertThat(sortAt.getValue()).isEqualTo(expectedSortAt);
         assertThat(id.getValue()).isEqualTo(expectedId);
@@ -444,7 +443,7 @@ class AuctionListServiceTest {
         ArgumentCaptor<Long> id = ArgumentCaptor.forClass(Long.class);
 
         verify(auctionListRepository)
-                .findEndedPage(anyString(), any(), sortAt.capture(), id.capture(), anyInt());
+                .findEndedPage(any(), sortAt.capture(), id.capture(), anyInt());
 
         assertThat(sortAt.getValue()).isEqualTo(expectedSortAt);
         assertThat(id.getValue()).isEqualTo(expectedId);
