@@ -3,9 +3,7 @@ import { ArrowLeft, Eye, Gavel, Trophy } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/empty-state'
-import { StatusBadge } from '@/components/common/status-badge'
 import { formatClock, formatKRW } from '@/lib/format'
-import { roomPhaseToStatus } from '@/lib/auction'
 import { MANUFACTURER_LABEL } from '@/features/quote/types'
 import { useAuth } from '@/features/auth/auth-context'
 
@@ -17,8 +15,8 @@ import { WaitingRoom } from '../components/waiting-room'
 import { RoomNotOpen } from '../components/room-not-open'
 import { CarDetail } from '../components/car-detail'
 import { RoomStateBanner } from '../components/room-state-banner'
+import type { RoomStateMode } from '../components/room-state-banner'
 import type { AuctionRoomView, RoomResultView, RoomVehicle, RoomWinner } from '../types'
-import type { AuctionStatus } from '@/types/domain'
 
 export function AuctionRoomPage() {
   const { id } = useParams()
@@ -48,8 +46,11 @@ export function AuctionRoomPage() {
   return <RoomContent auctionId={auctionId} userId={user.id} />
 }
 
-/** 목록으로 돌아가는 길과 차량 제목, 방이 열렸든 아니든 같은 자리에 온다 */
-function RoomHeading({ vehicle, status }: { vehicle: RoomVehicle; status: AuctionStatus }) {
+/**
+ * 목록으로 돌아가는 길과 차량 제목, 방이 열렸든 아니든 같은 자리에 온다.
+ * 지금 단계는 제목 맞은편에 띠로 붙는다 — 같은 말을 배지와 띠가 두 번 하지 않게 배지는 두지 않는다.
+ */
+function RoomHeading({ vehicle, mode }: { vehicle: RoomVehicle; mode: RoomStateMode }) {
   return (
     <>
       <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2">
@@ -59,16 +60,15 @@ function RoomHeading({ vehicle, status }: { vehicle: RoomVehicle; status: Auctio
         </Link>
       </Button>
 
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <StatusBadge status={status} />
-            <span className="text-muted-foreground text-sm">{vehicle.modelYear}년</span>
-          </div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-1">
+          <span className="text-muted-foreground text-sm">{vehicle.modelYear}년</span>
           <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
             {MANUFACTURER_LABEL[vehicle.manufacturer]} {vehicle.model}
           </h1>
         </div>
+
+        <RoomStateBanner mode={mode} />
       </div>
     </>
   )
@@ -111,8 +111,7 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
         aria-label={`${opening.vehicle.model} 경매`}
         className="mx-auto max-w-7xl px-6 py-8"
       >
-        <RoomHeading vehicle={opening.vehicle} status="SCHEDULED" />
-        <RoomStateBanner mode="NOT_OPEN" />
+        <RoomHeading vehicle={opening.vehicle} mode="NOT_OPEN" />
 
         <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
           <RoomNotOpen opening={opening} clockOffset={clockOffset} />
@@ -125,8 +124,7 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
   if (entry === 'CLOSED' && result) {
     return (
       <main aria-label={`${result.vehicle.model} 경매`} className="mx-auto max-w-7xl px-6 py-8">
-        <RoomHeading vehicle={result.vehicle} status="ENDED" />
-        <RoomStateBanner mode="CLOSED" />
+        <RoomHeading vehicle={result.vehicle} mode="CLOSED" />
         <EndedResult summary={endedFromResult(result)} />
       </main>
     )
@@ -140,12 +138,9 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
     return <main aria-label="경매방" className="mx-auto max-w-7xl px-6 py-8" />
   }
 
-  const status = roomPhaseToStatus(room.phase)
-
   return (
     <main aria-label={`${room.vehicle.model} 경매`} className="mx-auto max-w-7xl px-6 py-8">
-      <RoomHeading vehicle={room.vehicle} status={status} />
-      <RoomStateBanner mode={room.phase === 'NOT_OPEN' ? 'NOT_OPEN' : room.phase} />
+      <RoomHeading vehicle={room.vehicle} mode={room.phase} />
 
       {room.phase === 'WAITING' && (
         <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
