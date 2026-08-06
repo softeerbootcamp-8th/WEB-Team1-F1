@@ -113,11 +113,14 @@ export function AuctionEditDialog({
                 onChange={(event) =>
                   // 숫자만 남기고 앞자리 0을 정리한다. 자릿수를 막지 않으면 "1343만3241원"을
                   // 통째로 붙여넣었을 때 숫자만 이어붙어 1,343억짜리 경매가 만들어진다.
+                  //
+                  // 자르기가 0 제거보다 뒤에 온다. 순서를 바꾸면 "0000001"을 붙여넣었을 때
+                  // 앞 6자리("000000")만 남고 그게 "0"으로 정리되어 사용자가 넣은 1이 사라진다.
                   setPriceManwon(
                     event.target.value
                       .replace(/\D/g, '')
-                      .slice(0, MAX_PRICE_DIGITS)
-                      .replace(/^0+(?=\d)/, ''),
+                      .replace(/^0+(?=\d)/, '')
+                      .slice(0, MAX_PRICE_DIGITS),
                   )
                 }
                 className="tabular pr-14"
