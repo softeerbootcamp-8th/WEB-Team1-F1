@@ -1,11 +1,13 @@
 package com.softeer.race.auction.application;
 
 import com.softeer.race.auction.domain.Auction;
+import com.softeer.race.auction.domain.AuctionClosed;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.bid.domain.Bid;
 import com.softeer.race.bid.domain.BidRepository;
 import com.softeer.race.user.domain.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,7 @@ public class AuctionCloser {
 
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
     private final AuctionEndNotifier auctionEndNotifier;
 
@@ -40,6 +43,9 @@ public class AuctionCloser {
 
         User topBidder = topBidderOf(auctionId);
         auction.close(topBidder, now);
+
+        // 확정이 실제로 일어났을 때만 알린다, 유찰도 화면이 알아야 하는 결과라 같은 사건으로 낸다
+        eventPublisher.publishEvent(new AuctionClosed(auctionId));
 
         // 종료와 한 트랜잭션에 둔다. 알림만 남거나, 알림 없이 종료되는 경우를 만들지 않는다.
         // 엔티티가 아니라 식별자를 넘긴다 — 발행이 쓰는 것은 식별자뿐이고, 프록시의 getId 는
