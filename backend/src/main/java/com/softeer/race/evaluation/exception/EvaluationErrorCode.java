@@ -34,6 +34,9 @@ public enum EvaluationErrorCode implements ErrorCode {
 
     /**
      * 배정하려는 신청이 없다. 목록에서 고른 id라도 그 사이 신청이 사라질 수 있어 정상 흐름에서도 난다.
+     * <p>
+     * 진단서 첨부·조회도 이 코드를 쓴다. 두 흐름 모두 "지정한 방문견적 신청이 없다"는 같은 상황이라
+     * 코드를 나눌 이유가 없다.
      */
     NOT_FOUND(HttpStatus.NOT_FOUND, "방문견적 신청을 찾을 수 없습니다."),
 
@@ -53,7 +56,44 @@ public enum EvaluationErrorCode implements ErrorCode {
      * 평가가 이미 끝난(승인·반려) 신청이다. ALREADY_ASSIGNED와 갈라 두는 이유는 화면이 안내할 말이
      * 다르기 때문이다 — 이쪽은 목록을 다시 봐도 그 건이 돌아오지 않는다.
      */
-    NOT_ASSIGNABLE(HttpStatus.CONFLICT, "배정할 수 있는 상태의 신청이 아닙니다.");
+    NOT_ASSIGNABLE(HttpStatus.CONFLICT, "배정할 수 있는 상태의 신청이 아닙니다."),
+
+    /**
+     * 우리가 발급하지 않았거나, 발급했더라도 문서가 아닌 주소다. 후자를 구분하지 않는 이유는
+     * VehicleErrorCode.UNMANAGED_IMAGE_URL과 같다 — 클라이언트가 할 일이 "발급받은 문서 주소를
+     * 다시 보낸다"로 같고, 구분해 주면 어떤 키가 존재하는지 되물어 확인하는 통로가 된다.
+     */
+    UNMANAGED_DOCUMENT_URL(HttpStatus.BAD_REQUEST,
+            "이 서비스에서 발급한 문서 주소가 아닙니다. 업로드 주소 발급 API가 돌려준 값을 그대로 보내야 합니다."),
+
+    /**
+     * 400이 아니라 409다. 요청 자체는 올바르고 거부되는 이유는 서버가 들고 있는 상태(이미 반려됨)뿐이다.
+     * <p>
+     * NOT_ASSIGNABLE과 갈라 둔다. 두 코드가 보는 상태 집합이 다르다 — 배정은 REQUESTED만 받고,
+     * 진단서는 재제출 때문에 APPROVED에도 붙는다. 합치면 결과를 고쳐 다시 올릴 수 없거나, 이미
+     * 배정된 신청이 다시 배정 가능해진다.
+     */
+    NOT_DIAGNOSABLE(HttpStatus.CONFLICT, "이미 종료된 평가에는 진단서를 등록할 수 없습니다."),
+
+    /**
+     * 아직 아무도 수락하지 않은 신청이다. 403이 아니라 409인 이유는 <b>요청자가 누구든 같은 답</b>이기
+     * 때문이다 — 권한이 모자란 것이 아니라 담당자를 정하는 단계를 아직 지나지 않았다.
+     * <p>
+     * NOT_ASSIGNED_EVALUATOR와 갈라 두는 것은 화면이 안내할 말이 달라서다. 이쪽은 배정 대기
+     * 목록에서 수락하면 풀리고, 저쪽은 수락해도 풀리지 않는다(이미 임자가 있다).
+     */
+    EVALUATOR_NOT_ASSIGNED(HttpStatus.CONFLICT, "아직 담당 평가사가 정해지지 않은 신청입니다."),
+
+    /**
+     * 다른 평가사가 담당인 신청에 진단서를 붙이려 했다.
+     * <p>
+     * 배정을 자격의 증명으로 쓰므로 이 검사 하나가 "평가사인가"와 "이 건의 담당인가"를 함께
+     * 대신한다 — 배정은 대기 목록에서 수락해야 받는다.
+     */
+    NOT_ASSIGNED_EVALUATOR(HttpStatus.FORBIDDEN,
+            "이 신청에 배정된 평가사만 진단서를 등록할 수 있습니다."),
+
+    DIAGNOSTIC_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "등록된 진단서가 없습니다.");
 
     private final HttpStatus status;
     private final String message;
@@ -64,7 +104,7 @@ public enum EvaluationErrorCode implements ErrorCode {
     }
 
     /**
-     * 접두사를 붙인다. SellErrorCode와 AuctionErrorCode에도 VEHICLE_NOT_FOUND가 있어,
+     * 접두사를 붙인다. AuctionErrorCode와 VehicleErrorCode에도 VEHICLE_NOT_FOUND가 있어,
      * 접두사가 없으면 서로 다른 원인이 프론트에서 구별 불가능한 같은 문자열이 된다.
      */
     @Override

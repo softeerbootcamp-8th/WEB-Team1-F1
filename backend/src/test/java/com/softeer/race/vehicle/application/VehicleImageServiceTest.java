@@ -1,7 +1,8 @@
 package com.softeer.race.vehicle.application;
 
 import com.softeer.race.common.exception.BusinessException;
-import com.softeer.race.image.domain.ImageStorage;
+import com.softeer.race.storage.domain.FileCategory;
+import com.softeer.race.storage.domain.FileStorage;
 import com.softeer.race.vehicle.application.dto.command.VehicleImageRegisterCommand;
 import com.softeer.race.vehicle.application.dto.info.VehicleImageRegisterInfo;
 import com.softeer.race.vehicle.domain.Vehicle;
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.never;
  * <ol>
  *   <li>보낸 순서대로 sortOrder를 매겨 저장하고, 기존 사진은 전부 지운다</li>
  *   <li>우리가 발급하지 않은 주소가 섞이면 아무것도 지우거나 저장하지 않는다</li>
+ *   <li>주소를 검증할 때 이미지 종류를 못 박아 묻는다</li>
  *   <li>없는 차량이면 404</li>
  * </ol>
  * <p>
@@ -55,7 +57,7 @@ class VehicleImageServiceTest {
     private VehicleImageRepository vehicleImageRepository;
 
     @Mock
-    private ImageStorage imageStorage;
+    private FileStorage fileStorage;
 
     @InjectMocks
     private VehicleImageService vehicleImageService;
@@ -98,8 +100,9 @@ class VehicleImageServiceTest {
     void registerRejectsUnmanagedUrl() {
         // given : 첫 장은 우리 주소, 두 번째가 외부 주소다
         givenVehicleFound();
-        given(imageStorage.isManagedUrl(REAL_IMAGE_1)).willReturn(true);
-        given(imageStorage.isManagedUrl("https://evil.example.com/x.jpg")).willReturn(false);
+        given(fileStorage.isManagedUrl(REAL_IMAGE_1, FileCategory.IMAGE)).willReturn(true);
+        given(fileStorage.isManagedUrl("https://evil.example.com/x.jpg", FileCategory.IMAGE))
+                .willReturn(false);
 
         // when
         assertThatThrownBy(() ->
@@ -115,6 +118,22 @@ class VehicleImageServiceTest {
     }
 
     @Test
+    @DisplayName("주소를 검증할 때 이미지 종류를 못 박아 묻는다")
+    void registerAsksForImageCategory() {
+        // given
+        givenVehicleFound();
+        givenAllUrlsManaged();
+        givenSaveAllReturnsInput();
+
+        // when
+        vehicleImageService.register(command(REAL_IMAGE_1));
+
+        // then : 종류를 묻지 않으면 진단서 PDF도 "우리가 발급한 주소"라 통과한다.
+        //        그러면 목록 첫 장이 대표 이미지가 되는 규칙 때문에 썸네일이 PDF 주소가 될 수 있다
+        then(fileStorage).should().isManagedUrl(REAL_IMAGE_1, FileCategory.IMAGE);
+    }
+
+    @Test
     @DisplayName("없는 차량이면 NOT_FOUND")
     void registerRejectsUnknownVehicle() {
         // given
@@ -126,7 +145,7 @@ class VehicleImageServiceTest {
                 .extracting(e -> ((BusinessException) e).errorCode())
                 .isEqualTo(VehicleErrorCode.NOT_FOUND);
 
-        then(imageStorage).shouldHaveNoInteractions();
+        then(fileStorage).shouldHaveNoInteractions();
     }
 
     private void givenVehicleFound() {
@@ -134,7 +153,7 @@ class VehicleImageServiceTest {
     }
 
     private void givenAllUrlsManaged() {
-        given(imageStorage.isManagedUrl(anyString())).willReturn(true);
+        given(fileStorage.isManagedUrl(anyString(), any())).willReturn(true);
     }
 
     @SuppressWarnings("unchecked")

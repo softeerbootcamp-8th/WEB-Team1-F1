@@ -1,7 +1,8 @@
 package com.softeer.race.vehicle.application;
 
 import com.softeer.race.common.exception.BusinessException;
-import com.softeer.race.image.domain.ImageStorage;
+import com.softeer.race.storage.domain.FileCategory;
+import com.softeer.race.storage.domain.FileStorage;
 import com.softeer.race.vehicle.application.dto.command.VehicleImageRegisterCommand;
 import com.softeer.race.vehicle.application.dto.info.VehicleImageRegisterInfo;
 import com.softeer.race.vehicle.domain.Vehicle;
@@ -24,10 +25,9 @@ import java.util.stream.IntStream;
  * {@code findFirstByVehicleOrderBySortOrderAsc}로 여기서 저장한 첫 장을 집어 간다. 즉 순서가
  * 사진 등록 → 경매 생성이라 따로 갱신할 것이 없다.
  * <p>
- * 다만 지금 {@code SellService}는 판매 신청 즉시 경매글을 만든다. 그 과도기에는 사진을 바꿔도
- * 이미 만들어진 경매글의 썸네일이 옛 카탈로그 이미지로 남는다. 판매 신청을 평가 신청으로
- * 전환하면 사라지는 문제라 별도 대응을 두지 않았다.
-
+ * 이 서비스에는 컨트롤러가 없다. 사진만 따로 바꾸는 입구를 두면 {@code vehicleId}만으로는
+ * "배정된 평가사인가"를 물을 수 없어 인가를 걸 방법이 없다. 유일한 호출자는 평가 결과 제출
+ * ({@code EvaluationResultService})이고, 그쪽은 {@code evaluationId} 축이라 그 질문이 가능하다.
  */
 @Service
 @RequiredArgsConstructor
@@ -38,7 +38,7 @@ public class VehicleImageService {
 
     private final VehicleRepository vehicleRepository;
     private final VehicleImageRepository vehicleImageRepository;
-    private final ImageStorage imageStorage;
+    private final FileStorage fileStorage;
 
     /**
      * 차량의 사진을 받은 목록으로 통째로 교체한다.
@@ -62,8 +62,13 @@ public class VehicleImageService {
         return VehicleImageRegisterInfo.from(vehicle.getId(), saved);
     }
 
+    /**
+     * 종류를 {@code IMAGE}로 못 박는다. "우리가 발급한 주소인가"만 물으면 진단서 PDF도 우리가
+     * 발급한 것이라 통과해, <b>차량 사진 자리에 문서가 등록된다.</b> 그러면 목록의 첫 장이 대표
+     * 이미지가 되는 규칙 때문에 경매글 썸네일이 PDF 주소가 될 수도 있다.
+     */
     private void validateManaged(String imageUrl) {
-        if (!imageStorage.isManagedUrl(imageUrl)) {
+        if (!fileStorage.isManagedUrl(imageUrl, FileCategory.IMAGE)) {
             throw new BusinessException(VehicleErrorCode.UNMANAGED_IMAGE_URL);
         }
     }

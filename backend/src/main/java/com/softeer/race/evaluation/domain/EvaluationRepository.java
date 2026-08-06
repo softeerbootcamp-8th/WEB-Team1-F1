@@ -48,6 +48,57 @@ public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
     List<Evaluation> findAssignable(@Param("requested") EvaluationStatus requested);
 
     /**
+     * 이 판매자가 낸 신청들. 최신 접수부터 나온다.
+     * <p>
+     * {@code v.seller.id}는 vehicle 행에 있는 FK 컬럼만 읽어 users 조인이 생기지 않는다.
+     * {@code v.seller.username}처럼 다른 필드를 건드리면 그때 조인이 늘어난다.
+     * <p>
+     * {@code createdAt}이 아니라 id로 정렬한다. 같은 순서인데 PK 인덱스를 그대로 쓴다.
+     * <p>
+     * vehicle을 join fetch 한다. 목록의 각 항목이 번호판과 제원을 보여주므로 없으면 건수만큼
+     * 지연 로딩 쿼리가 더 나간다.
+     */
+    @Query("""
+            select e
+            from Evaluation e
+            join fetch e.vehicle v
+            where v.seller.id = :sellerId
+            order by e.id desc
+            """)
+    List<Evaluation> findBySellerId(@Param("sellerId") long sellerId);
+
+    /**
+     * 이 평가사가 맡은 신청들. 방문일이 임박한 순이다 — 평가사에게 급한 것은 언제 어디를
+     * 가야 하는가이고, {@link #findAssignable}도 같은 기준으로 정렬한다.
+     */
+    @Query("""
+            select e
+            from Evaluation e
+            join fetch e.vehicle v
+            where e.evaluator.id = :evaluatorId
+            order by e.visitDate, e.id
+            """)
+    List<Evaluation> findByEvaluatorId(@Param("evaluatorId") long evaluatorId);
+
+    /**
+     * 상세 조회용. 차량 제원과 담당 평가사를 함께 보여주므로 둘 다 붙여 읽는다.
+     * <p>
+     * {@code findById}로 대신하지 않는다. 그쪽은 vehicle과 evaluator가 프록시로 남아 상세를
+     * 조립하는 동안 지연 로딩 쿼리가 두 번 더 나간다.
+     * <p>
+     * evaluator는 <b>left join</b>이다. 배정 전에는 비어 있어 inner join으로 붙이면 아직 아무도
+     * 수락하지 않은 신청이 조회 결과에서 통째로 사라진다 — 판매자가 접수 직후 상세를 열 수 없게 된다.
+     */
+    @Query("""
+            select e
+            from Evaluation e
+            join fetch e.vehicle v
+            left join fetch e.evaluator
+            where e.id = :evaluationId
+            """)
+    Optional<Evaluation> findWithVehicleById(@Param("evaluationId") long evaluationId);
+
+    /**
      * 배정을 위해 신청 한 건을 잠그고 읽는다.
      * <p>
      * 잠금 없이 처리하면 두 평가사가 같은 {@code evaluator == null}을 읽고 둘 다 통과한 뒤 둘 다

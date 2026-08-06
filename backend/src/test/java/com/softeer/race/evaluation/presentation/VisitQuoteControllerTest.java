@@ -152,7 +152,7 @@ class VisitQuoteControllerTest {
 
         perform(validRequest())
                 .andExpect(status().isNotFound())
-                // 접두사가 없으면 SellErrorCode·AuctionErrorCode의 같은 이름과 구별할 수 없다
+                // 접두사가 없으면 AuctionErrorCode·VehicleErrorCode의 같은 이름과 구별할 수 없다
                 .andExpect(jsonPath("$.code").value("EVALUATION_VEHICLE_NOT_FOUND"));
     }
 

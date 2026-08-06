@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
 @DisplayName("평가 요청")
@@ -20,6 +21,11 @@ class EvaluationTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 4);
     private static final String VISIT_ADDRESS = "서울 성동구 왕십리로 83";
     private static final String CONTACT_PHONE = "01012345678";
+
+    private static final long SELLER_ID = 600L;
+    private static final long EVALUATOR_ID = 601L;
+    private static final long OTHER_EVALUATOR_ID = 602L;
+    private static final long STRANGER_ID = 603L;
 
     @Test
     @DisplayName("접수된 신청은 REQUESTED 상태이고 평가사가 배정되지 않는다")
@@ -59,9 +65,11 @@ class EvaluationTest {
                                 .isEqualTo(EvaluationErrorCode.PAST_VISIT_DATE));
     }
 
-    // 중복 접수 차단과 재신청 허용이 둘 다 이 집합에 달려 있다
+    // 중복 접수 차단과 재신청 허용이 둘 다 이 집합에 달려 있다.
+    // APPROVED가 들어 있는 것은 진단이 끝나도 출품 동의가 남아 흐름이 계속되기 때문이고,
+    // 빠지면 진단을 마친 차를 다시 방문 신청할 수 있게 된다
     @Test
-    @DisplayName("진행 중 상태는 REQUESTED와 APPROVED뿐이고 REJECTED는 종료 상태다")
+    @DisplayName("REJECTED만 종료 상태이고 나머지는 전부 진행 중이다")
     void inProgressStatuses() {
         assertThat(EvaluationStatus.inProgress())
                 .containsExactlyInAnyOrder(EvaluationStatus.REQUESTED, EvaluationStatus.APPROVED)
@@ -101,6 +109,125 @@ class EvaluationTest {
                                 .isEqualTo(EvaluationErrorCode.ALREADY_ASSIGNED));
 
         assertThat(evaluation.getEvaluator()).isSameAs(first);
+    }
+
+    @Test
+    @DisplayName("배정된 평가사는 진단 결과를 붙일 수 있다")
+    void validateDiagnosableBy() {
+        // given
+        Evaluation evaluation = requested();
+        evaluation.assignTo(evaluator(EVALUATOR_ID));
+
+        // when & then : 반려된 신청 거부(NOT_DIAGNOSABLE)는 REJECTED로 만드는 공개 경로가 없어
+        //               픽스처로 상태를 심는 통합테스트가 맡는다
+        assertThatCode(() -> evaluation.validateDiagnosableBy(EVALUATOR_ID))
+                .doesNotThrowAnyException();
+    }
+
+    /**
+     * 진단서를 붙일 자격을 배정으로만 판정하기로 한 결정을 고정한다. 역할을 함께 보지 않으므로
+     * 배정되지 않은 사람은 평가사여도 여기서 떨어진다 — 자격을 보는 자리는 배정하는 곳 한 군데다.
+     */
+    @Test
+    @DisplayName("다른 평가사의 담당이면 NOT_ASSIGNED_EVALUATOR")
+    void validateDiagnosableByRejectsOtherEvaluator() {
+        // given
+        Evaluation evaluation = requested();
+        evaluation.assignTo(evaluator(EVALUATOR_ID));
+
+        // when & then
+        assertThatThrownBy(() -> evaluation.validateDiagnosableBy(OTHER_EVALUATOR_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.NOT_ASSIGNED_EVALUATOR));
+    }
+
+    // 403이 아니라 409다. 권한이 모자란 것이 아니라 담당자를 정하는 단계를 지나지 않았다 —
+    // 요청자가 누구든 답이 같고, 대기 목록에서 수락하면 풀린다.
+    // null 검사를 빠뜨리면 여기서 NPE가 난다
+    @Test
+    @DisplayName("아직 배정 전이면 누구에게도 EVALUATOR_NOT_ASSIGNED")
+    void validateDiagnosableByRejectsUnassigned() {
+        assertThatThrownBy(() -> requested().validateDiagnosableBy(EVALUATOR_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.EVALUATOR_NOT_ASSIGNED));
+    }
+
+    @Test
+    @DisplayName("결과가 제출되면 APPROVED가 되고 담당자는 그대로다")
+    void approve() {
+        // given
+        Evaluation evaluation = requested();
+        User evaluator = evaluator(EVALUATOR_ID);
+        evaluation.assignTo(evaluator);
+
+        // when
+        evaluation.approve();
+
+        // then : 제출이 배정을 건드리면 "먼저 수락한 한 명"을 우회하는 통로가 생긴다
+        assertThat(evaluation.getStatus()).isEqualTo(EvaluationStatus.APPROVED);
+        assertThat(evaluation.getEvaluator()).isSameAs(evaluator);
+    }
+
+    // 재제출은 결과를 갈아 끼우는 것이지 상태를 되돌리거나 새로 만드는 것이 아니다
+    @Test
+    @DisplayName("이미 APPROVED인 평가에 다시 제출해도 상태는 그대로다")
+    void approveIsIdempotent() {
+        Evaluation evaluation = requested();
+        evaluation.assignTo(evaluator(EVALUATOR_ID));
+        evaluation.approve();
+
+        evaluation.approve();
+
+        assertThat(evaluation.getStatus()).isEqualTo(EvaluationStatus.APPROVED);
+    }
+
+    // 제출한 평가사가 결과를 고치러 다시 오는 흐름이다
+    @Test
+    @DisplayName("APPROVED인 평가에도 담당 평가사는 결과를 다시 제출할 수 있다")
+    void validateDiagnosableByAllowsResubmit() {
+        Evaluation evaluation = requested();
+        evaluation.assignTo(evaluator(EVALUATOR_ID));
+        evaluation.approve();
+
+        assertThatCode(() -> evaluation.validateDiagnosableBy(EVALUATOR_ID))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("신청한 판매자와 배정된 평가사는 상세를 볼 수 있다")
+    void isViewableBy() {
+        // given
+        Evaluation evaluation = sellerOwned(SELLER_ID);
+        evaluation.assignTo(evaluator(EVALUATOR_ID));
+
+        // when & then
+        assertThat(evaluation.isViewableBy(SELLER_ID)).isTrue();
+        assertThat(evaluation.isViewableBy(EVALUATOR_ID)).isTrue();
+    }
+
+    // 배정 전에는 evaluator가 null이다. null 검사를 빠뜨리면 여기서 NPE가 난다
+    @Test
+    @DisplayName("무관한 회원은 볼 수 없고, 배정 전이어도 NPE가 나지 않는다")
+    void isViewableByRejectsStranger() {
+        assertThat(sellerOwned(SELLER_ID).isViewableBy(STRANGER_ID)).isFalse();
+    }
+
+    private static Evaluation sellerOwned(long sellerId) {
+        Vehicle vehicle = mock(Vehicle.class);
+        User seller = mock(User.class);
+        given(vehicle.getSeller()).willReturn(seller);
+        given(seller.getId()).willReturn(sellerId);
+
+        return Evaluation.request(vehicle, TODAY.plusDays(16), VISIT_ADDRESS, CONTACT_PHONE, TODAY);
+    }
+
+    private static User evaluator(long id) {
+        User evaluator = mock(User.class);
+        given(evaluator.getId()).willReturn(id);
+
+        return evaluator;
     }
 
     // 평가가 끝난 신청(NOT_ASSIGNABLE)은 여기서 만들 수 없다. status를 바꾸는 방법이 아직 없어
