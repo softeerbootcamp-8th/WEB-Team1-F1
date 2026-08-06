@@ -46,9 +46,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
-    await logoutRequest()
-    setUser(null)
-    queryClient.clear()
+    try {
+      await logoutRequest()
+    } finally {
+      setUser(null)
+      queryClient.clear()
+    }
   }, [queryClient])
 
   const value = useMemo<AuthState>(

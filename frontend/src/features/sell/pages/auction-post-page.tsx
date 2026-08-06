@@ -98,7 +98,7 @@ export function AuctionPostPage() {
     )
   }
 
-  return <AuctionPostForm vehicle={vehicle} />
+  return <AuctionPostForm key={evaluationId} vehicle={vehicle} />
 }
 
 function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicle }) {
