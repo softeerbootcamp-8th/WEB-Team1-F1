@@ -68,7 +68,7 @@ class AuctionServiceTest {
     @Test
     @DisplayName("경매글을 등록하면 경매글과 경매과 함께 저장된다.")
     void create_성공() {
-        Vehicle vehicle = vehicle(SELLER_ID);
+        Vehicle vehicle = diagnosedVehicle(SELLER_ID);
         given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(auctionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -77,7 +77,6 @@ class AuctionServiceTest {
         then(auctionPostRepository).should().save(any(AuctionPost.class));
         then(auctionRepository).should().save(any(Auction.class));
     }
-
 
     @Test
     @DisplayName("차량 소유자가 아니면 경매글을 등록할 수 없다.")
@@ -96,9 +95,38 @@ class AuctionServiceTest {
     }
 
     @Test
+    @DisplayName("평가사 승인 전인 차량은 경매글을 등록할 수 없다.")
+    void create_미승인_차량_거부() {
+        Vehicle vehicle = vehicle(SELLER_ID);
+        given(vehicle.isDiagnosed()).willReturn(false);
+        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
+
+        assertThatThrownBy(() -> service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AuctionErrorCode.VEHICLE_NOT_APPROVED);
+
+        then(auctionPostRepository).shouldHaveNoInteractions();
+        then(auctionRepository).should(never()).save(any());
+    }
+
+    @Test
+    @DisplayName("미승인 차량은 중복 경매 검사에 도달하기 전에 거부된다.")
+    void create_승인검사가_중복검사보다_먼저() {
+        Vehicle vehicle = vehicle(SELLER_ID);
+        given(vehicle.isDiagnosed()).willReturn(false);
+        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
+
+        assertThatThrownBy(() -> service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT))
+                .isInstanceOf(BusinessException.class);
+
+        then(auctionRepository).should(never()).existsActiveByVehicleId(any(), any());
+    }
+
+    @Test
     @DisplayName("이미 진행 중인 경매가 있는 차량은 다시 등록할 수 없다.")
     void create_중복_경매_거부() {
-        Vehicle vehicle = vehicle(SELLER_ID);
+        Vehicle vehicle = diagnosedVehicle(SELLER_ID);
         given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         given(auctionRepository.existsActiveByVehicleId(any(), any())).willReturn(true);
 
@@ -112,7 +140,7 @@ class AuctionServiceTest {
     @Test
     @DisplayName("유찰된 경매는 재등록 판단 대상 상태에서 제외된다.")
     void create_유찰은_활성상태_아님() {
-        Vehicle vehicle = vehicle(SELLER_ID);
+        Vehicle vehicle = diagnosedVehicle(SELLER_ID);
         given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         given(auctionRepository.existsActiveByVehicleId(any(), any())).willReturn(false);
         given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -268,6 +296,11 @@ class AuctionServiceTest {
         return vehicle;
     }
 
+    private Vehicle diagnosedVehicle(long sellerId) {
+        Vehicle vehicle = vehicle(sellerId);
+        given(vehicle.isDiagnosed()).willReturn(true);
+        return vehicle;
+    }
 
     // AuctionUpdateInfo.from이 post.getVehicle().getId()를 읽으므로 create 테스트의 vehicle()과 달리
     // AuctionPost에 null이 아닌 차량을 반드시 붙여야 한다
