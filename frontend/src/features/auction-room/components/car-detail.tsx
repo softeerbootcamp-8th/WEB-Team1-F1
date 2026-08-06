@@ -4,11 +4,10 @@ import type { RoomVehicle } from '@/features/auction-room/types'
 
 interface CarDetailProps {
   vehicle: RoomVehicle
-  thumbnailUrl: string | null
 }
 
 /** 차량 상세 — 썸네일 + 스펙 표. 평가 진단 데이터는 백엔드가 아직 내려주지 않는다. */
-export function CarDetail({ vehicle, thumbnailUrl }: CarDetailProps) {
+export function CarDetail({ vehicle }: CarDetailProps) {
   const specs: { label: string; value: string }[] = [
     { label: '연식', value: `${vehicle.modelYear}년` },
     { label: '주행거리', value: formatMileage(vehicle.mileage) },
@@ -18,7 +17,7 @@ export function CarDetail({ vehicle, thumbnailUrl }: CarDetailProps) {
   return (
     <div className="space-y-5">
       <div className="bg-muted aspect-[16/10] overflow-hidden rounded-xl border">
-        <CarThumb src={thumbnailUrl ?? undefined} alt={vehicle.model} />
+        <CarThumb src={vehicle.thumbnailUrl ?? undefined} alt={vehicle.model} />
       </div>
 
       <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border bg-border">

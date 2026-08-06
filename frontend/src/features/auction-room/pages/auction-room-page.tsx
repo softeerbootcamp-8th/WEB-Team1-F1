@@ -99,7 +99,7 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
       {room.phase === 'WAITING' && (
         <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
           <WaitingRoom room={room} />
-          <CarDetail vehicle={room.vehicle} thumbnailUrl={room.thumbnailUrl} />
+          <CarDetail vehicle={room.vehicle} />
         </div>
       )}
 
@@ -146,7 +146,7 @@ function LiveRoom({
       />
 
       <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-        <CarDetail vehicle={room.vehicle} thumbnailUrl={room.thumbnailUrl} />
+        <CarDetail vehicle={room.vehicle} />
 
         <div className="space-y-4">
           <dl className="grid grid-cols-2 gap-3">
@@ -190,7 +190,7 @@ function LiveRoom({
 function EndedResult({ room }: { room: AuctionRoomView }) {
   return (
     <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-      <CarDetail vehicle={room.vehicle} thumbnailUrl={room.thumbnailUrl} />
+      <CarDetail vehicle={room.vehicle} />
       <div className="flex flex-col gap-4">
         <div className="rounded-xl border p-6 text-center">
           {room.winner ? (

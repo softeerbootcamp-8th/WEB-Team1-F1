@@ -54,7 +54,6 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
       auctionId: state.auctionId,
       phase: state.phase,
       vehicle: state.vehicle,
-      thumbnailUrl: state.thumbnailUrl,
       startPrice: state.startPrice,
       currentPrice: state.currentPrice,
       openAt: state.openAt,
@@ -65,9 +64,9 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
       bidderCount: state.bidderCount,
       bidCount: state.bidCount,
       winner:
-        state.winnerName == null
+        state.winner == null
           ? null
-          : { name: state.winnerName, mine: myBidAmounts.current.has(state.currentPrice) },
+          : { name: state.winner.name, mine: myBidAmounts.current.has(state.currentPrice) },
       recentBids: state.recentBids.map((b) => ({
         ...b,
         mine: myBidAmounts.current.has(b.amount),
