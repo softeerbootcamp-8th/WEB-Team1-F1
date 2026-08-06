@@ -1,5 +1,7 @@
 package com.softeer.race.auctionroom.domain;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
@@ -12,10 +14,35 @@ public enum RoomPhase {
     RESULT(null),
     CLOSED(AuctionRoomErrorCode.ROOM_ALREADY_CLOSED);
 
+    // 마감 후 결과를 확인할 수 있는 구간, 기획에서 정한 값이다
+    private static final Duration RESULT_VIEWING = Duration.ofMinutes(5);
+
     private final AuctionRoomErrorCode entryRejection;
 
     RoomPhase(AuctionRoomErrorCode entryRejection) {
         this.entryRejection = entryRejection;
+    }
+
+    /**
+     * 주어진 시각 기준의 방 단계
+     */
+    public static RoomPhase at(LocalDateTime now,
+                               LocalDateTime roomOpenAt,
+                               LocalDateTime startTime,
+                               LocalDateTime currentEndTime) {
+        if (now.isBefore(roomOpenAt)) {
+            return NOT_OPEN;
+        }
+        if (now.isBefore(startTime)) {
+            return WAITING;
+        }
+        if (now.isBefore(currentEndTime)) {
+            return LIVE;
+        }
+        if (now.isBefore(currentEndTime.plus(RESULT_VIEWING))) {
+            return RESULT;
+        }
+        return CLOSED;
     }
 
     /**

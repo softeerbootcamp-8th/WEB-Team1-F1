@@ -45,7 +45,7 @@ class AuctionRoomReader {
     @Transactional(readOnly = true)
     public Optional<RoomPhase> findPhase(long auctionId) {
         return auctionRoomRepository.findDetailById(auctionId)
-                .map(detail -> detail.snapshot().phaseAt(LocalDateTime.now(clock)));
+                .map(detail -> detail.phaseAt(LocalDateTime.now(clock)));
     }
 
     // 결과에는 건수만 나가지만 집계 쿼리 하나로 둘 다 나오므로 그대로 쓴다
@@ -60,6 +60,6 @@ class AuctionRoomReader {
         BidStats stats = roomBidRepository.findStats(detail.auctionId());
         List<RecentBid> recentBids = roomBidRepository.findRecentBids(detail.auctionId(), Limit.of(RECENT_BID_LIMIT));
 
-        return new RoomQueryResult(detail, detail.snapshot().phaseAt(now), stats, recentBids, now);
+        return new RoomQueryResult(detail, stats, recentBids, now);
     }
 }

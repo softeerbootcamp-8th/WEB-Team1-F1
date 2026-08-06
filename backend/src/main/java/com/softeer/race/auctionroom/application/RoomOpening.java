@@ -1,7 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
 import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
-import com.softeer.race.auctionroom.domain.AuctionRoomSnapshot;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import com.softeer.race.auctionroom.domain.VehicleSummary;
 
@@ -25,16 +24,15 @@ public record RoomOpening(
      * 한 번 읽어 온 상세와 기준 시각으로 안내를 조립한다
      */
     static RoomOpening of(AuctionRoomDetail detail, LocalDateTime now) {
-        AuctionRoomSnapshot snapshot = detail.snapshot();
-
         return new RoomOpening(
                 detail.auctionId(),
-                snapshot.phaseAt(now),
+                detail.phaseAt(now),
                 detail.vehicle(),
                 detail.thumbnailUrl(),
-                snapshot.startPrice(),
-                snapshot.roomOpenAt(),
-                snapshot.startTime(),
-                now);
+                detail.startPrice(),
+                detail.roomOpenAt(),
+                detail.startTime(),
+                now
+        );
     }
 }

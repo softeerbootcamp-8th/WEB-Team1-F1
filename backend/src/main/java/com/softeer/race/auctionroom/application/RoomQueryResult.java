@@ -13,9 +13,13 @@ import java.util.List;
  */
 record RoomQueryResult(
         AuctionRoomDetail detail,
-        RoomPhase phase,
         BidStats stats,
         List<RecentBid> recentBids,
         LocalDateTime serverTime
 ) {
+
+    // 저장하면 단계와 기준 시각이 어긋난 객체를 만들 수 있고, 계산하면 그럴 수 없다
+    RoomPhase phase() {
+        return detail.phaseAt(serverTime);
+    }
 }

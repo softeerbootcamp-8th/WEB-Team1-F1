@@ -73,8 +73,8 @@ public record AuctionRoomResponse(
                 state.endAt(),
                 state.serverTime(),
                 state.connectedCount(),
-                state.bidderCount(),
-                state.bidCount(),
+                state.stats().bidderCount(),
+                state.stats().bidCount(),
                 state.winnerName() == null ? null : new WinnerResponse(state.winnerName().value(), view.winnerIsMine()),
                 view.recentBids().stream().map(RecentBidResponse::from).toList());
     }
