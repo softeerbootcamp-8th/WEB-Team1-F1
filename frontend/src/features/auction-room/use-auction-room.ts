@@ -35,6 +35,7 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
   const myBidAmounts = useRef<Set<number>>(new Set())
   const prevPrice = useRef<number | null>(null)
   const prevEndAt = useRef<string | null>(null)
+  const extendedTimer = useRef<number | null>(null)
 
   useEffect(() => {
     fetchBidIncrementBands()
@@ -42,13 +43,30 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
       .catch(() => setBands([]))
   }, [])
 
+  // 연장이 잇달아 일어나면 먼저 건 타이머가 나중 연장의 표시를 조기에 끈다, 앞의 것을 취소하고 다시 건다
+  const markExtended = useCallback(() => {
+    setExtended(true)
+    if (extendedTimer.current !== null) {
+      window.clearTimeout(extendedTimer.current)
+    }
+    extendedTimer.current = window.setTimeout(() => setExtended(false), EXTENDED_FLAG_MS)
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (extendedTimer.current !== null) {
+        window.clearTimeout(extendedTimer.current)
+      }
+    },
+    [],
+  )
+
   const mergeStreamState = useCallback((state: RoomStreamState) => {
     if (prevPrice.current !== null && state.currentPrice > prevPrice.current) {
       setFlashKey((k) => k + 1)
     }
     if (prevEndAt.current !== null && state.endAt !== prevEndAt.current) {
-      setExtended(true)
-      window.setTimeout(() => setExtended(false), EXTENDED_FLAG_MS)
+      markExtended()
     }
     prevPrice.current = state.currentPrice
     prevEndAt.current = state.endAt
@@ -76,10 +94,20 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
         mine: myBidAmounts.current.has(b.amount),
       })),
     })
-  }, [])
+  }, [markExtended])
 
   useEffect(() => {
     if (userId == null) return
+
+    // ref 는 컴포넌트 인스턴스에 붙어 있어 다른 방으로 옮겨도 살아남는다. 비우지 않으면 이전 방에서
+    // 부른 금액이 새 방의 같은 금액을 내 것으로 만들어, 남이 낙찰받은 방에 내 이름이 뜬다
+    myBidAmounts.current.clear()
+    prevPrice.current = null
+    prevEndAt.current = null
+    // 이전 방의 차량과 가격이 새 응답이 올 때까지 그려지는 것도 같은 이유다
+    setRoom(null)
+    setExtended(false)
+
     let cancelled = false
     let unsubscribe: (() => void) | null = null
     let retryTimer: number | null = null
@@ -150,12 +178,11 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
       // 않고 바로 반영한다 — 기다리는 사이 화면은 이미 지난 마감을 향해 카운트다운한다.
       if (result.endAt !== prevEndAt.current) {
         prevEndAt.current = result.endAt
-        setExtended(true)
-        window.setTimeout(() => setExtended(false), EXTENDED_FLAG_MS)
+        markExtended()
         setRoom((prev) => (prev == null ? prev : { ...prev, endAt: result.endAt }))
       }
     },
-    [auctionId],
+    [auctionId, markExtended],
   )
 
   return { room, increment, nextMin, flashKey, extended, error, clockOffset, placeBid: bid }
