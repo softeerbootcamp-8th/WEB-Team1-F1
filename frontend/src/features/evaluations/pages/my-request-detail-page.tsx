@@ -59,20 +59,7 @@ export function MyRequestDetailPage() {
 
   const postAuction = () => {
     if (!isDiagnosed || detail.estimatedPrice === null) return
-    navigate('/sell/auction-post', {
-      state: {
-        vehicleId: detail.vehicleId,
-        estimatedPrice: detail.estimatedPrice,
-        plateNumber: detail.plateNumber,
-        manufacturer: detail.manufacturer,
-        model: detail.model,
-        modelYear: detail.modelYear,
-        fuelType: detail.fuelType,
-        transmission: detail.transmission,
-        mileage: detail.mileage,
-        imageUrls: detail.imageUrls,
-      },
-    })
+    navigate(`/sell/auction-post?evaluationId=${detail.evaluationId}`)
   }
 
   return (
