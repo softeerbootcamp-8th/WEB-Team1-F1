@@ -74,7 +74,6 @@ export function SignupPage() {
   return (
     <AuthShell
       title="회원가입"
-      subtitle="30초 만에 시작하기"
       footer={
         <>
           이미 계정이 있으신가요?{' '}
