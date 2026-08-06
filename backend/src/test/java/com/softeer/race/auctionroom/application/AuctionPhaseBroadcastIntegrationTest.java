@@ -60,8 +60,8 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("시작 시각이 되면 대기 중이던 방에 진행중 현황이 나간다")
-    void startReachesWatchers() {
+    @DisplayName("시나리오 1 : 시작 시각이 되면 대기 중이던 방에 진행중 현황이 나간다")
+    void liveStateReachesWatchers() {
         // given : 시작을 기다리는 방을 한 사람이 보고 있다
         auctionId = waitingRoom();
         auctionRoomStreamService.subscribe(auctionId, watcher);
@@ -76,11 +76,11 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("마감 시각이 지나 낙찰이 확정되면 결과 현황과 낙찰자가 나간다")
-    void closeReachesWatchers() {
+    @DisplayName("시나리오 2 : 마감 시각이 지나 낙찰이 확정되면 결과 현황과 낙찰자가 나간다")
+    void resultAndWinnerReachWatchers() {
         // given : 입찰이 한 건 들어온 진행중 방을 한 사람이 보고 있다
         auctionId = liveRoomWithBid();
-        startAuction();
+        auctionInProgress();
         auctionRoomStreamService.subscribe(auctionId, watcher);
         assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.LIVE);
 
@@ -96,11 +96,11 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("입찰 없이 끝난 방에도 결과 현황이 나가고 낙찰자는 없다")
-    void unsoldCloseReachesWatchers() {
+    @DisplayName("시나리오 3 : 입찰 없이 끝난 방에도 결과 현황이 나가고 낙찰자는 없다")
+    void unsoldResultReachesWatchers() {
         // given : 입찰이 한 건도 없는 진행중 방을 한 사람이 보고 있다
         auctionId = liveRoom();
-        startAuction();
+        auctionInProgress();
         auctionRoomStreamService.subscribe(auctionId, watcher);
 
         // when : 마감 시각이 지나 유찰로 끝난다
@@ -115,8 +115,8 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("이미 시작된 경매에 시작 전이가 다시 들어와도 현황을 또 보내지 않는다")
-    void repeatedStartStaysQuiet() {
+    @DisplayName("시나리오 4 : 이미 시작된 경매에 시작 전이가 다시 들어와도 현황을 또 보내지 않는다")
+    void alreadyStartedAuctionStaysQuiet() {
         // given : 시작 시각이 지나 한 번 진행중으로 넘어간 방을 한 사람이 보고 있다
         auctionId = waitingRoom();
         auctionRoomStreamService.subscribe(auctionId, watcher);
@@ -132,11 +132,11 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("이미 끝난 경매에 마감 확정이 다시 들어와도 현황을 또 보내지 않는다")
-    void repeatedCloseStaysQuiet() {
+    @DisplayName("시나리오 5 : 이미 끝난 경매에 마감 확정이 다시 들어와도 현황을 또 보내지 않는다")
+    void alreadyEndedAuctionStaysQuiet() {
         // given : 마감 시각이 지나 낙찰까지 확정된 방을 한 사람이 보고 있다
         auctionId = liveRoomWithBid();
-        startAuction();
+        auctionInProgress();
         auctionRoomStreamService.subscribe(auctionId, watcher);
         fixClockAt(END_AT);
         auctionCloser.close(auctionId);
@@ -166,7 +166,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     }
 
     // 확정은 진행중인 경매만 받는다, 스케줄러가 밟는 순서를 그대로 밟아 상태를 올려 둔다
-    private void startAuction() {
+    private void auctionInProgress() {
         auctionStarter.start(auctionId);
     }
 
