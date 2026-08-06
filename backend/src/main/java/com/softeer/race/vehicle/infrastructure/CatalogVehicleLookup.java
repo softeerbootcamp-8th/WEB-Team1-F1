@@ -23,12 +23,6 @@ public class CatalogVehicleLookup implements VehicleLookup {
     private final VehicleCatalogRepository vehicleCatalogRepository;
 
     @Override
-    public Optional<VehicleSpec> findByPlateNumber(String plateNumber) {
-        return vehicleCatalogRepository.findByPlateNumber(plateNumber)
-                .map(VehicleCatalog::toSpec);
-    }
-
-    @Override
     public Optional<VehicleSpec> find(String plateNumber, String ownerName) {
         return vehicleCatalogRepository.findByPlateNumberAndOwnerName(plateNumber, ownerName)
                 .map(VehicleCatalog::toSpec);

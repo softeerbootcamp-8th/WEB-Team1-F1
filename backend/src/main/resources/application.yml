@@ -8,12 +8,29 @@ spring:
     password: ${DB_PASSWORD:race}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
+    # 켜 두면 요청이 끝날 때까지 영속성 컨텍스트가 열려 있고 커넥션도 그동안 잡힌다
+    # 경매방 구독은 응답이 끝나지 않는 요청이라 연결 하나가 커넥션 하나를 수십 분 쥔다
+    # 연결 셋에 활성 커넥션이 셋이 되고 그 상태에서 무관한 조회가 500 이 되는 것을 재고 껐다
+    open-in-view: false
     hibernate:
       ddl-auto: create
     show-sql: true
     properties:
       hibernate:
         format_sql: true
+
+aws:
+  s3:
+    bucket: ${S3_BUCKET:race-s3-819363426327-ap-northeast-2-an}
+    region: ${S3_REGION:ap-northeast-2}
+    # 조회용 CloudFront 도메인이다. S3 를 퍼블릭으로 열지 않는다 — 버킷은 OAC 로 잠긴 채
+    # CloudFront 만 읽는다. 업로드는 서명이 S3 호스트에 묶여 있어 그쪽으로 직접 보내고,
+    # 브라우저가 이미지를 조회할 때만 이 주소를 쓴다
+    # 비밀이 아니고 환경마다 다르지도 않아 기본값으로 둔다, 배포 스크립트가 내려줄 것이 없다
+    cdn-base-url: ${CDN_BASE_URL:https://www.f1race.site}
+    # 길게 잡아도 의미가 없다, EC2 인스턴스 역할의 임시 자격 증명으로 서명하면
+    # 그 세션이 만료될 때 주소도 함께 죽는다
+    presign-expiry: 15m
 
 auth:
   session:

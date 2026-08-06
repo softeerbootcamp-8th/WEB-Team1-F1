@@ -3,16 +3,14 @@ package com.softeer.race.bid.presentation;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.ResultActions;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -46,7 +44,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql({"/sql/bid-increment-bands.sql", "/sql/bid-place-fixture.sql"})
 class BidIntegrationTest extends IntegrationTestSupport {
 
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     // 러너 시간대(UTC)와 로컬(KST)에서 결과가 갈리지 않도록 실제 시각을 쓰지 않는다
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 0);
 
@@ -55,7 +52,6 @@ class BidIntegrationTest extends IntegrationTestSupport {
     private static final long CLOSING_AUCTION = 53L;
 
     private static final long SELLER_ID = 51L;
-    private static final long ALICE_ID = 52L;
 
     private static final String SELLER_TOKEN = "token-seller";
     private static final String ALICE_TOKEN = "token-alice";
@@ -66,11 +62,9 @@ class BidIntegrationTest extends IntegrationTestSupport {
     private static final long START_PRICE = 24_800_000L;
     private static final long INCREMENT = 50_000L;
 
-    @TestBean(methodName = "fixedClock")
-    private Clock clock;
-
-    static Clock fixedClock() {
-        return Clock.fixed(NOW.atZone(KST).toInstant(), KST);
+    @BeforeEach
+    void fixClock() {
+        fixClockAt(NOW);
     }
 
     @Test
@@ -85,7 +79,7 @@ class BidIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.serverTime").value("2026-08-03T20:45:00"));
 
         // 방 조회는 bid 테이블을 매번 집계하므로 별도 갱신 없이 나타나야 한다
-        room(LIVE_AUCTION, ALICE_ID)
+        room(LIVE_AUCTION, ALICE_TOKEN)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currentPrice").value(START_PRICE))
                 .andExpect(jsonPath("$.bidCount").value(1))
@@ -182,7 +176,7 @@ class BidIntegrationTest extends IntegrationTestSupport {
                 // 누적 가산이 아니라 재설정이라 입찰 시각 + 30초다
                 .andExpect(jsonPath("$.endAt").value("2026-08-03T20:45:30"));
 
-        room(CLOSING_AUCTION, ALICE_ID)
+        room(CLOSING_AUCTION, ALICE_TOKEN)
                 .andExpect(jsonPath("$.endAt").value("2026-08-03T20:45:30"))
                 .andExpect(jsonPath("$.phase").value("LIVE"));
     }
@@ -255,10 +249,9 @@ class BidIntegrationTest extends IntegrationTestSupport {
                 .content(body(amount)));
     }
 
-    // 경매방 조회는 아직 X-User-Id 임시 헤더를 쓴다
-    private ResultActions room(long auctionId, long userId) throws Exception {
+    private ResultActions room(long auctionId, String rawToken) throws Exception {
         return mockMvc.perform(get("/api/auctions/{auctionId}/room", auctionId)
-                .header("X-User-Id", userId));
+                .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, rawToken)));
     }
 
     private static String body(long amount) {

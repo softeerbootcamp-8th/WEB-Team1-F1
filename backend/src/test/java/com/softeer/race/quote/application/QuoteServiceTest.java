@@ -29,7 +29,7 @@ class QuoteServiceTest {
             LocalDateTime.of(2026, 8, 3, 12, 0).atZone(KST).toInstant(), KST);
 
     private static final VehicleSpec GRANDEUR = new VehicleSpec(
-            "12가3456", "김민수", Manufacturer.HYUNDAI, "그랜저 IG", 2021, 45_000,
+            "12가3456", "김민수", Manufacturer.HYUNDAI, "그랜저 IG", 2021,
             FuelType.GASOLINE, Transmission.AUTOMATIC,
             34_000_000L, "https://cdn.race.dev/vehicles/grandeur-ig.jpg");
 
@@ -40,7 +40,7 @@ class QuoteServiceTest {
         QuoteService service = new QuoteService(lookupReturning(GRANDEUR), FIXED_CLOCK);
 
         // when
-        QuoteInfo info = service.estimate(new QuoteCommand("12가3456", "김민수"));
+        QuoteInfo info = service.estimate(new QuoteCommand("12가3456", "김민수", 45_000));
 
         // then 1 : 기준가 3400만에서 5년·4.5만km 감가
         assertThat(info.estimatedPrice()).isEqualTo(23_200_000L);
@@ -49,7 +49,24 @@ class QuoteServiceTest {
         assertThat(info.manufacturer()).isEqualTo(Manufacturer.HYUNDAI);
         assertThat(info.model()).isEqualTo("그랜저 IG");
         assertThat(info.modelYear()).isEqualTo(2021);
+
+        // then 3 : 주행거리는 조회기가 아니라 요청에서 온 값을 그대로 되돌려준다
+        // 화면이 "이 주행거리로 계산된 시세"임을 보여줘야 한다
         assertThat(info.mileage()).isEqualTo(45_000);
+    }
+
+    // 주행거리를 조회기가 들고 있던 시절의 구현이면 요청값을 무시해 두 시세가 같아진다
+    @DisplayName("같은 차라도 신고한 주행거리가 다르면 시세가 다르다")
+    @Test
+    void reflectsReportedMileage() {
+        QuoteService service = new QuoteService(lookupReturning(GRANDEUR), FIXED_CLOCK);
+
+        QuoteInfo low = service.estimate(new QuoteCommand("12가3456", "김민수", 10_000));
+        QuoteInfo high = service.estimate(new QuoteCommand("12가3456", "김민수", 200_000));
+
+        assertThat(low.estimatedPrice()).isGreaterThan(high.estimatedPrice());
+        assertThat(low.mileage()).isEqualTo(10_000);
+        assertThat(high.mileage()).isEqualTo(200_000);
     }
 
     // 조회기가 준 기준가를 그대로 내려주지 않는다는 결정을 고정한다
@@ -60,7 +77,7 @@ class QuoteServiceTest {
         QuoteService service = new QuoteService(lookupReturning(GRANDEUR), FIXED_CLOCK);
 
         // when
-        QuoteInfo info = service.estimate(new QuoteCommand("12가3456", "김민수"));
+        QuoteInfo info = service.estimate(new QuoteCommand("12가3456", "김민수", 45_000));
 
         // then
         assertThat(info.estimatedPrice()).isNotEqualTo(GRANDEUR.basePrice());
@@ -76,7 +93,7 @@ class QuoteServiceTest {
         QuoteService service = new QuoteService(lookupReturning(GRANDEUR), nextYear);
 
         // when
-        QuoteInfo info = service.estimate(new QuoteCommand("12가3456", "김민수"));
+        QuoteInfo info = service.estimate(new QuoteCommand("12가3456", "김민수", 45_000));
 
         // then : 6년치가 되어 연식 감가가 기준가의 5%만큼 더 빠진다
         assertThat(info.estimatedPrice()).isEqualTo(21_500_000L);
@@ -89,25 +106,20 @@ class QuoteServiceTest {
         QuoteService service = new QuoteService(lookupReturning(null), FIXED_CLOCK);
 
         // when & then
-        assertThatThrownBy(() -> service.estimate(new QuoteCommand("99저9999", "김민수")))
+        assertThatThrownBy(() -> service.estimate(new QuoteCommand("99저9999", "김민수", 45_000)))
                 .isInstanceOf(BusinessException.class)
                 .extracting(exception -> ((BusinessException) exception).errorCode())
                 .isEqualTo(QuoteErrorCode.QUOTE_VEHICLE_NOT_FOUND);
     }
 
     /**
-     * 소유자명을 받지 않는 조회를 쓰면 실패한다.
-     * <p>
      * 시세 조회는 인증이 없어서 번호판만으로 조회하면 대입으로 소유자명을 알아낼 수 있다.
-     * 나중에 누가 findByPlateNumber 로 갈아끼우면 이 테스트가 잡는다.
+     * <p>
+     * 그 경로를 막는 override가 여기 있었다. 지금은 {@link VehicleLookup}에 번호판만 받는 메서드가
+     * 아예 없어 컴파일러가 대신 막아 준다.
      */
     private static VehicleLookup lookupReturning(VehicleSpec spec) {
         return new VehicleLookup() {
-
-            @Override
-            public Optional<VehicleSpec> findByPlateNumber(String plateNumber) {
-                throw new AssertionError("시세 조회는 소유자명 없는 조회를 쓸 수 없다");
-            }
 
             @Override
             public Optional<VehicleSpec> find(String plateNumber, String ownerName) {

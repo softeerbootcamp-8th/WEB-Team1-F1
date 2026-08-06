@@ -70,16 +70,16 @@ export function Header() {
                   aria-label="내 계정"
                 >
                   <Avatar className="size-7">
-                    <AvatarFallback>{user.nickname.slice(0, 1)}</AvatarFallback>
+                    <AvatarFallback>{user.realName.slice(0, 1)}</AvatarFallback>
                   </Avatar>
                   <span className="hidden text-sm font-medium sm:inline">
-                    {user.nickname}
+                    {user.realName}
                   </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuLabel className="flex items-center justify-between gap-2">
-                  <span className="truncate">{user.nickname}</span>
+                  <span className="truncate">{user.realName}</span>
                   <Badge variant="outline" className="shrink-0">
                     {ROLE_LABEL[user.role]}
                   </Badge>

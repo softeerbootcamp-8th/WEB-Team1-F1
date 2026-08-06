@@ -39,8 +39,15 @@ public class Vehicle extends BaseTimeEntity {
     @Column(nullable = false)
     private int modelYear;
 
-    @Column(nullable = false)
-    private int mileage;
+    /**
+     * 진단 전에는 비어 있다. 방문견적 신청은 "이 차를 봐 주세요"라는 예약이라 주행거리를 알 수 없고,
+     * 실측은 평가사가 방문해서 한다. 신청자에게 물어 받아 두면 검증되지 않은 숫자가 차량에 남는다.
+     * <p>
+     * <b>경매가 붙은 차량은 항상 채워져 있다</b>는 불변식이 있다. 판매 신청은 주행거리를 받아 곧바로
+     * 경매를 만들고, 방문견적으로 만들어진 차량은 진단을 거쳐 값이 채워진 뒤에야 출품된다.
+     * 경매 목록과 경매방이 이 값을 원시 int 로 받는 것이 그 불변식에 기대고 있다.
+     */
+    private Integer mileage;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -55,12 +62,12 @@ public class Vehicle extends BaseTimeEntity {
 
     private Long estimatedPrice;
 
-    private Vehicle(User seller, VehicleSpec spec, long estimatedPrice) {
+    private Vehicle(User seller, VehicleSpec spec, Integer mileage, Long estimatedPrice) {
         this.seller = seller;
         this.manufacturer = spec.manufacturer();
         this.model = spec.model();
         this.modelYear = spec.modelYear();
-        this.mileage = spec.mileage();
+        this.mileage = mileage;
         this.fuelType = spec.fuelType();
         this.transmission = spec.transmission();
         this.plateNumber = spec.plateNumber();
@@ -68,20 +75,61 @@ public class Vehicle extends BaseTimeEntity {
     }
 
     /**
-     * 조회된 제원으로 판매자의 차량을 만든다.
+     * 조회된 제원과 신고된 주행거리로 판매자의 차량을 만든다.
      * <p>
-     * 제원을 개별 파라미터로 늘어놓지 않고 {@link VehicleSpec}을 통째로 받는 이유가 둘이다.
-     * 첫째, 클라이언트가 보낸 값으로 차량을 만드는 경로가 타입 수준에서 사라져 "제원은 서버가 재조회해
-     * 채운다"가 컴파일 타임에 강제된다. 둘째, modelYear와 mileage가 둘 다 int라 9-인자 팩토리에서는
-     * 2021과 45000이 서로 뒤바뀌어도 컴파일과 테스트를 모두 통과한다. record를 거치면 그 실패가 없다.
+     * 제원을 개별 파라미터로 늘어놓지 않고 {@link VehicleSpec}을 통째로 받는다. 클라이언트가 보낸
+     * 값으로 제조사·모델·연식·연료·변속기를 채우는 경로가 타입 수준에서 사라져 "그 제원은 서버가
+     * 재조회해 채운다"가 컴파일 타임에 강제된다.
      * <p>
-     * 예상 시세만 spec에서 꺼내지 않고 따로 받는다. {@link VehicleSpec#basePrice()}는 그 모델의
-     * 기준가이고 개별 차량의 연식·주행거리가 빠져 있어, 그대로 넣으면 기준가가 예상 시세로 저장돼
-     * 목록·경매방 응답에 실려 나간다. 감가를 반영하는 것은 정책의 일이라 호출자가 계산해 넘긴다.
+     * <b>주행거리만 예외다.</b> 번호판에 고정된 사실이 아니라 시점에 따라 변하는 값이라 조회기가
+     * 들고 있을 수 없어({@link VehicleSpec} 주석 참고) 사용자 신고값을 받는다. 그래서 이 인자는
+     * 위조 가능하고, 낮게 신고하면 예상 시세와 경매 시작가가 함께 부풀려진다. 이 팩토리를 쓰는
+     * 판매 신청은 평가를 거치지 않고 곧바로 경매가 되어 그 값을 검증할 단계가 없다.
+     * 평가사 실측을 거치는 경로는 {@link #pendingDiagnosis}를 쓴다.
      * <p>
-     * 판매자가 제원을 직접 입력하는 요구가 생기면 그때 오버로드를 추가한다.
+     * spec에 modelYear가 남아 있어 두 int가 뒤바뀔 위험은 없다. mileage는 int이고 estimatedPrice는
+     * long이라 순서를 바꿔 넘기면 컴파일되지 않는다.
+     * <p>
+     * 예상 시세도 spec에서 꺼내지 않고 따로 받는다. {@link VehicleSpec#basePrice()}는 그 모델의
+     * 기준가라 그대로 넣으면 신차급 가격이 예상 시세로 저장돼 목록·경매방 응답에 실려 나간다.
+     * 감가를 반영하는 것은 정책의 일이라 호출자가 계산해 넘긴다.
      */
-    public static Vehicle create(User seller, VehicleSpec spec, long estimatedPrice) {
-        return new Vehicle(seller, spec, estimatedPrice);
+    public static Vehicle create(User seller, VehicleSpec spec, int mileage, long estimatedPrice) {
+        return new Vehicle(seller, spec, mileage, estimatedPrice);
+    }
+
+    /**
+     * 평가사 진단을 기다리는 차량을 만든다. 주행거리와 예상 시세는 비어 있다.
+     * <p>
+     * 방문견적 신청이 쓰는 경로다. 그 시점에 아는 것은 "이 번호판의 차를 봐 달라"는 것뿐이고,
+     * 주행거리는 평가사가 실측하고 시세는 평가사가 산정한다. 신청자에게 물어 받아 두면 검증되지 않은
+     * 값이 차량에 남고, {@link com.softeer.race.quote.domain.QuotePolicy}로 미리 계산해 두면
+     * 아무것도 보증하지 않는 금액이 응답에 실려 나간다.
+     * <p>
+     * {@link #create}와 갈라 두는 이유는 두 경로가 채울 수 있는 값이 다르다는 것을 타입으로
+     * 드러내기 위해서다. 인자에 null 을 넘겨 하나로 합치면 호출자가 무엇을 비워도 되는지 알 수 없다.
+     */
+    public static Vehicle pendingDiagnosis(User seller, VehicleSpec spec) {
+        return new Vehicle(seller, spec, null, null);
+    }
+
+    /**
+     * 평가사가 실측·산정한 값으로 비어 있던 두 칸을 채운다. {@link #pendingDiagnosis}가 만든
+     * 차량이 온전해지는 지점이다.
+     * <p>
+     * <b>"경매가 붙은 차량은 mileage가 채워져 있다"는 불변식이 여기에 달려 있다.</b> 방문견적으로
+     * 만들어진 차량은 이 메서드를 거쳐야만 값을 갖고, 출품은 그 뒤에 일어난다. 사진 등록처럼
+     * 조각난 API로 채우게 두면 주행거리가 빈 차가 경매에 올라가 목록과 경매방이 깨진다.
+     * <p>
+     * 이미 채워진 값을 덮어쓸 수 있다. 평가사가 잘못 적은 주행거리를 고치려면 결과를 다시
+     * 제출해야 하고, 그 재제출이 여기로 온다.
+     * <p>
+     * 시세를 {@code QuotePolicy}로 다시 계산하지 않는다. 실물을 보고 사람이 매긴 값이 그 계산보다
+     * 나은 근거를 갖는 것이 방문견적의 존재 이유다. 만원 단위로 내리지도 않는다 — 그 내림은
+     * 근거 없는 정밀도를 감추려는 장치이고, 사람이 부른 금액에는 그 문제가 없다.
+     */
+    public void completeDiagnosis(int mileage, long estimatedPrice) {
+        this.mileage = mileage;
+        this.estimatedPrice = estimatedPrice;
     }
 }

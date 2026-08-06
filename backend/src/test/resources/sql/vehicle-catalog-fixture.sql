@@ -9,7 +9,7 @@
 -- 현재 시세보다 높게 잡혀 있고, 이 값을 시작가로 직결하면 예상 시세보다 높은 시작가가 나와
 -- 첫 입찰이 붙지 않는다. 시세도 시작가도 QuotePolicy 가 감가를 뺀 결과를 쓴다.
 --
--- id 는 200번대를 쓴다. 경매방·목록 픽스처가 1·2·11·12·21·22 와 100번대를 쓰고 있어 겹치면 깨진다.
+-- id 는 200번대를 쓴다. 목록 픽스처가 100번대를 쓰고 있어 겹치면 깨진다.
 --
 --   201  12가3456  그랜저 IG   2021  4.5만km  기준가 3400만 → 예상 2320만
 --   202  34나5678  쏘렌토      2022  3.2만km  기준가 4000만 → 예상 3008만
@@ -21,13 +21,13 @@
 --
 -- 204 번은 감가 합계가 기준가를 넘겨 음수가 되는 차량이다. 하한선이 없으면 음수 시세가 응답에 실린다.
 
-insert into vehicle_catalog (id, plate_number, owner_name, manufacturer, model, model_year, mileage,
+insert into vehicle_catalog (id, plate_number, owner_name, manufacturer, model, model_year,
                              fuel_type, transmission, base_price, main_image_url)
-values (201, '12가3456', '김민수', 'HYUNDAI', '그랜저 IG', 2021, 45000,
+values (201, '12가3456', '김민수', 'HYUNDAI', '그랜저 IG', 2021,
         'GASOLINE', 'AUTOMATIC', 34000000, 'https://cdn.race.dev/vehicles/grandeur-ig.jpg'),
-       (202, '34나5678', '이서연', 'KIA', '쏘렌토', 2022, 32000,
+       (202, '34나5678', '이서연', 'KIA', '쏘렌토', 2022,
         'DIESEL', 'AUTOMATIC', 40000000, 'https://cdn.race.dev/vehicles/sorento.jpg'),
-       (203, '90마5678', '정하늘', 'BMW', '520i', 2020, 61000,
+       (203, '90마5678', '정하늘', 'BMW', '520i', 2020,
         'GASOLINE', 'AUTOMATIC', 68000000, null),
-       (204, '24바1234', '오래된', 'HYUNDAI', '아반떼 MD', 2010, 320000,
+       (204, '24바1234', '오래된', 'HYUNDAI', '아반떼 MD', 2010,
         'DIESEL', 'MANUAL', 18000000, null);

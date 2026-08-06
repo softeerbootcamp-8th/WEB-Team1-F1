@@ -20,12 +20,12 @@ class VehicleTest {
         // given
         User seller = mock(User.class);
         VehicleSpec spec = new VehicleSpec("12가3456", "김민수",
-                Manufacturer.HYUNDAI, "그랜저 IG", 2021, 45_000,
+                Manufacturer.HYUNDAI, "그랜저 IG", 2021,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
                 34_000_000L, "https://cdn.race.dev/vehicles/grandeur-ig.jpg");
 
         // when
-        Vehicle vehicle = Vehicle.create(seller, spec, 23_200_000L);
+        Vehicle vehicle = Vehicle.create(seller, spec, 45_000, 23_200_000L);
 
         // then
         assertThat(vehicle.getSeller()).isSameAs(seller);
@@ -47,13 +47,53 @@ class VehicleTest {
     @DisplayName("대표 이미지가 없는 제원도 차량으로 만들 수 있다")
     void createWithoutImage() {
         VehicleSpec spec = new VehicleSpec("90마5678", "정하늘",
-                Manufacturer.BMW, "520i", 2020, 61_000,
+                Manufacturer.BMW, "520i", 2020,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
                 68_000_000L, null);
 
-        Vehicle vehicle = Vehicle.create(mock(User.class), spec, 41_370_000L);
+        Vehicle vehicle = Vehicle.create(mock(User.class), spec, 61_000, 41_370_000L);
 
         assertThat(vehicle.getPlateNumber()).isEqualTo("90마5678");
         assertThat(vehicle.getEstimatedPrice()).isEqualTo(41_370_000L);
+    }
+
+    /**
+     * "경매가 붙은 차량은 주행거리가 채워져 있다"는 불변식이 이 메서드 하나에 달려 있다.
+     * 방문견적으로 만들어진 차량이 값을 갖는 유일한 경로다.
+     */
+    @Test
+    @DisplayName("진단을 마치면 비어 있던 주행거리와 예상 시세가 채워진다")
+    void completeDiagnosis() {
+        // given : 방문견적 신청이 만드는 상태다
+        Vehicle vehicle = Vehicle.pendingDiagnosis(mock(User.class), pendingSpec());
+        assertThat(vehicle.getMileage()).isNull();
+        assertThat(vehicle.getEstimatedPrice()).isNull();
+
+        // when
+        vehicle.completeDiagnosis(45_000, 21_500_000L);
+
+        // then
+        assertThat(vehicle.getMileage()).isEqualTo(45_000);
+        assertThat(vehicle.getEstimatedPrice()).isEqualTo(21_500_000L);
+    }
+
+    // 평가사가 잘못 적은 값을 고치려면 결과를 다시 제출해야 하고, 그 재제출이 여기로 온다
+    @Test
+    @DisplayName("이미 진단된 차량도 다시 제출한 값으로 덮인다")
+    void completeDiagnosisOverwrites() {
+        Vehicle vehicle = Vehicle.pendingDiagnosis(mock(User.class), pendingSpec());
+        vehicle.completeDiagnosis(45_000, 21_500_000L);
+
+        vehicle.completeDiagnosis(54_000, 20_800_000L);
+
+        assertThat(vehicle.getMileage()).isEqualTo(54_000);
+        assertThat(vehicle.getEstimatedPrice()).isEqualTo(20_800_000L);
+    }
+
+    private static VehicleSpec pendingSpec() {
+        return new VehicleSpec("12가3456", "김민수",
+                Manufacturer.HYUNDAI, "아반떼 CN7", 2022,
+                FuelType.GASOLINE, Transmission.AUTOMATIC,
+                34_000_000L, null);
     }
 }

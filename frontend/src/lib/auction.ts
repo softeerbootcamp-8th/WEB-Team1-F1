@@ -1,19 +1,15 @@
 import type { AuctionStatus, DealStatus } from '@/types/domain'
+import type { AuctionListGroup, RoomPhase } from '@/features/auctions/types'
+import type { BidIncrementBand } from '@/features/auction-room/types'
 
 /**
- * 호가 단위(최소 인상폭) 자동 계산.
- * 현재가 구간에 따라 단위를 키운다. (백엔드 규칙과 반드시 일치시킬 것)
+ * 가격대별 최저 상승가 계산. 구간표는 DB 시드값(GET /api/bid-increments)이라
+ * 클라이언트에 값을 박지 않고 반드시 받아온 bands로 계산한다.
  */
-export function bidIncrement(currentPrice: number): number {
-  if (currentPrice < 3_000_000) return 50_000
-  if (currentPrice < 10_000_000) return 100_000
-  if (currentPrice < 30_000_000) return 250_000
-  return 500_000
-}
-
-/** 다음 최소 입찰가 = 현재가 + 호가 단위 */
-export function nextMinBid(currentPrice: number): number {
-  return currentPrice + bidIncrement(currentPrice)
+export function incrementForPrice(price: number, bands: BidIncrementBand[]): number {
+  const sorted = [...bands].sort((a, b) => a.minPrice - b.minPrice)
+  const band = [...sorted].reverse().find((b) => b.minPrice <= price)
+  return band?.increment ?? 0
 }
 
 /** 소프트 클로즈 임계 — 남은 시간이 이 값 이하이면 마감 임박 */
@@ -28,6 +24,41 @@ export const AUCTION_STATUS_META: Record<
   SCHEDULED: { label: '예정', variant: 'scheduled' },
   ENDED: { label: '종료', variant: 'ended' },
 }
+
+/**
+ * 백엔드 5단계 RoomPhase를 화면의 3단계 AuctionStatus로 좁힌다.
+ * NOT_OPEN·WAITING은 아직 입찰 전이라 "예정"으로, RESULT·CLOSED는 "종료"로 묶는다.
+ */
+export function roomPhaseToStatus(phase: RoomPhase): AuctionStatus {
+  if (phase === 'LIVE') return 'LIVE'
+  if (phase === 'NOT_OPEN' || phase === 'WAITING') return 'SCHEDULED'
+  return 'ENDED'
+}
+
+/** 화면의 상태 탭을 목록 API의 filter 값으로. 서버는 "예정"을 PENDING이라 부른다. */
+export function statusToListGroup(status: AuctionStatus): AuctionListGroup {
+  return status === 'SCHEDULED' ? 'PENDING' : status
+}
+
+/**
+ * 수정 가능 여부. 서버는 경매방이 열리기 전(now < roomOpenAt)만 허용하고,
+ * 그 구간이 곧 NOT_OPEN 단계다. 방이 열린 뒤 요청은 서버가 거부한다.
+ */
+export function canEditAuction(phase: RoomPhase): boolean {
+  return phase === 'NOT_OPEN'
+}
+
+/**
+ * 삭제 가능 여부. 서버는 낙찰·유찰로 끝난 경매만 지울 수 있게 한다.
+ * 단계는 시각으로 재는 값이라 마감 직후엔 서버의 상태 전환이 아직 안 끝났을 수 있고,
+ * 그때는 서버가 거부하므로 응답 메시지를 그대로 보여준다.
+ */
+export function canDeleteAuction(phase: RoomPhase): boolean {
+  return phase === 'RESULT' || phase === 'CLOSED'
+}
+
+/** 경매 시작 시각 최소 리드타임(서버 MIN_LEAD_TIME_HOURS와 같은 1시간) */
+export const MIN_START_LEAD_TIME_MS = 60 * 60 * 1000
 
 /** 거래 파이프라인 단계 순서 (진행률 계산용) */
 export const DEAL_FLOW: DealStatus[] = [

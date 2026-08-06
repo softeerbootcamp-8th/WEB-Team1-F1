@@ -1,123 +1,138 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { bidIncrement, SOFT_CLOSE_THRESHOLD_MS } from '@/lib/auction'
-import { maskNickname } from '@/lib/format'
-import type { AuctionCard, Bid, UserRole } from '@/types/domain'
-import { mockBids } from '@/features/auctions/mock'
+import { incrementForPrice } from '@/lib/auction'
+import {
+  fetchAuctionRoom,
+  fetchBidIncrementBands,
+  placeBid,
+  subscribeRoomStream,
+} from '@/features/auction-room/api'
+import type {
+  AuctionRoomView,
+  BidIncrementBand,
+  RoomStreamState,
+} from '@/features/auction-room/types'
 
-const RECENT_BID_LIMIT = 20
+const EXTENDED_FLAG_MS = 4000
+const CONNECTABLE_PHASES = new Set(['WAITING', 'LIVE', 'RESULT'])
 
 /**
- * 경매 룸 실시간 상태 (개발용 시뮬레이션).
- * 실제로는 WebSocket 스냅샷/증분으로 대체된다:
- *  - 최고가 원자적 갱신, 소프트 클로즈 연장, 재접속 스냅샷 재동기화
- * 여기서는 타이머로 타 유저 입찰을 흉내내고, 임계 30초 내 입찰 시 종료시각을 리셋한다.
+ * 경매방 실시간 상태.
+ * GET /room은 최초 진입 화면(내 입찰 여부 포함)만 그리고, 그 뒤 갱신은 /room/stream SSE
+ * 구독으로 받는다(백엔드 문서 — 반복 조회가 아니라 구독). 스트림은 보는 사람을 가리지 않아
+ * 내 입찰 표시가 없으므로, 최초 조회에서 알아낸 내 입찰 금액을 기억해뒀다가 직접 표시한다.
  */
-export function useAuctionRoom(auction: AuctionCard) {
-  const [currentPrice, setCurrentPrice] = useState(auction.currentPrice)
-  const [bids, setBids] = useState<Bid[]>(() =>
-    mockBids(auction)
-      .slice(0, RECENT_BID_LIMIT)
-      .map((b) => ({ ...b, bidderNickname: maskNickname(b.bidderNickname) })),
-  )
-  const [connectedCount] = useState(() => 18 + (auction.id % 7))
-  const [totalBidCount, setTotalBidCount] = useState(auction.bidCount)
-  const [bidderCount, setBidderCount] = useState(() =>
-    Math.min(auction.bidCount, 9),
-  )
-  const [endAt, setEndAt] = useState(auction.endAt)
-  const [extended, setExtended] = useState(false)
+export function useAuctionRoom(auctionId: number, userId: number | null) {
+  const [room, setRoom] = useState<AuctionRoomView | null>(null)
+  const [bands, setBands] = useState<BidIncrementBand[]>([])
+  const [error, setError] = useState(false)
   const [flashKey, setFlashKey] = useState(0)
-  const seq = useRef(auction.id * 100000)
-  // 최신 현재가를 인터벌 콜백에서 참조하기 위한 ref (state 클로저 회피)
-  const priceRef = useRef(currentPrice)
+  const [extended, setExtended] = useState(false)
 
-  const increment = bidIncrement(currentPrice)
-  const nextMin = currentPrice + increment
+  const myBidAmounts = useRef<Set<number>>(new Set())
+  const prevPrice = useRef<number | null>(null)
+  const prevEndAt = useRef<string | null>(null)
 
-  /** 소프트 클로즈: 임계 이내 입찰이면 종료시각을 (입찰시각 + 30초)로 연장 */
-  const applySoftClose = useCallback(() => {
-    const remaining = new Date(endAt).getTime() - Date.now()
-    if (remaining <= SOFT_CLOSE_THRESHOLD_MS) {
-      setEndAt(new Date(Date.now() + SOFT_CLOSE_THRESHOLD_MS).toISOString())
-      setExtended(true)
-      window.setTimeout(() => setExtended(false), 4000)
-    }
-  }, [endAt])
-
-  const pushBid = useCallback(
-    (
-      nickname: string,
-      amount: number,
-      isMine: boolean,
-      bidderRole: UserRole,
-    ) => {
-      seq.current += 1
-      priceRef.current = amount
-      setCurrentPrice(amount)
-      setFlashKey((k) => k + 1)
-      setBids((prev) => [
-        {
-          id: seq.current,
-          bidderNickname: maskNickname(nickname),
-          bidderRole,
-          amount,
-          createdAt: new Date().toISOString(),
-          isMine,
-        },
-        ...prev,
-      ].slice(0, RECENT_BID_LIMIT))
-      setTotalBidCount((count) => count + 1)
-      if (isMine) {
-        setBidderCount((count) => Math.max(count, 1))
-      }
-      applySoftClose()
-    },
-    [applySoftClose],
-  )
-
-  /** 내 입찰 */
-  const placeBid = useCallback(
-    (amount: number, myNickname: string, myRole: UserRole) => {
-      if (amount < nextMin) return { ok: false as const, reason: 'TOO_LOW' as const }
-      pushBid(myNickname, amount, true, myRole)
-      return { ok: true as const }
-    },
-    [nextMin, pushBid],
-  )
-
-  /** 타 유저 입찰 시뮬레이션 (진행중일 때만) */
   useEffect(() => {
-    if (auction.status !== 'LIVE') return
-    const others = ['이서연', '박도현', '최지우', '정하윤', '강시우']
-    const id = window.setInterval(
-      () => {
-        const price = priceRef.current
-        const nick = others[seq.current % others.length]
-        pushBid(
-          nick,
-          price + bidIncrement(price),
-          false,
-          seq.current % 3 === 0 ? 'USER' : 'DEALER',
-        )
-      },
-      9000 + Math.floor((seq.current % 5) * 700),
-    )
-    return () => window.clearInterval(id)
-  }, [auction.status, pushBid])
+    fetchBidIncrementBands()
+      .then(setBands)
+      .catch(() => setBands([]))
+  }, [])
 
-  return {
-    currentPrice,
-    startPrice: auction.startPrice,
-    bids,
-    connectedCount,
-    bidderCount,
-    totalBidCount,
-    endAt,
-    extended,
-    increment,
-    nextMin,
-    flashKey,
-    placeBid,
-  }
+  const mergeStreamState = useCallback((state: RoomStreamState) => {
+    if (prevPrice.current !== null && state.currentPrice > prevPrice.current) {
+      setFlashKey((k) => k + 1)
+    }
+    if (prevEndAt.current !== null && state.endAt !== prevEndAt.current) {
+      setExtended(true)
+      window.setTimeout(() => setExtended(false), EXTENDED_FLAG_MS)
+    }
+    prevPrice.current = state.currentPrice
+    prevEndAt.current = state.endAt
+
+    setRoom({
+      auctionId: state.auctionId,
+      phase: state.phase,
+      vehicle: state.vehicle,
+      thumbnailUrl: state.thumbnailUrl,
+      startPrice: state.startPrice,
+      currentPrice: state.currentPrice,
+      openAt: state.openAt,
+      startAt: state.startAt,
+      endAt: state.endAt,
+      serverTime: state.serverTime,
+      connectedCount: state.connectedCount,
+      bidderCount: state.bidderCount,
+      bidCount: state.bidCount,
+      winner:
+        state.winnerName == null
+          ? null
+          : { name: state.winnerName, mine: myBidAmounts.current.has(state.currentPrice) },
+      recentBids: state.recentBids.map((b) => ({
+        ...b,
+        mine: myBidAmounts.current.has(b.amount),
+      })),
+    })
+  }, [])
+
+  useEffect(() => {
+    if (userId == null) return
+    let cancelled = false
+    let unsubscribe: (() => void) | null = null
+    let retryTimer: number | null = null
+
+    const connect = () => {
+      fetchAuctionRoom(auctionId, userId)
+        .then((view) => {
+          if (cancelled) return
+
+          view.recentBids.forEach((b) => {
+            if (b.mine) myBidAmounts.current.add(b.amount)
+          })
+          if (view.winner?.mine) myBidAmounts.current.add(view.currentPrice)
+
+          prevPrice.current = view.currentPrice
+          prevEndAt.current = view.endAt
+          setRoom(view)
+          setError(false)
+
+          if (CONNECTABLE_PHASES.has(view.phase)) {
+            unsubscribe = subscribeRoomStream(auctionId, mergeStreamState, () => setError(true))
+            return
+          }
+
+          // NOT_OPEN은 구독이 거절되므로(409), 방이 열리는 시각에 맞춰 다시 진입을 시도한다.
+          if (view.phase === 'NOT_OPEN') {
+            const delay = Math.max(0, new Date(view.openAt).getTime() - Date.now())
+            retryTimer = window.setTimeout(connect, delay + 500)
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setError(true)
+        })
+    }
+
+    connect()
+
+    return () => {
+      cancelled = true
+      unsubscribe?.()
+      if (retryTimer !== null) window.clearTimeout(retryTimer)
+    }
+  }, [auctionId, userId, mergeStreamState])
+
+  const increment = room ? incrementForPrice(room.currentPrice, bands) : 0
+  // 첫 입찰은 시작가 그대로가 최소금액이다 — bidCount가 0이면 currentPrice가 곧 startPrice.
+  const nextMin = room ? (room.bidCount === 0 ? room.currentPrice : room.currentPrice + increment) : 0
+
+  const bid = useCallback(
+    async (amount: number) => {
+      await placeBid(auctionId, amount)
+      // 스트림이 곧 밀어주는 값에 mine을 붙일 수 있도록 미리 기억해둔다.
+      myBidAmounts.current.add(amount)
+    },
+    [auctionId],
+  )
+
+  return { room, increment, nextMin, flashKey, extended, error, placeBid: bid }
 }

@@ -1,6 +1,7 @@
 package com.softeer.race.auction.application;
 
 import com.softeer.race.auction.application.dto.AuctionCreateInfo;
+import com.softeer.race.auction.application.dto.AuctionUpdateInfo;
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.auction.domain.AuctionStatus;
@@ -31,7 +32,7 @@ public class AuctionService {
     private final VehicleImageRepository vehicleImageRepository;
     private final Clock clock;
 
-    // 재등록을 막아야 하는 상태. 유찰(FAILED)·취소(CANCELLED) 도입 시 재검토 필요
+    // 재등록을 막아야 하는 상태.
     private static final Set<AuctionStatus> ACTIVE_STATUSES =
             Set.of(AuctionStatus.SCHEDULED, AuctionStatus.IN_PROGRESS, AuctionStatus.ENDED);
 
@@ -39,9 +40,13 @@ public class AuctionService {
      * 경매글과 경매를 한 트랜잭션으로 함께 생성한다
      */
     @Transactional
-    public AuctionCreateInfo create(Long vehicleId, long startPrice, LocalDateTime startAt) {
+    public AuctionCreateInfo create(long sellerId, Long vehicleId, long startPrice, LocalDateTime startAt) {
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new BusinessException(AuctionErrorCode.VEHICLE_NOT_FOUND));
+
+        if (!vehicle.getSeller().getId().equals(sellerId)) {
+            throw new BusinessException(AuctionErrorCode.NOT_VEHICLE_OWNER);
+        }
 
         if (auctionRepository.existsActiveByVehicleId(vehicleId, ACTIVE_STATUSES)) {
             throw new BusinessException(AuctionErrorCode.AUCTION_ALREADY_EXISTS);
@@ -59,5 +64,38 @@ public class AuctionService {
                 Auction.schedule(post, startPrice, startAt));
 
         return AuctionCreateInfo.from(auction);
+    }
+
+    @Transactional
+    public AuctionUpdateInfo update(long sellerId, long auctionId, long startPrice, LocalDateTime startAt) {
+
+        Auction auction = auctionRepository.findWithPostById(auctionId)
+                .orElseThrow(() -> new BusinessException(AuctionErrorCode.AUCTION_NOT_FOUND));
+
+
+        if (!auctionRepository.isSeller(auctionId, sellerId)) {
+            throw new BusinessException(AuctionErrorCode.NOT_AUCTION_SELLER);
+        }
+
+        auction.updateBeforeRoomOpens(startPrice, startAt, LocalDateTime.now(clock));
+
+        return AuctionUpdateInfo.from(auction);
+    }
+
+    @Transactional
+    public void delete(long sellerId, long auctionId) {
+
+        Auction auction = auctionRepository.findWithPostById(auctionId)
+                .orElseThrow(() -> new BusinessException(AuctionErrorCode.AUCTION_NOT_FOUND));
+
+        if (!auctionRepository.isSeller(auctionId, sellerId)) {
+            throw new BusinessException(AuctionErrorCode.NOT_AUCTION_SELLER);
+        }
+
+        if (auction.getStatus() != AuctionStatus.ENDED && auction.getStatus() != AuctionStatus.FAILED) {
+            throw new BusinessException(AuctionErrorCode.AUCTION_NOT_ENDED);
+        }
+
+        auction.getPost().delete(LocalDateTime.now(clock));
     }
 }

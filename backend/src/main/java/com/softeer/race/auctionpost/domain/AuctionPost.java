@@ -18,8 +18,8 @@ public class AuctionPost extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "vehicle_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_id", nullable = false)
     private Vehicle vehicle;
 
     private String thumbnailUrl;
@@ -43,5 +43,13 @@ public class AuctionPost extends BaseTimeEntity {
         post.publishedAt = now;
 
         return post;
+    }
+
+    public void delete(LocalDateTime now) {
+        if (deletedAt != null) {
+            return;
+        }
+
+        this.deletedAt = now;
     }
 }

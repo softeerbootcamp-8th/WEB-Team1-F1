@@ -20,4 +20,26 @@ class AuctionPostTest {
         assertThat(post.getPublishedAt()).isEqualTo(NOW);
         assertThat(post.getThumbnailUrl()).isEqualTo("https://cdn/1.jpg");
     }
+
+    @Test
+    @DisplayName("삭제하면 삭제 시각이 채워진다.")
+    void delete_삭제시각_채움() {
+        AuctionPost post = AuctionPost.create(null, "https://cdn/1.jpg", NOW);
+
+        post.delete(NOW.plusDays(1));
+
+        assertThat(post.getDeletedAt()).isEqualTo(NOW.plusDays(1));
+    }
+
+    // 재시도로 delete가 두 번 불려도 최초 삭제 시각을 그대로 유지해야 한다
+    @Test
+    @DisplayName("이미 삭제된 경매글을 다시 삭제해도 최초 삭제 시각이 유지된다.")
+    void delete_재시도해도_최초_삭제시각_유지() {
+        AuctionPost post = AuctionPost.create(null, "https://cdn/1.jpg", NOW);
+        post.delete(NOW.plusDays(1));
+
+        post.delete(NOW.plusDays(2));
+
+        assertThat(post.getDeletedAt()).isEqualTo(NOW.plusDays(1));
+    }
 }

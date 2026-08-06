@@ -11,14 +11,14 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { AuctionCard } from '@/features/auctions/components/auction-card'
-import { MOCK_AUCTIONS } from '@/features/auctions/mock'
+import { useAuctionList } from '@/features/auctions/use-auction-list'
 
 const FEATURES = [
   {
     icon: Search,
     eyebrow: 'PRICE',
     title: '로그인 없이 시세 조회',
-    description: '이름과 번호판을 입력하면 예상 시세를 빠르게 확인할 수 있습니다.',
+    description: '이름과 번호판으로 차량을 확인한 뒤, 현재 주행거리를 반영해 예상 시세를 확인합니다.',
     to: '/quote',
     cta: '시세 확인하기',
   },
@@ -33,7 +33,7 @@ const FEATURES = [
   {
     icon: CarFront,
     eyebrow: 'SELL',
-    title: '이름·번호판으로 판매 접수',
+    title: '차량 정보로 판매 접수',
     description: '복잡한 차량 정보 없이 소유자와 차량을 확인하고 평가사를 연결합니다.',
     to: '/sell',
     cta: '내 차 팔기',
@@ -41,9 +41,9 @@ const FEATURES = [
 ]
 
 export function HomePage() {
-  const liveAuctions = MOCK_AUCTIONS.filter(
-    (auction) => auction.status === 'LIVE',
-  ).slice(0, 3)
+  // 진행중만 서버에서 걸러 받는다. 첫 페이지에 진행중이 없으면 빈 손이던 문제가 사라진다.
+  const { cards } = useAuctionList({ scope: 'ALL', filter: 'LIVE' })
+  const liveAuctions = cards.slice(0, 3)
 
   return (
     <main aria-label="RACE 홈">
@@ -114,7 +114,7 @@ export function HomePage() {
           <Value
             icon={CarFront}
             title="간결한 판매 접수"
-            description="이름과 번호판 확인 후 필요한 정보는 방문 평가에서 완성합니다."
+            description="이름·번호판 확인 후 필요한 정보는 방문 평가에서 완성합니다."
           />
         </div>
       </section>
@@ -180,7 +180,7 @@ export function HomePage() {
         </div>
         <ul className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {liveAuctions.map((auction) => (
-            <li key={auction.id}>
+            <li key={auction.auctionId}>
               <AuctionCard auction={auction} />
             </li>
           ))}

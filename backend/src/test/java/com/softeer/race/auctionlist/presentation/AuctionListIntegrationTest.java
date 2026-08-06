@@ -1,16 +1,14 @@
 package com.softeer.race.auctionlist.presentation;
 
 import com.softeer.race.support.IntegrationTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -36,16 +34,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql("/sql/auction-list-fixture.sql")
 class AuctionListIntegrationTest extends IntegrationTestSupport {
 
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
-
     // 픽스처가 이 시각을 기준으로 진행중 101·102·103·110 / 예정 104·105 / 종료 106·107 로 나뉜다
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 12, 0, 0);
 
-    @TestBean(methodName = "fixedClock")
-    private Clock clock;
-
-    static Clock fixedClock() {
-        return Clock.fixed(NOW.atZone(KST).toInstant(), KST);
+    @BeforeEach
+    void fixClock() {
+        fixClockAt(NOW);
     }
 
     // ================= 첫 페이지 =================
@@ -195,5 +189,59 @@ class AuctionListIntegrationTest extends IntegrationTestSupport {
 
         // then : 어느 그룹부터 읽을지 정할 수 없다
         response.andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("다른 탭의 커서를 필터와 함께 보내면 400 이다")
+    void rejectsCursorFromDifferentGroup() throws Exception {
+        // given : 예정(2) 커서를 진행중 필터와 함께 보낸다. 탭을 옮기며 커서를 안 버린 경우다
+
+        // when
+        ResultActions response = mockMvc.perform(get("/api/auctions")
+                .param("filter", "LIVE")
+                .param("snapshotAt", "2026-08-03T12:00:00")
+                .param("sortPriority", "2")
+                .param("sortAt", "2026-08-03T12:30:00")
+                .param("auctionId", "104"));
+
+        // then : 진행중만 읽으므로 예정 커서는 버려진다. 조용히 첫 페이지를 주면 화면이 되감긴다
+        response.andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("같은 그룹 커서는 필터와 함께 통과하고 그 그룹 안에서만 이어 읽는다")
+    void resumesWithinFilteredGroup() throws Exception {
+        // given : 진행중 103번(마감 12:15)까지 읽은 커서를 진행중 필터와 함께 보낸다
+
+        // when
+        ResultActions response = mockMvc.perform(get("/api/auctions")
+                .param("filter", "LIVE")
+                .param("snapshotAt", "2026-08-03T12:00:00")
+                .param("sortPriority", "1")
+                .param("sortAt", "2026-08-03T12:15:00")
+                .param("auctionId", "103"));
+
+        // then : 필터가 없으면 110 뒤에 예정·종료가 붙는다(resumesFromCursor).
+        // 필터를 거부하기만 하는 검증으로는 이 경로가 통째로 막히므로 성공 사례도 함께 잡아둔다
+        response.andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].auctionId").value(110))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    @DisplayName("필터 없이 보낸 커서는 어느 그룹이든 통과한다")
+    void acceptsAnyGroupCursorWithoutFilter() throws Exception {
+        // given : 전체 탭은 그룹을 넘나들며 읽으므로 예정 커서가 정상이다
+
+        // when
+        ResultActions response = mockMvc.perform(get("/api/auctions")
+                .param("snapshotAt", "2026-08-03T12:00:00")
+                .param("sortPriority", "2")
+                .param("sortAt", "2026-08-03T12:30:00")
+                .param("auctionId", "104"));
+
+        // then
+        response.andExpect(status().isOk());
     }
 }

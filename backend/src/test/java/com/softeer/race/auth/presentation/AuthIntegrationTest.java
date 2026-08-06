@@ -11,14 +11,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
 import jakarta.servlet.http.Cookie;
-import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
@@ -48,7 +46,6 @@ import org.springframework.test.web.servlet.ResultActions;
 class AuthIntegrationTest extends IntegrationTestSupport {
 
     // 상수
-    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 30, 12, 0, 0);
     private static final Duration TTL = Duration.ofMinutes(30);
 
@@ -57,11 +54,9 @@ class AuthIntegrationTest extends IntegrationTestSupport {
     private static final String PASSWORD = "password123";
 
     // 고정 시각은 전진할 수 없으므로 슬라이딩은 시간을 움직이는 대신 expires_at 을 조작해 같은 상태를 만든다
-    @TestBean(methodName = "fixedClock", enforceOverride = true)
-    private Clock clock;
-
-    static Clock fixedClock() {
-        return Clock.fixed(NOW.atZone(KST).toInstant(), KST);
+    @BeforeEach
+    void fixClock() {
+        fixClockAt(NOW);
     }
 
     @Test

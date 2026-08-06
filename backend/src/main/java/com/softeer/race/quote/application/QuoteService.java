@@ -30,10 +30,11 @@ public class QuoteService {
         VehicleSpec spec = vehicleLookup.find(command.plateNumber(), command.ownerName())
                 .orElseThrow(() -> new BusinessException(QuoteErrorCode.QUOTE_VEHICLE_NOT_FOUND));
 
-        // 나이는 연도 차이로만 센다. 등록월까지 반영하면 정밀해 보이지만 카탈로그에 월 정보가 없고,
-        // 감가율 자체가 임시값이라 정밀도를 올려도 정확도가 오르지 않는다
-        int age = LocalDate.now(clock).getYear() - spec.modelYear();
+        int age = QuotePolicy.ageOf(spec.modelYear(), LocalDate.now(clock).getYear());
 
-        return QuoteInfo.of(spec, QuotePolicy.estimate(spec.basePrice(), age, spec.mileage()));
+        // 주행거리는 조회된 제원이 아니라 요청에 실려 온 신고값이다
+        long estimatedPrice = QuotePolicy.estimate(spec.basePrice(), age, command.mileage());
+
+        return QuoteInfo.of(spec, command.mileage(), estimatedPrice);
     }
 }

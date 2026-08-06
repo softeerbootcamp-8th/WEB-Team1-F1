@@ -4,14 +4,19 @@
  * 지금은 화면 개발용 계약(contract) 역할.
  */
 
-/** 사용자 역할 — 일반인(판매자) / 딜러(구매자) */
-export type UserRole = 'USER' | 'DEALER'
+/** 사용자 역할 — 백엔드 Role enum과 동일. 평가사(EVALUATOR)는 셀프 회원가입 대상이 아니다. */
+export type UserRole = 'GENERAL' | 'DEALER' | 'EVALUATOR'
 
+/** 회원가입으로 만들 수 있는 역할만 */
+export type SelfSignUpRole = 'GENERAL' | 'DEALER'
+
+/** 백엔드 AuthUserResponse와 동일한 필드 */
 export interface User {
   id: number
-  nickname: string
-  role: UserRole
+  username: string
   email: string
+  realName: string
+  role: UserRole
 }
 
 /** 경매 진행 상태 (스케줄러 자동 전이: SCHEDULED → LIVE → ENDED) */
@@ -47,16 +52,6 @@ export interface AuctionCard {
   endAt: string // ISO — 종료 예정 시각
 }
 
-/** 호가창 한 줄 (커서 페이지네이션) */
-export interface Bid {
-  id: number
-  bidderNickname: string // 마스킹된 닉네임 (ex. 김X진)
-  bidderRole: UserRole
-  amount: number
-  createdAt: string // ISO
-  isMine?: boolean
-}
-
 /** 거래(Deal) 상태 파이프라인 */
 export type DealStatus =
   | 'PENDING_SELLER'
@@ -81,19 +76,28 @@ export interface Deal {
   updatedAt: string
 }
 
-/** 알림 */
+/**
+ * 알림 종류 — 백엔드 NotificationType과 1:1로 맞춘다.
+ * 종류가 늘면 벨의 아이콘 대응표도 함께 고쳐야 한다. 대응표가 전수라 빠뜨리면 빌드가 깨진다.
+ */
 export type NotificationType =
+  | 'WELCOME'
   | 'EVAL_APPROVED'
   | 'EVAL_REJECTED'
-  | 'WON'
-  | 'DEAL_UPDATED'
+  | 'AUCTION_WON'
+  | 'AUCTION_WON_RESULT'
+  | 'AUCTION_ENDED'
+  | 'AUCTION_SOLD'
+  | 'AUCTION_FAILED'
+  | 'DEAL_STATUS_CHANGED'
 
 export interface AppNotification {
   id: number
   type: NotificationType
-  title: string
-  body: string
-  createdAt: string
+  /** 발행 당시 문구가 그대로 보관된 것. 화면에서 조립하지 않는다 */
+  message: string
   read: boolean
-  link?: string
+  /** 눌렀을 때 갈 곳. 서버가 종류와 참조로 만들어 내려준다 */
+  link: string
+  createdAt: string
 }
