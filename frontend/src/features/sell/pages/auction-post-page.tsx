@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Gavel, LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -8,10 +8,11 @@ import { EmptyState } from '@/components/common/empty-state'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createAuction } from '@/features/sell/api'
-import { SchedulePicker } from '@/features/sell/components/schedule-picker'
+import { fetchEvaluationDetail } from '@/features/evaluations/api'
 import type { FuelType, Manufacturer, Transmission } from '@/features/quote/types'
 import { MANUFACTURER_LABEL } from '@/features/quote/types'
+import { createAuction } from '@/features/sell/api'
+import { SchedulePicker } from '@/features/sell/components/schedule-picker'
 import { getErrorMessage } from '@/lib/axios'
 import { formatKRW } from '@/lib/format'
 
@@ -66,20 +67,64 @@ function formatLocalDateTime(date: Date) {
 
 export function AuctionPostPage() {
   const { state } = useLocation()
-  const navigate = useNavigate()
-  const vehicle = isEvaluatedVehicle(state) ? state : null
+  const [searchParams] = useSearchParams()
+  const stateVehicle = isEvaluatedVehicle(state) ? state : null
+  const evaluationId = Number(searchParams.get('evaluationId'))
+  const hasEvaluationId = Number.isInteger(evaluationId) && evaluationId > 0
 
+  const { data, isLoading } = useQuery({
+    queryKey: ['evaluations', 'detail', evaluationId],
+    queryFn: () => fetchEvaluationDetail(evaluationId),
+    enabled: !stateVehicle && hasEvaluationId,
+  })
+
+  if (!stateVehicle && hasEvaluationId && isLoading) {
+    return (
+      <main className="flex min-h-[60vh] items-center justify-center">
+        <LoaderCircle
+          className="size-7 animate-spin"
+          aria-label="차량 정보 불러오는 중"
+        />
+      </main>
+    )
+  }
+
+  const notificationVehicle =
+    data?.status === 'APPROVED' && data.estimatedPrice !== null
+      ? { ...data, estimatedPrice: data.estimatedPrice }
+      : null
+  const vehicle = stateVehicle ?? notificationVehicle
+
+  if (!vehicle) {
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-24">
+        <EmptyState
+          title="진단이 완료된 차량 정보가 필요합니다"
+          description="마이페이지에서 방문견적 결과를 확인한 뒤 경매 등록을 진행해 주세요."
+          action={
+            <Button asChild>
+              <Link to="/mypage">마이페이지로</Link>
+            </Button>
+          }
+        />
+      </main>
+    )
+  }
+
+  return <AuctionPostForm vehicle={vehicle} />
+}
+
+function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicleState }) {
+  const navigate = useNavigate()
   const [startAt, setStartAt] = useState<Date | null>(null)
-  const [startPrice, setStartPrice] = useState(() =>
-    vehicle ? String(vehicle.estimatedPrice) : '',
-  )
+  const [startPrice, setStartPrice] = useState(String(vehicle.estimatedPrice))
   const startPriceNumber = Number(startPrice)
   const isStartPriceValid =
     Number.isSafeInteger(startPriceNumber) && startPriceNumber > 0
 
   const mutation = useMutation({
     mutationFn: () => {
-      if (!vehicle || !startAt || !isStartPriceValid) {
+      if (!startAt || !isStartPriceValid) {
         throw new Error('차량 정보와 경매 시작가·시각을 확인해 주세요.')
       }
       return createAuction({
@@ -100,22 +145,6 @@ export function AuctionPostPage() {
       )
     },
   })
-
-  if (!vehicle) {
-    return (
-      <main className="mx-auto max-w-3xl px-6 py-24">
-        <EmptyState
-          title="진단이 완료된 차량 정보가 필요합니다"
-          description="마이페이지에서 방문견적 결과를 확인한 뒤 경매 등록을 진행해 주세요."
-          action={
-            <Button asChild>
-              <Link to="/mypage">마이페이지로</Link>
-            </Button>
-          }
-        />
-      </main>
-    )
-  }
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-14" aria-label="경매글 등록">
