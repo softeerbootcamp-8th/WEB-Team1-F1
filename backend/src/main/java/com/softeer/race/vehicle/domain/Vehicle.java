@@ -53,6 +53,9 @@ public class Vehicle extends BaseTimeEntity {
 
     private Long estimatedPrice;
 
+    // 평가사가 결과를 낼 때 고르는 값이라 진단 전에는 비어 있다
+    private String mainPhotoUrl;
+
     private Vehicle(User seller, VehicleSpec spec, Integer mileage, Long estimatedPrice) {
         this.seller = seller;
         this.manufacturer = spec.manufacturer();
@@ -105,12 +108,12 @@ public class Vehicle extends BaseTimeEntity {
     }
 
     /**
-     * 평가사가 실측·산정한 값으로 비어 있던 두 칸을 채운다. {@link #pendingDiagnosis}가 만든
+     * 평가사가 실측·산정하고 고른 값으로 비어 있던 세 칸을 채운다. {@link #pendingDiagnosis}가 만든
      * 차량이 온전해지는 지점이다.
      * <p>
      * <b>"경매가 붙은 차량은 mileage가 채워져 있다"는 불변식이 여기에 달려 있다.</b> 방문견적으로
-     * 만들어진 차량은 이 메서드를 거쳐야만 값을 갖고, 출품은 그 뒤에 일어난다. 사진 등록처럼
-     * 조각난 API로 채우게 두면 주행거리가 빈 차가 경매에 올라가 목록과 경매방이 깨진다.
+     * 만들어진 차량은 이 메서드를 거쳐야만 값을 갖고, 출품은 그 뒤에 일어난다. 조각난 API로 나눠
+     * 채우게 두면 주행거리나 대표 사진이 빈 차가 경매에 올라가 목록과 경매방이 깨진다.
      * <p>
      * 이미 채워진 값을 덮어쓸 수 있다. 평가사가 잘못 적은 주행거리를 고치려면 결과를 다시
      * 제출해야 하고, 그 재제출이 여기로 온다.
@@ -119,9 +122,10 @@ public class Vehicle extends BaseTimeEntity {
      * 나은 근거를 갖는 것이 방문견적의 존재 이유다. 만원 단위로 내리지도 않는다 — 그 내림은
      * 근거 없는 정밀도를 감추려는 장치이고, 사람이 부른 금액에는 그 문제가 없다.
      */
-    public void completeDiagnosis(int mileage, long estimatedPrice) {
+    public void completeDiagnosis(int mileage, long estimatedPrice, String mainPhotoUrl) {
         this.mileage = mileage;
         this.estimatedPrice = estimatedPrice;
+        this.mainPhotoUrl = mainPhotoUrl;
     }
 
     /**

@@ -1,11 +1,11 @@
+import { BrandLogo } from '@/components/common/brand-logo'
+
 export function Footer() {
   return (
     <footer className="border-t">
       <div className="text-muted-foreground mx-auto flex max-w-7xl flex-col gap-4 px-6 py-10 text-sm md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
-          <p className="text-foreground font-semibold tracking-[0.06em]">
-            RACE
-          </p>
+          <BrandLogo className="h-8" />
           <p className="text-xs">
             Real Time Auction Car Exchange · 중고차 실시간 경매 플랫폼
           </p>

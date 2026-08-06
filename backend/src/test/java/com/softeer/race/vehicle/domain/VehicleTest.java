@@ -62,19 +62,21 @@ class VehicleTest {
      * 방문견적으로 만들어진 차량이 값을 갖는 유일한 경로다.
      */
     @Test
-    @DisplayName("진단을 마치면 비어 있던 주행거리와 예상 시세가 채워진다")
+    @DisplayName("진단을 마치면 비어 있던 주행거리와 예상 시세와 대표 사진이 채워진다")
     void completeDiagnosis() {
         // given : 방문견적 신청이 만드는 상태다
         Vehicle vehicle = Vehicle.pendingDiagnosis(mock(User.class), pendingSpec());
         assertThat(vehicle.getMileage()).isNull();
         assertThat(vehicle.getEstimatedPrice()).isNull();
+        assertThat(vehicle.getMainPhotoUrl()).isNull();
 
         // when
-        vehicle.completeDiagnosis(45_000, 21_500_000L);
+        vehicle.completeDiagnosis(45_000, 21_500_000L, "https://www.f1race.site/images/a.jpg");
 
         // then
         assertThat(vehicle.getMileage()).isEqualTo(45_000);
         assertThat(vehicle.getEstimatedPrice()).isEqualTo(21_500_000L);
+        assertThat(vehicle.getMainPhotoUrl()).isEqualTo("https://www.f1race.site/images/a.jpg");
     }
 
     // 평가사가 잘못 적은 값을 고치려면 결과를 다시 제출해야 하고, 그 재제출이 여기로 온다
@@ -82,12 +84,13 @@ class VehicleTest {
     @DisplayName("이미 진단된 차량도 다시 제출한 값으로 덮인다")
     void completeDiagnosisOverwrites() {
         Vehicle vehicle = Vehicle.pendingDiagnosis(mock(User.class), pendingSpec());
-        vehicle.completeDiagnosis(45_000, 21_500_000L);
+        vehicle.completeDiagnosis(45_000, 21_500_000L, "https://www.f1race.site/images/a.jpg");
 
-        vehicle.completeDiagnosis(54_000, 20_800_000L);
+        vehicle.completeDiagnosis(54_000, 20_800_000L, "https://www.f1race.site/images/b.jpg");
 
         assertThat(vehicle.getMileage()).isEqualTo(54_000);
         assertThat(vehicle.getEstimatedPrice()).isEqualTo(20_800_000L);
+        assertThat(vehicle.getMainPhotoUrl()).isEqualTo("https://www.f1race.site/images/b.jpg");
     }
 
     private static VehicleSpec pendingSpec() {

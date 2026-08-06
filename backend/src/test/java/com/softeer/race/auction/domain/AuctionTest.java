@@ -409,7 +409,7 @@ class AuctionTest {
         LocalDateTime publishedAt = LocalDateTime.of(2026, 7, 20, 12, 0);
         LocalDateTime originalStartTime = LocalDateTime.of(2026, 8, 1, 10, 0);
         Auction auction = Auction.schedule(
-                AuctionPost.create(null, null, publishedAt), 10_000_000L, originalStartTime);
+                AuctionPost.create(null, publishedAt), 10_000_000L, originalStartTime);
 
         // roomOpenAt(8/1 09:30)보다 한참 전이라 편집 가능한 시각이지만,
         // publishedAt(7/20 12:00) + 1시간은 이미 훌쩍 지난 뒤다
@@ -435,6 +435,6 @@ class AuctionTest {
     }
 
     private AuctionPost post() {
-        return AuctionPost.create(null, null, PUBLISHED_AT);
+        return AuctionPost.create(null, PUBLISHED_AT);
     }
 }

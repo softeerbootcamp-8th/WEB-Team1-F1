@@ -20,10 +20,8 @@ import java.util.stream.IntStream;
 /**
  * 차량 사진 등록. 이미 저장소에 올라간 주소들을 차량에 붙인다.
  * <p>
- * 경매글 썸네일({@code AuctionPost.thumbnailUrl})은 건드리지 않는다. 경매는 평가가 끝나고 판매자가
- * 출품에 동의한 뒤에 만들어지므로, 그 시점에 {@code AuctionService.create}가
- * {@code findFirstByVehicleOrderBySortOrderAsc}로 여기서 저장한 첫 장을 집어 간다. 즉 순서가
- * 사진 등록 → 경매 생성이라 따로 갱신할 것이 없다.
+ * 대표 사진은 여기서 정하지 않는다.
+ * 평가사가 고른 값을 Vehicle.completeDiagnosis 으로 받으므로 이 서비스는 갤러리만 저장한다.
  * <p>
  * 이 서비스에는 컨트롤러가 없다. 사진만 따로 바꾸는 입구를 두면 {@code vehicleId}만으로는
  * "배정된 평가사인가"를 물을 수 없어 인가를 걸 방법이 없다. 유일한 호출자는 평가 결과 제출
@@ -52,9 +50,7 @@ public class VehicleImageService {
         // 목록 중간에서 400이 날 때 앞의 것들만 반영된 상태가 남는다
         command.imageUrls().forEach(this::validateManaged);
 
-        // 기존 사진을 전부 지운다. 판매 신청 때 넣어 둔 카탈로그 홍보 이미지가 여기서 사라진다 —
-        // 남겨 두면 대표 이미지 규칙이 sortOrder 최솟값이라 실물 사진을 등록해도 홍보 이미지가
-        // 계속 대표로 남는다. 실물이 들어온 이상 그 자리를 채우려던 임시값은 쓸모가 없다
+        // 재제출이면 앞서 올린 목록을 통째로 갈아 끼운다, 평가사가 낸 목록이 그 차량 사진의 전부다
         vehicleImageRepository.deleteAllByVehicle(vehicle);
 
         List<VehicleImage> saved = vehicleImageRepository.saveAll(numbered(vehicle, command.imageUrls()));

@@ -69,7 +69,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
 
         long liveAuctionId = rooms
                 .room(users.user("박판매", Role.GENERAL), START_AT)
-                .thumbnailUrl("https://cdn.race.dev/avante-1.jpg")
+                .mainPhotoUrl("https://cdn.race.dev/avante-1.jpg")
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 40, 5), viewer, 11_000_000L)
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 42, 18), users.user("남궁민수", Role.DEALER), 12_000_000L)
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 44, 31), viewer, 12_500_000L)

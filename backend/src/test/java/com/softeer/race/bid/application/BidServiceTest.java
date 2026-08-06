@@ -135,7 +135,7 @@ class BidServiceTest {
     }
 
     private Auction scheduledAuction() {
-        return Auction.schedule(AuctionPost.create(null, null, PUBLISHED_AT), START_PRICE, START_TIME);
+        return Auction.schedule(AuctionPost.create(null, PUBLISHED_AT), START_PRICE, START_TIME);
     }
 
     private User bidder() {

@@ -51,7 +51,7 @@ class RoomOpeningIntegrationTest extends IntegrationTestSupport {
 
         long notOpenAuctionId = rooms.room(users.user("박판매", Role.GENERAL), NOT_OPEN_START_AT)
                 .model("더 뉴 셀토스")
-                .thumbnailUrl("https://cdn.race.dev/seltos-1.jpg")
+                .mainPhotoUrl("https://cdn.race.dev/seltos-1.jpg")
                 .startPrice(18_000_000L)
                 .create();
 

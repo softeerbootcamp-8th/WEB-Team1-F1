@@ -22,8 +22,6 @@ public class AuctionPost extends BaseTimeEntity {
     @JoinColumn(name = "vehicle_id", nullable = false)
     private Vehicle vehicle;
 
-    private String thumbnailUrl;
-
     private LocalDateTime publishedAt;
 
     private LocalDateTime deletedAt;
@@ -31,10 +29,9 @@ public class AuctionPost extends BaseTimeEntity {
     /**
      * 경매글을 만든다. 발행 시각은 Auction.schedule의 최소 리드타임 계산 기준이 된다.
      */
-    public static AuctionPost create(Vehicle vehicle, String thumbnailUrl, LocalDateTime now) {
+    public static AuctionPost create(Vehicle vehicle, LocalDateTime now) {
         AuctionPost post = new AuctionPost();
         post.vehicle = vehicle;
-        post.thumbnailUrl = thumbnailUrl;
         post.publishedAt = now;
 
         return post;

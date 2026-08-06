@@ -10,8 +10,6 @@ import com.softeer.race.auctionpost.domain.AuctionPostRepository;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.vehicle.domain.Vehicle;
-import com.softeer.race.vehicle.domain.VehicleImage;
-import com.softeer.race.vehicle.domain.VehicleImageRepository;
 import com.softeer.race.vehicle.domain.VehicleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,15 +57,12 @@ class AuctionServiceTest {
     private AuctionRepository auctionRepository;
     @Mock
     private VehicleRepository vehicleRepository;
-    @Mock
-    private VehicleImageRepository vehicleImageRepository;
 
     private AuctionService service;
 
     @BeforeEach
     void before() {
-        service = new AuctionService(auctionPostRepository, auctionRepository,
-                vehicleRepository, vehicleImageRepository, FIXED_CLOCK);
+        service = new AuctionService(auctionPostRepository, auctionRepository, vehicleRepository, FIXED_CLOCK);
     }
 
     @Test
@@ -75,33 +70,12 @@ class AuctionServiceTest {
     void create_성공() {
         Vehicle vehicle = diagnosedVehicle(SELLER_ID);
         given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
-        given(vehicleImageRepository.findFirstByVehicleOrderBySortOrderAsc(any()))
-                .willReturn(Optional.empty());
         given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(auctionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT);
         then(auctionPostRepository).should().save(any(AuctionPost.class));
         then(auctionRepository).should().save(any(Auction.class));
-    }
-
-    @Test
-    @DisplayName("차량 이미지 중 sortOrder가 가장 앞선 이미지가 썸네일이 된다.")
-    void create_썸네일_자동_선택() {
-        Vehicle vehicle = diagnosedVehicle(SELLER_ID);
-        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
-        VehicleImage image = vehicleImage("https://cdn/first.jpg");
-        given(vehicleImageRepository.findFirstByVehicleOrderBySortOrderAsc(any()))
-                .willReturn(Optional.of(image));
-        given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-        given(auctionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-
-        service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT);
-
-        ArgumentCaptor<AuctionPost> captor = ArgumentCaptor.forClass(AuctionPost.class);
-        then(auctionPostRepository).should().save(captor.capture());
-
-        assertThat(captor.getValue().getThumbnailUrl()).isEqualTo("https://cdn/first.jpg");
     }
 
     @Test
@@ -168,8 +142,6 @@ class AuctionServiceTest {
     void create_유찰은_활성상태_아님() {
         Vehicle vehicle = diagnosedVehicle(SELLER_ID);
         given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
-        given(vehicleImageRepository.findFirstByVehicleOrderBySortOrderAsc(any()))
-                .willReturn(Optional.empty());
         given(auctionRepository.existsActiveByVehicleId(any(), any())).willReturn(false);
         given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(auctionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -330,16 +302,10 @@ class AuctionServiceTest {
         return vehicle;
     }
 
-    private VehicleImage vehicleImage(String url) {
-        VehicleImage image = mock(VehicleImage.class);
-        given(image.getImageUrl()).willReturn(url);
-        return image;
-    }
-
     // AuctionUpdateInfo.from이 post.getVehicle().getId()를 읽으므로 create 테스트의 vehicle()과 달리
     // AuctionPost에 null이 아닌 차량을 반드시 붙여야 한다
     private Auction auctionOf(LocalDateTime startAt) {
-        AuctionPost post = AuctionPost.create(vehicle(), null, startAt.minusHours(2));
+        AuctionPost post = AuctionPost.create(vehicle(), startAt.minusHours(2));
         return Auction.schedule(post, START_PRICE, startAt);
     }
 
