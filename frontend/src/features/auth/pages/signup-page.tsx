@@ -19,7 +19,6 @@ const INITIAL_FORM = {
   email: '',
   password: '',
   realName: '',
-  address: '',
 }
 
 const onlyDigits = (value: string) => value.replace(/\D/g, '')
@@ -186,18 +185,6 @@ export function SignupPage() {
               required
             />
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="address">{role === 'DEALER' ? '사업장 주소' : '주소'}</Label>
-          <Input
-            id="address"
-            autoComplete="street-address"
-            value={form.address}
-            onChange={set('address')}
-            placeholder="서울시 강남구 테헤란로 123"
-            maxLength={255}
-            required
-          />
         </div>
         <label className="flex items-start gap-2.5 text-sm">
           <Checkbox
