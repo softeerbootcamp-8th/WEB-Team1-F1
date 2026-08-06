@@ -3,6 +3,7 @@ import type {
   AuctionRoomView,
   BidIncrementBand,
   BidPlaceResult,
+  RoomOpeningView,
   RoomStreamState,
 } from '@/features/auction-room/types'
 
@@ -18,6 +19,18 @@ export async function fetchAuctionRoom(
   const { data } = await axiosInstance.get<AuctionRoomView>(
     `/api/auctions/${auctionId}/room`,
     { headers: { 'X-User-Id': userId } },
+  )
+  return data
+}
+
+/**
+ * GET /api/auctions/{id}/room/opening. 아직 열리지 않은 방의 안내다.
+ * 남은 시간은 서버가 세지 않는다 — 입장 가능 시각과 서버 시각의 차이로 화면이 센다(백엔드 문서).
+ * 방이 열리면 이 API는 409가 되고 방 조회로 옮겨가야 한다.
+ */
+export async function fetchRoomOpening(auctionId: number): Promise<RoomOpeningView> {
+  const { data } = await axiosInstance.get<RoomOpeningView>(
+    `/api/auctions/${auctionId}/room/opening`,
   )
   return data
 }

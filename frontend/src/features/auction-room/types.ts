@@ -83,6 +83,16 @@ export interface RoomStreamState {
   recentBids: RoomStreamBid[]
 }
 
+/** 백엔드 RoomOpeningResponse와 동일한 필드 — 아직 열리지 않은 방의 안내다 */
+export interface RoomOpeningView {
+  auctionId: number
+  vehicle: RoomVehicle
+  startPrice: number
+  openAt: string
+  startAt: string
+  serverTime: string
+}
+
 export interface BidPlaceResult {
   bidId: number
   amount: number

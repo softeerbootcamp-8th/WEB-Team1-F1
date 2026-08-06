@@ -5,6 +5,7 @@ import { getErrorCode } from '@/lib/axios'
 import {
   fetchAuctionRoom,
   fetchBidIncrementBands,
+  fetchRoomOpening,
   placeBid,
   subscribeRoomStream,
 } from '@/features/auction-room/api'
@@ -12,10 +13,14 @@ import type {
   AuctionRoomView,
   BidIncrementBand,
   RoomEntry,
+  RoomOpeningView,
   RoomStreamState,
 } from '@/features/auction-room/types'
 
 const EXTENDED_FLAG_MS = 4000
+
+// 개장 시각을 우리가 먼저 지나쳤다고 판단해도 서버는 아직 아닐 수 있다, 조금 늦게 두드린다
+const REENTRY_BUFFER_MS = 500
 const CONNECTABLE_PHASES = new Set(['WAITING', 'LIVE', 'RESULT'])
 
 // 방에 들어갈 수 없는 사유는 서버가 코드로 알려준다, 화면이 시각을 보고 스스로 정하지 않는다
@@ -35,6 +40,7 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
   const [bands, setBands] = useState<BidIncrementBand[]>([])
   // 진입 결과, 들어갈 수 없으면 사유까지 들고 있어야 화면이 개장 안내나 결과로 옮겨갈 수 있다
   const [entry, setEntry] = useState<RoomEntry>('LOADING')
+  const [opening, setOpening] = useState<RoomOpeningView | null>(null)
   const [flashKey, setFlashKey] = useState(0)
   const [extended, setExtended] = useState(false)
   // 서버 시각 - 이 브라우저 시계. 마감 시각은 서버가 정하는데 남은 시간을 브라우저 시계로 세면
@@ -119,6 +125,34 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
 
     let cancelled = false
     let unsubscribe: (() => void) | null = null
+    let reentryTimer: number | null = null
+
+    // 아직 열리지 않은 방은 안내를 받아 두고, 열리는 시각에 스스로 다시 들어간다
+    const enterOpening = () => {
+      fetchRoomOpening(auctionId)
+        .then((view) => {
+          if (cancelled) return
+
+          const offsetMs = new Date(view.serverTime).getTime() - Date.now()
+          setClockOffset(offsetMs)
+          setOpening(view)
+          setEntry('NOT_OPEN_YET')
+
+          const delay = Math.max(0, new Date(view.openAt).getTime() - (Date.now() + offsetMs))
+          reentryTimer = window.setTimeout(connect, delay + REENTRY_BUFFER_MS)
+        })
+        .catch((error: unknown) => {
+          if (cancelled) return
+
+          // 안내를 받는 사이 방이 열렸으면 이 API 가 409 로 막는다, 그때는 방으로 들어가면 된다
+          if (getErrorCode(error) === 'ROOM_ALREADY_OPEN') {
+            connect()
+            return
+          }
+
+          setEntry('BROKEN')
+        })
+    }
 
     const connect = () => {
       fetchAuctionRoom(auctionId, userId)
@@ -144,7 +178,14 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
         .catch((error: unknown) => {
           if (cancelled) return
 
-          setEntry(ENTRY_BY_ERROR_CODE[getErrorCode(error) ?? ''] ?? 'BROKEN')
+          const reason = ENTRY_BY_ERROR_CODE[getErrorCode(error) ?? ''] ?? 'BROKEN'
+
+          if (reason === 'NOT_OPEN_YET') {
+            enterOpening()
+            return
+          }
+
+          setEntry(reason)
         })
     }
 
@@ -153,6 +194,7 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
     return () => {
       cancelled = true
       unsubscribe?.()
+      if (reentryTimer !== null) window.clearTimeout(reentryTimer)
     }
   }, [auctionId, userId, mergeStreamState])
 
@@ -188,5 +230,5 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
     [auctionId, markExtended],
   )
 
-  return { room, entry, increment, nextMin, flashKey, extended, clockOffset, placeBid: bid }
+  return { room, entry, opening, increment, nextMin, flashKey, extended, clockOffset, placeBid: bid }
 }

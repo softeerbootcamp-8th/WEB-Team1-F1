@@ -16,7 +16,8 @@ import { BidLedger } from '../components/bid-ledger'
 import { WaitingRoom } from '../components/waiting-room'
 import { RoomNotOpen } from '../components/room-not-open'
 import { CarDetail } from '../components/car-detail'
-import type { AuctionRoomView } from '../types'
+import type { AuctionRoomView, RoomVehicle } from '../types'
+import type { AuctionStatus } from '@/types/domain'
 
 export function AuctionRoomPage() {
   const { id } = useParams()
@@ -46,6 +47,32 @@ export function AuctionRoomPage() {
   return <RoomContent auctionId={auctionId} userId={user.id} />
 }
 
+/** 목록으로 돌아가는 길과 차량 제목, 방이 열렸든 아니든 같은 자리에 온다 */
+function RoomHeading({ vehicle, status }: { vehicle: RoomVehicle; status: AuctionStatus }) {
+  return (
+    <>
+      <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2">
+        <Link to="/">
+          <ArrowLeft className="size-4" />
+          목록으로
+        </Link>
+      </Button>
+
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <StatusBadge status={status} />
+            <span className="text-muted-foreground text-sm">{vehicle.modelYear}년</span>
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            {MANUFACTURER_LABEL[vehicle.manufacturer]} {vehicle.model}
+          </h1>
+        </div>
+      </div>
+    </>
+  )
+}
+
 /** 방 대신 사유를 알리는 화면 */
 function RoomNotice({ title, description }: { title: string; description: string }) {
   return (
@@ -64,12 +91,23 @@ function RoomNotice({ title, description }: { title: string; description: string
 }
 
 function RoomContent({ auctionId, userId }: { auctionId: number; userId: number }) {
-  const { room, entry, increment, nextMin, flashKey, extended, clockOffset, placeBid } =
+  const { room, entry, opening, increment, nextMin, flashKey, extended, clockOffset, placeBid } =
     useAuctionRoom(auctionId, userId)
 
-  // 아직 열리지 않은 방과 끝난 방은 각자의 화면으로 간다, 다음 단계에서 서버가 주는 안내와 결과를 붙인다
-  if (entry === 'NOT_OPEN_YET') {
-    return <RoomNotice title="아직 열리지 않은 경매방입니다" description="입장 가능 시각이 되면 들어갈 수 있어요." />
+  if (entry === 'NOT_OPEN_YET' && opening) {
+    return (
+      <main
+        aria-label={`${opening.vehicle.model} 경매`}
+        className="mx-auto max-w-7xl px-6 py-8"
+      >
+        <RoomHeading vehicle={opening.vehicle} status="SCHEDULED" />
+
+        <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+          <RoomNotOpen opening={opening} clockOffset={clockOffset} />
+          <CarDetail vehicle={opening.vehicle} />
+        </div>
+      </main>
+    )
   }
 
   if (entry === 'CLOSED') {
@@ -88,26 +126,7 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
 
   return (
     <main aria-label={`${room.vehicle.model} 경매`} className="mx-auto max-w-7xl px-6 py-8">
-      <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2">
-        <Link to="/">
-          <ArrowLeft className="size-4" />
-          목록으로
-        </Link>
-      </Button>
-
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <StatusBadge status={status} />
-            <span className="text-muted-foreground text-sm">{room.vehicle.modelYear}년</span>
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            {MANUFACTURER_LABEL[room.vehicle.manufacturer]} {room.vehicle.model}
-          </h1>
-        </div>
-      </div>
-
-      {room.phase === 'NOT_OPEN' && <RoomNotOpen room={room} />}
+      <RoomHeading vehicle={room.vehicle} status={status} />
 
       {room.phase === 'WAITING' && (
         <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
