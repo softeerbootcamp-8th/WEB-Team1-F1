@@ -5,6 +5,14 @@ import type { UserRole } from '@/types/domain'
 
 export type { RoomPhase }
 
+/**
+ * 경매방에 들어가려 한 결과.
+ * 서버는 열려 있는 방에만 현황을 주고 그 밖에는 사유를 코드로 알려준다. 개장 전이면 개장 안내로,
+ * 끝난 뒤면 결과 요약으로 옮겨가라는 뜻이라 실패를 하나로 뭉치지 않는다.
+ * UNSTABLE 은 다시 붙어 보다 포기한 것이라, 없는 경매를 뜻하는 BROKEN 과 안내가 달라야 한다.
+ */
+export type RoomEntry = 'LOADING' | 'OPEN' | 'NOT_OPEN_YET' | 'CLOSED' | 'UNSTABLE' | 'BROKEN'
+
 export interface RoomVehicle {
   manufacturer: Manufacturer
   model: string
@@ -74,6 +82,29 @@ export interface RoomStreamState {
   bidCount: number
   winner: RoomStreamWinner | null
   recentBids: RoomStreamBid[]
+}
+
+/** 백엔드 RoomOpeningResponse와 동일한 필드 — 아직 열리지 않은 방의 안내다 */
+export interface RoomOpeningView {
+  auctionId: number
+  vehicle: RoomVehicle
+  startPrice: number
+  openAt: string
+  startAt: string
+  serverTime: string
+}
+
+/** 백엔드 RoomResultResponse와 동일한 필드 — 더 이상 바뀌지 않는 경매라 접속자 수와 서버 시각이 없다 */
+export interface RoomResultView {
+  auctionId: number
+  outcome: 'SOLD' | 'UNSOLD'
+  vehicle: RoomVehicle
+  startPrice: number
+  /** 유찰이면 null */
+  winningPrice: number | null
+  /** 유찰이면 null */
+  winner: RoomWinner | null
+  bidCount: number
 }
 
 export interface BidPlaceResult {

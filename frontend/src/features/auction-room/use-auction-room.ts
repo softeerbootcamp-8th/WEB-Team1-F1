@@ -1,20 +1,44 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { incrementForPrice } from '@/lib/auction'
+import { getErrorCode } from '@/lib/axios'
 import {
   fetchAuctionRoom,
   fetchBidIncrementBands,
+  fetchRoomOpening,
+  fetchRoomResult,
   placeBid,
   subscribeRoomStream,
 } from '@/features/auction-room/api'
 import type {
   AuctionRoomView,
   BidIncrementBand,
+  RoomEntry,
+  RoomOpeningView,
+  RoomResultView,
   RoomStreamState,
 } from '@/features/auction-room/types'
 
 const EXTENDED_FLAG_MS = 4000
+
+// 개장 시각을 우리가 먼저 지나쳤다고 판단해도 서버는 아직 아닐 수 있다, 조금 늦게 두드린다
+const REENTRY_BUFFER_MS = 500
+
+// 서버가 고장 난 채로 남아 있으면 다시 들어가는 시도가 끝나지 않는다, 여기서 끊고 사용자에게 알린다
+// 다섯 번이면 마지막 시도까지 15초쯤이라 정상적인 지연(1초 안쪽)은 다 흡수한다
+const MAX_REENTRY_ATTEMPTS = 5
+
+// 같은 방을 보던 사람들이 같은 박자로 몰려가지 않도록 대기 시간을 조금씩 흩는다
+function backoffMs(attempt: number): number {
+  return REENTRY_BUFFER_MS * 2 ** attempt * (0.8 + Math.random() * 0.4)
+}
 const CONNECTABLE_PHASES = new Set(['WAITING', 'LIVE', 'RESULT'])
+
+// 방에 들어갈 수 없는 사유는 서버가 코드로 알려준다, 화면이 시각을 보고 스스로 정하지 않는다
+const ENTRY_BY_ERROR_CODE: Record<string, RoomEntry> = {
+  ROOM_NOT_OPEN_YET: 'NOT_OPEN_YET',
+  ROOM_ALREADY_CLOSED: 'CLOSED',
+}
 
 /**
  * 경매방 실시간 상태.
@@ -25,7 +49,10 @@ const CONNECTABLE_PHASES = new Set(['WAITING', 'LIVE', 'RESULT'])
 export function useAuctionRoom(auctionId: number, userId: number | null) {
   const [room, setRoom] = useState<AuctionRoomView | null>(null)
   const [bands, setBands] = useState<BidIncrementBand[]>([])
-  const [error, setError] = useState(false)
+  // 진입 결과, 들어갈 수 없으면 사유까지 들고 있어야 화면이 개장 안내나 결과로 옮겨갈 수 있다
+  const [entry, setEntry] = useState<RoomEntry>('LOADING')
+  const [opening, setOpening] = useState<RoomOpeningView | null>(null)
+  const [result, setResult] = useState<RoomResultView | null>(null)
   const [flashKey, setFlashKey] = useState(0)
   const [extended, setExtended] = useState(false)
   // 서버 시각 - 이 브라우저 시계. 마감 시각은 서버가 정하는데 남은 시간을 브라우저 시계로 세면
@@ -110,7 +137,83 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
 
     let cancelled = false
     let unsubscribe: (() => void) | null = null
-    let retryTimer: number | null = null
+    let reentryTimer: number | null = null
+    let resultAttempts = 0
+    let reconnectAttempts = 0
+
+    // 아직 열리지 않은 방은 안내를 받아 두고, 열리는 시각에 스스로 다시 들어간다
+    const enterOpening = () => {
+      fetchRoomOpening(auctionId)
+        .then((view) => {
+          if (cancelled) return
+
+          const offsetMs = new Date(view.serverTime).getTime() - Date.now()
+          setClockOffset(offsetMs)
+          setOpening(view)
+          setEntry('NOT_OPEN_YET')
+
+          const delay = Math.max(0, new Date(view.openAt).getTime() - (Date.now() + offsetMs))
+          reentryTimer = window.setTimeout(connect, delay + REENTRY_BUFFER_MS)
+        })
+        .catch((error: unknown) => {
+          if (cancelled) return
+
+          // 안내를 받는 사이 방이 열렸으면 이 API 가 409 로 막는다, 그때는 방으로 들어가면 된다
+          if (getErrorCode(error) === 'ROOM_ALREADY_OPEN') {
+            connect()
+            return
+          }
+
+          setEntry('BROKEN')
+        })
+    }
+
+    // 끝난 방은 더 이상 바뀌지 않는 요약을 받는다
+    const enterResult = () => {
+      fetchRoomResult(auctionId)
+        .then((view) => {
+          if (cancelled) return
+
+          setResult(view)
+          setEntry('CLOSED')
+        })
+        .catch((error: unknown) => {
+          if (cancelled) return
+
+          // 마감과 낙찰 확정 사이의 짧은 틈이다, 확정되면 결과가 나온다
+          // 확정이 계속 실패한 채로 남으면 이 물음도 끝나지 않으므로 몇 번만 묻고 그만둔다
+          if (getErrorCode(error) === 'AUCTION_NOT_ENDED') {
+            if (resultAttempts >= MAX_REENTRY_ATTEMPTS) {
+              setEntry('UNSTABLE')
+              return
+            }
+
+            reentryTimer = window.setTimeout(enterResult, backoffMs(resultAttempts))
+            resultAttempts += 1
+            return
+          }
+
+          setEntry('BROKEN')
+        })
+    }
+
+    // 연결이 끊기는 이유는 결과 구간이 끝나 서버가 끊는 것이 대부분이다, 오류로 덮지 않고 다시 들어가 본다
+    // 정말 끝난 방이면 서버가 종료로 거절하고 화면은 결과 요약으로 이어진다
+    //
+    // 방 조회는 되는데 구독만 계속 거절당하는 상태도 있다. 그때 곧바로 다시 붙으면 지연이 없는 루프가
+    // 되므로 시도할수록 간격을 늘리고 몇 번 뒤에는 그만둔다
+    const reconnect = () => {
+      unsubscribe?.()
+      unsubscribe = null
+
+      if (reconnectAttempts >= MAX_REENTRY_ATTEMPTS) {
+        setEntry('UNSTABLE')
+        return
+      }
+
+      reentryTimer = window.setTimeout(connect, backoffMs(reconnectAttempts))
+      reconnectAttempts += 1
+    }
 
     const connect = () => {
       fetchAuctionRoom(auctionId, userId)
@@ -126,21 +229,37 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
           prevEndAt.current = view.endAt
           setClockOffset(new Date(view.serverTime).getTime() - Date.now())
           setRoom(view)
-          setError(false)
+          setEntry('OPEN')
 
+          // 열린 방만 응답하므로 여기 도달했으면 구독도 받아 준다
           if (CONNECTABLE_PHASES.has(view.phase)) {
-            unsubscribe = subscribeRoomStream(auctionId, mergeStreamState, () => setError(true))
+            unsubscribe = subscribeRoomStream(
+              auctionId,
+              (state) => {
+                // 조회가 200 인 것으로는 부족하다, 구독이 값을 보내와야 연결이 산 것이다
+                reconnectAttempts = 0
+                mergeStreamState(state)
+              },
+              reconnect,
+            )
+          }
+        })
+        .catch((error: unknown) => {
+          if (cancelled) return
+
+          const reason = ENTRY_BY_ERROR_CODE[getErrorCode(error) ?? ''] ?? 'BROKEN'
+
+          if (reason === 'NOT_OPEN_YET') {
+            enterOpening()
             return
           }
 
-          // NOT_OPEN은 구독이 거절되므로(409), 방이 열리는 시각에 맞춰 다시 진입을 시도한다.
-          if (view.phase === 'NOT_OPEN') {
-            const delay = Math.max(0, new Date(view.openAt).getTime() - Date.now())
-            retryTimer = window.setTimeout(connect, delay + 500)
+          if (reason === 'CLOSED') {
+            enterResult()
+            return
           }
-        })
-        .catch(() => {
-          if (!cancelled) setError(true)
+
+          setEntry(reason)
         })
     }
 
@@ -149,7 +268,7 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
     return () => {
       cancelled = true
       unsubscribe?.()
-      if (retryTimer !== null) window.clearTimeout(retryTimer)
+      if (reentryTimer !== null) window.clearTimeout(reentryTimer)
     }
   }, [auctionId, userId, mergeStreamState])
 
@@ -185,5 +304,16 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
     [auctionId, markExtended],
   )
 
-  return { room, increment, nextMin, flashKey, extended, error, clockOffset, placeBid: bid }
+  return {
+    room,
+    entry,
+    opening,
+    result,
+    increment,
+    nextMin,
+    flashKey,
+    extended,
+    clockOffset,
+    placeBid: bid,
+  }
 }

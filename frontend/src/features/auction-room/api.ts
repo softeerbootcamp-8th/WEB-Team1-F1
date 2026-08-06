@@ -3,6 +3,8 @@ import type {
   AuctionRoomView,
   BidIncrementBand,
   BidPlaceResult,
+  RoomOpeningView,
+  RoomResultView,
   RoomStreamState,
 } from '@/features/auction-room/types'
 
@@ -23,6 +25,30 @@ export async function fetchAuctionRoom(
 }
 
 /**
+ * GET /api/auctions/{id}/room/opening. 아직 열리지 않은 방의 안내다.
+ * 남은 시간은 서버가 세지 않는다 — 입장 가능 시각과 서버 시각의 차이로 화면이 센다(백엔드 문서).
+ * 방이 열리면 이 API는 409가 되고 방 조회로 옮겨가야 한다.
+ */
+export async function fetchRoomOpening(auctionId: number): Promise<RoomOpeningView> {
+  const { data } = await axiosInstance.get<RoomOpeningView>(
+    `/api/auctions/${auctionId}/room/opening`,
+  )
+  return data
+}
+
+/**
+ * GET /api/auctions/{id}/room/result. 끝난 경매의 결과 요약이다.
+ * 판정 기준은 마감 시각이 아니라 확정된 경매 상태라, 마감 직후 확정 전에는 409다(백엔드 문서).
+ * 낙찰자 본인 여부가 세션 주인 기준으로 판정되므로 세션 쿠키가 필요하다.
+ */
+export async function fetchRoomResult(auctionId: number): Promise<RoomResultView> {
+  const { data } = await axiosInstance.get<RoomResultView>(
+    `/api/auctions/${auctionId}/room/result`,
+  )
+  return data
+}
+
+/**
  * GET /api/auctions/{id}/room/stream 구독(SSE). 방이 열려 있는 단계(WAITING·LIVE·RESULT)에서만
  * 연결이 되고, 그 외(NOT_OPEN·CLOSED)엔 서버가 409로 거절한다. 보는 사람을 가리지 않아
  * 내 입찰(mine) 표시는 안 실려 온다 — 그건 최초 조회 결과로만 안다.
@@ -31,7 +57,7 @@ export async function fetchAuctionRoom(
 export function subscribeRoomStream(
   auctionId: number,
   onState: (state: RoomStreamState) => void,
-  onError?: () => void,
+  onClosed?: () => void,
 ): () => void {
   const baseURL = axiosInstance.defaults.baseURL ?? ''
   const source = new EventSource(`${baseURL}/api/auctions/${auctionId}/room/stream`, {
@@ -41,8 +67,11 @@ export function subscribeRoomStream(
   source.onmessage = (event) => {
     onState(JSON.parse(event.data) as RoomStreamState)
   }
+
+  // 끊기면 EventSource 가 스스로 다시 붙는다. 다만 재연결 응답이 2xx 가 아니면 표준대로 재시도를
+  // 포기하고 CLOSED 로 남으므로, 그때만 알린다. 방이 닫혀 서버가 끊은 경우가 여기로 온다
   source.onerror = () => {
-    onError?.()
+    if (source.readyState === EventSource.CLOSED) onClosed?.()
   }
 
   return () => source.close()
