@@ -24,22 +24,17 @@ public class AuctionPost extends BaseTimeEntity {
 
     private String thumbnailUrl;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PostStatus postStatus;
-
     private LocalDateTime publishedAt;
 
     private LocalDateTime deletedAt;
 
     /**
-     * 임시저장 없이 곧바로 발행 상태로 경매글을 만든다
+     * 경매글을 만든다. 발행 시각은 Auction.schedule의 최소 리드타임 계산 기준이 된다.
      */
     public static AuctionPost create(Vehicle vehicle, String thumbnailUrl, LocalDateTime now) {
         AuctionPost post = new AuctionPost();
         post.vehicle = vehicle;
         post.thumbnailUrl = thumbnailUrl;
-        post.postStatus = PostStatus.PUBLISHED;
         post.publishedAt = now;
 
         return post;
