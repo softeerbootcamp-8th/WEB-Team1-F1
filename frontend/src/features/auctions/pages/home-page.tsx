@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { CinematicCarBackdrop } from '@/components/common/cinematic-car-backdrop'
 import { AuctionCard } from '@/features/auctions/components/auction-card'
 import { useAuctionList } from '@/features/auctions/use-auction-list'
 
@@ -47,13 +48,16 @@ export function HomePage() {
 
   return (
     <main aria-label="RACE 홈">
-      <section className="bg-foreground text-background relative isolate overflow-hidden">
-        <div className="absolute inset-0 -z-10 opacity-30">
-          <div className="absolute top-[-20%] right-[-5%] size-[38rem] rounded-full border border-white/20" />
-          <div className="absolute right-[20%] bottom-[-45%] size-[32rem] rounded-full border border-white/10" />
-        </div>
-        <div className="mx-auto flex min-h-[680px] max-w-7xl flex-col justify-center px-6 py-24">
-          <p className="text-background/60 mb-6 text-sm font-medium tracking-[0.24em] uppercase">
+      <section className="relative isolate overflow-hidden bg-[#080a0b] text-white">
+        <CinematicCarBackdrop
+          className="-z-20"
+          imageClassName="object-[center_68%] opacity-75 md:object-[center_62%] lg:object-center lg:opacity-85"
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 -z-10 bg-linear-to-r from-black/95 via-black/70 to-black/20 md:via-black/55" />
+        <div className="absolute inset-0 -z-10 bg-linear-to-t from-black/80 via-transparent to-black/20" />
+        <div className="relative mx-auto flex min-h-[620px] max-w-7xl flex-col justify-center px-6 py-20 md:min-h-[700px] md:py-24">
+          <p className="mb-6 w-fit rounded-full border border-white/15 bg-black/20 px-4 py-2 text-xs font-medium tracking-[0.24em] text-white/70 uppercase backdrop-blur-md md:text-sm">
             Real Time Auction Car Exchange
           </p>
           <h1 className="max-w-4xl text-5xl leading-[1.08] font-semibold tracking-[-0.04em] text-balance md:text-7xl">
@@ -61,7 +65,7 @@ export function HomePage() {
             <br />
             모든 순간을 투명하게.
           </h1>
-          <p className="text-background/65 mt-7 max-w-xl text-base leading-7 md:text-lg">
+          <p className="mt-7 max-w-xl text-base leading-7 text-white/75 md:text-lg">
             평가사가 확인한 차량을 실시간 경매에 연결합니다. 판매자는 더
             나은 가격을, 구매자는 더 분명한 근거를 확인하세요.
           </p>
@@ -75,7 +79,7 @@ export function HomePage() {
             <Button
               size="xl"
               variant="outline"
-              className="border-background/25 bg-transparent text-background hover:bg-background/10 hover:text-background"
+              className="border-white/25 bg-black/15 text-white backdrop-blur-sm hover:bg-white/10 hover:text-white"
               asChild
             >
               <Link to="/quote">내 차 시세 조회</Link>
