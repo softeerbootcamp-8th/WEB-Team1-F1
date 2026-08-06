@@ -6,12 +6,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
-@Schema(description = "호가 한 건, 보는 사람이 정해지지 않아 내 입찰 표시가 없다")
+@Schema(description = "호가 한 건, 보는 사람이 정해지지 않아 내 입찰 표시가 없다, 그 표시가 필요하면 조회 응답의 호가를 쓴다")
 public record RoomStateBidResponse(
         @Schema(description = "가운데를 마스킹한 입찰자 이름", example = "김*현")
         String name,
 
-        @Schema(description = "입찰자 역할, 배지 문구는 화면이 정한다", example = "DEALER")
+        @Schema(description = "입찰자 역할, DEALER 나 GENERAL 이다, 평가사는 입찰하지 않는다, 배지 문구는 화면이 정한다", example = "DEALER")
         Role role,
 
         @Schema(description = "입찰 금액", example = "12500000")

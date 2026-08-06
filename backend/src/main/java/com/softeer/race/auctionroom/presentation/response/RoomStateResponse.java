@@ -12,15 +12,11 @@ public record RoomStateResponse(
         @Schema(description = "경매 식별자", example = "1")
         long auctionId,
 
-        @Schema(description = "방 단계", example = "LIVE")
+        @Schema(description = "방 단계, 이 이름들이 API 계약이라 값을 그대로 비교해도 된다", example = "LIVE")
         RoomPhase phase,
 
         @Schema(description = "경매 차량")
         VehicleResponse vehicle,
-
-        @Schema(description = "대표 사진, 등록되지 않았으면 없다",
-                example = "https://cdn.race.dev/avante-1.jpg")
-        String thumbnailUrl,
 
         @Schema(description = "시작가", example = "10000000")
         long startPrice,
@@ -28,7 +24,7 @@ public record RoomStateResponse(
         @Schema(description = "현재가, 입찰이 없으면 시작가와 같다", example = "12500000")
         long currentPrice,
 
-        @Schema(description = "방이 열리는 시각", example = "2026-08-03T20:00:00")
+        @Schema(description = "방에 들어갈 수 있게 되는 시각, 입찰 시작 30분 전이다", example = "2026-08-03T20:00:00")
         LocalDateTime openAt,
 
         @Schema(description = "입찰이 시작되는 시각", example = "2026-08-03T20:30:00")
@@ -37,21 +33,21 @@ public record RoomStateResponse(
         @Schema(description = "마감 시각, 연장되면 뒤로 밀린다", example = "2026-08-03T21:00:00")
         LocalDateTime endAt,
 
-        @Schema(description = "현황을 만든 서버 시각, 클라이언트 시계 보정에 쓴다",
+        @Schema(description = "응답을 만든 서버 시각(KST), 클라이언트 시계 보정에 쓴다",
                 example = "2026-08-03T20:45:12")
         LocalDateTime serverTime,
 
-        @Schema(description = "지금 방에 연결된 구독 수", example = "12")
+        @Schema(description = "지금 방에 연결된 구독 수, 한 사람이 창을 둘 열면 둘로 센다", example = "12")
         int connectedCount,
 
         @Schema(description = "지금까지 입찰한 사람 수", example = "4")
         long bidderCount,
 
-        @Schema(description = "지금까지 들어온 입찰 건수", example = "37")
+        @Schema(description = "지금까지 들어온 입찰 건수, 최근 호가 20건과 달리 전체를 센다", example = "37")
         long bidCount,
 
-        @Schema(description = "가운데를 마스킹한 낙찰자 이름, 낙찰 확정 전에는 없다", example = "이*호")
-        String winnerName,
+        @Schema(description = "낙찰자, 낙찰 확정 전에는 없다")
+        RoomStateWinnerResponse winner,
 
         @Schema(description = "최근 호가, 최신순 최대 20건")
         List<RoomStateBidResponse> recentBids
@@ -62,7 +58,6 @@ public record RoomStateResponse(
                 state.auctionId(),
                 state.phase(),
                 VehicleResponse.from(state.vehicle()),
-                state.thumbnailUrl(),
                 state.startPrice(),
                 state.currentPrice(),
                 state.openAt(),
@@ -72,7 +67,7 @@ public record RoomStateResponse(
                 state.connectedCount(),
                 state.stats().bidderCount(),
                 state.stats().bidCount(),
-                state.winnerName() == null ? null : state.winnerName().value(),
+                RoomStateWinnerResponse.from(state),
                 state.recentBids().stream().map(RoomStateBidResponse::from).toList());
     }
 }

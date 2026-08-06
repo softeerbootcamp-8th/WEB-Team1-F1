@@ -20,7 +20,11 @@ public record VehicleResponse(
         int mileage,
 
         @Schema(description = "연료", example = "GASOLINE")
-        FuelType fuelType
+        FuelType fuelType,
+
+        @Schema(description = "대표 사진, 등록되지 않았으면 없다",
+                example = "https://cdn.race.dev/avante-1.jpg")
+        String thumbnailUrl
 ) {
 
     static VehicleResponse from(VehicleSummary vehicle) {
@@ -29,6 +33,7 @@ public record VehicleResponse(
                 vehicle.model(),
                 vehicle.modelYear(),
                 vehicle.mileage(),
-                vehicle.fuelType());
+                vehicle.fuelType(),
+                vehicle.thumbnailUrl());
     }
 }

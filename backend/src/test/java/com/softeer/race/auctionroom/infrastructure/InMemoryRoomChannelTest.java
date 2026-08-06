@@ -366,7 +366,7 @@ class InMemoryRoomChannelTest {
     // 채널은 현황을 나르기만 하고 안을 들여다보지 않으므로, 같은 객체가 갔는지만 확인하면 된다
     private static RoomState liveState() {
         return new RoomState(
-                AUCTION, RoomPhase.LIVE, null, null, 0, 0,
+                AUCTION, RoomPhase.LIVE, null, 0, 0,
                 null, null, null, null, 0, new BidStats(0, 0), null, List.of());
     }
 

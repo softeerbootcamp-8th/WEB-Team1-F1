@@ -17,10 +17,6 @@ public record RoomResultResponse(
         @Schema(description = "경매 차량")
         VehicleResponse vehicle,
 
-        @Schema(description = "대표 사진, 등록되지 않았으면 없다",
-                example = "https://cdn.race.dev/avante-1.jpg")
-        String thumbnailUrl,
-
         @Schema(description = "시작가", example = "10000000")
         long startPrice,
 
@@ -39,10 +35,9 @@ public record RoomResultResponse(
                 view.auctionId(),
                 view.outcome(),
                 VehicleResponse.from(view.vehicle()),
-                view.thumbnailUrl(),
                 view.startPrice(),
                 view.winningPrice(),
-                view.winnerName() == null ? null : new WinnerResponse(view.winnerName().value(), view.winnerIsMine()),
+                WinnerResponse.from(view),
                 view.bidCount());
     }
 }

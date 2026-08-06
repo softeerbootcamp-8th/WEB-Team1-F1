@@ -13,10 +13,6 @@ public record RoomOpeningResponse(
         @Schema(description = "경매 차량")
         VehicleResponse vehicle,
 
-        @Schema(description = "대표 사진, 등록되지 않았으면 없다",
-                example = "https://cdn.race.dev/avante-1.jpg")
-        String thumbnailUrl,
-
         @Schema(description = "시작가", example = "10000000")
         long startPrice,
 
@@ -27,7 +23,7 @@ public record RoomOpeningResponse(
         @Schema(description = "입찰이 시작되는 시각", example = "2026-08-03T20:30:00")
         LocalDateTime startAt,
 
-        @Schema(description = "응답을 만든 서버 시각, 남은 시간은 입장 가능 시각과의 차이로 센다",
+        @Schema(description = "응답을 만든 서버 시각(KST), 남은 시간은 입장 가능 시각과의 차이로 센다",
                 example = "2026-08-03T19:45:12")
         LocalDateTime serverTime
 ) {
@@ -36,7 +32,6 @@ public record RoomOpeningResponse(
         return new RoomOpeningResponse(
                 opening.auctionId(),
                 VehicleResponse.from(opening.vehicle()),
-                opening.thumbnailUrl(),
                 opening.startPrice(),
                 opening.openAt(),
                 opening.startAt(),
