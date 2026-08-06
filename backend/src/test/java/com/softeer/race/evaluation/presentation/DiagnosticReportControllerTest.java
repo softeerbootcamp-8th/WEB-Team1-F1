@@ -72,7 +72,7 @@ class DiagnosticReportControllerTest {
     @DisplayName("조회는 200과 주소를 준다")
     void find() throws Exception {
         // given
-        given(diagnosticReportService.find(EVALUATION_ID)).willReturn(
+        given(diagnosticReportService.find(EVALUATION_ID, EVALUATOR_ID)).willReturn(
                 new DiagnosticReportInfo(EVALUATION_ID, DOCUMENT_URL, ATTACHED_AT));
 
         // when & then
@@ -87,7 +87,7 @@ class DiagnosticReportControllerTest {
     void findRejectsMissingReport() throws Exception {
         // given
         willThrow(new BusinessException(EvaluationErrorCode.DIAGNOSTIC_REPORT_NOT_FOUND))
-                .given(diagnosticReportService).find(anyLong());
+                .given(diagnosticReportService).find(anyLong(), anyLong());
 
         // when & then : 평가를 못 찾는 것과 구분돼야 화면이 "아직 등록 전"을 안내할 수 있다
         mockMvc.perform(get(PATH).cookie(sessionCookie()))

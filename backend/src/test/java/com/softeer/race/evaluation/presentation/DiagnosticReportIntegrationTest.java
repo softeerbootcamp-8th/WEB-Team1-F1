@@ -19,8 +19,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 진단서 조회를 컨트롤러에서 DB까지
  * <p>
  * 1. 조회 권한
- * 첨부와 달리 조회는 좁히지 않았다는 사실을 고정한다. 진단서는 경매에 올라가면 입찰자 모두가
- * 보는 자료이고 주소 자체가 공개라 좁혀도 실효가 없다. 조회까지 좁히기로 정하면 여기가 먼저 깨진다
+ * 판매자와 담당 평가사만 열리는지. 돌려주는 주소가 공개라 이 검사가 기밀을 보장하지는 못하지만,
+ * <b>출품 전에는 아직 공개된 자료가 아니고</b> 한 번 나간 주소는 회수할 수 없다.
+ * 입찰자에게 보여주는 일은 이 API가 하지 않는다 — 입찰자는 evaluationId를 알 수 없고,
+ * 경매방 응답이 주소를 담는 형태가 된다
  * <p>
  * 2. 미제출과 없는 평가
  * 아직 결과가 안 온 평가와 없는 평가가 서로 다른 코드로 구분되는지
@@ -47,8 +49,8 @@ class DiagnosticReportIntegrationTest extends IntegrationTestSupport {
             CDN_BASE_URL + "/documents/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.pdf";
 
     @Test
-    @DisplayName("판매자도 무관한 회원도 로그인만 하면 조회할 수 있다")
-    void findAllowsAnyLoggedInUser() throws Exception {
+    @DisplayName("판매자와 담당 평가사만 조회할 수 있다")
+    void findChecksViewer() throws Exception {
         // given : 담당 평가사가 결과를 제출해 둔다
         submitResult().andExpect(status().isOk());
 
@@ -57,7 +59,13 @@ class DiagnosticReportIntegrationTest extends IntegrationTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.fileUrl").value(DOCUMENT_URL));
 
-        find(EVALUATION_ID, STRANGER_TOKEN).andExpect(status().isOk());
+        find(EVALUATION_ID, EVALUATOR_TOKEN).andExpect(status().isOk());
+
+        // 무관한 회원에게는 존재 여부까지 감춘다. 돌려주는 주소가 공개라 한 번 나가면
+        // 회수할 수 없고, 403으로 구분해 주면 id를 훑어 어느 평가에 진단서가 붙었는지 알아낼 수 있다
+        find(EVALUATION_ID, STRANGER_TOKEN)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("EVALUATION_NOT_FOUND"));
     }
 
     @Test

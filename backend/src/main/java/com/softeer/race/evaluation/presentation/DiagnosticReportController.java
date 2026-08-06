@@ -20,9 +20,6 @@ public class DiagnosticReportController implements DiagnosticReportApi {
 
     /**
      * 조회만 있다. 붙이는 것은 평가 결과 제출({@code PUT /api/evaluations/{id}/result})이 한다.
-     * <p>
-     * {@code authenticatedUser}를 쓰지 않지만 파라미터로 받는다. 인터셉터가 이 파라미터를 보고
-     * 인증을 요구하므로, <b>지우면 인증이 함께 사라진다.</b>
      */
     @Override
     @GetMapping
@@ -30,7 +27,7 @@ public class DiagnosticReportController implements DiagnosticReportApi {
             @LoginUser AuthenticatedUser authenticatedUser,
             @PathVariable long evaluationId) {
 
-        return ResponseEntity.ok(
-                DiagnosticReportResponse.from(diagnosticReportService.find(evaluationId)));
+        return ResponseEntity.ok(DiagnosticReportResponse.from(
+                diagnosticReportService.find(evaluationId, authenticatedUser.id())));
     }
 }
