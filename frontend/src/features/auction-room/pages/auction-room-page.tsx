@@ -192,6 +192,13 @@ function LiveRoom({
 
 /** 종료(결과 보기/마감) 화면 */
 function EndedResult({ room }: { room: AuctionRoomView }) {
+  const { user } = useAuth()
+
+  // 서버는 낙찰자 이름을 누구에게나 마스킹해서 내려준다. 본인에게만은 실명이 자연스러운데,
+  // 그 이름은 서버에 다시 물을 것 없이 내 세션이 이미 들고 있다
+  const winnerName =
+    room.winner?.mine && user ? user.realName : room.winner?.name
+
   return (
     <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
       <CarDetail vehicle={room.vehicle} />
@@ -207,7 +214,9 @@ function EndedResult({ room }: { room: AuctionRoomView }) {
                 {formatKRW(room.currentPrice)}
               </p>
               <p className="text-muted-foreground mt-2 text-sm">
-                낙찰자 {room.winner.name} · 입찰 {room.bidCount}건
+                낙찰자 {winnerName}
+                {room.winner.mine && <span className="text-foreground font-medium"> (나)</span>} ·
+                입찰 {room.bidCount}건
               </p>
               {room.winner.mine && (
                 <Button asChild className="mt-5 w-full">
