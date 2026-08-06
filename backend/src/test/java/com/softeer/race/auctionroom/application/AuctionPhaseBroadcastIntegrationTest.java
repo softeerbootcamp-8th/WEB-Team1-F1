@@ -114,6 +114,41 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         assertThat(watcher.lastState().winnerName()).isNull();
     }
 
+    @Test
+    @DisplayName("이미 시작된 경매에 시작 전이가 다시 들어와도 현황을 또 보내지 않는다")
+    void repeatedStartStaysQuiet() {
+        // given : 시작 시각이 지나 한 번 진행중으로 넘어간 방을 한 사람이 보고 있다
+        auctionId = waitingRoom();
+        auctionRoomStreamService.subscribe(auctionId, watcher);
+        fixClockAt(START_AT);
+        auctionStarter.start(auctionId);
+        int receivedAfterStart = watcher.received().size();
+
+        // when : 같은 경매에 시작 전이가 한 번 더 들어온다, 서버가 여러 대면 같은 후보를 함께 뽑는다
+        auctionStarter.start(auctionId);
+
+        // then : 잠금 안에서 되돌아가므로 사건이 나가지 않는다, 화면이 같은 값을 두 번 받지 않는다
+        assertThat(watcher.received()).hasSize(receivedAfterStart);
+    }
+
+    @Test
+    @DisplayName("이미 끝난 경매에 마감 확정이 다시 들어와도 현황을 또 보내지 않는다")
+    void repeatedCloseStaysQuiet() {
+        // given : 마감 시각이 지나 낙찰까지 확정된 방을 한 사람이 보고 있다
+        auctionId = liveRoomWithBid();
+        startAuction();
+        auctionRoomStreamService.subscribe(auctionId, watcher);
+        fixClockAt(END_AT);
+        auctionCloser.close(auctionId);
+        int receivedAfterClose = watcher.received().size();
+
+        // when : 같은 경매에 확정이 한 번 더 들어온다
+        auctionCloser.close(auctionId);
+
+        // then : 확정된 경매는 다시 확정되지 않아 사건도 나가지 않는다
+        assertThat(watcher.received()).hasSize(receivedAfterClose);
+    }
+
     private long waitingRoom() {
         return rooms.room(users.user("박판매", Role.GENERAL), START_AT)
                 .create();
@@ -139,6 +174,10 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     private static final class RecordingSubscriber implements RoomSubscriber {
 
         private final List<RoomState> received = new ArrayList<>();
+
+        List<RoomState> received() {
+            return received;
+        }
 
         RoomState lastState() {
             return received.getLast();
