@@ -75,7 +75,6 @@ class AuctionControllerTest extends IntegrationTestSupport {
 
         List<AuctionPost> posts = auctionPostRepository.findAll();
         assertThat(posts).hasSize(1);
-        assertThat(posts.get(0).getThumbnailUrl()).isEqualTo("https://cdn/first.jpg");
 
         List<Auction> auctions = auctionRepository.findAll();
         assertThat(auctions).hasSize(1);
@@ -176,7 +175,7 @@ class AuctionControllerTest extends IntegrationTestSupport {
     private Auction 지난_경매() {
         Vehicle vehicle = vehicleRepository.findById(VEHICLE_ID).orElseThrow();
         LocalDateTime publishedAt = LocalDateTime.now(clock).minusDays(1);
-        AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, null, publishedAt));
+        AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, publishedAt));
 
         return Auction.schedule(post, 10_000_000L, publishedAt.plusHours(2));
     }
@@ -313,7 +312,7 @@ class AuctionControllerTest extends IntegrationTestSupport {
     private Auction 예약된_경매(LocalDateTime startAt) {
         Vehicle vehicle = vehicleRepository.findById(VEHICLE_ID).orElseThrow();
         LocalDateTime publishedAt = LocalDateTime.now(clock).minusDays(1);
-        AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, null, publishedAt));
+        AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, publishedAt));
 
         return auctionRepository.save(Auction.schedule(post, 10_000_000L, startAt));
     }

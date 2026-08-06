@@ -41,28 +41,28 @@ values (101, 100, 'HYUNDAI', '아반떼 CN7', 2022, 35000, 'GASOLINE', 'AUTOMATI
        (110, 100, 'AUDI', 'A6', 2021, 47000, 'GASOLINE', 'AUTOMATIC', '10가1010', 39000000,
         'https://cdn.race.dev/110.jpg', '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
-insert into auction_post (id, vehicle_id, thumbnail_url, post_status, published_at, deleted_at, created_at, updated_at)
-values (101, 101, 'https://cdn.race.dev/101.jpg', 'PUBLISHED', '2026-08-01 09:00:00', null,
+insert into auction_post (id, vehicle_id, post_status, published_at, deleted_at, created_at, updated_at)
+values (101, 101, 'PUBLISHED', '2026-08-01 09:00:00', null,
         '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (102, 102, 'https://cdn.race.dev/102.jpg', 'PUBLISHED', '2026-08-01 09:00:00', null,
+       (102, 102, 'PUBLISHED', '2026-08-01 09:00:00', null,
         '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (103, 103, 'https://cdn.race.dev/103.jpg', 'PUBLISHED', '2026-08-01 09:00:00', null,
+       (103, 103, 'PUBLISHED', '2026-08-01 09:00:00', null,
         '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (104, 104, 'https://cdn.race.dev/104.jpg', 'PUBLISHED', '2026-08-01 09:00:00', null,
+       (104, 104, 'PUBLISHED', '2026-08-01 09:00:00', null,
         '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (105, 105, 'https://cdn.race.dev/105.jpg', 'PUBLISHED', '2026-08-01 09:00:00', null,
+       (105, 105, 'PUBLISHED', '2026-08-01 09:00:00', null,
         '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (106, 106, 'https://cdn.race.dev/106.jpg', 'PUBLISHED', '2026-08-01 09:00:00', null,
+       (106, 106, 'PUBLISHED', '2026-08-01 09:00:00', null,
         '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (107, 107, 'https://cdn.race.dev/107.jpg', 'PUBLISHED', '2026-08-01 09:00:00', null,
+       (107, 107, 'PUBLISHED', '2026-08-01 09:00:00', null,
         '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
        -- 삭제된 경매글, 진행중 시간대지만 목록에 나오면 안 된다
-       (108, 108, 'https://cdn.race.dev/108.jpg', 'PUBLISHED', '2026-08-01 09:00:00', '2026-08-02 10:00:00',
+       (108, 108, 'PUBLISHED', '2026-08-01 09:00:00', '2026-08-02 10:00:00',
         '2026-08-01 09:00:00', '2026-08-02 10:00:00'),
        -- 임시저장 경매글, 마찬가지로 나오면 안 된다
-       (109, 109, 'https://cdn.race.dev/109.jpg', 'DRAFT', null, null,
+       (109, 109, 'DRAFT', null, null,
         '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (110, 110, 'https://cdn.race.dev/110.jpg', 'PUBLISHED', '2026-08-01 09:00:00', null,
+       (110, 110, 'PUBLISHED', '2026-08-01 09:00:00', null,
         '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
 insert into auction (id, post_id, winner_id, start_price, current_price, room_open_at, start_time,

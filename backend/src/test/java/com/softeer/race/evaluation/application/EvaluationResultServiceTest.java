@@ -276,8 +276,7 @@ class EvaluationResultServiceTest {
         given(vehicleImageService.register(any(VehicleImageRegisterCommand.class)))
                 .willReturn(new VehicleImageRegisterInfo(VEHICLE_ID, List.of(
                         new VehicleImageRegisterInfo.RegisteredImage(IMAGE_1, 1),
-                        new VehicleImageRegisterInfo.RegisteredImage(IMAGE_2, 2)),
-                        IMAGE_1));
+                        new VehicleImageRegisterInfo.RegisteredImage(IMAGE_2, 2))));
     }
 
     private static EvaluationResultSubmitCommand command(String diagnosticReportUrl) {

@@ -109,7 +109,7 @@ class RoomPhaseTest {
             "2026-07-27T16:50:00"   // 마감 정각, 제외
     })
     void biddableExactlyWhenLive(LocalDateTime now) {
-        Auction auction = Auction.schedule(AuctionPost.create(null, null, PUBLISHED_AT), 10_000_000L, START_TIME);
+        Auction auction = Auction.schedule(AuctionPost.create(null, PUBLISHED_AT), 10_000_000L, START_TIME);
 
         RoomPhase phase = RoomPhase.at(
                 now, auction.getRoomOpenAt(), auction.getStartTime(), auction.getCurrentEndTime());

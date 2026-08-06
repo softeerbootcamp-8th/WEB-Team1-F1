@@ -14,17 +14,16 @@ class AuctionPostTest {
     @Test
     @DisplayName("경매글은 발행 상태로 생성된다.")
     void create_발행상태() {
-        AuctionPost post = AuctionPost.create(null, "https://cdn/1.jpg", NOW);
+        AuctionPost post = AuctionPost.create(null, NOW);
 
         assertThat(post.getPostStatus()).isEqualTo(PostStatus.PUBLISHED);
         assertThat(post.getPublishedAt()).isEqualTo(NOW);
-        assertThat(post.getThumbnailUrl()).isEqualTo("https://cdn/1.jpg");
     }
 
     @Test
     @DisplayName("삭제하면 삭제 시각이 채워진다.")
     void delete_삭제시각_채움() {
-        AuctionPost post = AuctionPost.create(null, "https://cdn/1.jpg", NOW);
+        AuctionPost post = AuctionPost.create(null, NOW);
 
         post.delete(NOW.plusDays(1));
 
@@ -35,7 +34,7 @@ class AuctionPostTest {
     @Test
     @DisplayName("이미 삭제된 경매글을 다시 삭제해도 최초 삭제 시각이 유지된다.")
     void delete_재시도해도_최초_삭제시각_유지() {
-        AuctionPost post = AuctionPost.create(null, "https://cdn/1.jpg", NOW);
+        AuctionPost post = AuctionPost.create(null, NOW);
         post.delete(NOW.plusDays(1));
 
         post.delete(NOW.plusDays(2));

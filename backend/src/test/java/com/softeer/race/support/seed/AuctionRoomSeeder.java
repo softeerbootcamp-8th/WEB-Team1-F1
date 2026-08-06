@@ -107,7 +107,7 @@ public class AuctionRoomSeeder {
                 Vehicle vehicle = Vehicle.pendingDiagnosis(seller, spec());
                 vehicle.completeDiagnosis(DEFAULT_MILEAGE, DEFAULT_ESTIMATED_PRICE, mainPhotoUrl);
                 vehicleRepository.save(vehicle);
-                AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, mainPhotoUrl, publishedAt));
+                AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, publishedAt));
 
                 return auctionRepository.save(Auction.schedule(post, startPrice, startAt));
             });
