@@ -46,24 +46,38 @@ export function AuctionRoomPage() {
   return <RoomContent auctionId={auctionId} userId={user.id} />
 }
 
+/** 방 대신 사유를 알리는 화면 */
+function RoomNotice({ title, description }: { title: string; description: string }) {
+  return (
+    <main aria-label="경매방" className="mx-auto max-w-3xl px-6 py-24">
+      <EmptyState
+        title={title}
+        description={description}
+        action={
+          <Button asChild variant="outline">
+            <Link to="/auctions">다른 경매 보기</Link>
+          </Button>
+        }
+      />
+    </main>
+  )
+}
+
 function RoomContent({ auctionId, userId }: { auctionId: number; userId: number }) {
-  const { room, increment, nextMin, flashKey, extended, error, clockOffset, placeBid } =
+  const { room, entry, increment, nextMin, flashKey, extended, clockOffset, placeBid } =
     useAuctionRoom(auctionId, userId)
 
-  if (error) {
-    return (
-      <main aria-label="경매방" className="mx-auto max-w-3xl px-6 py-24">
-        <EmptyState
-          title="경매를 찾을 수 없습니다"
-          description="삭제되었거나 잘못된 주소입니다."
-          action={
-            <Button asChild variant="outline">
-              <Link to="/">홈으로</Link>
-            </Button>
-          }
-        />
-      </main>
-    )
+  // 아직 열리지 않은 방과 끝난 방은 각자의 화면으로 간다, 다음 단계에서 서버가 주는 안내와 결과를 붙인다
+  if (entry === 'NOT_OPEN_YET') {
+    return <RoomNotice title="아직 열리지 않은 경매방입니다" description="입장 가능 시각이 되면 들어갈 수 있어요." />
+  }
+
+  if (entry === 'CLOSED') {
+    return <RoomNotice title="이미 종료된 경매입니다" description="결과는 곧 여기에서 볼 수 있어요." />
+  }
+
+  if (entry === 'BROKEN') {
+    return <RoomNotice title="경매를 찾을 수 없습니다" description="삭제되었거나 잘못된 주소입니다." />
   }
 
   if (!room) {
