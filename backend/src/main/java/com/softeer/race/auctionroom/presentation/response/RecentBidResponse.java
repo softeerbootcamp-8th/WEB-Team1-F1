@@ -12,7 +12,7 @@ public record RecentBidResponse(
         @Schema(description = "가운데를 마스킹한 입찰자 이름", example = "김*현")
         String name,
 
-        @Schema(description = "입찰자 역할, DEALER 나 GENERAL 이다, 평가사는 입찰하지 않는다", example = "DEALER")
+        @Schema(description = "입찰자 역할, DEALER 아니면 GENERAL 이다", example = "DEALER")
         Role role,
 
         @Schema(description = "입찰 금액", example = "12500000")

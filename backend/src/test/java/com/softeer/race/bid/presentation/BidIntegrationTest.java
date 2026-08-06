@@ -55,6 +55,7 @@ class BidIntegrationTest extends IntegrationTestSupport {
 
     private static final String SELLER_TOKEN = "token-seller";
     private static final String ALICE_TOKEN = "token-alice";
+    private static final String EVALUATOR_TOKEN = "token-evaluator";
     private static final String BOB_TOKEN = "token-bob";
     private static final String EXPIRED_TOKEN = "token-expired";
 
@@ -124,6 +125,17 @@ class BidIntegrationTest extends IntegrationTestSupport {
         bid(LIVE_AUCTION, SELLER_TOKEN, START_PRICE)
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("SELLER_CANNOT_BID"));
+
+        assertThat(bidCount(LIVE_AUCTION)).isZero();
+    }
+
+    // 판매자와 같은 칸의 규칙이다, 그 차를 직접 보고 시세를 매긴 사람이라 같은 차의 입찰에 설 수 없다
+    @Test
+    @DisplayName("시나리오 5-1 : 평가사는 입찰할 수 없다")
+    void rejectsEvaluatorBid() throws Exception {
+        bid(LIVE_AUCTION, EVALUATOR_TOKEN, START_PRICE)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("EVALUATOR_CANNOT_BID"));
 
         assertThat(bidCount(LIVE_AUCTION)).isZero();
     }
