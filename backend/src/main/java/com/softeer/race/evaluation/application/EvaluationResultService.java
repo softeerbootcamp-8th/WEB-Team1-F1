@@ -1,5 +1,7 @@
 package com.softeer.race.evaluation.application;
 
+import static com.softeer.race.notification.domain.NotificationType.EVAL_APPROVED;
+
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.command.EvaluationResultSubmitCommand;
 import com.softeer.race.evaluation.application.dto.info.EvaluationResultInfo;
@@ -8,6 +10,7 @@ import com.softeer.race.evaluation.domain.DiagnosticReportRepository;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
+import com.softeer.race.notification.application.NotificationPublisher;
 import com.softeer.race.storage.domain.FileCategory;
 import com.softeer.race.storage.domain.FileStorage;
 import com.softeer.race.vehicle.application.VehicleImageService;
@@ -33,6 +36,9 @@ import org.springframework.transaction.annotation.Transactional;
  * 평가사가 버튼을 두 번 누르거나 탭 두 개에서 보내면 두 요청이 겹친다. 그러면 둘 다 "진단서 없음"을
  * 읽고 둘 다 insert 해서 {@code evaluation_id} unique 제약에 걸린다 — 배정이 {@code findByIdForUpdate}로
  * 막는 것과 같은 종류의 경합이고, 여기서는 상대가 남이 아니라 자기 자신이다.
+ * <p>
+ * <b>승인 알림도 여기서 발행한다.</b> 받을 사람이 판매자 하나뿐이라 고를 것이 없다 —
+ * 반려 알림이 붙어 갈래가 생기면 그때 {@code AuctionEndNotifier}처럼 뗀다.
  */
 @Service
 @RequiredArgsConstructor
@@ -43,6 +49,7 @@ public class EvaluationResultService {
     private final DiagnosticReportRepository diagnosticReportRepository;
     private final VehicleImageService vehicleImageService;
     private final FileStorage fileStorage;
+    private final NotificationPublisher notificationPublisher;
 
     /**
      * 방문 결과를 제출한다. 이미 제출된 결과가 있으면 통째로 갈아 끼운다.
@@ -72,6 +79,10 @@ public class EvaluationResultService {
         DiagnosticReport report = attachOrReplace(evaluation, command);
 
         evaluation.approve();
+
+        // 이 트랜잭션 안에서 발행한다. 제출이 롤백됐는데 승인 알림만 남으면 안 된다.
+        // 판매자 식별자는 프록시가 이미 들고 있어 회원 조회가 늘지 않는다
+        notificationPublisher.publish(vehicle.getSeller().getId(), EVAL_APPROVED, command.evaluationId());
 
         // 제출 시각을 응답에 싣는다. 교체는 더티 체킹이라 커밋 시점에야 flush 되고,
         // 그 전까지 updatedAt은 이전 값이라 방금 올린 결과에 예전 시각이 붙어 나간다
