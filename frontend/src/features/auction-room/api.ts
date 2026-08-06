@@ -57,7 +57,7 @@ export async function fetchRoomResult(auctionId: number): Promise<RoomResultView
 export function subscribeRoomStream(
   auctionId: number,
   onState: (state: RoomStreamState) => void,
-  onError?: () => void,
+  onClosed?: () => void,
 ): () => void {
   const baseURL = axiosInstance.defaults.baseURL ?? ''
   const source = new EventSource(`${baseURL}/api/auctions/${auctionId}/room/stream`, {
@@ -67,8 +67,11 @@ export function subscribeRoomStream(
   source.onmessage = (event) => {
     onState(JSON.parse(event.data) as RoomStreamState)
   }
+
+  // 끊기면 EventSource 가 스스로 다시 붙는다. 다만 재연결 응답이 2xx 가 아니면 표준대로 재시도를
+  // 포기하고 CLOSED 로 남으므로, 그때만 알린다. 방이 닫혀 서버가 끊은 경우가 여기로 온다
   source.onerror = () => {
-    onError?.()
+    if (source.readyState === EventSource.CLOSED) onClosed?.()
   }
 
   return () => source.close()

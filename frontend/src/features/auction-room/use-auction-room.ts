@@ -179,6 +179,14 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
         })
     }
 
+    // 연결이 끊기는 이유는 결과 구간이 끝나 서버가 끊는 것이 대부분이다, 오류로 덮지 않고 다시 들어가 본다
+    // 정말 끝난 방이면 서버가 종료로 거절하고 화면은 결과 요약으로 이어진다
+    const reconnect = () => {
+      unsubscribe?.()
+      unsubscribe = null
+      connect()
+    }
+
     const connect = () => {
       fetchAuctionRoom(auctionId, userId)
         .then((view) => {
@@ -197,7 +205,7 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
 
           // 열린 방만 응답하므로 여기 도달했으면 구독도 받아 준다
           if (CONNECTABLE_PHASES.has(view.phase)) {
-            unsubscribe = subscribeRoomStream(auctionId, mergeStreamState, () => setEntry('BROKEN'))
+            unsubscribe = subscribeRoomStream(auctionId, mergeStreamState, reconnect)
           }
         })
         .catch((error: unknown) => {
