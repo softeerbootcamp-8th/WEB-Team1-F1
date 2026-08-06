@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 평가 승인이 판매자 알림으로 이어지는 경로를 실물 트랜잭션 위에서
+ * 평가 승인이 판매자 알림으로 이어지는 경로를 실물 트랜잭션 위에서 확인한다.
  * <p>
  * <b>{@code @Transactional} 을 걸지 않는다.</b> "제출이 롤백되면 알림도 없다"가 검증 대상이라,
  * 테스트가 트랜잭션을 들고 있으면 커밋·롤백 경계 자체가 관측되지 않는다. 정리는 부모의
