@@ -9,8 +9,9 @@ export type { RoomPhase }
  * 경매방에 들어가려 한 결과.
  * 서버는 열려 있는 방에만 현황을 주고 그 밖에는 사유를 코드로 알려준다. 개장 전이면 개장 안내로,
  * 끝난 뒤면 결과 요약으로 옮겨가라는 뜻이라 실패를 하나로 뭉치지 않는다.
+ * UNSTABLE 은 다시 붙어 보다 포기한 것이라, 없는 경매를 뜻하는 BROKEN 과 안내가 달라야 한다.
  */
-export type RoomEntry = 'LOADING' | 'OPEN' | 'NOT_OPEN_YET' | 'CLOSED' | 'BROKEN'
+export type RoomEntry = 'LOADING' | 'OPEN' | 'NOT_OPEN_YET' | 'CLOSED' | 'UNSTABLE' | 'BROKEN'
 
 export interface RoomVehicle {
   manufacturer: Manufacturer

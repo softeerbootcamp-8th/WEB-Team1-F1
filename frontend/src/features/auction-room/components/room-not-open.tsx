@@ -27,9 +27,7 @@ export function RoomNotOpen({ opening, clockOffset }: RoomNotOpenProps) {
       <p className="tabular my-4 text-6xl font-bold tracking-tight md:text-7xl">
         {formatDuration(remaining)}
       </p>
-      <p className="text-muted-foreground">
-        {formatClock(opening.openAt)}부터 입장할 수 있어요 (시작 30분 전)
-      </p>
+      <p className="text-muted-foreground">{formatClock(opening.openAt)}부터 입장할 수 있어요</p>
       <p className="text-muted-foreground mt-2">
         {formatClock(opening.startAt)} 입찰 시작 · 시작가{' '}
         <span className="text-foreground tabular font-semibold">

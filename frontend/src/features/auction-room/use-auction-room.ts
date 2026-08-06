@@ -23,6 +23,15 @@ const EXTENDED_FLAG_MS = 4000
 
 // 개장 시각을 우리가 먼저 지나쳤다고 판단해도 서버는 아직 아닐 수 있다, 조금 늦게 두드린다
 const REENTRY_BUFFER_MS = 500
+
+// 서버가 고장 난 채로 남아 있으면 다시 들어가는 시도가 끝나지 않는다, 여기서 끊고 사용자에게 알린다
+// 다섯 번이면 마지막 시도까지 15초쯤이라 정상적인 지연(1초 안쪽)은 다 흡수한다
+const MAX_REENTRY_ATTEMPTS = 5
+
+// 같은 방을 보던 사람들이 같은 박자로 몰려가지 않도록 대기 시간을 조금씩 흩는다
+function backoffMs(attempt: number): number {
+  return REENTRY_BUFFER_MS * 2 ** attempt * (0.8 + Math.random() * 0.4)
+}
 const CONNECTABLE_PHASES = new Set(['WAITING', 'LIVE', 'RESULT'])
 
 // 방에 들어갈 수 없는 사유는 서버가 코드로 알려준다, 화면이 시각을 보고 스스로 정하지 않는다
@@ -129,6 +138,8 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
     let cancelled = false
     let unsubscribe: (() => void) | null = null
     let reentryTimer: number | null = null
+    let resultAttempts = 0
+    let reconnectAttempts = 0
 
     // 아직 열리지 않은 방은 안내를 받아 두고, 열리는 시각에 스스로 다시 들어간다
     const enterOpening = () => {
@@ -170,8 +181,15 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
           if (cancelled) return
 
           // 마감과 낙찰 확정 사이의 짧은 틈이다, 확정되면 결과가 나온다
+          // 확정이 계속 실패한 채로 남으면 이 물음도 끝나지 않으므로 몇 번만 묻고 그만둔다
           if (getErrorCode(error) === 'AUCTION_NOT_ENDED') {
-            reentryTimer = window.setTimeout(enterResult, REENTRY_BUFFER_MS)
+            if (resultAttempts >= MAX_REENTRY_ATTEMPTS) {
+              setEntry('UNSTABLE')
+              return
+            }
+
+            reentryTimer = window.setTimeout(enterResult, backoffMs(resultAttempts))
+            resultAttempts += 1
             return
           }
 
@@ -181,10 +199,20 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
 
     // 연결이 끊기는 이유는 결과 구간이 끝나 서버가 끊는 것이 대부분이다, 오류로 덮지 않고 다시 들어가 본다
     // 정말 끝난 방이면 서버가 종료로 거절하고 화면은 결과 요약으로 이어진다
+    //
+    // 방 조회는 되는데 구독만 계속 거절당하는 상태도 있다. 그때 곧바로 다시 붙으면 지연이 없는 루프가
+    // 되므로 시도할수록 간격을 늘리고 몇 번 뒤에는 그만둔다
     const reconnect = () => {
       unsubscribe?.()
       unsubscribe = null
-      connect()
+
+      if (reconnectAttempts >= MAX_REENTRY_ATTEMPTS) {
+        setEntry('UNSTABLE')
+        return
+      }
+
+      reentryTimer = window.setTimeout(connect, backoffMs(reconnectAttempts))
+      reconnectAttempts += 1
     }
 
     const connect = () => {
@@ -205,7 +233,15 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
 
           // 열린 방만 응답하므로 여기 도달했으면 구독도 받아 준다
           if (CONNECTABLE_PHASES.has(view.phase)) {
-            unsubscribe = subscribeRoomStream(auctionId, mergeStreamState, reconnect)
+            unsubscribe = subscribeRoomStream(
+              auctionId,
+              (state) => {
+                // 조회가 200 인 것으로는 부족하다, 구독이 값을 보내와야 연결이 산 것이다
+                reconnectAttempts = 0
+                mergeStreamState(state)
+              },
+              reconnect,
+            )
           }
         })
         .catch((error: unknown) => {

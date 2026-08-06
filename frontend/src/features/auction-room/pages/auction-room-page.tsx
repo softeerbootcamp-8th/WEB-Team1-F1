@@ -133,6 +133,15 @@ function RoomContent({ auctionId, userId }: { auctionId: number; userId: number 
     )
   }
 
+  if (entry === 'UNSTABLE') {
+    return (
+      <RoomNotice
+        title="연결이 계속 끊기고 있어요"
+        description="잠시 뒤 새로고침하면 다시 이어집니다."
+      />
+    )
+  }
+
   if (entry === 'BROKEN') {
     return <RoomNotice title="경매를 찾을 수 없습니다" description="삭제되었거나 잘못된 주소입니다." />
   }
