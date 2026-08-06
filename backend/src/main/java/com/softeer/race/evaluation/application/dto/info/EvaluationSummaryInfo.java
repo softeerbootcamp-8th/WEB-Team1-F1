@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * <b>진단 결과를 담지 않는다.</b> 주행거리 · 시세 · 사진은 상세에서만 나간다. 목록에 넣으려면
  * 진단서와 사진을 건수만큼 더 읽어야 하는데, 목록에서 그 값들로 할 수 있는 판단이 없다.
  * <p>
- * 그래서 {@code status}가 이 목록의 핵심이다. 판매자는 DIAGNOSED를 보고 출품으로 넘어가고,
+ * 그래서 {@code status}가 이 목록의 핵심이다. 판매자는 APPROVED를 보고 출품으로 넘어가고,
  * 평가사는 REQUESTED를 보고 아직 방문하지 않은 건을 가려낸다.
  * <p>
  * <b>{@code assigned}가 없으면 판매자 화면이 멈춰 보인다.</b> 배정돼도 상태는 REQUESTED 그대로라

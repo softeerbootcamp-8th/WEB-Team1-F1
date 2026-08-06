@@ -17,9 +17,9 @@ public record EvaluationSummaryResponse(
         @Schema(description = "방문견적 신청 ID. 상세 조회에 쓴다", example = "1")
         Long evaluationId,
 
-        @Schema(description = "신청 상태. DIAGNOSED면 진단이 끝나 출품할 수 있다",
-                example = "DIAGNOSED",
-                allowableValues = {"REQUESTED", "APPROVED", "DIAGNOSED", "REJECTED"})
+        @Schema(description = "신청 상태. APPROVED면 진단이 끝나 출품할 수 있다",
+                example = "APPROVED",
+                allowableValues = {"REQUESTED", "APPROVED", "REJECTED"})
         String status,
 
         @Schema(description = "담당 평가사가 정해졌는지. 배정돼도 status는 REQUESTED로 남으므로 "

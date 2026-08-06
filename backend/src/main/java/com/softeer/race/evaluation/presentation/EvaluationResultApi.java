@@ -31,7 +31,7 @@ public interface EvaluationResultApi {
                     **이 신청에 배정된 평가사만 제출할 수 있습니다.** 배정은 배정 대기 목록에서
                     수락할 때 받으며, 아직 아무도 수락하지 않은 신청에는 누구도 제출할 수 없습니다.
 
-                    제출이 끝나면 신청 상태가 DIAGNOSED가 되고, 그때부터 차량에 주행거리와
+                    제출이 끝나면 신청 상태가 APPROVED가 되고, 그때부터 차량에 주행거리와
                     예상 시세가 채워집니다.
                     """)
     @ApiResponse(responseCode = "200", description = "제출되었거나 갈아 끼워졌습니다.")

@@ -71,7 +71,7 @@ public class EvaluationResultService {
 
         DiagnosticReport report = attachOrReplace(evaluation, command);
 
-        evaluation.diagnose();
+        evaluation.approve();
 
         // 제출 시각을 응답에 싣는다. 교체는 더티 체킹이라 커밋 시점에야 flush 되고,
         // 그 전까지 updatedAt은 이전 값이라 방금 올린 결과에 예전 시각이 붙어 나간다

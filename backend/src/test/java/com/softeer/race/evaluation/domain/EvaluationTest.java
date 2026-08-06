@@ -66,13 +66,13 @@ class EvaluationTest {
     }
 
     // 중복 접수 차단과 재신청 허용이 둘 다 이 집합에 달려 있다.
-    // DIAGNOSED가 들어 있는 것은 진단이 끝나도 출품 동의가 남아 흐름이 계속되기 때문이다
+    // APPROVED가 들어 있는 것은 진단이 끝나도 출품 동의가 남아 흐름이 계속되기 때문이고,
+    // 빠지면 진단을 마친 차를 다시 방문 신청할 수 있게 된다
     @Test
     @DisplayName("REJECTED만 종료 상태이고 나머지는 전부 진행 중이다")
     void inProgressStatuses() {
         assertThat(EvaluationStatus.inProgress())
-                .containsExactlyInAnyOrder(EvaluationStatus.REQUESTED,
-                        EvaluationStatus.APPROVED, EvaluationStatus.DIAGNOSED)
+                .containsExactlyInAnyOrder(EvaluationStatus.REQUESTED, EvaluationStatus.APPROVED)
                 .doesNotContain(EvaluationStatus.REJECTED);
     }
 
@@ -155,49 +155,41 @@ class EvaluationTest {
     }
 
     @Test
-    @DisplayName("결과가 제출되면 DIAGNOSED가 되고 담당자는 그대로다")
-    void diagnose() {
+    @DisplayName("결과가 제출되면 APPROVED가 되고 담당자는 그대로다")
+    void approve() {
         // given
         Evaluation evaluation = requested();
         User evaluator = evaluator(EVALUATOR_ID);
         evaluation.assignTo(evaluator);
 
         // when
-        evaluation.diagnose();
+        evaluation.approve();
 
         // then : 제출이 배정을 건드리면 "먼저 수락한 한 명"을 우회하는 통로가 생긴다
-        assertThat(evaluation.getStatus()).isEqualTo(EvaluationStatus.DIAGNOSED);
+        assertThat(evaluation.getStatus()).isEqualTo(EvaluationStatus.APPROVED);
         assertThat(evaluation.getEvaluator()).isSameAs(evaluator);
     }
 
     // 재제출은 결과를 갈아 끼우는 것이지 상태를 되돌리거나 새로 만드는 것이 아니다
     @Test
-    @DisplayName("이미 DIAGNOSED인 평가에 다시 제출해도 상태는 그대로다")
-    void diagnoseIsIdempotent() {
+    @DisplayName("이미 APPROVED인 평가에 다시 제출해도 상태는 그대로다")
+    void approveIsIdempotent() {
         Evaluation evaluation = requested();
         evaluation.assignTo(evaluator(EVALUATOR_ID));
-        evaluation.diagnose();
+        evaluation.approve();
 
-        evaluation.diagnose();
+        evaluation.approve();
 
-        assertThat(evaluation.getStatus()).isEqualTo(EvaluationStatus.DIAGNOSED);
-    }
-
-    // 진단이 끝나도 출품 동의가 남아 흐름이 계속된다.
-    // 이 집합이 중복 접수 차단 기준이라, 빠지면 진단을 마친 차를 다시 방문 신청할 수 있게 된다
-    @Test
-    @DisplayName("DIAGNOSED도 진행 중 상태에 든다")
-    void diagnosedIsInProgress() {
-        assertThat(EvaluationStatus.inProgress()).contains(EvaluationStatus.DIAGNOSED);
+        assertThat(evaluation.getStatus()).isEqualTo(EvaluationStatus.APPROVED);
     }
 
     // 제출한 평가사가 결과를 고치러 다시 오는 흐름이다
     @Test
-    @DisplayName("DIAGNOSED인 평가에도 담당 평가사는 결과를 다시 제출할 수 있다")
+    @DisplayName("APPROVED인 평가에도 담당 평가사는 결과를 다시 제출할 수 있다")
     void validateDiagnosableByAllowsResubmit() {
         Evaluation evaluation = requested();
         evaluation.assignTo(evaluator(EVALUATOR_ID));
-        evaluation.diagnose();
+        evaluation.approve();
 
         assertThatCode(() -> evaluation.validateDiagnosableBy(EVALUATOR_ID))
                 .doesNotThrowAnyException();

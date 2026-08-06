@@ -15,7 +15,7 @@ public interface EvaluationLookupApi {
             description = """
                     판매자로서 낸 방문견적 신청들을 최신 접수부터 돌려줍니다.
 
-                    status가 DIAGNOSED면 평가사의 진단이 끝난 것이고, 그때부터 그 차량을 경매로
+                    status가 APPROVED면 평가사의 진단이 끝난 것이고, 그때부터 그 차량을 경매로
                     출품할 수 있습니다. 진단 결과(주행거리 · 시세 · 사진 · 진단서)는 이 목록에
                     없으며 상세 조회에서 받습니다.
                     """)

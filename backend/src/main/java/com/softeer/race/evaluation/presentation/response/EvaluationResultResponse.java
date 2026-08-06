@@ -21,7 +21,7 @@ public record EvaluationResultResponse(
         @Schema(description = "진단이 반영된 차량 ID", example = "1000")
         Long vehicleId,
 
-        @Schema(description = "평가 상태. 결과가 제출되면 DIAGNOSED가 됩니다", example = "DIAGNOSED")
+        @Schema(description = "평가 상태. 결과가 제출되면 APPROVED가 됩니다", example = "APPROVED")
         String status,
 
         @Schema(description = "실측 주행거리(km)", example = "45000")

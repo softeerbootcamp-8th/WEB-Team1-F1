@@ -138,7 +138,7 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
         // then : 같은 엔드포인트가 이제 결과까지 준다. 이 전환이 보여야 판매자가 출품으로 넘어간다
         lookup("/" + EVALUATION_ID, SELLER_TOKEN)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("DIAGNOSED"))
+                .andExpect(jsonPath("$.status").value("APPROVED"))
                 .andExpect(jsonPath("$.mileage").value(45000))
                 .andExpect(jsonPath("$.estimatedPrice").value(21500000))
                 .andExpect(jsonPath("$.imageUrls[0]").value(IMAGE_URL))

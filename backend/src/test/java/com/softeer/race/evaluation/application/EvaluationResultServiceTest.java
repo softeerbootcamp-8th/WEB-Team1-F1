@@ -99,7 +99,7 @@ class EvaluationResultServiceTest {
                 .willReturn(Optional.empty());
         given(diagnosticReportRepository.save(any(DiagnosticReport.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
-        given(evaluation.getStatus()).willReturn(EvaluationStatus.DIAGNOSED);
+        given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
 
         // when
         EvaluationResultInfo info = evaluationResultService.submit(command(DOCUMENT_URL));
@@ -109,7 +109,7 @@ class EvaluationResultServiceTest {
         then(vehicle).should().completeDiagnosis(MILEAGE, ESTIMATED_PRICE);
         then(vehicleImageService).should().register(any(VehicleImageRegisterCommand.class));
         then(diagnosticReportRepository).should().save(any(DiagnosticReport.class));
-        then(evaluation).should().diagnose();
+        then(evaluation).should().approve();
 
         assertThat(info.evaluationId()).isEqualTo(EVALUATION_ID);
         assertThat(info.vehicleId()).isEqualTo(VEHICLE_ID);
@@ -117,7 +117,7 @@ class EvaluationResultServiceTest {
         assertThat(info.estimatedPrice()).isEqualTo(ESTIMATED_PRICE);
         assertThat(info.imageUrls()).containsExactly(IMAGE_1, IMAGE_2);
         assertThat(info.diagnosticReportUrl()).isEqualTo(DOCUMENT_URL);
-        assertThat(info.status()).isEqualTo("DIAGNOSED");
+        assertThat(info.status()).isEqualTo("APPROVED");
     }
 
     @Test
@@ -131,7 +131,7 @@ class EvaluationResultServiceTest {
                 .willReturn(Optional.empty());
         given(diagnosticReportRepository.save(any(DiagnosticReport.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
-        given(evaluation.getStatus()).willReturn(EvaluationStatus.DIAGNOSED);
+        given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
 
         // when
         evaluationResultService.submit(command(DOCUMENT_URL));
@@ -151,7 +151,7 @@ class EvaluationResultServiceTest {
                 .willReturn(Optional.empty());
         given(diagnosticReportRepository.save(any(DiagnosticReport.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
-        given(evaluation.getStatus()).willReturn(EvaluationStatus.DIAGNOSED);
+        given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
 
         // when
         evaluationResultService.submit(command(DOCUMENT_URL));
@@ -176,7 +176,7 @@ class EvaluationResultServiceTest {
         givenImagesRegistered();
         given(diagnosticReportRepository.findByEvaluationId(EVALUATION_ID))
                 .willReturn(Optional.of(existing));
-        given(evaluation.getStatus()).willReturn(EvaluationStatus.DIAGNOSED);
+        given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
 
         // when
         EvaluationResultInfo info = evaluationResultService.submit(command(NEW_DOCUMENT_URL));

@@ -93,28 +93,6 @@ public class Evaluation extends BaseTimeEntity {
     }
 
     /**
-     * 이 사람이 진단 결과를 붙일 수 있는지.
-     * <p>
-     * 반려된 평가를 막는 것은 그 신청이 이미 끝났기 때문이다. 끝난 신청에 진단 결과가 붙으면
-     * 상태와 데이터가 어긋나고, 반려 후 재신청으로 생긴 새 평가와 어느 쪽이 유효한지 알 수 없다.
-     * <p>
-     * {@link #assignTo}와 상태 조건이 다르다. 배정은 {@code REQUESTED}만 받지만 진단서는
-     * {@code APPROVED}에도 붙을 수 있다 — 승인은 방문이 확정됐다는 뜻이고, 진단 결과는 그 방문의
-     * 산물이라 오히려 그때 올라온다. 두 규칙을 한 검사로 합치면 승인된 신청에 진단서를 못 붙인다.
-     * <p>
-     * <b>배정을 자격의 증명으로 쓴다.</b> {@code Role.EVALUATOR}인지 따로 묻지 않는다. 진단서를
-     * 붙이려면 이 신청에 배정돼 있어야 하고, 배정은 대기 목록에서 수락해야 받는다. 역할 검사를
-     * 여기 더하면 같은 규칙이 배정과 첨부 두 곳에 생기고, 배정이 역할을 보게 되는 날 한쪽만
-     * 고쳐 어긋난다. 자격을 봐야 할 자리는 <b>배정하는 곳 한 군데</b>다.
-     * <p>
-     * 배정 전(evaluator == null)과 남의 담당을 갈라 던진다. 앞쪽은 대기 목록에서 수락하면 풀리고
-     * 뒤쪽은 그렇게 해도 풀리지 않아, 화면이 안내할 말이 다르다.
-     *
-     * @throws BusinessException 반려되어 끝난 평가면 409({@code NOT_DIAGNOSABLE}),
-     *                           아직 담당자가 없으면 409({@code EVALUATOR_NOT_ASSIGNED}),
-     *                           다른 평가사의 담당이면 403({@code NOT_ASSIGNED_EVALUATOR})
-     */
-    /**
      * 이 신청의 상세를 볼 수 있는 사람인지.
      * <p>
      * 진단서 조회가 로그인만 확인하는 것과 다르다. 상세에는 <b>방문 주소</b>가 들어 있어 열어 두면
@@ -130,7 +108,7 @@ public class Evaluation extends BaseTimeEntity {
     }
 
     /**
-     * 방문 결과가 제출됐다.
+     * 방문 결과가 제출돼 이 신청이 승인으로 끝났다.
      * <p>
      * {@link #validateDiagnosableBy}와 나눠 둔다. 검증하는 메서드가 상태까지 바꾸면 이름이
      * 거짓이 되고, 검증만 하고 싶은 호출자가 생겼을 때 부작용을 피할 방법이 없다.
@@ -138,13 +116,38 @@ public class Evaluation extends BaseTimeEntity {
      * 여기서 다시 검증하지 않는다. 이 메서드를 부르기 직전에 {@code validateDiagnosableBy}가
      * 통과했다는 것이 전제다 — 같은 검사를 두 번 하면 어느 쪽이 진짜 관문인지 흐려진다.
      * <p>
-     * 이미 DIAGNOSED인 상태로 다시 불려도 그대로 둔다. 재제출은 결과를 갈아 끼우는 것이지
+     * 이미 APPROVED인 상태로 다시 불려도 그대로 둔다. 재제출은 결과를 갈아 끼우는 것이지
      * 상태를 되돌리거나 새로 만드는 것이 아니다.
+     * <p>
+     * 반려로 끝내는 경로는 아직 없다. 결과 제출이 판정을 받지 않아 제출은 곧 승인이고,
+     * {@code REJECTED}와 {@link #rejectReason}은 그 판정이 생길 때 쓰인다.
      */
-    public void diagnose() {
-        this.status = EvaluationStatus.DIAGNOSED;
+    public void approve() {
+        this.status = EvaluationStatus.APPROVED;
     }
 
+    /**
+     * 이 사람이 진단 결과를 붙일 수 있는지.
+     * <p>
+     * 반려된 평가를 막는 것은 그 신청이 이미 끝났기 때문이다. 끝난 신청에 진단 결과가 붙으면
+     * 상태와 데이터가 어긋나고, 반려 후 재신청으로 생긴 새 평가와 어느 쪽이 유효한지 알 수 없다.
+     * <p>
+     * {@link #assignTo}와 상태 조건이 다르다. 배정은 {@code REQUESTED}만 받지만 진단서는
+     * {@code APPROVED}에도 붙을 수 있다 — <b>재제출</b> 때문이다. 결과를 한 번 낸 뒤 값을 고쳐
+     * 다시 올리는 것이 정상 흐름이라, 두 규칙을 한 검사로 합치면 그 재제출이 막힌다.
+     * <p>
+     * <b>배정을 자격의 증명으로 쓴다.</b> {@code Role.EVALUATOR}인지 따로 묻지 않는다. 진단서를
+     * 붙이려면 이 신청에 배정돼 있어야 하고, 배정은 대기 목록에서 수락해야 받는다. 역할 검사를
+     * 여기 더하면 같은 규칙이 배정과 첨부 두 곳에 생기고, 배정이 역할을 보게 되는 날 한쪽만
+     * 고쳐 어긋난다. 자격을 봐야 할 자리는 <b>배정하는 곳 한 군데</b>다.
+     * <p>
+     * 배정 전(evaluator == null)과 남의 담당을 갈라 던진다. 앞쪽은 대기 목록에서 수락하면 풀리고
+     * 뒤쪽은 그렇게 해도 풀리지 않아, 화면이 안내할 말이 다르다.
+     *
+     * @throws BusinessException 반려되어 끝난 평가면 409({@code NOT_DIAGNOSABLE}),
+     *                           아직 담당자가 없으면 409({@code EVALUATOR_NOT_ASSIGNED}),
+     *                           다른 평가사의 담당이면 403({@code NOT_ASSIGNED_EVALUATOR})
+     */
     public void validateDiagnosableBy(long userId) {
         // 상태를 먼저 본다. assignTo와 같은 순서다 — 끝난 신청은 누가 물어도 답이 같아,
         // 담당자부터 따지면 같은 상황이 요청자에 따라 403과 409로 갈린다

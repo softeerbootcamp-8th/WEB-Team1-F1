@@ -89,7 +89,7 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
         // when
         submit(EVALUATION_ID, EVALUATOR_TOKEN, DOCUMENT_URL, IMAGE_1, IMAGE_2)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("DIAGNOSED"))
+                .andExpect(jsonPath("$.status").value("APPROVED"))
                 .andExpect(jsonPath("$.mileage").value(MILEAGE))
                 .andExpect(jsonPath("$.imageUrls.length()").value(2))
                 .andExpect(jsonPath("$.submittedAt").exists());
@@ -102,7 +102,7 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
 
         assertThat(imageUrls()).containsExactly(IMAGE_1, IMAGE_2);
         assertThat(reportFileUrl()).isEqualTo(DOCUMENT_URL);
-        assertThat(statusOf(EVALUATION_ID)).isEqualTo("DIAGNOSED");
+        assertThat(statusOf(EVALUATION_ID)).isEqualTo("APPROVED");
 
         // 제출은 배정을 건드리지 않는다. 담당자는 픽스처가 심어 둔 그대로다
         assertThat(assignedEvaluator(EVALUATION_ID)).isEqualTo(EVALUATOR_ID);

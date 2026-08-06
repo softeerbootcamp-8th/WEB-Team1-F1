@@ -70,8 +70,8 @@ public enum EvaluationErrorCode implements ErrorCode {
      * 400이 아니라 409다. 요청 자체는 올바르고 거부되는 이유는 서버가 들고 있는 상태(이미 반려됨)뿐이다.
      * <p>
      * NOT_ASSIGNABLE과 갈라 둔다. 두 코드가 보는 상태 집합이 다르다 — 배정은 REQUESTED만 받고,
-     * 진단서는 APPROVED에도 붙는다. 합치면 승인된 신청에 진단서를 못 붙이거나, 이미 배정된 신청이
-     * 다시 배정 가능해진다.
+     * 진단서는 재제출 때문에 APPROVED에도 붙는다. 합치면 결과를 고쳐 다시 올릴 수 없거나, 이미
+     * 배정된 신청이 다시 배정 가능해진다.
      */
     NOT_DIAGNOSABLE(HttpStatus.CONFLICT, "이미 종료된 평가에는 진단서를 등록할 수 없습니다."),
 

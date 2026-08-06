@@ -95,7 +95,7 @@ class EvaluationResultControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.evaluationId").value(EVALUATION_ID))
                 .andExpect(jsonPath("$.vehicleId").value(VEHICLE_ID))
-                .andExpect(jsonPath("$.status").value("DIAGNOSED"))
+                .andExpect(jsonPath("$.status").value("APPROVED"))
                 .andExpect(jsonPath("$.mileage").value(45000))
                 .andExpect(jsonPath("$.estimatedPrice").value(21500000))
                 .andExpect(jsonPath("$.imageUrls[0]").value(IMAGE_URL))
@@ -202,7 +202,7 @@ class EvaluationResultControllerTest {
     private void givenSubmitReturnsInfo() {
         given(evaluationResultService.submit(any(EvaluationResultSubmitCommand.class)))
                 .willReturn(new EvaluationResultInfo(
-                        EVALUATION_ID, VEHICLE_ID, "DIAGNOSED", 45_000, 21_500_000L,
+                        EVALUATION_ID, VEHICLE_ID, "APPROVED", 45_000, 21_500_000L,
                         List.of(IMAGE_URL), DOCUMENT_URL, SUBMITTED_AT));
     }
 

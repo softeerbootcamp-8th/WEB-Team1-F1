@@ -25,8 +25,8 @@ public record EvaluationDetailResponse(
         @Schema(description = "방문견적 신청 ID", example = "1")
         Long evaluationId,
 
-        @Schema(description = "신청 상태", example = "DIAGNOSED",
-                allowableValues = {"REQUESTED", "APPROVED", "DIAGNOSED", "REJECTED"})
+        @Schema(description = "신청 상태", example = "APPROVED",
+                allowableValues = {"REQUESTED", "APPROVED", "REJECTED"})
         String status,
 
         @Schema(description = "방문 희망 날짜", example = "2026-08-20")
