@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { Countdown } from '@/components/common/countdown'
-import { formatKRW } from '@/lib/format'
+import { formatClock, formatKRW } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 interface PriceBoardProps {
   currentPrice: number
   startPrice: number
+  startAt: string
   endAt: string
   extended: boolean
+  /** 서버 시각 - 브라우저 시계 */
+  clockOffset: number
   /** 새 입찰마다 증가하는 키 — 값이 바뀌면 플래시 애니메이션 */
   flashKey: number
 }
@@ -19,8 +22,10 @@ interface PriceBoardProps {
 export function PriceBoard({
   currentPrice,
   startPrice,
+  startAt,
   endAt,
   extended,
+  clockOffset,
   flashKey,
 }: PriceBoardProps) {
   const [flash, setFlash] = useState(false)
@@ -66,9 +71,13 @@ export function PriceBoard({
           </span>
           <Countdown
             targetIso={endAt}
+            offsetMs={clockOffset}
             className="tabular mt-2 text-3xl font-semibold"
           />
-          <p className="text-muted-foreground mt-2 min-h-5 text-xs">
+          <p className="text-muted-foreground mt-2 text-xs">
+            {formatClock(startAt)} 시작 · {formatClock(endAt)} 마감
+          </p>
+          <p className="text-muted-foreground mt-1 min-h-5 text-xs">
             {extended ? '새 입찰이 반영되어 마감 시간이 연장됐습니다.' : '서버 마감 시각 기준'}
           </p>
         </div>

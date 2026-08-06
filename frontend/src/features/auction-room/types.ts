@@ -1,14 +1,16 @@
 import type { RoomPhase } from '@/features/auctions/types'
+// 차량 제원 어휘는 시세 조회 화면이 먼저 정의했고 백엔드 enum과 같은 값이라 그대로 쓴다
+import type { FuelType, Manufacturer } from '@/features/quote/types'
 import type { UserRole } from '@/types/domain'
 
 export type { RoomPhase }
 
 export interface RoomVehicle {
-  manufacturer: string
+  manufacturer: Manufacturer
   model: string
   modelYear: number
   mileage: number
-  fuelType: string
+  fuelType: FuelType
   thumbnailUrl: string | null
 }
 

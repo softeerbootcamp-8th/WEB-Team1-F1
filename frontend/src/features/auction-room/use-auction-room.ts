@@ -28,6 +28,9 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
   const [error, setError] = useState(false)
   const [flashKey, setFlashKey] = useState(0)
   const [extended, setExtended] = useState(false)
+  // 서버 시각 - 이 브라우저 시계. 마감 시각은 서버가 정하는데 남은 시간을 브라우저 시계로 세면
+  // 시계가 틀어진 사람은 다른 마감을 본다. 응답이 실어 주는 서버 시각으로 그 차이를 메운다
+  const [clockOffset, setClockOffset] = useState(0)
 
   const myBidAmounts = useRef<Set<number>>(new Set())
   const prevPrice = useRef<number | null>(null)
@@ -49,6 +52,7 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
     }
     prevPrice.current = state.currentPrice
     prevEndAt.current = state.endAt
+    setClockOffset(new Date(state.serverTime).getTime() - Date.now())
 
     setRoom({
       auctionId: state.auctionId,
@@ -92,6 +96,7 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
 
           prevPrice.current = view.currentPrice
           prevEndAt.current = view.endAt
+          setClockOffset(new Date(view.serverTime).getTime() - Date.now())
           setRoom(view)
           setError(false)
 
@@ -126,12 +131,23 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
 
   const bid = useCallback(
     async (amount: number) => {
-      await placeBid(auctionId, amount)
+      const result = await placeBid(auctionId, amount)
       // 스트림이 곧 밀어주는 값에 mine을 붙일 수 있도록 미리 기억해둔다.
       myBidAmounts.current.add(amount)
+
+      setClockOffset(new Date(result.serverTime).getTime() - Date.now())
+
+      // 마감 직전 입찰은 마감을 뒤로 민다. 그 새 마감이 이 응답에 실려 오므로 스트림을 기다리지
+      // 않고 바로 반영한다 — 기다리는 사이 화면은 이미 지난 마감을 향해 카운트다운한다.
+      if (result.endAt !== prevEndAt.current) {
+        prevEndAt.current = result.endAt
+        setExtended(true)
+        window.setTimeout(() => setExtended(false), EXTENDED_FLAG_MS)
+        setRoom((prev) => (prev == null ? prev : { ...prev, endAt: result.endAt }))
+      }
     },
     [auctionId],
   )
 
-  return { room, increment, nextMin, flashKey, extended, error, placeBid: bid }
+  return { room, increment, nextMin, flashKey, extended, error, clockOffset, placeBid: bid }
 }
