@@ -4,6 +4,7 @@ import type {
   BidIncrementBand,
   BidPlaceResult,
   RoomOpeningView,
+  RoomResultView,
   RoomStreamState,
 } from '@/features/auction-room/types'
 
@@ -31,6 +32,18 @@ export async function fetchAuctionRoom(
 export async function fetchRoomOpening(auctionId: number): Promise<RoomOpeningView> {
   const { data } = await axiosInstance.get<RoomOpeningView>(
     `/api/auctions/${auctionId}/room/opening`,
+  )
+  return data
+}
+
+/**
+ * GET /api/auctions/{id}/room/result. 끝난 경매의 결과 요약이다.
+ * 판정 기준은 마감 시각이 아니라 확정된 경매 상태라, 마감 직후 확정 전에는 409다(백엔드 문서).
+ * 낙찰자 본인 여부가 세션 주인 기준으로 판정되므로 세션 쿠키가 필요하다.
+ */
+export async function fetchRoomResult(auctionId: number): Promise<RoomResultView> {
+  const { data } = await axiosInstance.get<RoomResultView>(
+    `/api/auctions/${auctionId}/room/result`,
   )
   return data
 }

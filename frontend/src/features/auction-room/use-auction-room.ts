@@ -6,6 +6,7 @@ import {
   fetchAuctionRoom,
   fetchBidIncrementBands,
   fetchRoomOpening,
+  fetchRoomResult,
   placeBid,
   subscribeRoomStream,
 } from '@/features/auction-room/api'
@@ -14,6 +15,7 @@ import type {
   BidIncrementBand,
   RoomEntry,
   RoomOpeningView,
+  RoomResultView,
   RoomStreamState,
 } from '@/features/auction-room/types'
 
@@ -41,6 +43,7 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
   // 진입 결과, 들어갈 수 없으면 사유까지 들고 있어야 화면이 개장 안내나 결과로 옮겨갈 수 있다
   const [entry, setEntry] = useState<RoomEntry>('LOADING')
   const [opening, setOpening] = useState<RoomOpeningView | null>(null)
+  const [result, setResult] = useState<RoomResultView | null>(null)
   const [flashKey, setFlashKey] = useState(0)
   const [extended, setExtended] = useState(false)
   // 서버 시각 - 이 브라우저 시계. 마감 시각은 서버가 정하는데 남은 시간을 브라우저 시계로 세면
@@ -154,6 +157,28 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
         })
     }
 
+    // 끝난 방은 더 이상 바뀌지 않는 요약을 받는다
+    const enterResult = () => {
+      fetchRoomResult(auctionId)
+        .then((view) => {
+          if (cancelled) return
+
+          setResult(view)
+          setEntry('CLOSED')
+        })
+        .catch((error: unknown) => {
+          if (cancelled) return
+
+          // 마감과 낙찰 확정 사이의 짧은 틈이다, 확정되면 결과가 나온다
+          if (getErrorCode(error) === 'AUCTION_NOT_ENDED') {
+            reentryTimer = window.setTimeout(enterResult, REENTRY_BUFFER_MS)
+            return
+          }
+
+          setEntry('BROKEN')
+        })
+    }
+
     const connect = () => {
       fetchAuctionRoom(auctionId, userId)
         .then((view) => {
@@ -182,6 +207,11 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
 
           if (reason === 'NOT_OPEN_YET') {
             enterOpening()
+            return
+          }
+
+          if (reason === 'CLOSED') {
+            enterResult()
             return
           }
 
@@ -230,5 +260,16 @@ export function useAuctionRoom(auctionId: number, userId: number | null) {
     [auctionId, markExtended],
   )
 
-  return { room, entry, opening, increment, nextMin, flashKey, extended, clockOffset, placeBid: bid }
+  return {
+    room,
+    entry,
+    opening,
+    result,
+    increment,
+    nextMin,
+    flashKey,
+    extended,
+    clockOffset,
+    placeBid: bid,
+  }
 }

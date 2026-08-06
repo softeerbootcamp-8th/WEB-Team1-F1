@@ -93,6 +93,19 @@ export interface RoomOpeningView {
   serverTime: string
 }
 
+/** 백엔드 RoomResultResponse와 동일한 필드 — 더 이상 바뀌지 않는 경매라 접속자 수와 서버 시각이 없다 */
+export interface RoomResultView {
+  auctionId: number
+  outcome: 'SOLD' | 'UNSOLD'
+  vehicle: RoomVehicle
+  startPrice: number
+  /** 유찰이면 null */
+  winningPrice: number | null
+  /** 유찰이면 null */
+  winner: RoomWinner | null
+  bidCount: number
+}
+
 export interface BidPlaceResult {
   bidId: number
   amount: number
