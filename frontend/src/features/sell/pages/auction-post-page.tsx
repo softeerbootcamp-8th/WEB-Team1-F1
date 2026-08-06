@@ -20,6 +20,10 @@ import { formatKRW } from '@/lib/format'
 const AUCTION_START_HOURS = Array.from({ length: 15 }, (_, i) => 10 + i) // 10시~24시(자정)
 const MIN_LEAD_TIME_MS = 60 * 60 * 1000
 
+// 시작가 입력 상한(만원 단위 6자리 = 999,999만원 ≈ 100억). AuctionEditDialog와 같은 값이다.
+// 서버는 상한이 없어(@PositiveOrZero) 자릿수 실수를 걸러 줄 곳이 화면뿐이다.
+const MAX_PRICE_DIGITS = 6
+
 interface EvaluatedVehicle {
   vehicleId: number
   estimatedPrice: number
@@ -104,10 +108,15 @@ export function AuctionPostPage() {
 function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicle }) {
   const navigate = useNavigate()
   const [startAt, setStartAt] = useState<Date | null>(null)
-  const [startPrice, setStartPrice] = useState(String(vehicle.estimatedPrice))
-  const startPriceNumber = Number(startPrice)
-  const isStartPriceValid =
-    Number.isSafeInteger(startPriceNumber) && startPriceNumber > 0
+  // 시작가는 만원 단위로만 받는다. AuctionEditDialog와 같은 방식이다 — 원 단위로 받아 검증하는
+  // 대신 입력 단위를 만원으로 두면 1,232만 4,341원 같은 시작가가 애초에 만들어지지 않는다.
+  // 진단 시세는 원 단위라 초기값에서 만원 미만을 버린다. 올리면 시세보다 높은 시작가가 되어
+  // 첫 입찰이 붙지 않으므로 방향은 버림이다.
+  const [priceManwon, setPriceManwon] = useState(
+    String(Math.floor(vehicle.estimatedPrice / 10000)),
+  )
+  const startPriceNumber = Number(priceManwon || 0) * 10000
+  const isStartPriceValid = priceManwon !== '' && startPriceNumber > 0
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -146,10 +155,10 @@ function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicle }) {
         <p className="text-muted-foreground text-sm tracking-[0.18em] uppercase">
           Register Auction
         </p>
-        <h1 className="mt-4 text-4xl font-semibold md:text-5xl">
+        <h1 className="mt-3 text-2xl font-semibold md:text-3xl">
           경매 시작 시간을 정해주세요.
         </h1>
-        <p className="text-muted-foreground mt-4 leading-7">
+        <p className="text-muted-foreground mt-3 text-sm leading-6">
           지금부터 1시간 뒤부터, 오전 10시에서 밤 12시 사이로 시작 시간을 선택할 수 있어요.
         </p>
       </header>
@@ -166,35 +175,62 @@ function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicle }) {
         <section className="bg-foreground text-background flex min-h-72 flex-col justify-between rounded-2xl p-8">
           <div>
             <p className="text-background/55 text-sm">경매 차량</p>
-            <p className="mt-3 text-2xl font-semibold">
+            <p className="mt-3 text-3xl font-semibold">
               {MANUFACTURER_LABEL[vehicle.manufacturer]} {vehicle.model}
             </p>
-            <p className="text-background/55 tabular mt-1 text-sm">
+            <p className="text-background/55 tabular mt-1 text-base">
               {vehicle.plateNumber}
             </p>
-            <p className="text-background/55 mt-6 text-sm">경매 시작 시각</p>
-            <p className="tabular mt-1 text-lg font-semibold">
+            <p className="text-background/55 mt-7 text-sm">경매 시작 시각</p>
+            <p className="tabular mt-1 text-xl font-semibold">
               {startAt ? formatStartAt(startAt) : '아직 선택하지 않았어요'}
             </p>
-            <div className="mt-6 space-y-2">
-              <Label htmlFor="auction-start-price" className="text-background/55">
+            {/* 진단 시세는 시작가를 정하는 기준값이라 입력 아래 보조 문구가 아니라
+                시작 시각과 같은 층위로 올린다. 입력하는 값과 비교하며 볼 수 있어야 한다. */}
+            <p className="text-background/55 mt-7 text-sm">진단 시세</p>
+            <p className="tabular mt-1 text-xl font-semibold">
+              {formatKRW(vehicle.estimatedPrice)}
+            </p>
+            <div className="mt-7 space-y-2">
+              <Label
+                htmlFor="auction-start-price"
+                className="text-background/55 text-sm"
+              >
                 경매 시작가
               </Label>
-              <Input
-                id="auction-start-price"
-                type="number"
-                min={1}
-                step={1}
-                inputMode="numeric"
-                value={startPrice}
-                onChange={(event) => setStartPrice(event.target.value)}
-                className="bg-background text-foreground"
-                aria-invalid={startPrice.length > 0 && !isStartPriceValid}
-              />
-              <p className="text-background/55 text-xs">
+              <div className="relative">
+                <Input
+                  id="auction-start-price"
+                  // number가 아니라 text다. 스피너 화살표와 휠 조작을 없애고 천단위 콤마를 찍는다.
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={
+                    priceManwon === ''
+                      ? ''
+                      : Number(priceManwon).toLocaleString('ko-KR')
+                  }
+                  onChange={(event) =>
+                    // 숫자만 남기고 앞자리 0을 정리한다. 자릿수를 막지 않으면 "1232만4341원"을
+                    // 통째로 붙여넣었을 때 숫자만 이어붙어 1,232억짜리 경매가 만들어진다.
+                    setPriceManwon(
+                      event.target.value
+                        .replace(/\D/g, '')
+                        .slice(0, MAX_PRICE_DIGITS)
+                        .replace(/^0+(?=\d)/, ''),
+                    )
+                  }
+                  className="bg-background text-foreground tabular h-12 pr-16 !text-xl font-semibold"
+                  aria-invalid={priceManwon.length > 0 && !isStartPriceValid}
+                />
+                <span className="text-foreground/55 pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-base">
+                  만원
+                </span>
+              </div>
+              <p className="text-background/55 text-sm">
                 {isStartPriceValid
-                  ? `진단 시세 ${formatKRW(vehicle.estimatedPrice)} · 등록 시작가 ${formatKRW(startPriceNumber)}`
-                  : '0보다 큰 원 단위 정수를 입력해 주세요.'}
+                  ? formatKRW(startPriceNumber)
+                  : '시작가를 만원 단위로 입력해 주세요.'}
               </p>
             </div>
           </div>
