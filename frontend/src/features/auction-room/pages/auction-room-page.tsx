@@ -14,7 +14,7 @@ import { BidLedger } from '../components/bid-ledger'
 import { WaitingRoom } from '../components/waiting-room'
 import { RoomNotOpen } from '../components/room-not-open'
 import { CarDetail } from '../components/car-detail'
-import { RoomStateBanner } from '../components/room-state-banner'
+import { RoomStateBanner, RoomStateBar } from '../components/room-state-banner'
 import type { RoomStateMode } from '../components/room-state-banner'
 import type { AuctionRoomView, RoomResultView, RoomVehicle, RoomWinner } from '../types'
 
@@ -61,11 +61,14 @@ function RoomHeading({ vehicle, mode }: { vehicle: RoomVehicle; mode: RoomStateM
       </Button>
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="space-y-1">
-          <span className="text-muted-foreground text-sm">{vehicle.modelYear}년</span>
-          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            {MANUFACTURER_LABEL[vehicle.manufacturer]} {vehicle.model}
-          </h1>
+        <div className="flex items-stretch gap-3">
+          <RoomStateBar mode={mode} />
+          <div className="space-y-1">
+            <span className="text-muted-foreground text-sm">{vehicle.modelYear}년</span>
+            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+              {MANUFACTURER_LABEL[vehicle.manufacturer]} {vehicle.model}
+            </h1>
+          </div>
         </div>
 
         <RoomStateBanner mode={mode} />
