@@ -121,7 +121,7 @@ class EvaluationResultServiceTest {
 
         // then : 넷 중 하나라도 빠지면 반쪽짜리 차량이 남는다.
         //        특히 차량 갱신이 빠지면 주행거리가 빈 차가 경매로 넘어간다
-        then(vehicle).should().completeDiagnosis(MILEAGE, ESTIMATED_PRICE);
+        then(vehicle).should().completeDiagnosis(MILEAGE, ESTIMATED_PRICE, IMAGE_1);
         then(vehicleImageService).should().register(any(VehicleImageRegisterCommand.class));
         then(diagnosticReportRepository).should().save(any(DiagnosticReport.class));
         then(evaluation).should().approve();
@@ -276,8 +276,7 @@ class EvaluationResultServiceTest {
         given(vehicleImageService.register(any(VehicleImageRegisterCommand.class)))
                 .willReturn(new VehicleImageRegisterInfo(VEHICLE_ID, List.of(
                         new VehicleImageRegisterInfo.RegisteredImage(IMAGE_1, 1),
-                        new VehicleImageRegisterInfo.RegisteredImage(IMAGE_2, 2)),
-                        IMAGE_1));
+                        new VehicleImageRegisterInfo.RegisteredImage(IMAGE_2, 2))));
     }
 
     private static EvaluationResultSubmitCommand command(String diagnosticReportUrl) {

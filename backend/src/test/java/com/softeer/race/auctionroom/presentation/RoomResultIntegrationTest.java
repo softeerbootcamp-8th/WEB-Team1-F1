@@ -62,7 +62,7 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
 
         long endedAuctionId = rooms.room(users.user("최판매", Role.GENERAL), ENDED_START_AT)
                 .model("더 뉴 셀토스")
-                .thumbnailUrl("https://cdn.race.dev/seltos-1.jpg")
+                .mainPhotoUrl("https://cdn.race.dev/seltos-1.jpg")
                 .startPrice(20_000_000L)
                 .bid(ENDED_START_AT.plusMinutes(5), loser, 21_000_000L)
                 .bid(ENDED_START_AT.plusMinutes(10), winner, 22_000_000L)
