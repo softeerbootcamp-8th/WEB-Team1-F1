@@ -16,12 +16,13 @@ const MODE_META: Record<
     className: 'border-dashed bg-muted text-muted-foreground',
     barClassName: 'bg-muted-foreground/40',
   },
+  // 다섯 단계가 각자 다른 신호색을 가진다. 대기만 무채색이면 입장 전과도, 진행중과도 안 갈린다
   WAITING: {
     label: '대기중',
     hint: '시작 시각이 되면 입찰이 열립니다',
     icon: CalendarClock,
-    className: 'bg-muted text-foreground',
-    barClassName: 'bg-muted-foreground',
+    className: 'border-warning/40 bg-warning/10 text-warning',
+    barClassName: 'bg-warning',
   },
   LIVE: {
     label: '입찰 진행중',
