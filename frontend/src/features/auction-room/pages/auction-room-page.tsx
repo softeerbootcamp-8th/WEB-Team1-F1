@@ -1,4 +1,4 @@
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Eye, Gavel, Trophy } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -41,12 +41,7 @@ export function AuctionRoomPage() {
 function RoomHeading({ vehicle, mode }: { vehicle: RoomVehicle; mode: RoomStateMode }) {
   return (
     <>
-      <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2">
-        <Link to="/">
-          <ArrowLeft className="size-4" />
-          목록으로
-        </Link>
-      </Button>
+      <BackLink />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-stretch gap-3">
@@ -62,6 +57,30 @@ function RoomHeading({ vehicle, mode }: { vehicle: RoomVehicle; mode: RoomStateM
         <RoomStateBanner mode={mode} />
       </div>
     </>
+  )
+}
+
+/**
+ * 왔던 화면으로 되돌린다. 목록에서 들어왔든 알림에서 들어왔든 누른 사람이 있던 자리로 간다.
+ * 늘 목록으로 보내면 마이페이지에서 들어온 사람이 보던 자리를 잃는다.
+ */
+function BackLink() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // 이 앱에서 처음 연 화면이면 돌아갈 자리가 히스토리에 없다, 그때 -1 은 앱 밖으로 나간다
+  const hasHistory = location.key !== 'default'
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="mb-4 -ml-2"
+      onClick={() => (hasHistory ? navigate(-1) : navigate('/auctions'))}
+    >
+      <ArrowLeft className="size-4" />
+      뒤로
+    </Button>
   )
 }
 
@@ -167,12 +186,7 @@ function RoomContent({ auctionId }: { auctionId: number }) {
     <main aria-label={`${room.vehicle.model} 경매`} className="mx-auto max-w-7xl px-6 py-8">
       <RoomHeading vehicle={room.vehicle} mode={room.phase} />
 
-      {room.phase === 'WAITING' && (
-        <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-          <WaitingRoom room={room} clockOffset={clockOffset} />
-          <CarDetail vehicle={room.vehicle} />
-        </div>
-      )}
+      {room.phase === 'WAITING' && <WaitingRoom room={room} clockOffset={clockOffset} />}
 
       {room.phase === 'LIVE' && (
         <LiveRoom

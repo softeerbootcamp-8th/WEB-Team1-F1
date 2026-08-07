@@ -9,13 +9,19 @@ import type { RecentBid } from '@/features/auction-room/types'
 interface BidLedgerProps {
   bids: RecentBid[]
   totalBidCount: number
+  /** 비어 있을 때의 안내, 아직 입찰을 받지 않는 대기방은 첫 입찰을 권할 수 없다 */
+  emptyDescription?: string
 }
 
 /**
  * 호가창. 최신순, 최고가(맨 위) 강조. 이름은 백엔드가 이미 마스킹해서 내려준다.
  * 실제로는 커서 페이지네이션으로 과거 호가를 더 불러온다.
  */
-export function BidLedger({ bids, totalBidCount }: BidLedgerProps) {
+export function BidLedger({
+  bids,
+  totalBidCount,
+  emptyDescription = '첫 입찰의 주인공이 되어보세요.',
+}: BidLedgerProps) {
   const visibleBids = bids.slice(0, 20)
 
   return (
@@ -31,7 +37,7 @@ export function BidLedger({ bids, totalBidCount }: BidLedgerProps) {
         <EmptyState
           icon={Gavel}
           title="아직 입찰이 없습니다"
-          description="첫 입찰의 주인공이 되어보세요."
+          description={emptyDescription}
           className="flex-1"
         />
       ) : (
