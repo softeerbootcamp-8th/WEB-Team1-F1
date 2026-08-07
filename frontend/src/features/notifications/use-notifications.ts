@@ -80,9 +80,10 @@ export function useNotifications() {
   // 순간의 것이라, 그 뒤에 온 값을 덮으면 배지가 실제보다 낮아진다
   const countChangedSinceLoad = useRef(false)
 
-  // 최초 적재가 아직 오는 중인지. 목록 조회와 구독은 따로 출발해서 어느 쪽이 먼저 서버에 닿을지
-  // 정해져 있지 않다. 조회가 늦으면 연결 직후 건수보다 오래된 목록이 나중에 도착한다
-  const firstLoadInFlight = useRef(false)
+  // 지금 회원의 최초 적재가 성공으로 끝났는지. 목록 조회와 구독은 따로 출발해서 어느 쪽이 먼저
+  // 서버에 닿을지 정해져 있지 않고, 적재가 실패하면 목록이 빈 채로 남는다. 둘 다 "지금 들고 있는
+  // 목록이 연결 직후 건수만큼 새것이라는 보장이 없다"는 뜻이라 같은 값으로 판정한다
+  const firstLoadDone = useRef(false)
 
   const loadFirstPage = useCallback(async () => {
     const startedAt = generation.current
@@ -137,7 +138,7 @@ export function useNotifications() {
     // 회원이 바뀔 때도 지난다. 먼저 비워야 아래 병합이 이전 회원의 알림을 새 회원 목록에 섞지 않는다
     generation.current += 1
     countChangedSinceLoad.current = false
-    firstLoadInFlight.current = false
+    firstLoadDone.current = false
     setItems([])
     setUnreadCount(0)
     setCursor(null)
@@ -147,12 +148,15 @@ export function useNotifications() {
 
     let cancelled = false
     let welcomeTimer: number | undefined
-    firstLoadInFlight.current = true
     setIsLoading(true)
 
     Promise.all([fetchNotifications(), fetchUnreadCount()])
       .then(([page, count]) => {
+        // 지난 회원의 응답이면 지금 회원의 표시를 건드리지 않는다
         if (cancelled) return
+
+        firstLoadDone.current = true
+
         // 이 조회가 다녀오는 사이에 실시간으로 도착한 알림이 있을 수 있다
         setItems((prev) => mergeById(prev, page.content))
         setCursor(page.nextCursor)
@@ -181,7 +185,6 @@ export function useNotifications() {
       // 알림은 헤더의 부가 요소라 실패해도 화면을 막지 않는다, 다음 적재가 진실을 준다
       .catch(() => undefined)
       .finally(() => {
-        firstLoadInFlight.current = false
         if (!cancelled) setIsLoading(false)
       })
 
@@ -218,10 +221,10 @@ export function useNotifications() {
         if (initialCountPending.current) {
           initialCountPending.current = false
 
-          // 최초 적재가 아직 오는 중이면 그 응답이 이 건수보다 오래된 것일 수 있다. 걸러 내면
-          // 배지는 맞는데 목록만 안 읽음으로 남으므로, 그때는 걸러 내지 않고 다시 읽는다.
-          // 재연결은 적재가 끝난 뒤라 이 조건에 걸리지 않아 조회가 두 번 나가지 않는다
-          if (!firstLoadInFlight.current) return
+          // 최초 적재가 성공으로 끝난 뒤라면 지금 목록이 이 건수만큼 새것이라 걸러 낸다.
+          // 아직 오는 중이거나 실패했으면 목록이 더 오래됐을 수 있어, 걸러 내면 배지만 맞고
+          // 목록은 안 읽음으로 남는다. 재연결은 늘 적재 뒤라 조회가 두 번 나가지 않는다
+          if (firstLoadDone.current) return
         }
 
         // 다른 화면에서 읽음이 바뀌었다는 뜻이다. 배지만 맞추면 목록에는 안 읽음 표시가 그대로 남는다.
