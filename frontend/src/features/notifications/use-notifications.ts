@@ -80,10 +80,10 @@ export function useNotifications() {
   // 순간의 것이라, 그 뒤에 온 값을 덮으면 배지가 실제보다 낮아진다
   const countChangedSinceLoad = useRef(false)
 
-  // 지금 회원의 최초 적재가 성공으로 끝났는지. 목록 조회와 구독은 따로 출발해서 어느 쪽이 먼저
-  // 서버에 닿을지 정해져 있지 않고, 적재가 실패하면 목록이 빈 채로 남는다. 둘 다 "지금 들고 있는
-  // 목록이 연결 직후 건수만큼 새것이라는 보장이 없다"는 뜻이라 같은 값으로 판정한다
-  const firstLoadDone = useRef(false)
+  // 지금 연결을 덮고 있는 목록 조회. 연결 직후 건수가 왔을 때 목록을 또 읽을지 이것으로 판정한다.
+  // 참·거짓이 아니라 조회 자체를 들고 있는 이유는, 그 건수가 조회보다 먼저 도착하기 때문이다 —
+  // 그 시점에는 성공 여부를 알 수 없어서 끝나기를 기다렸다가 실패했을 때만 다시 읽는다
+  const coveringListRead = useRef<Promise<void> | null>(null)
 
   const loadFirstPage = useCallback(async () => {
     const startedAt = generation.current
@@ -138,7 +138,7 @@ export function useNotifications() {
     // 회원이 바뀔 때도 지난다. 먼저 비워야 아래 병합이 이전 회원의 알림을 새 회원 목록에 섞지 않는다
     generation.current += 1
     countChangedSinceLoad.current = false
-    firstLoadDone.current = false
+    coveringListRead.current = null
     setItems([])
     setUnreadCount(0)
     setCursor(null)
@@ -150,12 +150,10 @@ export function useNotifications() {
     let welcomeTimer: number | undefined
     setIsLoading(true)
 
-    Promise.all([fetchNotifications(), fetchUnreadCount()])
+    const firstLoad = Promise.all([fetchNotifications(), fetchUnreadCount()])
       .then(([page, count]) => {
         // 지난 회원의 응답이면 지금 회원의 표시를 건드리지 않는다
         if (cancelled) return
-
-        firstLoadDone.current = true
 
         // 이 조회가 다녀오는 사이에 실시간으로 도착한 알림이 있을 수 있다
         setItems((prev) => mergeById(prev, page.content))
@@ -182,6 +180,11 @@ export function useNotifications() {
           }
         }
       })
+
+    // 첫 연결의 건수는 이 적재가 대신 목록을 맞춰 준다
+    coveringListRead.current = firstLoad
+
+    firstLoad
       // 알림은 헤더의 부가 요소라 실패해도 화면을 막지 않는다, 다음 적재가 진실을 준다
       .catch(() => undefined)
       .finally(() => {
@@ -221,10 +224,13 @@ export function useNotifications() {
         if (initialCountPending.current) {
           initialCountPending.current = false
 
-          // 최초 적재가 성공으로 끝난 뒤라면 지금 목록이 이 건수만큼 새것이라 걸러 낸다.
-          // 아직 오는 중이거나 실패했으면 목록이 더 오래됐을 수 있어, 걸러 내면 배지만 맞고
-          // 목록은 안 읽음으로 남는다. 재연결은 늘 적재 뒤라 조회가 두 번 나가지 않는다
-          if (firstLoadDone.current) return
+          const covering = coveringListRead.current
+          if (covering) {
+            // 이 연결을 덮는 조회가 이미 돌고 있다. 성공하면 목록이 그것으로 맞춰지므로 여기서
+            // 또 읽지 않고, 실패했을 때만 대신 읽는다. 성공 여부를 지금 알 수 없어 기다린다
+            covering.catch(() => loadFirstPage().catch(() => undefined))
+            return
+          }
         }
 
         // 다른 화면에서 읽음이 바뀌었다는 뜻이다. 배지만 맞추면 목록에는 안 읽음 표시가 그대로 남는다.
@@ -242,8 +248,11 @@ export function useNotifications() {
         }
 
         // 재연결이다. 끊긴 사이에 쌓인 알림은 되짚어 오지 않으므로 목록을 다시 읽는다.
-        // 배지는 서버가 연결 직후 건수를 한 번 보내 주므로 여기서 세지 않는다
-        loadFirstPage().catch(() => undefined)
+        // 배지는 서버가 연결 직후 건수를 한 번 보내 주므로 여기서 세지 않는다.
+        // 이 조회가 곧 도착할 건수를 덮는다, 실패하면 그쪽이 대신 읽는다
+        const reread = loadFirstPage()
+        coveringListRead.current = reread
+        reread.catch(() => undefined)
       },
       onClosed: () => {
         // 연결 종료는 안 읽은 건수의 변경을 뜻하지 않으므로 마지막 서버 값을 유지한다.
