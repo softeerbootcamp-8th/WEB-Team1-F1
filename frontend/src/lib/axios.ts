@@ -42,6 +42,7 @@ export type BodyType<BodyData> = BodyData
 
 interface ProblemDetailBody {
   detail?: string
+  code?: string
   errors?: { field: string; message: string }[]
 }
 
@@ -49,6 +50,23 @@ interface ProblemDetailBody {
 export function getErrorMessage(error: unknown, fallback: string): string {
   const body = (error as AxiosError<ProblemDetailBody> | undefined)?.response?.data
   return body?.errors?.[0]?.message ?? body?.detail ?? fallback
+}
+
+/**
+ * 실패 응답의 도메인 에러 코드(ex. ROOM_ALREADY_CLOSED). 화면이 사유별로 갈라져야 할 때 쓴다.
+ * 문구(detail)로 분기하면 서버가 문구를 다듬는 순간 화면이 조용히 틀어진다.
+ * 스프링 내장 예외에는 코드가 없어 undefined 가 나온다.
+ */
+export function getErrorCode(error: unknown): string | undefined {
+  return (error as AxiosError<ProblemDetailBody> | undefined)?.response?.data?.code
+}
+
+/**
+ * 실패 응답의 상태 코드. 응답을 못 받았으면(네트워크 오류) undefined 다.
+ * 인증처럼 HTTP가 뜻을 이미 정한 실패는 도메인 코드가 아니라 이 값으로 가른다.
+ */
+export function getErrorStatus(error: unknown): number | undefined {
+  return (error as AxiosError | undefined)?.response?.status
 }
 
 export default customInstance

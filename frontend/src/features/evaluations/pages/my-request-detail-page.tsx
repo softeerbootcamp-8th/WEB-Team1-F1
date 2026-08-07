@@ -1,0 +1,150 @@
+import { useQuery } from '@tanstack/react-query'
+import {
+  ArrowLeft,
+  CalendarDays,
+  CarFront,
+  FileText,
+  Gavel,
+  LoaderCircle,
+  MapPin,
+  Phone,
+  UserRound,
+} from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+
+import { EmptyState } from '@/components/common/empty-state'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { FUEL_TYPE_LABEL, MANUFACTURER_LABEL, TRANSMISSION_LABEL } from '@/features/quote/types'
+import { getErrorMessage } from '@/lib/axios'
+import { formatDateTime, formatKRW, formatMileage } from '@/lib/format'
+import { fetchEvaluationDetail } from '../api'
+import { formatPhone, formatVisitDate, getEvaluationStatusMeta } from '../utils'
+
+export function MyRequestDetailPage() {
+  const { evaluationId: evaluationIdParam } = useParams()
+  const evaluationId = Number(evaluationIdParam)
+  const navigate = useNavigate()
+  const query = useQuery({
+    queryKey: ['evaluations', 'detail', evaluationId],
+    queryFn: () => fetchEvaluationDetail(evaluationId),
+    enabled: Number.isInteger(evaluationId) && evaluationId > 0,
+  })
+
+  if (!Number.isInteger(evaluationId) || evaluationId <= 0) {
+    return <main className="mx-auto max-w-3xl px-6 py-24"><EmptyState title="잘못된 방문견적 번호입니다" action={<Button asChild><Link to="/mypage">마이페이지</Link></Button>} /></main>
+  }
+
+  if (query.isLoading) {
+    return <main className="flex min-h-[60vh] items-center justify-center"><LoaderCircle className="size-7 animate-spin" aria-label="신청 상세 불러오는 중" /></main>
+  }
+
+  const detail = query.data
+  if (query.isError || !detail) {
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-24">
+        <EmptyState
+          title="방문견적 신청을 찾을 수 없습니다"
+          description={getErrorMessage(query.error, '존재하지 않거나 조회 권한이 없는 신청입니다.')}
+          action={<Button asChild><Link to="/mypage">마이페이지</Link></Button>}
+        />
+      </main>
+    )
+  }
+
+  const assigned = Boolean(detail.evaluatorName)
+  const status = getEvaluationStatusMeta(detail.status, assigned)
+  const isDiagnosed = detail.status === 'APPROVED'
+
+  const postAuction = () => {
+    if (!isDiagnosed || detail.estimatedPrice === null) return
+    navigate(`/sell/auction-post?evaluationId=${detail.evaluationId}`)
+  }
+
+  return (
+    <main className="mx-auto max-w-6xl px-6 py-12" aria-label="내 방문견적 상세">
+      <Button asChild variant="ghost" size="sm" className="-ml-2">
+        <Link to="/mypage"><ArrowLeft />마이페이지</Link>
+      </Button>
+
+      <header className="mt-6 flex flex-wrap items-start justify-between gap-5">
+        <div>
+          <p className="text-muted-foreground text-sm">방문견적 #{detail.evaluationId}</p>
+          <h1 className="mt-2 text-3xl font-semibold md:text-4xl">
+            {MANUFACTURER_LABEL[detail.manufacturer]} {detail.model}
+          </h1>
+          <p className="text-muted-foreground mt-2">{detail.modelYear}년식 · {detail.plateNumber}</p>
+        </div>
+        <Badge variant="outline" className={status.className}>{status.label}</Badge>
+      </header>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-[0.78fr_1.22fr]">
+        <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><CalendarDays />신청 정보</CardTitle></CardHeader>
+            <CardContent>
+              <dl className="space-y-5 text-sm">
+                <div><dt className="text-muted-foreground">방문 희망일</dt><dd className="mt-1 font-medium">{formatVisitDate(detail.visitDate)}</dd></div>
+                <div><dt className="text-muted-foreground flex items-center gap-1"><MapPin className="size-3.5" />방문 주소</dt><dd className="mt-1 font-medium">{detail.visitAddress}</dd></div>
+                <div><dt className="text-muted-foreground">접수 시각</dt><dd className="mt-1 font-medium">{formatDateTime(detail.requestedAt)}</dd></div>
+              </dl>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><UserRound />평가사 배정</CardTitle></CardHeader>
+            <CardContent className="text-sm">
+              {assigned ? (
+                <div className="space-y-3">
+                  <p><strong>{detail.evaluatorName}</strong> 평가사가 방문할 예정입니다.</p>
+                  <a className="inline-flex items-center gap-2 font-medium underline-offset-4 hover:underline" href={`tel:${detail.contactPhone}`}><Phone className="size-4" />신청 연락처 {formatPhone(detail.contactPhone)}</a>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">평가사 배정을 기다리고 있습니다.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><CarFront />{isDiagnosed ? '진단 결과' : '차량 정보'}</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-sm">{FUEL_TYPE_LABEL[detail.fuelType]} · {TRANSMISSION_LABEL[detail.transmission]}</p>
+              {isDiagnosed && detail.mileage !== null && detail.estimatedPrice !== null ? (
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                  <div className="bg-muted/50 rounded-xl p-5"><p className="text-muted-foreground text-sm">실측 주행거리</p><p className="mt-2 text-xl font-semibold">{formatMileage(detail.mileage)}</p></div>
+                  <div className="bg-foreground text-background rounded-xl p-5"><p className="text-background/60 text-sm">평가 산정 시세</p><p className="mt-2 text-xl font-semibold">{formatKRW(detail.estimatedPrice)}</p></div>
+                </div>
+              ) : (
+                <div className="bg-muted/50 mt-5 rounded-xl p-5 text-sm"><p className="font-medium">아직 진단 전입니다</p><p className="text-muted-foreground mt-1">평가사가 결과를 제출하면 주행거리와 산정 시세가 표시됩니다.</p></div>
+              )}
+
+              {detail.imageUrls.length > 0 && (
+                <div className="mt-6">
+                  <p className="mb-3 text-sm font-medium">{isDiagnosed ? `진단 차량 사진 ${detail.imageUrls.length}장` : '차량 카탈로그 이미지'}</p>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {detail.imageUrls.map((url, index) => <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer" className="relative aspect-video overflow-hidden rounded-lg bg-muted"><img src={url} alt={isDiagnosed ? `진단 차량 사진 ${index + 1}` : '차량 카탈로그 이미지'} className="size-full object-cover" />{index === 0 && isDiagnosed && <Badge className="absolute top-2 left-2">대표</Badge>}</a>)}
+                  </div>
+                </div>
+              )}
+
+              {isDiagnosed && detail.diagnosticReportUrl && (
+                <Button asChild variant="outline" className="mt-6"><a href={detail.diagnosticReportUrl} target="_blank" rel="noreferrer"><FileText />진단서 PDF 보기</a></Button>
+              )}
+              {isDiagnosed && detail.submittedAt && <p className="text-muted-foreground mt-4 text-xs">{formatDateTime(detail.submittedAt)} 진단 완료</p>}
+            </CardContent>
+          </Card>
+
+          {isDiagnosed && (
+            <section className="bg-foreground text-background flex flex-wrap items-center justify-between gap-5 rounded-2xl p-6 md:p-8">
+              <div><h2 className="text-xl font-semibold">이 차량을 경매에 출품할까요?</h2><p className="text-background/60 mt-2 text-sm">산정 시세를 시작가 기본값으로 이어갑니다.</p></div>
+              <Button size="lg" variant="secondary" onClick={postAuction}><Gavel />경매 등록하기</Button>
+            </section>
+          )}
+        </div>
+      </div>
+    </main>
+  )
+}

@@ -4,12 +4,12 @@ import { Home, PackageSearch } from 'lucide-react'
 import { EmptyState } from '@/components/common/empty-state'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/common/status-badge'
+import type { AuctionCreationResult } from '@/features/sell/types'
 import { formatDateTime, formatKRW } from '@/lib/format'
-import type { SellApplicationResult } from '@/features/sell/types'
 
 export function SellResultPage() {
   const { state } = useLocation()
-  const result = state as SellApplicationResult | null
+  const result = state as AuctionCreationResult | null
 
   if (!result) {
     return (

@@ -4,10 +4,10 @@
 
 -- 비밀번호 원문은 'password123', 실제 bcrypt(cost 10) 해시를 그대로 넣는다
 -- 로그인이 검증 대상이라 픽스처가 인코딩 경로를 타지 않아야 한다
-insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
 values (81, 'auth_kim', 'auth@race.dev',
         '$2a$10$YPQXv2KU1a3XSqz7XIRHK.x7LgtoTj3UMhvDWQcqLQBPkDvmRVzW.',
-        '김레이스', '01000000081', '서울 중구', 'GENERAL',
+        '김레이스', '01000000081', 'GENERAL',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00');
 
 -- PK는 쿠키로 오갈 원문 토큰의 SHA-256 hex다

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PackageSearch } from 'lucide-react'
+import { LoaderCircle, PackageSearch } from 'lucide-react'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { AuctionCard } from '@/features/auctions/components/auction-card'
 import { MOCK_AUCTIONS } from '@/features/auctions/mock'
 import type { AuctionListCard, RoomPhase } from '@/features/auctions/types'
 import { ROLE_LABEL, useAuth } from '@/features/auth/auth-context'
+import { MyRequestsPanel } from '@/features/evaluations/components/my-requests-panel'
 import { DealCard } from '../components/deal-card'
 import { MOCK_DEALS } from '../mock'
 import type { AuctionCard as MockAuctionCard, Deal } from '@/types/domain'
@@ -40,8 +41,16 @@ function toListCard(auction: MockAuctionCard): AuctionListCard {
 }
 
 export function MyPage() {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isLoading } = useAuth()
   const [deals, setDeals] = useState<Deal[]>(MOCK_DEALS)
+
+  if (isLoading) {
+    return (
+      <main className="flex min-h-[60vh] items-center justify-center" aria-label="로그인 확인 중">
+        <LoaderCircle className="size-7 animate-spin" />
+      </main>
+    )
+  }
 
   if (!isAuthenticated || !user) {
     return (
@@ -85,11 +94,16 @@ export function MyPage() {
         <Badge variant="outline">{ROLE_LABEL[user.role]} 회원</Badge>
       </header>
 
-      <Tabs defaultValue="deals">
+      <Tabs defaultValue="evaluations">
         <TabsList>
+          <TabsTrigger value="evaluations">방문견적</TabsTrigger>
           <TabsTrigger value="deals">내 거래</TabsTrigger>
           <TabsTrigger value="auctions">참여 경매</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="evaluations" className="mt-6">
+          <MyRequestsPanel />
+        </TabsContent>
 
         <TabsContent value="deals" className="mt-6">
           {deals.length === 0 ? (

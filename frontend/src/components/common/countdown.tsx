@@ -8,6 +8,8 @@ interface CountdownProps {
   targetIso: string
   /** 임계 이하일 때 경고색으로 대비 */
   warnBelowMs?: number
+  /** 서버 시각 - 브라우저 시계. 넘기면 남은 시간을 서버 기준으로 센다 */
+  offsetMs?: number
   className?: string
   onElapsed?: () => void
 }
@@ -19,10 +21,11 @@ interface CountdownProps {
 export function Countdown({
   targetIso,
   warnBelowMs = SOFT_CLOSE_THRESHOLD_MS,
+  offsetMs = 0,
   className,
   onElapsed,
 }: CountdownProps) {
-  const { remaining, isElapsed } = useCountdown(targetIso)
+  const { remaining, isElapsed } = useCountdown(targetIso, 1000, offsetMs)
   const isClosingSoon = remaining > 0 && remaining <= warnBelowMs
 
   if (isElapsed) onElapsed?.()

@@ -44,9 +44,6 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private String phone;
 
-    @Column(nullable = false)
-    private String address;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
@@ -57,14 +54,12 @@ public class User extends BaseTimeEntity {
             String encodedPassword,
             String realName,
             String phone,
-            String address,
             Role role) {
         this.username = username;
         this.email = email;
         this.password = encodedPassword;
         this.realName = realName;
         this.phone = phone;
-        this.address = address;
         this.role = role;
     }
 
@@ -74,8 +69,14 @@ public class User extends BaseTimeEntity {
             String encodedPassword,
             String realName,
             String phone,
-            String address,
             Role role) {
-        return new User(username, email, encodedPassword, realName, phone, address, role);
+        return new User(username, email, encodedPassword, realName, phone, role);
+    }
+
+    /**
+     * 서비스가 위촉한 평가사인지
+     */
+    public boolean isEvaluator() {
+        return role == Role.EVALUATOR;
     }
 }

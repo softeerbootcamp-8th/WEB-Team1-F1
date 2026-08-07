@@ -7,6 +7,7 @@ import com.softeer.race.notification.presentation.response.UnreadCountResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import java.io.IOException;
 
@@ -25,6 +26,9 @@ class SseUserSubscriber implements UserSubscriber {
 
     // 보내는 스레드와 살아 있는지 묻는 스레드가 다르다
     private volatile boolean open = true;
+
+    // 전송 실패로 내려간 것과 이 연결을 끝낸 것은 다르다, 전자만 보고 끝내면 응답이 만료까지 남는다
+    private final AtomicBoolean ended = new AtomicBoolean();
 
     SseUserSubscriber(long userId, SseEmitter emitter) {
         this.userId = userId;
@@ -54,6 +58,26 @@ class SseUserSubscriber implements UserSubscriber {
             // 직렬화할 값이 없어 서버 버그가 낄 자리가 없다, 찔러 보다 드러난 끊김이다
             log.debug("알림 연결 확인 실패, 회원 {}", userId, e);
             open = false;
+        }
+    }
+
+    @Override
+    public void close() {
+        // 먼저 내린다, 끝내는 사이에 알림이 들어와도 완료된 응답에 쓰지 않는다
+        open = false;
+
+        // 쓰기에 실패해 이미 내려간 구독도 응답은 열려 있을 수 있어, 열림 여부로 건너뛰면 그것을 못 끝낸다
+        // 두 번 끝내지 않기 위한 표시는 따로 둔다
+        if (!ended.compareAndSet(false, true)) {
+            return;
+        }
+
+        try {
+            emitter.complete();
+        } catch (RuntimeException e) {
+            // send 와 달리 complete 는 예외를 한 타입으로 감싸 주지 않는다, 컨테이너가 회수한 응답에서
+            // 무엇이 나올지 규약이 없다. 던지지 않는다고 계약에 적었으므로 여기서 막는다
+            log.debug("알림 연결을 끝내는 중 이미 닫혀 있었다, 회원 {}", userId, e);
         }
     }
 

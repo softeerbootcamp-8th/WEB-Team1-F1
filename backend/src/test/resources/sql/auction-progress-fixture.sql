@@ -15,8 +15,8 @@
 -- 시작 전이에는 잡히고 종료에는 잡히지 않아야 한다. 스케줄러가 오래 멈췄다 재개했을 때
 -- 한 주기 안에서 SCHEDULED → IN_PROGRESS → ENDED 로 스스로 복구되는 근거다.
 
-insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
-values (300, 'progressseller', 'progress@race.dev', 'pw', '박진행', '01000000300', '서울 강남구', 'GENERAL',
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
+values (300, 'progressseller', 'progress@race.dev', 'pw', '박진행', '01000000300', 'GENERAL',
         '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
 insert into vehicle (id, seller_id, manufacturer, model, model_year, mileage, fuel_type, transmission,
@@ -40,16 +40,16 @@ values (301, 300, 'HYUNDAI', '아반떼 CN7', 2022, 35000, 'GASOLINE', 'AUTOMATI
        (309, 300, 'VOLVO', 'XC60', 2022, 31000, 'DIESEL', 'AUTOMATIC', '30가0309', 45000000,
         '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
-insert into auction_post (id, vehicle_id, thumbnail_url, post_status, published_at, deleted_at, created_at, updated_at)
-values (301, 301, null, 'PUBLISHED', '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (302, 302, null, 'PUBLISHED', '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (303, 303, null, 'PUBLISHED', '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (304, 304, null, 'PUBLISHED', '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (305, 305, null, 'PUBLISHED', '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (306, 306, null, 'PUBLISHED', '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (307, 307, null, 'PUBLISHED', '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (308, 308, null, 'PUBLISHED', '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (309, 309, null, 'PUBLISHED', '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00');
+insert into auction_post (id, vehicle_id, published_at, deleted_at, created_at, updated_at)
+values (301, 301, '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+       (302, 302, '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+       (303, 303, '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+       (304, 304, '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+       (305, 305, '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+       (306, 306, '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+       (307, 307, '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+       (308, 308, '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
+       (309, 309, '2026-08-01 09:00:00', null, '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
 insert into auction (id, post_id, winner_id, start_price, current_price, room_open_at, start_time,
                      current_end_time, extension_count, status, price_updated_at, created_at, updated_at)

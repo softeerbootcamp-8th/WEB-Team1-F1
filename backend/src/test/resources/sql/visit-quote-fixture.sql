@@ -7,15 +7,15 @@
 -- 같은 컨텍스트에 묶이면 중복 키로 깨진다
 
 -- 비밀번호는 이 테스트에서 쓰지 않는다, 로그인 대신 세션을 직접 심기 때문이다
-insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
 values (400, 'visit_kim', 'visit@race.dev', 'pw',
-        '김방문', '01000000400', '서울 성동구', 'GENERAL',
+        '김방문', '01000000400', 'GENERAL',
         NOW(6), NOW(6));
 
 -- 같은 차량을 다른 회원이 신청해도 막히는지 확인할 두 번째 계정
-insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
 values (401, 'visit_lee', 'visit2@race.dev', 'pw',
-        '이방문', '01000000401', '서울 광진구', 'GENERAL',
+        '이방문', '01000000401', 'GENERAL',
         NOW(6), NOW(6));
 
 -- PK는 쿠키로 보낼 원문 토큰의 SHA-256 hex다

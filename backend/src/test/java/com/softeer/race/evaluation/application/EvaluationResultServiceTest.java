@@ -9,8 +9,10 @@ import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.domain.EvaluationStatus;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
+import com.softeer.race.notification.application.NotificationPublisher;
 import com.softeer.race.storage.domain.FileCategory;
 import com.softeer.race.storage.domain.FileStorage;
+import com.softeer.race.user.domain.User;
 import com.softeer.race.vehicle.application.VehicleImageService;
 import com.softeer.race.vehicle.application.dto.command.VehicleImageRegisterCommand;
 import com.softeer.race.vehicle.application.dto.info.VehicleImageRegisterInfo;
@@ -27,6 +29,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 
+import static com.softeer.race.notification.domain.NotificationType.EVAL_APPROVED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -44,6 +47,7 @@ import static org.mockito.Mockito.never;
  *   <li>재제출은 진단서를 새로 만들지 않고 갈아 끼운다</li>
  *   <li>진단서 주소가 문서가 아니면 아무것도 건드리지 않는다</li>
  *   <li>없는 평가면 NOT_FOUND</li>
+ *   <li>승인이 확정되면 판매자에게 등록 안내 알림이 간다</li>
  * </ol>
  * <p>
  * 담당자·상태 판정 자체는 여기서 확인하지 않는다. 그 규칙은 {@code Evaluation}이 들고 있어
@@ -55,6 +59,7 @@ class EvaluationResultServiceTest {
 
     private static final long EVALUATION_ID = 600L;
     private static final long EVALUATOR_ID = 601L;
+    private static final long SELLER_ID = 602L;
     private static final long VEHICLE_ID = 6000L;
 
     private static final int MILEAGE = 45_000;
@@ -77,16 +82,21 @@ class EvaluationResultServiceTest {
     @Mock
     private FileStorage fileStorage;
 
+    @Mock
+    private NotificationPublisher notificationPublisher;
+
     @InjectMocks
     private EvaluationResultService evaluationResultService;
 
     private Evaluation evaluation;
     private Vehicle vehicle;
+    private User seller;
 
     @BeforeEach
     void before() {
         vehicle = mock(Vehicle.class);
         evaluation = mock(Evaluation.class);
+        seller = mock(User.class);
     }
 
     @Test
@@ -111,7 +121,7 @@ class EvaluationResultServiceTest {
 
         // then : 넷 중 하나라도 빠지면 반쪽짜리 차량이 남는다.
         //        특히 차량 갱신이 빠지면 주행거리가 빈 차가 경매로 넘어간다
-        then(vehicle).should().completeDiagnosis(MILEAGE, ESTIMATED_PRICE);
+        then(vehicle).should().completeDiagnosis(MILEAGE, ESTIMATED_PRICE, IMAGE_1);
         then(vehicleImageService).should().register(any(VehicleImageRegisterCommand.class));
         then(diagnosticReportRepository).should().save(any(DiagnosticReport.class));
         then(evaluation).should().approve();
@@ -208,6 +218,9 @@ class EvaluationResultServiceTest {
         // 사진을 먼저 갈아 끼웠다면 기존 사진이 지워진 채로 400이 나갔을 것이다
         then(evaluationRepository).shouldHaveNoInteractions();
         then(vehicleImageService).shouldHaveNoInteractions();
+
+        // 승인되지 않았으니 승인 알림도 없어야 한다
+        then(notificationPublisher).shouldHaveNoInteractions();
     }
 
     @Test
@@ -223,6 +236,28 @@ class EvaluationResultServiceTest {
                         assertThat(exception.errorCode()).isEqualTo(EvaluationErrorCode.NOT_FOUND));
 
         then(vehicleImageService).shouldHaveNoInteractions();
+        then(notificationPublisher).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("승인이 확정되면 판매자에게 등록 안내 알림이 간다")
+    void submitNotifiesSeller() {
+        // given
+        givenManagedDocument(DOCUMENT_URL);
+        givenEvaluationFound();
+        givenImagesRegistered();
+        given(diagnosticReportRepository.findByEvaluationId(EVALUATION_ID))
+                .willReturn(Optional.empty());
+        given(diagnosticReportRepository.save(any(DiagnosticReport.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
+
+        // when
+        evaluationResultService.submit(command(DOCUMENT_URL));
+
+        // then : 받는 사람은 제출자인 평가사가 아니라 판매자다.
+        //        참조가 신청 건이라야 등록 화면이 차량과 산정 시세를 찾아간다
+        then(notificationPublisher).should().publish(SELLER_ID, EVAL_APPROVED, EVALUATION_ID);
     }
 
     private void givenManagedDocument(String fileUrl) {
@@ -233,14 +268,15 @@ class EvaluationResultServiceTest {
         given(evaluationRepository.findByIdForUpdate(EVALUATION_ID)).willReturn(Optional.of(evaluation));
         given(evaluation.getVehicle()).willReturn(vehicle);
         given(vehicle.getId()).willReturn(VEHICLE_ID);
+        given(vehicle.getSeller()).willReturn(seller);
+        given(seller.getId()).willReturn(SELLER_ID);
     }
 
     private void givenImagesRegistered() {
         given(vehicleImageService.register(any(VehicleImageRegisterCommand.class)))
                 .willReturn(new VehicleImageRegisterInfo(VEHICLE_ID, List.of(
                         new VehicleImageRegisterInfo.RegisteredImage(IMAGE_1, 1),
-                        new VehicleImageRegisterInfo.RegisteredImage(IMAGE_2, 2)),
-                        IMAGE_1));
+                        new VehicleImageRegisterInfo.RegisteredImage(IMAGE_2, 2))));
     }
 
     private static EvaluationResultSubmitCommand command(String diagnosticReportUrl) {

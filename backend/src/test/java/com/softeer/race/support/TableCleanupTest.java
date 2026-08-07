@@ -27,8 +27,8 @@ class TableCleanupTest extends IntegrationTestSupport {
         assertThat(countUsers()).isZero();
 
         jdbcTemplate.update("""
-                insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
-                values (?, ?, ?, 'pw', '남은사람', '01000000777', '서울', 'GENERAL', now(), now())
+                insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
+                values (?, ?, ?, 'pw', '남은사람', '01000000777', 'GENERAL', now(), now())
                 """, id, username, username + "@race.dev");
 
         assertThat(countUsers()).isOne();

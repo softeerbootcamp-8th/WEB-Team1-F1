@@ -1,14 +1,20 @@
-import type { AuctionStatus } from '@/types/domain'
+/** POST /api/auctions 요청 계약 */
+export interface AuctionCreateRequest {
+  vehicleId: number
+  startPrice: number
+  /** 백엔드 LocalDateTime 형식(시간대 없는 로컬 시각) */
+  startAt: string
+}
 
-/** 백엔드 SellApplicationResponse와 동일한 필드 */
-export interface SellApplicationResult {
+/** POST /api/auctions 응답 계약. 생성 직후 상태는 항상 SCHEDULED다. */
+export interface AuctionCreationResult {
   auctionId: number
   vehicleId: number
   startPrice: number
   startAt: string
   roomOpenAt: string
   endAt: string
-  status: AuctionStatus
+  status: 'SCHEDULED'
 }
 
 /** POST /api/visit-quotes 요청 계약 */

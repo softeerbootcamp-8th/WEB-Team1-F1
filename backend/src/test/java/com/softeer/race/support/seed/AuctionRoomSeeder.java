@@ -28,7 +28,7 @@ public class AuctionRoomSeeder {
     // 번호판의 유일 제약을 피한다, 테이블을 비워도 되돌아가지 않아 앞 테스트가 쓴 값과 겹치지 않는다
     private static final AtomicLong SERIAL = new AtomicLong();
 
-    // 주행거리는 제원이 아니라 신고값이라 spec 이 아니라 Vehicle.create 로 직접 넘긴다
+    // 주행거리는 제원이 아니라 평가사 실측값이라 spec 이 아니라 completeDiagnosis 로 넘긴다
     private static final int DEFAULT_MILEAGE = 35_000;
 
     private static final long DEFAULT_ESTIMATED_PRICE = 15_000_000L;
@@ -55,7 +55,7 @@ public class AuctionRoomSeeder {
         private final List<PlacedBid> bids = new ArrayList<>();
 
         private String model = "아반떼 CN7";
-        private String thumbnailUrl = "https://cdn.race.dev/avante.jpg";
+        private String mainPhotoUrl = "https://cdn.race.dev/avante.jpg";
         private long startPrice = DEFAULT_START_PRICE;
         private boolean closed;
 
@@ -69,8 +69,8 @@ public class AuctionRoomSeeder {
             return this;
         }
 
-        public RoomBuilder thumbnailUrl(String thumbnailUrl) {
-            this.thumbnailUrl = thumbnailUrl;
+        public RoomBuilder mainPhotoUrl(String mainPhotoUrl) {
+            this.mainPhotoUrl = mainPhotoUrl;
             return this;
         }
 
@@ -103,8 +103,11 @@ public class AuctionRoomSeeder {
             LocalDateTime publishedAt = startAt.minusDays(1);
 
             Auction auction = TestClock.INSTANCE.at(publishedAt, () -> {
-                Vehicle vehicle = vehicleRepository.save(Vehicle.create(seller, spec(), DEFAULT_MILEAGE, DEFAULT_ESTIMATED_PRICE));
-                AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, thumbnailUrl, publishedAt));
+                // 프로덕션은 방문견적으로 빈 차량을 만들고 평가사가 결과를 내며 채운다, 그 순서를 그대로 밟는다
+                Vehicle vehicle = Vehicle.pendingDiagnosis(seller, spec());
+                vehicle.completeDiagnosis(DEFAULT_MILEAGE, DEFAULT_ESTIMATED_PRICE, mainPhotoUrl);
+                vehicleRepository.save(vehicle);
+                AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, publishedAt));
 
                 return auctionRepository.save(Auction.schedule(post, startPrice, startAt));
             });
@@ -146,7 +149,8 @@ public class AuctionRoomSeeder {
                     FuelType.GASOLINE,
                     Transmission.AUTOMATIC,
                     DEFAULT_ESTIMATED_PRICE,
-                    thumbnailUrl);
+                    // 카탈로그 도판 자리다, 평가사가 찍은 실물 사진과 다른 값이라 섞지 않는다
+                    null);
         }
     }
 

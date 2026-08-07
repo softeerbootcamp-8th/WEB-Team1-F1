@@ -41,17 +41,12 @@ public record SignUpRequest(
         @Pattern(regexp = "^01\\d-?\\d{3,4}-?\\d{4}$")
         String phone,
 
-        @Schema(description = "주소", example = "서울시 강남구 테헤란로 123")
-        @NotBlank
-        @Size(max = 255)
-        String address,
-
         @Schema(description = "회원 유형", example = "GENERAL")
         @NotNull
         Role role
 ) {
 
     public SignUpCommand toCommand() {
-        return new SignUpCommand(username, email, password, realName, phone, address, role);
+        return new SignUpCommand(username, email, password, realName, phone, role);
     }
 }

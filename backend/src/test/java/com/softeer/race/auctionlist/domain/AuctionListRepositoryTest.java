@@ -1,6 +1,5 @@
 package com.softeer.race.auctionlist.domain;
 
-import com.softeer.race.auctionpost.domain.PostStatus;
 import com.softeer.race.support.IntegrationTestSupport;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 기준 시각이 같은 경매를 id 로 이어 읽어 누락도 중복도 없는지
  * <p>
  * 3. 경계와 필터
- * 시작 시각이 기준 시각과 같은 경매가 한 그룹에만 잡히는지, 삭제·임시저장이 빠지는지
+ * 시작 시각이 기준 시각과 같은 경매가 한 그룹에만 잡히는지, 삭제된 경매글이 빠지는지
  * <p>
  * 4. 매핑
  * select new 가 세 테이블 값을 레코드에 채우는지, 입찰 전 null 가격도 담기는지
@@ -37,9 +36,6 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
     private static final LocalDateTime SNAPSHOT_AT = LocalDateTime.of(2026, 8, 3, 12, 0, 0);
 
     private static final int UNLIMITED = 100;
-
-    // 네이티브 쿼리라 enum 이 아니라 저장된 문자열로 넘긴다
-    private static final String PUBLISHED = PostStatus.PUBLISHED.name();
 
     @Autowired
     private AuctionListRepository auctionListRepository;
@@ -75,7 +71,7 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
 
         // when
         List<AuctionListRow> rows = auctionListRepository.findLivePage(
-                PUBLISHED, SNAPSHOT_AT, cursorSortAt, 102L, UNLIMITED);
+                SNAPSHOT_AT, cursorSortAt, 102L, UNLIMITED);
 
         // then : 시각이 같아도 id 가 뒤인 103번이 살아남는다
         // 시각만 비교했다면 103번이 사라지고, >= 로 비교했다면 102번이 다시 나온다
@@ -114,7 +110,7 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
 
         // when : 내림차순이라 커서보다 앞선 시각을 찾는다
         List<AuctionListRow> rows = auctionListRepository.findEndedPage(
-                PUBLISHED, SNAPSHOT_AT, cursorSortAt, 107L, UNLIMITED);
+                SNAPSHOT_AT, cursorSortAt, 107L, UNLIMITED);
 
         // then
         assertThat(ids(rows)).containsExactly(106L);
@@ -146,7 +142,7 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
         List<Long> pending = ids(findPending(AuctionListGroup.PENDING, UNLIMITED));
         List<Long> ended = ids(findEnded(AuctionListGroup.ENDED, UNLIMITED));
 
-        // then : 겹치는 경매가 없고, 삭제·임시저장 둘을 뺀 여덟 건이 전부 잡힌다
+        // then : 겹치는 경매가 없고, 삭제된 한 건을 뺀 여덟 건이 전부 잡힌다
         assertThat(live).doesNotContainAnyElementsOf(pending);
         assertThat(live).doesNotContainAnyElementsOf(ended);
         assertThat(pending).doesNotContainAnyElementsOf(ended);
@@ -154,15 +150,15 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("삭제되거나 임시저장인 경매글은 목록에 나오지 않는다")
-    void excludesDeletedAndDraftPosts() {
-        // given : 108번(삭제)과 109번(임시저장)은 진행중 경매와 같은 시간대다
+    @DisplayName("삭제된 경매글은 목록에 나오지 않는다")
+    void excludesDeletedPosts() {
+        // given : 108번(삭제)은 진행중 경매와 같은 시간대다
 
         // when
         List<AuctionListRow> rows = findLive(AuctionListGroup.LIVE, UNLIMITED);
 
-        // then : 시간 조건만 보면 걸려야 하지만 경매글 상태에서 걸러진다
-        assertThat(ids(rows)).doesNotContain(108L, 109L);
+        // then : 시간 조건만 보면 걸려야 하지만 삭제 시각에서 걸러진다
+        assertThat(ids(rows)).doesNotContain(108L);
     }
 
     // ================= 매핑 =================
@@ -208,17 +204,17 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
 
     private List<AuctionListRow> findLive(AuctionListGroup group, int limit) {
         return auctionListRepository.findLivePage(
-                PUBLISHED, SNAPSHOT_AT, group.startSortAt(), group.startAuctionId(), limit);
+                SNAPSHOT_AT, group.startSortAt(), group.startAuctionId(), limit);
     }
 
     private List<AuctionListRow> findPending(AuctionListGroup group, int limit) {
         return auctionListRepository.findPendingPage(
-                PUBLISHED, SNAPSHOT_AT, group.startSortAt(), group.startAuctionId(), limit);
+                SNAPSHOT_AT, group.startSortAt(), group.startAuctionId(), limit);
     }
 
     private List<AuctionListRow> findEnded(AuctionListGroup group, int limit) {
         return auctionListRepository.findEndedPage(
-                PUBLISHED, SNAPSHOT_AT, group.startSortAt(), group.startAuctionId(), limit);
+                SNAPSHOT_AT, group.startSortAt(), group.startAuctionId(), limit);
     }
 
     private List<Long> ids(List<AuctionListRow> rows) {

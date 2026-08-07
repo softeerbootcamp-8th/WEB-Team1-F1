@@ -62,7 +62,7 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
 
         long endedAuctionId = rooms.room(users.user("최판매", Role.GENERAL), ENDED_START_AT)
                 .model("더 뉴 셀토스")
-                .thumbnailUrl("https://cdn.race.dev/seltos-1.jpg")
+                .mainPhotoUrl("https://cdn.race.dev/seltos-1.jpg")
                 .startPrice(20_000_000L)
                 .bid(ENDED_START_AT.plusMinutes(5), loser, 21_000_000L)
                 .bid(ENDED_START_AT.plusMinutes(10), winner, 22_000_000L)
@@ -88,7 +88,10 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         // then 3 : 목록을 거치지 않고 들어와도 어떤 차였는지 보인다
         response.andExpectAll(
                 jsonPath("$.vehicle.model").value("더 뉴 셀토스"),
-                jsonPath("$.thumbnailUrl").value("https://cdn.race.dev/seltos-1.jpg"));
+                jsonPath("$.vehicle.thumbnailUrl").value("https://cdn.race.dev/seltos-1.jpg"));
+
+        // then 3-1 : 차량 정보는 한 덩어리로 온다, 사진이 최상위에 남으면 화면이 두 군데서 조립한다
+        response.andExpect(jsonPath("$.thumbnailUrl").doesNotHaveJsonPath());
 
         // then 4 : 네 건이 들어왔다, 최근 호가 목록과 달리 전체를 센다
         response.andExpect(jsonPath("$.bidCount").value(4));

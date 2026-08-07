@@ -6,7 +6,6 @@ import com.softeer.race.auctionlist.application.dto.AuctionListInfo;
 import com.softeer.race.auctionlist.domain.AuctionListGroup;
 import com.softeer.race.auctionlist.domain.AuctionListRepository;
 import com.softeer.race.auctionlist.domain.AuctionListRow;
-import com.softeer.race.auctionpost.domain.PostStatus;
 import com.softeer.race.auctionroom.application.RoomChannel;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import lombok.RequiredArgsConstructor;
@@ -101,24 +100,22 @@ public class AuctionListService {
         if (sellerId != null) {
             return switch (group) {
                 case LIVE -> auctionListRepository.findMyLivePage(
-                        PostStatus.PUBLISHED, sellerId, snapshotAt, cursorSortAt, cursorAuctionId, limit);
+                        sellerId, snapshotAt, cursorSortAt, cursorAuctionId, limit);
                 case PENDING -> auctionListRepository.findMyPendingPage(
-                        PostStatus.PUBLISHED, sellerId, snapshotAt, cursorSortAt, cursorAuctionId, limit);
+                        sellerId, snapshotAt, cursorSortAt, cursorAuctionId, limit);
                 case ENDED -> auctionListRepository.findMyEndedPage(
-                        PostStatus.PUBLISHED, sellerId, snapshotAt, cursorSortAt, cursorAuctionId, limit);
+                        sellerId, snapshotAt, cursorSortAt, cursorAuctionId, limit);
             };
         }
 
-        // 공개 목록은 네이티브라 상태를 문자열로, 개수를 정수로 넘긴다
-        String published = PostStatus.PUBLISHED.name();
-
+        // 공개 목록은 native query라 개수를 Limit이 아니라 정수로 넘긴다.
         return switch (group) {
             case LIVE -> auctionListRepository.findLivePage(
-                    published, snapshotAt, cursorSortAt, cursorAuctionId, need);
+                    snapshotAt, cursorSortAt, cursorAuctionId, need);
             case PENDING -> auctionListRepository.findPendingPage(
-                    published, snapshotAt, cursorSortAt, cursorAuctionId, need);
+                    snapshotAt, cursorSortAt, cursorAuctionId, need);
             case ENDED -> auctionListRepository.findEndedPage(
-                    published, snapshotAt, cursorSortAt, cursorAuctionId, need);
+                    snapshotAt, cursorSortAt, cursorAuctionId, need);
         };
     }
 

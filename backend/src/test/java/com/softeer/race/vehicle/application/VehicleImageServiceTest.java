@@ -91,7 +91,6 @@ class VehicleImageServiceTest {
         assertThat(info.images())
                 .extracting(VehicleImageRegisterInfo.RegisteredImage::sortOrder)
                 .containsExactly(1, 2);
-        assertThat(info.thumbnailUrl()).isEqualTo(REAL_IMAGE_1);
         assertThat(info.vehicleId()).isEqualTo(VEHICLE_ID);
     }
 

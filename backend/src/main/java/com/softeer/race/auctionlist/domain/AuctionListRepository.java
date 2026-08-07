@@ -1,7 +1,6 @@
 package com.softeer.race.auctionlist.domain;
 
 import com.softeer.race.auction.domain.Auction;
-import com.softeer.race.auctionpost.domain.PostStatus;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
@@ -27,22 +26,22 @@ public interface AuctionListRepository extends Repository<Auction, Long> {
      */
     String SELECT_CARD_SQL = """
             select /*+ JOIN_ORDER(a, p, v) */
-                a.id, p.thumbnail_url, v.model, v.model_year, v.mileage,
+                a.id, v.main_photo_url, v.model, v.model_year, v.mileage,
                 a.start_price, a.current_price, a.room_open_at, a.start_time, a.current_end_time
             from auction a
             join auction_post p on p.id = a.post_id
             join vehicle v on v.id = p.vehicle_id
-            where p.post_status = :published and p.deleted_at is null
+            where p.deleted_at is null
             """;
 
     String SELECT_CARD = """
             select new com.softeer.race.auctionlist.domain.AuctionListRow(
-                a.id, p.thumbnailUrl, v.model, v.modelYear, v.mileage,
+                a.id, v.mainPhotoUrl, v.model, v.modelYear, v.mileage,
                 a.startPrice, a.currentPrice, a.roomOpenAt, a.startTime, a.currentEndTime)
             from Auction a
             join a.post p
             join p.vehicle v
-            where p.postStatus = :published and p.deletedAt is null
+            where p.deletedAt is null
             """;
 
     /**
@@ -55,8 +54,7 @@ public interface AuctionListRepository extends Repository<Auction, Long> {
             order by a.current_end_time, a.id
             limit :limit
             """, nativeQuery = true)
-    List<AuctionListRow> findLivePage(@Param("published") String published,
-                                      @Param("snapshotAt") LocalDateTime snapshotAt,
+    List<AuctionListRow> findLivePage(@Param("snapshotAt") LocalDateTime snapshotAt,
                                       @Param("cursorSortAt") LocalDateTime cursorSortAt,
                                       @Param("cursorAuctionId") long cursorAuctionId,
                                       @Param("limit") int limit);
@@ -71,8 +69,7 @@ public interface AuctionListRepository extends Repository<Auction, Long> {
             order by a.start_time, a.id
             limit :limit
             """, nativeQuery = true)
-    List<AuctionListRow> findPendingPage(@Param("published") String published,
-                                         @Param("snapshotAt") LocalDateTime snapshotAt,
+    List<AuctionListRow> findPendingPage(@Param("snapshotAt") LocalDateTime snapshotAt,
                                          @Param("cursorSortAt") LocalDateTime cursorSortAt,
                                          @Param("cursorAuctionId") long cursorAuctionId,
                                          @Param("limit") int limit);
@@ -87,8 +84,7 @@ public interface AuctionListRepository extends Repository<Auction, Long> {
             order by a.current_end_time desc, a.id desc
             limit :limit
             """, nativeQuery = true)
-    List<AuctionListRow> findEndedPage(@Param("published") String published,
-                                       @Param("snapshotAt") LocalDateTime snapshotAt,
+    List<AuctionListRow> findEndedPage(@Param("snapshotAt") LocalDateTime snapshotAt,
                                        @Param("cursorSortAt") LocalDateTime cursorSortAt,
                                        @Param("cursorAuctionId") long cursorAuctionId,
                                        @Param("limit") int limit);
@@ -103,8 +99,7 @@ public interface AuctionListRepository extends Repository<Auction, Long> {
                  or (a.currentEndTime = :cursorSortAt and a.id > :cursorAuctionId))
             order by a.currentEndTime, a.id
             """)
-    List<AuctionListRow> findMyLivePage(@Param("published") PostStatus published,
-                                        @Param("sellerId") long sellerId,
+    List<AuctionListRow> findMyLivePage(@Param("sellerId") long sellerId,
                                         @Param("snapshotAt") LocalDateTime snapshotAt,
                                         @Param("cursorSortAt") LocalDateTime cursorSortAt,
                                         @Param("cursorAuctionId") long cursorAuctionId,
@@ -120,8 +115,7 @@ public interface AuctionListRepository extends Repository<Auction, Long> {
                  or (a.startTime = :cursorSortAt and a.id > :cursorAuctionId))
             order by a.startTime, a.id
             """)
-    List<AuctionListRow> findMyPendingPage(@Param("published") PostStatus published,
-                                           @Param("sellerId") long sellerId,
+    List<AuctionListRow> findMyPendingPage(@Param("sellerId") long sellerId,
                                            @Param("snapshotAt") LocalDateTime snapshotAt,
                                            @Param("cursorSortAt") LocalDateTime cursorSortAt,
                                            @Param("cursorAuctionId") long cursorAuctionId,
@@ -137,8 +131,7 @@ public interface AuctionListRepository extends Repository<Auction, Long> {
                  or (a.currentEndTime = :cursorSortAt and a.id < :cursorAuctionId))
             order by a.currentEndTime desc, a.id desc
             """)
-    List<AuctionListRow> findMyEndedPage(@Param("published") PostStatus published,
-                                         @Param("sellerId") long sellerId,
+    List<AuctionListRow> findMyEndedPage(@Param("sellerId") long sellerId,
                                          @Param("snapshotAt") LocalDateTime snapshotAt,
                                          @Param("cursorSortAt") LocalDateTime cursorSortAt,
                                          @Param("cursorAuctionId") long cursorAuctionId,

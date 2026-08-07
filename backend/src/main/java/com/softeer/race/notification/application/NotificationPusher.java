@@ -47,4 +47,20 @@ public class NotificationPusher {
             log.warn("알림 전송 실패, 회원 {} 알림 {}", event.userId(), event.push().notification().id(), e);
         }
     }
+
+    /**
+     * 읽음이 바뀐 회원의 열려 있는 화면들에 건수를 맞춰 준다
+     * <p>
+     * 위 {@link #push} 와 나눠 둔다. 실어 보낼 것도 받는 화면이 할 일도 달라서다 — 새 알림은
+     * 목록에 줄을 더하지만 이쪽은 이미 있던 줄의 읽음 표시를 고친다.
+     */
+    @TransactionalEventListener
+    public void pushUnreadCount(UnreadCountChanged event) {
+        // push 와 같은 이유로 삼킨다, 건수 전송 실패가 읽음 처리를 실패로 만들면 안 된다
+        try {
+            userChannel.sendUnreadCount(event.userId(), event.unreadCount());
+        } catch (Exception e) {
+            log.warn("안 읽은 건수 전송 실패, 회원 {}", event.userId(), e);
+        }
+    }
 }

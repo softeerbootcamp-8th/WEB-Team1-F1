@@ -3,21 +3,41 @@ import type {
   AuctionRoomView,
   BidIncrementBand,
   BidPlaceResult,
+  RoomOpeningView,
+  RoomResultView,
   RoomStreamState,
 } from '@/features/auction-room/types'
 
 /**
- * GET /api/auctions/{id}/room. 방에 들어갈 때 최초 1회 화면을 그리는 용도다 —
+ * GET /api/auctions/{id}/room. 방에 들어갈 때 최초 1회 화면을 그리는 용도다.
  * 이후 갱신은 반복 조회가 아니라 /room/stream 구독으로 받는다(백엔드 문서).
- * X-User-Id는 인증 도입 전 임시 헤더 — 세션 쿠키가 아니라 헤더로 "누구의 시점인지"를 알려준다.
+ * 내 입찰과 낙찰자 본인 여부는 세션 주인 기준으로 서버가 판정하므로 신원을 따로 실어 보내지 않는다.
  */
-export async function fetchAuctionRoom(
-  auctionId: number,
-  userId: number,
-): Promise<AuctionRoomView> {
-  const { data } = await axiosInstance.get<AuctionRoomView>(
-    `/api/auctions/${auctionId}/room`,
-    { headers: { 'X-User-Id': userId } },
+export async function fetchAuctionRoom(auctionId: number): Promise<AuctionRoomView> {
+  const { data } = await axiosInstance.get<AuctionRoomView>(`/api/auctions/${auctionId}/room`)
+  return data
+}
+
+/**
+ * GET /api/auctions/{id}/room/opening. 아직 열리지 않은 방의 안내다.
+ * 남은 시간은 서버가 세지 않는다 — 입장 가능 시각과 서버 시각의 차이로 화면이 센다(백엔드 문서).
+ * 방이 열리면 이 API는 409가 되고 방 조회로 옮겨가야 한다.
+ */
+export async function fetchRoomOpening(auctionId: number): Promise<RoomOpeningView> {
+  const { data } = await axiosInstance.get<RoomOpeningView>(
+    `/api/auctions/${auctionId}/room/opening`,
+  )
+  return data
+}
+
+/**
+ * GET /api/auctions/{id}/room/result. 끝난 경매의 결과 요약이다.
+ * 판정 기준은 마감 시각이 아니라 확정된 경매 상태라, 마감 직후 확정 전에는 409다(백엔드 문서).
+ * 낙찰자 본인 여부가 세션 주인 기준으로 판정되므로 세션 쿠키가 필요하다.
+ */
+export async function fetchRoomResult(auctionId: number): Promise<RoomResultView> {
+  const { data } = await axiosInstance.get<RoomResultView>(
+    `/api/auctions/${auctionId}/room/result`,
   )
   return data
 }
@@ -31,7 +51,7 @@ export async function fetchAuctionRoom(
 export function subscribeRoomStream(
   auctionId: number,
   onState: (state: RoomStreamState) => void,
-  onError?: () => void,
+  onClosed?: () => void,
 ): () => void {
   const baseURL = axiosInstance.defaults.baseURL ?? ''
   const source = new EventSource(`${baseURL}/api/auctions/${auctionId}/room/stream`, {
@@ -41,8 +61,11 @@ export function subscribeRoomStream(
   source.onmessage = (event) => {
     onState(JSON.parse(event.data) as RoomStreamState)
   }
+
+  // 끊기면 EventSource 가 스스로 다시 붙는다. 다만 재연결 응답이 2xx 가 아니면 표준대로 재시도를
+  // 포기하고 CLOSED 로 남으므로, 그때만 알린다. 방이 닫혀 서버가 끊은 경우가 여기로 온다
   source.onerror = () => {
-    onError?.()
+    if (source.readyState === EventSource.CLOSED) onClosed?.()
   }
 
   return () => source.close()

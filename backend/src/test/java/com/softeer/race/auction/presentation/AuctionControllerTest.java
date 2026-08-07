@@ -75,7 +75,6 @@ class AuctionControllerTest extends IntegrationTestSupport {
 
         List<AuctionPost> posts = auctionPostRepository.findAll();
         assertThat(posts).hasSize(1);
-        assertThat(posts.get(0).getThumbnailUrl()).isEqualTo("https://cdn/first.jpg");
 
         List<Auction> auctions = auctionRepository.findAll();
         assertThat(auctions).hasSize(1);
@@ -176,14 +175,14 @@ class AuctionControllerTest extends IntegrationTestSupport {
     private Auction 지난_경매() {
         Vehicle vehicle = vehicleRepository.findById(VEHICLE_ID).orElseThrow();
         LocalDateTime publishedAt = LocalDateTime.now(clock).minusDays(1);
-        AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, null, publishedAt));
+        AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, publishedAt));
 
         return Auction.schedule(post, 10_000_000L, publishedAt.plusHours(2));
     }
 
     private User 낙찰자() {
         return userRepository.save(User.create(
-                "winner", "winner@race.com", "pw", "이낙찰", "01099998888", "서울 마포구", Role.DEALER));
+                "winner", "winner@race.com", "pw", "이낙찰", "01099998888", Role.DEALER));
     }
 
     private String requestJson(LocalDateTime startAt) {
@@ -313,7 +312,7 @@ class AuctionControllerTest extends IntegrationTestSupport {
     private Auction 예약된_경매(LocalDateTime startAt) {
         Vehicle vehicle = vehicleRepository.findById(VEHICLE_ID).orElseThrow();
         LocalDateTime publishedAt = LocalDateTime.now(clock).minusDays(1);
-        AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, null, publishedAt));
+        AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, publishedAt));
 
         return auctionRepository.save(Auction.schedule(post, 10_000_000L, startAt));
     }
@@ -334,7 +333,7 @@ class AuctionControllerTest extends IntegrationTestSupport {
 
     private Cookie 타인_쿠키() {
         User stranger = userRepository.save(User.create(
-                "stranger", "stranger@race.com", "pw", "김타인", "01055556666", "서울 송파구", Role.GENERAL));
+                "stranger", "stranger@race.com", "pw", "김타인", "01055556666", Role.GENERAL));
         return new Cookie(SessionCookieFactory.COOKIE_NAME, sessionService.issue(stranger));
     }
 

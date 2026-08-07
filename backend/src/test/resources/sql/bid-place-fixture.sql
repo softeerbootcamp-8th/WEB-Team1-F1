@@ -3,12 +3,15 @@
 -- id는 다른 픽스처(1·2·3·8번대)와 겹치지 않게 5번대를 쓴다
 -- username·email 에 유일 제약이 있고 같은 컨텍스트를 공유하므로 값도 겹치지 않게 나눈다
 
-insert into users (id, username, email, password, real_name, phone, address, role, created_at, updated_at)
-values (51, 'bid_seller', 'bid_seller@race.dev', 'pw', '박판매', '01000000051', '서울 강남구', 'GENERAL',
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
+values (51, 'bid_seller', 'bid_seller@race.dev', 'pw', '박판매', '01000000051', 'GENERAL',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00'),
-       (52, 'bid_alice', 'bid_alice@race.dev', 'pw', '김앨리스', '01000000052', '서울 마포구', 'DEALER',
+       (52, 'bid_alice', 'bid_alice@race.dev', 'pw', '김앨리스', '01000000052', 'DEALER',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00'),
-       (53, 'bid_bob', 'bid_bob@race.dev', 'pw', '이밥', '01000000053', '서울 성동구', 'DEALER',
+       (53, 'bid_bob', 'bid_bob@race.dev', 'pw', '이밥', '01000000053', 'DEALER',
+        '2026-07-01 10:00:00', '2026-07-01 10:00:00'),
+       -- 공개 가입으로는 만들 수 없는 역할이라 여기서만 세운다, 서비스가 위촉하는 자리다
+       (54, 'bid_evaluator', 'bid_evaluator@race.dev', 'pw', '최평가', '01000000054', 'EVALUATOR',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00');
 
 -- 쿠키로 오갈 원문 토큰의 SHA-256 hex 가 PK 다, auth-session-fixture.sql 과 같은 방식이다
@@ -19,6 +22,8 @@ values (sha2('token-seller', 256), 51, '2026-08-03 21:30:00',
        (sha2('token-alice', 256), 52, '2026-08-03 21:30:00',
         '2026-08-03 20:30:00', '2026-08-03 20:30:00'),
        (sha2('token-bob', 256), 53, '2026-08-03 21:30:00',
+        '2026-08-03 20:30:00', '2026-08-03 20:30:00'),
+       (sha2('token-evaluator', 256), 54, '2026-08-03 21:30:00',
         '2026-08-03 20:30:00', '2026-08-03 20:30:00'),
        -- 고정 시각보다 1분 과거, 만료 판정을 받는다
        (sha2('token-expired', 256), 52, '2026-08-03 20:44:00',
@@ -33,12 +38,12 @@ values (51, 51, 'HYUNDAI', '그랜저 IG', 2021, 45000, 'GASOLINE', 'AUTOMATIC',
        (53, 51, 'GENESIS', 'G80 RG3', 2023, 21000, 'GASOLINE', 'AUTOMATIC',
         '53다3333', 45000000, '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
-insert into auction_post (id, vehicle_id, thumbnail_url, post_status, published_at, created_at, updated_at)
-values (51, 51, 'https://cdn.race.dev/51.jpg', 'PUBLISHED', '2026-08-01 09:00:00',
+insert into auction_post (id, vehicle_id, published_at, created_at, updated_at)
+values (51, 51, '2026-08-01 09:00:00',
         '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (52, 52, 'https://cdn.race.dev/52.jpg', 'PUBLISHED', '2026-08-01 09:00:00',
+       (52, 52, '2026-08-01 09:00:00',
         '2026-08-01 09:00:00', '2026-08-01 09:00:00'),
-       (53, 53, 'https://cdn.race.dev/53.jpg', 'PUBLISHED', '2026-08-01 09:00:00',
+       (53, 53, '2026-08-01 09:00:00',
         '2026-08-01 09:00:00', '2026-08-01 09:00:00');
 
 -- status 는 전부 SCHEDULED 로 둔다

@@ -82,6 +82,12 @@ class NotificationStreamServiceTest {
         }
 
         @Override
+        public void sendUnreadCount(long userId, long unreadCount) {
+            // 연결 직후 건수는 채널이 아니라 구독 하나를 상대로 보낸다, 이 경로가 아니다
+            throw new UnsupportedOperationException("이 테스트는 채널 전송 경로를 지나지 않는다");
+        }
+
+        @Override
         public void sweepClosed() {
             throw new UnsupportedOperationException("이 테스트는 청소 경로를 지나지 않는다");
         }
@@ -104,6 +110,11 @@ class NotificationStreamServiceTest {
         @Override
         public void ping() {
             throw new UnsupportedOperationException("이 테스트는 청소 경로를 지나지 않는다");
+        }
+
+        @Override
+        public void close() {
+            throw new UnsupportedOperationException("해제는 응답을 끝내지 않는다");
         }
 
         @Override

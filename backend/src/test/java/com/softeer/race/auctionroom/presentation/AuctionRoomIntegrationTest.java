@@ -69,7 +69,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
 
         long liveAuctionId = rooms
                 .room(users.user("박판매", Role.GENERAL), START_AT)
-                .thumbnailUrl("https://cdn.race.dev/avante-1.jpg")
+                .mainPhotoUrl("https://cdn.race.dev/avante-1.jpg")
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 40, 5), viewer, 11_000_000L)
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 42, 18), users.user("남궁민수", Role.DEALER), 12_000_000L)
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 44, 31), viewer, 12_500_000L)
@@ -104,10 +104,13 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.vehicle.modelYear").value(2022),
                 jsonPath("$.vehicle.mileage").value(35000),
                 jsonPath("$.vehicle.fuelType").value("GASOLINE"),
-                jsonPath("$.thumbnailUrl").value("https://cdn.race.dev/avante-1.jpg"));
+                jsonPath("$.vehicle.thumbnailUrl").value("https://cdn.race.dev/avante-1.jpg"));
 
         // then 5 : 차량을 특정할 수 있는 번호판은 응답에 없다
         response.andExpect(jsonPath("$.vehicle.plateNumber").doesNotExist());
+
+        // then 5-1 : 차량 정보는 한 덩어리로 온다, 사진이 최상위에 남으면 화면이 두 군데서 조립한다
+        response.andExpect(jsonPath("$.thumbnailUrl").doesNotHaveJsonPath());
 
         // then 6 : 세 건을 두 사람이 넣었으므로 건수는 3이고 사람 수는 2다
         response.andExpectAll(
