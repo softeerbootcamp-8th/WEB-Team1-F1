@@ -172,6 +172,56 @@ class InMemoryUserChannelTest {
     }
 
     @Test
+    @DisplayName("건수는 회원의 모든 구독에 간다")
+    void unreadCountReachesEverySubscriptionOfTheUser() {
+        FakeSubscriber phone = new FakeSubscriber();
+        FakeSubscriber desktop = new FakeSubscriber();
+        channel.subscribe(USER, phone);
+        channel.subscribe(USER, desktop);
+
+        channel.sendUnreadCount(USER, 3L);
+
+        // 한 화면에서 읽은 것이 나머지 화면에 퍼지는 통로다
+        assertThat(phone.unreadCounts).containsExactly(3L);
+        assertThat(desktop.unreadCounts).containsExactly(3L);
+    }
+
+    @Test
+    @DisplayName("건수는 다른 회원의 구독에는 가지 않는다")
+    void unreadCountDoesNotLeakToOtherUsers() {
+        FakeSubscriber other = new FakeSubscriber();
+        channel.subscribe(OTHER_USER, other);
+        channel.subscribe(USER, new FakeSubscriber());
+
+        channel.sendUnreadCount(USER, 3L);
+
+        assertThat(other.unreadCounts).isEmpty();
+    }
+
+    @Test
+    @DisplayName("접속하지 않은 회원에게 건수를 보내도 터지지 않는다")
+    void sendingUnreadCountToAbsentUserIsSafe() {
+        Throwable thrown = catchThrowable(() -> channel.sendUnreadCount(USER, 3L));
+
+        assertThat(thrown).isNull();
+    }
+
+    @Test
+    @DisplayName("건수를 보내다 닫힌 구독도 걷어내면서 응답까지 끝낸다")
+    void closedSubscriptionIsEndedAfterSendingUnreadCount() {
+        FakeSubscriber broken = new FakeSubscriber();
+        broken.disconnect();
+        channel.subscribe(USER, broken);
+
+        channel.sendUnreadCount(USER, 3L);
+
+        // 보내는 갈래마다 정리를 따로 두면 한 곳만 빠뜨려도 그 응답이 만료까지 살아남는다
+        assertThat(broken.closes).isEqualTo(1);
+        channel.sweepClosed();
+        assertThat(broken.pings).isZero();
+    }
+
+    @Test
     @DisplayName("전송 중 닫힌 구독은 걷어내면서 응답까지 끝낸다")
     void closedSubscriptionIsEndedAfterSend() {
         FakeSubscriber broken = new FakeSubscriber();
@@ -284,6 +334,7 @@ class InMemoryUserChannelTest {
     private static final class FakeSubscriber implements UserSubscriber {
 
         private final List<NotificationPush> received = new ArrayList<>();
+        private final List<Long> unreadCounts = new ArrayList<>();
         private boolean open = true;
         private boolean closeOnPing;
         private int pings;
@@ -308,7 +359,10 @@ class InMemoryUserChannelTest {
 
         @Override
         public void sendUnreadCount(long unreadCount) {
-            // 채널을 거치지 않는 경로라 이 테스트에서 쓰이지 않는다
+            if (!open) {
+                return;
+            }
+            unreadCounts.add(unreadCount);
         }
 
         @Override

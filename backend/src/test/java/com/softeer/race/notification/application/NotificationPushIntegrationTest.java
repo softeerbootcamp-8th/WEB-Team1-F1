@@ -1,5 +1,6 @@
 package com.softeer.race.notification.application;
 
+import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.notification.domain.NotificationRepository;
 import com.softeer.race.notification.domain.NotificationRow;
 import com.softeer.race.support.IntegrationTestSupport;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Limit;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -46,6 +48,9 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @Autowired
     private UserChannel userChannel;
@@ -232,8 +237,80 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
         assertThat(gone.pings).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("시나리오 10 : 한 화면에서 읽으면 열려 있는 모든 화면이 건수를 받는다")
+    void scenario10_BroadcastsUnreadCountAfterRead() {
+        // given : 안 읽은 알림 두 건, 같은 회원이 화면을 둘 열어 두었다
+        long userId = user();
+        notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
+        notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
+        RecordingSubscriber phone = join(userId);
+        RecordingSubscriber desktop = join(userId);
+
+        // when : 한쪽에서 한 건을 읽는다
+        notificationService.markRead(userId, latestNotificationId(userId));
+
+        // then : 읽은 화면만이 아니라 열려 있는 모든 화면의 배지가 맞춰진다
+        assertThat(phone.unreadCounts).containsExactly(2L, 1L);
+        assertThat(desktop.unreadCounts).containsExactly(2L, 1L);
+    }
+
+    @Test
+    @DisplayName("시나리오 11 : 모두 읽음도 같은 방식으로 퍼진다")
+    void scenario11_BroadcastsUnreadCountAfterReadAll() {
+        // given
+        long userId = user();
+        notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
+        notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
+        RecordingSubscriber subscriber = join(userId);
+
+        // when
+        notificationService.markAllRead(userId);
+
+        // then
+        assertThat(subscriber.unreadCounts).containsExactly(2L, 0L);
+    }
+
+    @Test
+    @DisplayName("시나리오 12 : 읽을 것이 없는 모두 읽음은 아무것도 보내지 않는다")
+    void scenario12_SkipsBroadcastWhenNothingChanged() {
+        // given : 안 읽은 알림이 하나도 없다
+        long userId = user();
+        RecordingSubscriber subscriber = join(userId);
+
+        // when
+        notificationService.markAllRead(userId);
+
+        // then : 연결 직후 받은 0 뿐이다, 바뀐 것이 없으면 같은 값을 다시 밀지 않는다
+        assertThat(subscriber.unreadCounts).containsExactly(0L);
+    }
+
+    @Test
+    @DisplayName("시나리오 13 : 남의 알림을 읽으려다 실패하면 건수도 나가지 않는다")
+    void scenario13_FailedReadBroadcastsNothing() {
+        // given : 알림의 주인과 읽으려는 사람이 다르다
+        long ownerId = user();
+        long strangerId = user();
+        notificationPublisher.publish(ownerId, AUCTION_WON, DEAL_ID);
+        RecordingSubscriber stranger = join(strangerId);
+        long notificationId = latestNotificationId(ownerId);
+
+        // when
+        Throwable thrown =
+                catchThrowable(() -> notificationService.markRead(strangerId, notificationId));
+
+        // then : 롤백된 읽음의 건수가 화면에 남지 않는다
+        assertThat(thrown).isInstanceOf(BusinessException.class);
+        assertThat(stranger.unreadCounts).containsExactly(0L);
+    }
+
     private long user() {
         return users.user("김알림", Role.GENERAL).getId();
+    }
+
+    // 발행은 식별자를 돌려주지 않는다, 읽을 대상은 조회와 같은 길로 꺼낸다
+    private long latestNotificationId(long userId) {
+        return notificationRepository.findPage(userId, Long.MAX_VALUE, Limit.of(1)).getFirst().id();
     }
 
     // 실제 경로와 같게 스트림 서비스로 등록한다, 연결 직후 건수 전송까지 함께 돈다

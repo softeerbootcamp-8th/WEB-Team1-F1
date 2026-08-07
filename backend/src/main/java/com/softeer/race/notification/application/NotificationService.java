@@ -9,10 +9,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +29,7 @@ public class NotificationService {
     private static final long FIRST_CURSOR = Long.MAX_VALUE;
 
     private final NotificationRepository notificationRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     /**
@@ -61,6 +64,8 @@ public class NotificationService {
         if (notificationRepository.markRead(notificationId, userId) == 0) {
             throw new BusinessException(NotificationErrorCode.NOT_FOUND);
         }
+
+        publishUnreadCount(userId);
     }
 
     /**
@@ -68,6 +73,23 @@ public class NotificationService {
      */
     @Transactional
     public void markAllRead(long userId) {
-        notificationRepository.markAllRead(userId);
+        // 바뀐 것이 없으면 알릴 것도 없다. 갱신 건수로 판별되는 쪽만 거른다 —
+        // 한 건 읽기는 이미 읽은 알림에 다시 요청해도 조건에 맞는 행이 있어 1 이 온다
+        if (notificationRepository.markAllRead(userId) == 0) {
+            return;
+        }
+
+        publishUnreadCount(userId);
+    }
+
+    /**
+     * 읽음이 바뀌었음을 남긴다, 전달은 커밋 뒤에 일어난다
+     * <p>
+     * 건수를 여기서 센다. 커밋 뒤에 세면 끝난 트랜잭션 밖에서 커넥션을 다시 얻어야 한다.
+     * 갱신이 롤백되면 이 사건도 전달되지 않으므로 없던 건수가 화면에 남지 않는다.
+     */
+    private void publishUnreadCount(long userId) {
+        eventPublisher.publishEvent(
+                new UnreadCountChanged(userId, notificationRepository.countUnread(userId)));
     }
 }

@@ -26,6 +26,14 @@ public interface UserChannel {
     void send(long userId, NotificationPush push);
 
     /**
+     * 이 회원의 열려 있는 모든 구독에 안 읽은 건수만 전송, 닫힌 구독은 순회가 끝난 뒤 걷어낸다
+     * <p>
+     * 구독 하나를 상대로 하는 {@link UserSubscriber#sendUnreadCount} 와 대상이 다르다. 저쪽은 방금
+     * 연결한 화면의 배지를 맞추는 것이고, 이쪽은 한 화면에서 읽은 것을 나머지 화면에 퍼뜨린다.
+     */
+    void sendUnreadCount(long userId, long unreadCount);
+
+    /**
      * 모든 구독을 찔러 보고 닫힌 것을 걷어낸다
      * <p>
      * 방 채널과 달리 걷어낸 대상을 돌려주지 않는다. 방은 사람이 빠지면 남은 사람이 보는 접속자
