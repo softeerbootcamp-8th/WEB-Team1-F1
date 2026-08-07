@@ -15,13 +15,20 @@ import java.time.Duration;
  * @param cdnBaseUrl 조회용 베이스 주소. <b>업로드용 S3 호스트가 아니라 CloudFront 도메인</b>이다.
  *                      업로드는 서명이 S3 호스트에 묶여 있어 그쪽으로 직접 보내고, 조회만 CDN을 탄다
  * @param presignExpiry 발급한 주소의 유효 기간
+ * @param endpoint      S3 대신 호출할 주소. <b>비워 두는 것이 정상이고</b> 그때 실제 S3로 간다.
+ *                      로컬 개발에서 S3 호환 서버(MinIO)를 쓸 때만 채운다
+ * @param accessKey     {@code endpoint}를 채웠을 때 서명에 쓸 키. 실제 S3에서는 쓰지 않는다
+ * @param secretKey     같은 용도의 비밀 키
  */
 @ConfigurationProperties(prefix = "aws.s3")
 public record S3Properties(
         String bucket,
         String region,
         String cdnBaseUrl,
-        Duration presignExpiry
+        Duration presignExpiry,
+        String endpoint,
+        String accessKey,
+        String secretKey
 ) {
 
     private static final Duration DEFAULT_PRESIGN_EXPIRY = Duration.ofMinutes(15);
@@ -51,11 +58,26 @@ public record S3Properties(
             throw new IllegalArgumentException(
                     "aws.s3.presign-expiry는 7일을 넘을 수 없습니다. presignExpiry=%s".formatted(presignExpiry));
         }
+
+        // 셋 다 없는 것이 실제 S3를 쓰는 정상 상태다. endpoint만 있고 키가 없으면 기본 자격 증명
+        // 탐색으로 넘어가 ~/.aws/credentials 를 집는데, 그 키로 MinIO에 서명하면 업로드가 403 이
+        // 되고 원인이 설정 누락이라는 게 그 시점에는 보이지 않는다
+        if (endpoint != null && !endpoint.isBlank()) {
+            requireTextWithEndpoint(accessKey, "aws.s3.access-key");
+            requireTextWithEndpoint(secretKey, "aws.s3.secret-key");
+        }
     }
 
     private static void requireText(String value, String property) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("%s가 설정되지 않았습니다.".formatted(property));
+        }
+    }
+
+    private static void requireTextWithEndpoint(String value, String property) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(
+                    "aws.s3.endpoint를 지정했으면 %s도 필요합니다.".formatted(property));
         }
     }
 }
