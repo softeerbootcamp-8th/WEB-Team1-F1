@@ -20,7 +20,11 @@ import { useNotifications } from './use-notifications'
 const MAX_BADGE_COUNT = 99
 
 /** 헤더 알림 드롭다운. 안 읽은 건수 배지 + 목록, 행을 누르면 읽음 처리하고 그 화면으로 이동한다. */
-export function NotificationBell() {
+export function NotificationBell({
+  tone = 'default',
+}: {
+  tone?: 'default' | 'inverse'
+}) {
   const { isAuthenticated } = useAuth()
   const { items, unreadCount, hasNext, isLoading, isLoadingMore, loadMore, markAllRead, markRead } =
     useNotifications()
@@ -37,7 +41,11 @@ export function NotificationBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative"
+          className={cn(
+            'relative',
+            tone === 'inverse' &&
+              'bg-black/30 text-white transition-none hover:bg-black/45 hover:text-white',
+          )}
           aria-label={`알림 ${unreadCount}건`}
         >
           <Bell className="size-5" aria-hidden />

@@ -16,10 +16,12 @@ const badgeVariants = cva(
         destructive:
           'border-transparent bg-destructive text-destructive-foreground [a&]:hover:bg-destructive/90',
         outline: 'text-foreground [a&]:hover:bg-accent',
-        // 경매 상태 전용 variants
-        live: 'border-transparent bg-status-live/12 text-status-live',
+        // 경매 상태 전용 variants.
+        // 카드 썸네일 위에 얹히므로 반투명 대신 배경색에 미리 섞어 불투명하게 쓴다.
+        // 사진이 비쳐 글자가 묻히는 걸 막으면서, 단색 배경 위에서는 기존과 같은 톤이 나온다.
+        live: 'border-transparent bg-[color-mix(in_oklab,var(--status-live)_12%,var(--background))] text-status-live',
         scheduled:
-          'border-transparent bg-status-scheduled/12 text-status-scheduled',
+          'border-transparent bg-[color-mix(in_oklab,var(--status-scheduled)_12%,var(--background))] text-status-scheduled',
         ended: 'border-transparent bg-muted text-muted-foreground',
         warning:
           'border-transparent bg-closing-soon/15 text-closing-soon',

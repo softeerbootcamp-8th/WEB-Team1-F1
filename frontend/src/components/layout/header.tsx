@@ -1,4 +1,5 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { ClipboardCheck, ListChecks, LogOut, User as UserIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -22,9 +23,9 @@ import { BrandLogo } from '@/components/common/brand-logo'
 
 const NAV = [
   { to: '/', label: '홈', end: true },
-  { to: '/quote', label: '시세조회' },
+  { to: '/quote', label: '시세 조회' },
   { to: '/auctions', label: '경매 목록' },
-  { to: '/sell', label: '내차 팔기' },
+  { to: '/sell', label: '내 차 팔기' },
   { to: '/mypage', label: '마이페이지' },
 ]
 
@@ -37,14 +38,40 @@ const EVALUATOR_NAV = [
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const [isPastHeroTop, setIsPastHeroTop] = useState(false)
   const navigation = user?.role === 'EVALUATOR' ? EVALUATOR_NAV : NAV
+  const isHome = pathname === '/'
+  const isHomeOverlay = isHome && !isPastHeroTop
+
+  useEffect(() => {
+    if (!isHome) {
+      setIsPastHeroTop(false)
+      return
+    }
+
+    const updateHeader = () => setIsPastHeroTop(window.scrollY > 32)
+
+    updateHeader()
+    window.addEventListener('scroll', updateHeader, { passive: true })
+
+    return () => window.removeEventListener('scroll', updateHeader)
+  }, [isHome])
 
   return (
-    <header className="bg-background/80 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-40 border-b backdrop-blur">
+    <header
+      className={cn(
+        'top-0 z-40 w-full transition-[background-color,border-color,box-shadow] duration-500',
+        isHome ? 'fixed' : 'bg-background/95 sticky border-b',
+        isHomeOverlay
+          ? 'border-transparent bg-transparent text-white'
+          : 'bg-background/95 text-foreground shadow-[0_1px_0_rgb(0_0_0/0.08)]',
+      )}
+    >
       <div className="mx-auto flex h-(--spacing-header) max-w-7xl items-center gap-8 px-6">
         {/* 로고 */}
         <Link to="/" className="flex items-center" aria-label="RACE 홈으로">
-          <BrandLogo className="h-9" />
+          <BrandLogo variant={isHomeOverlay ? 'white' : 'black'} className="h-9" />
         </Link>
 
         {/* 데스크톱 내비게이션 */}
@@ -56,8 +83,14 @@ export function Header() {
               end={item.end}
               className={({ isActive }) =>
                 cn(
-                  'hover:text-foreground rounded-md px-3 py-2 text-base font-medium transition-colors',
-                  isActive ? 'text-foreground' : 'text-muted-foreground',
+                  'rounded-md px-3 py-2 text-base font-medium transition-colors',
+                  isHomeOverlay
+                    ? isActive
+                      ? 'text-white'
+                      : 'text-white/65 hover:text-white'
+                    : isActive
+                      ? 'text-foreground'
+                      : 'text-muted-foreground hover:text-foreground',
                 )
               }
             >
@@ -67,14 +100,18 @@ export function Header() {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
-          <NotificationBell />
+          <NotificationBell tone={isHomeOverlay ? 'inverse' : 'default'} />
 
           {isAuthenticated && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="gap-2 pl-2"
+                  className={cn(
+                    'gap-2 pl-2',
+                    isHomeOverlay &&
+                      'bg-black/30 text-white transition-none hover:bg-black/45 hover:text-white',
+                  )}
                   aria-label="내 계정"
                 >
                   <Avatar className="size-7">
@@ -119,10 +156,27 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  'transition-none',
+                  isHomeOverlay &&
+                    'bg-black/30 text-white hover:bg-black/45 hover:text-white',
+                )}
+                asChild
+              >
                 <Link to="/login">로그인</Link>
               </Button>
-              <Button size="sm" asChild>
+              <Button
+                size="sm"
+                className={cn(
+                  'transition-none',
+                  isHomeOverlay &&
+                    'bg-white text-black hover:bg-white/85 hover:text-black',
+                )}
+                asChild
+              >
                 <Link to="/signup">회원가입</Link>
               </Button>
             </div>
