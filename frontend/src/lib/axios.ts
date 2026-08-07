@@ -61,4 +61,12 @@ export function getErrorCode(error: unknown): string | undefined {
   return (error as AxiosError<ProblemDetailBody> | undefined)?.response?.data?.code
 }
 
+/**
+ * 실패 응답의 상태 코드. 응답을 못 받았으면(네트워크 오류) undefined 다.
+ * 인증처럼 HTTP가 뜻을 이미 정한 실패는 도메인 코드가 아니라 이 값으로 가른다.
+ */
+export function getErrorStatus(error: unknown): number | undefined {
+  return (error as AxiosError | undefined)?.response?.status
+}
+
 export default customInstance
