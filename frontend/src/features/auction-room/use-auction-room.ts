@@ -157,6 +157,12 @@ export function useAuctionRoom(auctionId: number) {
         .catch((error: unknown) => {
           if (cancelled) return
 
+          // 인증 실패는 HTTP 가 이미 뜻을 정해 둔 실패다, 어떤 도메인 코드가 붙어 오든 할 일은 같다
+          if (getErrorStatus(error) === HTTP_UNAUTHORIZED) {
+            setEntry('SIGNED_OUT')
+            return
+          }
+
           // 안내를 받는 사이 방이 열렸으면 이 API 가 409 로 막는다, 그때는 방으로 들어가면 된다
           if (getErrorCode(error) === 'ROOM_ALREADY_OPEN') {
             connect()
@@ -178,6 +184,12 @@ export function useAuctionRoom(auctionId: number) {
         })
         .catch((error: unknown) => {
           if (cancelled) return
+
+          // 인증 실패는 HTTP 가 이미 뜻을 정해 둔 실패다, 어떤 도메인 코드가 붙어 오든 할 일은 같다
+          if (getErrorStatus(error) === HTTP_UNAUTHORIZED) {
+            setEntry('SIGNED_OUT')
+            return
+          }
 
           // 마감과 낙찰 확정 사이의 짧은 틈이다, 확정되면 결과가 나온다
           // 확정이 계속 실패한 채로 남으면 이 물음도 끝나지 않으므로 몇 번만 묻고 그만둔다
