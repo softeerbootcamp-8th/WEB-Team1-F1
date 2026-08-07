@@ -23,7 +23,7 @@ export function AuctionCard({ auction, actions }: AuctionCardProps) {
   const price = isLive || status === 'ENDED' ? auction.currentPrice : auction.startPrice
 
   return (
-    <Card className="group gap-0 overflow-hidden py-0 transition-shadow hover:shadow-md">
+    <Card className="group gap-0 overflow-hidden py-0 transition-[transform,box-shadow,border-color] duration-500 ease-out hover:-translate-y-1.5 hover:border-foreground/20 hover:shadow-xl hover:shadow-black/10">
       <Link to={`/auctions/${auction.auctionId}`} className="block">
         <div className="bg-muted relative aspect-[4/3] overflow-hidden">
           <CarThumb
