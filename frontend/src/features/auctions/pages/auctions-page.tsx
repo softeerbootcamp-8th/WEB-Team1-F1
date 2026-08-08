@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { SearchX, TriangleAlert } from 'lucide-react'
 
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -29,6 +29,23 @@ const FILTERS: { value: Filter; label: string }[] = [
 ]
 
 /**
+ * 어느 탭을 보고 있었는지는 주소에 남긴다. 화면 상태로만 들고 있으면 경매방에 들어갔다
+ * 돌아올 때 목록이 새로 마운트되면서 항상 첫 탭으로 풀린다.
+ * 기본값(전체·모든 경매)은 아예 빼서 /auctions 주소를 깨끗하게 둔다.
+ */
+const STATUS_PARAM = 'status'
+const SCOPE_PARAM = 'scope'
+
+function readFilter(params: URLSearchParams): Filter {
+  const raw = params.get(STATUS_PARAM)?.toUpperCase()
+  return FILTERS.some((item) => item.value === raw) ? (raw as Filter) : 'ALL'
+}
+
+function readScope(params: URLSearchParams): AuctionListScope {
+  return params.get(SCOPE_PARAM)?.toUpperCase() === 'MINE' ? 'MINE' : 'ALL'
+}
+
+/**
  * 빈 목록 문구. 범위만 보고 고르면 "나의 경매 + 진행중"에 결과가 없을 때
  * 경매를 여러 건 갖고 있는 사람에게도 "등록한 경매가 없습니다"라고 말하게 된다.
  */
@@ -48,8 +65,19 @@ function emptyMessage(scope: AuctionListScope, filter: Filter) {
 
 export function AuctionsPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
-  const [scope, setScope] = useState<AuctionListScope>('ALL')
-  const [filter, setFilter] = useState<Filter>('ALL')
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const scope = readScope(searchParams)
+  const filter = readFilter(searchParams)
+
+  // 탭 전환은 히스토리에 쌓지 않는다. 쌓으면 탭을 옮긴 횟수만큼 뒤로가기를 눌러야 목록을 벗어난다.
+  const selectTab = (key: string, value: string, isDefault: boolean) => {
+    const next = new URLSearchParams(searchParams)
+    if (isDefault) next.delete(key)
+    else next.set(key, value.toLowerCase())
+    setSearchParams(next, { replace: true })
+  }
+
   const [editing, setEditing] = useState<AuctionListCard | null>(null)
   const [deleting, setDeleting] = useState<AuctionListCard | null>(null)
 
@@ -97,7 +125,10 @@ export function AuctionsPage() {
               평가가 완료된 차량의 실시간 가격 형성 과정을 확인하세요.
             </p>
           </div>
-          <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
+          <Tabs
+            value={filter}
+            onValueChange={(value) => selectTab(STATUS_PARAM, value, value === 'ALL')}
+          >
             <TabsList aria-label="경매 상태 필터">
               {FILTERS.map((item) => (
                 <TabsTrigger key={item.value} value={item.value}>
@@ -108,7 +139,10 @@ export function AuctionsPage() {
           </Tabs>
         </div>
 
-        <ScopeTabs value={scope} onChange={setScope} />
+        <ScopeTabs
+          value={scope}
+          onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
+        />
       </header>
 
       {needsLogin ? (
