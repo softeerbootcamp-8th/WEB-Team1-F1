@@ -153,6 +153,25 @@ class DealCreationIntegrationTest extends IntegrationTestSupport {
         assertThat(dealRepository.findAll()).hasSize(1);
     }
 
+    @Test
+    @DisplayName("시나리오 5 : 경매의 현재가가 바뀌어도 거래의 낙찰 금액은 흔들리지 않는다")
+    void scenario5_FinalPriceIsIndependentOfAuction() {
+        // given : 낙찰가 3천만원으로 거래가 열렸다
+        long auctionId = rooms.room(seller, STARTED_AT)
+                .startPrice(START_PRICE)
+                .bid(STARTED_AT.plusMinutes(5), bob, START_PRICE)
+                .closed()
+                .create();
+
+        // when : 경매 쪽 현재가만 바뀐다
+        jdbcTemplate.update(
+                "update auction set current_price = ? where id = ?", START_PRICE + RAISE, auctionId);
+
+        // then : 거래가 경매에서 읽어 오는 구조라면 여기서 같이 흔들린다
+        assertThat(dealRepository.findAll()).singleElement()
+                .satisfies(deal -> assertThat(deal.getFinalPrice()).isEqualTo(START_PRICE));
+    }
+
     private Long countRows(String table) {
         return jdbcTemplate.queryForObject("select count(*) from `" + table + "`", Long.class);
     }
