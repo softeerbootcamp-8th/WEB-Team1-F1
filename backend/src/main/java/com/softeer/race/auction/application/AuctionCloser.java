@@ -6,6 +6,7 @@ import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.bid.domain.Bid;
 import com.softeer.race.bid.domain.BidRepository;
 import com.softeer.race.user.domain.User;
+import com.softeer.race.deal.application.DealCreator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class AuctionCloser {
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
     private final AuctionEndNotifier auctionEndNotifier;
+    private final DealCreator dealCreator;
 
     /**
      * 경매 한 건을 종료한다. 경매 하나가 한 트랜잭션이다.
@@ -43,6 +45,11 @@ public class AuctionCloser {
 
         User topBidder = topBidderOf(auctionId);
         auction.close(topBidder, now);
+
+        // 확정 뒤, 알림 앞이어야 한다. 낙찰 알림이 거래 화면을 가리키려면 이 시점에 거래가 있어야 한다.
+        if (topBidder != null) {
+            dealCreator.create(auction, topBidder, now);
+        }
 
         // 확정이 실제로 일어났을 때만 알린다, 유찰도 화면이 알아야 하는 결과라 같은 사건으로 낸다
         eventPublisher.publishEvent(new AuctionClosed(auctionId));
