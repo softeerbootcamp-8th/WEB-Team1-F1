@@ -12,6 +12,7 @@ public record VehicleSummary(
         int modelYear,
         int mileage,
         FuelType fuelType,
-        String thumbnailUrl
+        String thumbnailUrl,
+        String diagnosticReportUrl
 ) {
 }

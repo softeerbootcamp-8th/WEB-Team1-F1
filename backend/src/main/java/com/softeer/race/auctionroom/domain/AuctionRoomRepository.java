@@ -19,7 +19,7 @@ public interface AuctionRoomRepository extends Repository<Auction, Long> {
             select new com.softeer.race.auctionroom.domain.AuctionRoomDetail(
                 a.id, a.status, a.startPrice, a.currentPrice, a.roomOpenAt, a.startTime, a.currentEndTime,
                 v.manufacturer, v.model, v.modelYear, v.mileage, v.fuelType,
-                v.mainPhotoUrl, w.id, w.realName)
+                v.mainPhotoUrl, v.diagnosticReportUrl, w.id, w.realName)
             from Auction a
             join a.post p
             join p.vehicle v
