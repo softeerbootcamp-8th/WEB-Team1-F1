@@ -83,6 +83,10 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         assertThat(broadcast.at("/winner/mine").isMissingNode()).isTrue();
         assertThat(broadcast.at("/recentBids/0/mine").isMissingNode()).isTrue();
 
+        // then 2-1 : 차량은 방 안에서 바뀌지 않으므로 방송에 실리지 않는다, 조회가 한 번 준다
+        assertThat(broadcast.at("/vehicle").isMissingNode()).isTrue();
+        assertThat(query.at("/vehicle").isMissingNode()).isFalse();
+
         // then 3 : 그 둘을 걷어내면 나머지는 키도 값도 완전히 같다
         assertSameTree("", broadcast, withoutPersonalization(query));
     }
@@ -124,12 +128,13 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         return keys;
     }
 
-    // 방송에 없는 것은 보는 사람 기준의 판정 둘뿐이다, 그것만 걷어내고 나머지를 통째로 맞춘다
+    // 방송에 없는 것은 보는 사람 기준의 판정 둘과 방 안에서 바뀌지 않는 차량이다
     private JsonNode withoutPersonalization(JsonNode query) {
         ObjectNode copy = (ObjectNode) query.deepCopy();
 
         ((ObjectNode) copy.get("winner")).remove("mine");
         copy.get("recentBids").forEach(bid -> ((ObjectNode) bid).remove("mine"));
+        copy.remove("vehicle");
 
         return copy;
     }

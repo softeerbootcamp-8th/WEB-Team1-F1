@@ -1,5 +1,7 @@
 package com.softeer.race.auctionroom.application;
 
+import com.softeer.race.auctionroom.domain.VehicleSummary;
+
 import java.util.List;
 
 /**
@@ -7,6 +9,7 @@ import java.util.List;
  */
 public record AuctionRoomView(
         RoomState state,
+        VehicleSummary vehicle,
         boolean winnerIsMine,
         List<RecentBidView> recentBids
 ) {
@@ -16,6 +19,7 @@ public record AuctionRoomView(
     static AuctionRoomView of(long viewerId, RoomQueryResult result, int connectedCount) {
         return new AuctionRoomView(
                 RoomState.of(result, connectedCount),
+                result.detail().vehicle(),
                 result.detail().isWonBy(viewerId),
                 result.recentBids().stream().map(bid -> RecentBidView.of(bid, viewerId)).toList());
     }

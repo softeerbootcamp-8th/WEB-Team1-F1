@@ -60,7 +60,7 @@ public record AuctionRoomResponse(
         return new AuctionRoomResponse(
                 state.auctionId(),
                 state.phase(),
-                VehicleResponse.from(state.vehicle()),
+                VehicleResponse.from(view.vehicle()),
                 state.startPrice(),
                 state.currentPrice(),
                 state.openAt(),
