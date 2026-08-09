@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 /**
  * 거래 상세 한 건
  * <p>
- * 목록 카드와 나눈다. 상세에만 필요한 값이 있고, 목록은 스무 건을 한 번에 읽어서
+ * 목록 카드와 나눈다. 상세에만 필요한 값이 있고, 목록은 여러 건을 한 번에 읽어서
  * 안 쓰는 컬럼을 그만큼 곱해 읽게 된다.
  */
 public record DealDetailRow(
