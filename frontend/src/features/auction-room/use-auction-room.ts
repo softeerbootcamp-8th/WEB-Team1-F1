@@ -289,9 +289,15 @@ export function useAuctionRoom(auctionId: number) {
     }
   }, [auctionId, mergeStreamState])
 
-  const increment = room ? incrementForPrice(room.currentPrice, bands) : 0
+  const increment = room ? incrementForPrice(room.currentPrice, bands) : null
   // 첫 입찰은 시작가 그대로가 최소금액이다 — bidCount가 0이면 currentPrice가 곧 startPrice.
-  const nextMin = room ? (room.bidCount === 0 ? room.currentPrice : room.currentPrice + increment) : 0
+  // 상승가를 모르면 최소금액도 정하지 않는다, 서버도 그때 입찰을 거부한다
+  const nextMin =
+    room && increment !== null
+      ? room.bidCount === 0
+        ? room.currentPrice
+        : room.currentPrice + increment
+      : null
 
   const bid = useCallback(
     async (amount: number) => {

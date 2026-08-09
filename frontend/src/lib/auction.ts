@@ -5,11 +5,16 @@ import type { BidIncrementBand } from '@/features/auction-room/types'
 /**
  * 가격대별 최저 상승가 계산. 구간표는 DB 시드값(GET /api/bid-increments)이라
  * 클라이언트에 값을 박지 않고 반드시 받아온 bands로 계산한다.
+ * 담당 구간이 없으면 null — 서버도 같은 경우 중단한다(BidIncrementTable.bandOf).
+ * 0을 돌려주면 올리지 않아도 되는 입찰을 안내하게 되고, 그 입찰은 서버가 거부한다.
  */
-export function incrementForPrice(price: number, bands: BidIncrementBand[]): number {
+export function incrementForPrice(
+  price: number,
+  bands: BidIncrementBand[],
+): number | null {
   const sorted = [...bands].sort((a, b) => a.minPrice - b.minPrice)
   const band = [...sorted].reverse().find((b) => b.minPrice <= price)
-  return band?.increment ?? 0
+  return band?.increment ?? null
 }
 
 /** 소프트 클로즈 임계 — 남은 시간이 이 값 이하이면 마감 임박 */

@@ -216,8 +216,9 @@ function LiveRoom({
   placeBid,
 }: {
   room: AuctionRoomView
-  increment: number
-  nextMin: number
+  // 구간표를 받기 전에는 상승가를 정할 수 없다, 그대로 입찰 패널까지 넘긴다
+  increment: number | null
+  nextMin: number | null
   flashKey: number
   extended: boolean
   clockOffset: number
