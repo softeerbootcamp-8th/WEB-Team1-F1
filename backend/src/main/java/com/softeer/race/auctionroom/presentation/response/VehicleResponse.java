@@ -24,7 +24,11 @@ public record VehicleResponse(
 
         @Schema(description = "대표 사진, 등록되지 않았으면 없다",
                 example = "https://cdn.race.dev/avante-1.jpg")
-        String thumbnailUrl
+        String thumbnailUrl,
+
+        @Schema(description = "평가사가 남긴 진단서 PDF, 출품된 차량에는 항상 있다",
+                example = "https://cdn.race.dev/avante-report.pdf")
+        String diagnosticReportUrl
 ) {
 
     static VehicleResponse from(VehicleSummary vehicle) {
@@ -34,6 +38,7 @@ public record VehicleResponse(
                 vehicle.modelYear(),
                 vehicle.mileage(),
                 vehicle.fuelType(),
-                vehicle.thumbnailUrl());
+                vehicle.thumbnailUrl(),
+                vehicle.diagnosticReportUrl());
     }
 }

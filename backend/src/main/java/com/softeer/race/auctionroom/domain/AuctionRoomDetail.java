@@ -24,6 +24,7 @@ public record AuctionRoomDetail(
         int mileage,
         FuelType fuelType,
         String thumbnailUrl,
+        String diagnosticReportUrl,
         Long winnerId,
         MaskedName winner
 ) {
@@ -43,6 +44,7 @@ public record AuctionRoomDetail(
                              int mileage,
                              FuelType fuelType,
                              String thumbnailUrl,
+                             String diagnosticReportUrl,
                              Long winnerId,
                              String winnerRealName) {
 
@@ -59,6 +61,7 @@ public record AuctionRoomDetail(
                 mileage,
                 fuelType,
                 thumbnailUrl,
+                diagnosticReportUrl,
                 winnerId,
                 winnerRealName != null ? MaskedName.mask(winnerRealName) : null);
     }
@@ -74,7 +77,8 @@ public record AuctionRoomDetail(
      * 화면에 보일 차량 요약
      */
     public VehicleSummary vehicle() {
-        return new VehicleSummary(manufacturer, model, modelYear, mileage, fuelType, thumbnailUrl);
+        return new VehicleSummary(manufacturer, model, modelYear, mileage, fuelType,
+                thumbnailUrl, diagnosticReportUrl);
     }
 
     /**
