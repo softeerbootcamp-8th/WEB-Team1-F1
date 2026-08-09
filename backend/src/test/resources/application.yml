@@ -23,6 +23,13 @@ aws:
     region: ap-northeast-2
     cdn-base-url: https://cdn.test.local
 
+# 이 설정이 메인 설정을 가리므로 여기에도 두어야 한다
+# 비면 AuthWebMvcConfig 가 기동을 실패시켜 웹 계층을 띄우는 테스트 전부가 컨텍스트 로딩에서 깨진다
+auth:
+  # 메인 설정과 같은 패턴을 써서 시나리오 6·8 이 :[*] 의 매칭까지 함께 확인하게 한다
+  allowed-origins:
+    - http://localhost:[*]
+
 # 배경 스레드가 테스트 중에 DB 를 건드리면 검증 대상 데이터가 흔들린다
 race:
   scheduling:

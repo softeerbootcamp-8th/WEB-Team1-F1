@@ -58,13 +58,20 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
      * 그래서 allowedOrigins가 아니라 allowedOriginPatterns로 넘긴다. 패턴이 맞으면 Spring이
      * 와일드카드가 아니라 <b>요청의 Origin을 그대로 되돌려주므로</b> 자격 증명과 공존한다.
      * <p>
-     * TODO 오리진을 확정할 수 있게 되면 application.yml의 auth.allowed-origins를 실제 목록으로 좁힌다.
-     * 이 메서드는 그대로 두면 되고, 정확한 오리진 문자열도 패턴으로 그대로 동작한다.
+     * 목록이 비면 기동을 세운다. 빈 배열을 그대로 넘기면 CorsRegistration이 생성자에서 잡아 둔
+     * {@code allowedOrigins = *}가 살아남고, CorsConfiguration은 allowedOrigins를 먼저 보므로
+     * <b>설정을 지운 쪽이 오히려 전면 개방된다.</b> 설정 누락은 기동 실패로 드러나야 한다.
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        List<String> allowedOrigins = authProperties.allowedOrigins();
+        if (allowedOrigins.isEmpty()) {
+            throw new IllegalStateException(
+                    "auth.allowed-origins에 허용할 오리진 패턴을 최소 하나 지정해야 합니다. "
+                            + "비워 두면 CORS가 전면 개방됩니다.");
+        }
         registry.addMapping("/api/**")
-                .allowedOriginPatterns(authProperties.allowedOrigins().toArray(String[]::new))
+                .allowedOriginPatterns(allowedOrigins.toArray(String[]::new))
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
