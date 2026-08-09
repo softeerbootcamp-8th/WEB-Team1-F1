@@ -1,6 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
-import com.softeer.race.auctionroom.domain.MaskedName;
+import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.auctionroom.domain.RecentBid;
 import com.softeer.race.user.domain.Role;
 

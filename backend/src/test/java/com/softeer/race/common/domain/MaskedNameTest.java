@@ -1,4 +1,4 @@
-package com.softeer.race.auctionroom.domain;
+package com.softeer.race.common.domain;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,7 +10,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-// 호가창에 나가는 값은 닉네임이 아니라 본명이라 앞뒤 한 글자만 남긴다
+// 화면에 나가는 값은 닉네임이 아니라 본명이라 앞뒤 한 글자만 남긴다
+// 경매방 호가창과 거래 상대 이름이 같은 규칙을 쓴다
 class MaskedNameTest {
 
     @DisplayName("앞뒤 한 글자만 남기고 가운데를 가린다")

@@ -1,4 +1,4 @@
-package com.softeer.race.auctionroom.domain;
+package com.softeer.race.common.domain;
 
 /**
  * 가운데를 가린 실명

@@ -2,7 +2,7 @@ package com.softeer.race.auctionroom.application;
 
 import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
 import com.softeer.race.auctionroom.domain.BidStats;
-import com.softeer.race.auctionroom.domain.MaskedName;
+import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import com.softeer.race.auctionroom.domain.VehicleSummary;
 

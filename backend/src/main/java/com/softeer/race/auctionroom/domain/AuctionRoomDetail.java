@@ -1,6 +1,7 @@
 package com.softeer.race.auctionroom.domain;
 
 import com.softeer.race.auction.domain.AuctionStatus;
+import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
 
