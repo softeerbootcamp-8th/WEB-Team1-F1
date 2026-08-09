@@ -28,6 +28,8 @@ export interface RoomVehicle {
   mileage: number
   fuelType: FuelType
   thumbnailUrl: string | null
+  /** 출품된 차량은 결과 제출을 거쳤으므로 서버가 항상 채워 보낸다 */
+  diagnosticReportUrl: string
 }
 
 export interface RecentBid {
