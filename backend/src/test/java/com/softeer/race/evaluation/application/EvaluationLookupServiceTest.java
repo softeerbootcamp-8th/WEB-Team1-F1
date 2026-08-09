@@ -2,8 +2,6 @@ package com.softeer.race.evaluation.application;
 
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.info.EvaluationDetailInfo;
-import com.softeer.race.evaluation.domain.DiagnosticReport;
-import com.softeer.race.evaluation.domain.DiagnosticReportRepository;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.domain.EvaluationStatus;
@@ -60,9 +58,6 @@ class EvaluationLookupServiceTest {
     private EvaluationRepository evaluationRepository;
 
     @Mock
-    private DiagnosticReportRepository diagnosticReportRepository;
-
-    @Mock
     private VehicleImageRepository vehicleImageRepository;
 
     @InjectMocks
@@ -102,8 +97,7 @@ class EvaluationLookupServiceTest {
         List<VehicleImage> images = List.of(imageOf(IMAGE_URL));
         given(vehicleImageRepository.findAllByVehicleOrderBySortOrderAsc(vehicle))
                 .willReturn(images);
-        given(diagnosticReportRepository.findByEvaluationId(EVALUATION_ID))
-                .willReturn(Optional.of(DiagnosticReport.attach(evaluation, DOCUMENT_URL)));
+        given(vehicle.getDiagnosticReportUrl()).willReturn(DOCUMENT_URL);
 
         // when
         EvaluationDetailInfo info = evaluationLookupService.findDetail(EVALUATION_ID, SELLER_ID);
@@ -129,8 +123,6 @@ class EvaluationLookupServiceTest {
         given(vehicle.getEstimatedPrice()).willReturn(null);
         given(vehicleImageRepository.findAllByVehicleOrderBySortOrderAsc(vehicle))
                 .willReturn(List.of());
-        given(diagnosticReportRepository.findByEvaluationId(EVALUATION_ID))
-                .willReturn(Optional.empty());
 
         // when
         EvaluationDetailInfo info = evaluationLookupService.findDetail(EVALUATION_ID, SELLER_ID);
@@ -157,7 +149,6 @@ class EvaluationLookupServiceTest {
                         assertThat(exception.errorCode()).isEqualTo(EvaluationErrorCode.NOT_FOUND));
 
         then(vehicleImageRepository).shouldHaveNoInteractions();
-        then(diagnosticReportRepository).shouldHaveNoInteractions();
     }
 
     @Test

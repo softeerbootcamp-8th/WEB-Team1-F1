@@ -3,8 +3,6 @@ package com.softeer.race.evaluation.application;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.command.EvaluationResultSubmitCommand;
 import com.softeer.race.evaluation.application.dto.info.EvaluationResultInfo;
-import com.softeer.race.evaluation.domain.DiagnosticReport;
-import com.softeer.race.evaluation.domain.DiagnosticReportRepository;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.domain.EvaluationStatus;
@@ -37,14 +35,13 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 
 /**
  * 시나리오
  * <ol>
  *   <li>제출 한 번에 차량·사진·진단서·상태가 함께 반영된다</li>
  *   <li>세션에서 온 요청자가 자격 판정으로 그대로 넘어간다</li>
- *   <li>재제출은 진단서를 새로 만들지 않고 갈아 끼운다</li>
+ *   <li>재제출은 차량의 진단서를 새 주소로 덮는다</li>
  *   <li>진단서 주소가 문서가 아니면 아무것도 건드리지 않는다</li>
  *   <li>없는 평가면 NOT_FOUND</li>
  *   <li>승인이 확정되면 판매자에게 등록 안내 알림이 간다</li>
@@ -72,9 +69,6 @@ class EvaluationResultServiceTest {
 
     @Mock
     private EvaluationRepository evaluationRepository;
-
-    @Mock
-    private DiagnosticReportRepository diagnosticReportRepository;
 
     @Mock
     private VehicleImageService vehicleImageService;
@@ -106,10 +100,7 @@ class EvaluationResultServiceTest {
         givenManagedDocument(DOCUMENT_URL);
         givenEvaluationFound();
         givenImagesRegistered();
-        given(diagnosticReportRepository.findByEvaluationId(EVALUATION_ID))
-                .willReturn(Optional.empty());
-        given(diagnosticReportRepository.save(any(DiagnosticReport.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
+        given(vehicle.getDiagnosticReportUrl()).willReturn(DOCUMENT_URL);
         given(evaluation.getStatus()).willReturn(EvaluationStatus.REQUESTED);
         willAnswer(invocation -> {
             given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
@@ -123,7 +114,6 @@ class EvaluationResultServiceTest {
         //        특히 차량 갱신이 빠지면 주행거리가 빈 차가 경매로 넘어간다
         then(vehicle).should().completeDiagnosis(MILEAGE, ESTIMATED_PRICE, IMAGE_1, DOCUMENT_URL);
         then(vehicleImageService).should().register(any(VehicleImageRegisterCommand.class));
-        then(diagnosticReportRepository).should().save(any(DiagnosticReport.class));
         then(evaluation).should().approve();
 
         assertThat(info.evaluationId()).isEqualTo(EVALUATION_ID);
@@ -142,10 +132,6 @@ class EvaluationResultServiceTest {
         givenManagedDocument(DOCUMENT_URL);
         givenEvaluationFound();
         givenImagesRegistered();
-        given(diagnosticReportRepository.findByEvaluationId(EVALUATION_ID))
-                .willReturn(Optional.empty());
-        given(diagnosticReportRepository.save(any(DiagnosticReport.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
         given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
 
         // when
@@ -162,10 +148,6 @@ class EvaluationResultServiceTest {
         givenManagedDocument(DOCUMENT_URL);
         givenEvaluationFound();
         givenImagesRegistered();
-        given(diagnosticReportRepository.findByEvaluationId(EVALUATION_ID))
-                .willReturn(Optional.empty());
-        given(diagnosticReportRepository.save(any(DiagnosticReport.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
         given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
 
         // when
@@ -181,24 +163,20 @@ class EvaluationResultServiceTest {
     }
 
     @Test
-    @DisplayName("재제출은 진단서를 새로 만들지 않고 갈아 끼운다")
+    @DisplayName("재제출은 차량의 진단서를 새 주소로 덮는다")
     void submitReplacesExistingReport() {
         // given : 잘못 올린 진단서를 고치는 흐름이다
-        DiagnosticReport existing =
-                DiagnosticReport.attach(mock(Evaluation.class), DOCUMENT_URL);
         givenManagedDocument(NEW_DOCUMENT_URL);
         givenEvaluationFound();
         givenImagesRegistered();
-        given(diagnosticReportRepository.findByEvaluationId(EVALUATION_ID))
-                .willReturn(Optional.of(existing));
+        given(vehicle.getDiagnosticReportUrl()).willReturn(NEW_DOCUMENT_URL);
         given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
 
         // when
         EvaluationResultInfo info = evaluationResultService.submit(command(NEW_DOCUMENT_URL));
 
-        // then : evaluation_id가 unique라 새 행을 만들면 제약에 걸린다.
-        then(diagnosticReportRepository).should(never()).save(any());
-        assertThat(existing.getFileUrl()).isEqualTo(NEW_DOCUMENT_URL);
+        // then
+        then(vehicle).should().completeDiagnosis(MILEAGE, ESTIMATED_PRICE, IMAGE_1, NEW_DOCUMENT_URL);
         assertThat(info.diagnosticReportUrl()).isEqualTo(NEW_DOCUMENT_URL);
     }
 
@@ -246,10 +224,6 @@ class EvaluationResultServiceTest {
         givenManagedDocument(DOCUMENT_URL);
         givenEvaluationFound();
         givenImagesRegistered();
-        given(diagnosticReportRepository.findByEvaluationId(EVALUATION_ID))
-                .willReturn(Optional.empty());
-        given(diagnosticReportRepository.save(any(DiagnosticReport.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
         given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
 
         // when

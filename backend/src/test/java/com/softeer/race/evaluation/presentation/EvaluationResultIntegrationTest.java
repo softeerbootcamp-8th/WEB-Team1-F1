@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -43,9 +42,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 5. 종료된 평가
  * 반려된 신청에는 못 붙이는지. 배정은 되어 있는 건이라 담당자가 아니라 상태에서 걸려야 한다
- * <p>
- * 6. 조회 연결
- * 제출한 진단서가 진단서 조회 API로 읽히는지
  * <p>
  * <b>Clock을 고정하지 않는다.</b> 픽스처의 세션 만료가 DB의 실제 시각(NOW(6))으로 심기므로
  * 앱 Clock만 옮기면 전 시나리오가 401이 된다.
@@ -121,7 +117,7 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
         submit(EVALUATION_ID, EVALUATOR_TOKEN, NEW_DOCUMENT_URL, IMAGE_2)
                 .andExpect(status().isOk());
 
-        // then : evaluation_id가 unique라 진단서 행을 새로 만들면 여기서 깨진다
+        // then : 사진은 늘지 않고 갈리며 진단서는 새 주소로 덮인다
         assertThat(imageUrls()).containsExactly(IMAGE_2);
         assertThat(reportCount()).isEqualTo(1);
         assertThat(reportFileUrl()).isEqualTo(NEW_DOCUMENT_URL);
@@ -215,20 +211,6 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.code").value("EVALUATION_NOT_DIAGNOSABLE"));
     }
 
-    @Test
-    @DisplayName("제출한 진단서는 진단서 조회로 읽힌다")
-    void submittedReportIsReadable() throws Exception {
-        // given
-        submit(EVALUATION_ID, EVALUATOR_TOKEN, DOCUMENT_URL, IMAGE_1)
-                .andExpect(status().isOk());
-
-        // when & then : 붙이는 입구는 하나뿐이고, 조회는 별도 API가 맡는다
-        mockMvc.perform(get("/api/evaluations/" + EVALUATION_ID + "/diagnostic-report")
-                        .cookie(cookie(EVALUATOR_TOKEN)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.fileUrl").value(DOCUMENT_URL));
-    }
-
     private ResultActions submit(long evaluationId, String rawToken,
                                  String documentUrl, String... imageUrls) throws Exception {
         String images = String.join(",", List.of(imageUrls).stream()
@@ -268,14 +250,14 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
 
     private String reportFileUrl() {
         return jdbcTemplate.queryForObject(
-                "select file_url from diagnostic_report where evaluation_id = ?",
-                String.class, EVALUATION_ID);
+                "select diagnostic_report_url from vehicle where id = ?",
+                String.class, VEHICLE_ID);
     }
 
     private int reportCount() {
         return jdbcTemplate.queryForObject(
-                "select count(*) from diagnostic_report where evaluation_id = ?",
-                Integer.class, EVALUATION_ID);
+                "select count(*) from vehicle where id = ? and diagnostic_report_url is not null",
+                Integer.class, VEHICLE_ID);
     }
 
     private String statusOf(long evaluationId) {

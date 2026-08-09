@@ -1,6 +1,5 @@
 package com.softeer.race.evaluation.application.dto.info;
 
-import com.softeer.race.evaluation.domain.DiagnosticReport;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.vehicle.domain.FuelType;
@@ -59,12 +58,8 @@ public record EvaluationDetailInfo(
         LocalDateTime submittedAt
 ) {
 
-    /**
-     * @param report 아직 제출되지 않았으면 null이다
-     */
     public static EvaluationDetailInfo of(Evaluation evaluation,
-                                          List<VehicleImage> images,
-                                          DiagnosticReport report) {
+                                          List<VehicleImage> images) {
         Vehicle vehicle = evaluation.getVehicle();
         User evaluator = evaluation.getEvaluator();
 
@@ -90,9 +85,9 @@ public record EvaluationDetailInfo(
                 vehicle.getMileage(),
                 vehicle.getEstimatedPrice(),
                 images.stream().map(VehicleImage::getImageUrl).toList(),
-                report == null ? null : report.getFileUrl(),
-                // 제출 시각은 진단서 행의 갱신 시각이다. 평가의 updatedAt은 배정에도 움직여
+                vehicle.getDiagnosticReportUrl(),
+                // 제출 시각은 차량이 결과로 채워진 때다. 평가의 updatedAt은 배정에도 움직여
                 // "결과가 올라온 때"를 가리키지 못한다
-                report == null ? null : report.getUpdatedAt());
+                vehicle.isDiagnosed() ? vehicle.getUpdatedAt() : null);
     }
 }
