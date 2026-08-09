@@ -99,6 +99,8 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
         Map<String, Object> vehicle = vehicleRow();
         assertThat(vehicle.get("mileage")).isEqualTo(MILEAGE);
         assertThat(vehicle.get("estimated_price")).isEqualTo(ESTIMATED_PRICE);
+        assertThat(vehicle.get("main_photo_url")).isEqualTo(IMAGE_1);
+        assertThat(vehicle.get("diagnostic_report_url")).isEqualTo(DOCUMENT_URL);
 
         assertThat(imageUrls()).containsExactly(IMAGE_1, IMAGE_2);
         assertThat(reportFileUrl()).isEqualTo(DOCUMENT_URL);
@@ -250,9 +252,12 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
         return new Cookie(SessionCookieFactory.COOKIE_NAME, rawToken);
     }
 
+    // 대표 사진과 진단서를 함께 뽑는다. 사진은 vehicle_image 로도 확인하지만 그쪽은 다른 쓰기 경로라,
+    // 차량에 값을 채울 때 둘이 뒤바뀌는 것은 이 두 컬럼을 나란히 봐야 잡힌다
     private Map<String, Object> vehicleRow() {
         return jdbcTemplate.queryForMap(
-                "select mileage, estimated_price from vehicle where id = ?", VEHICLE_ID);
+                "select mileage, estimated_price, main_photo_url, diagnostic_report_url"
+                        + " from vehicle where id = ?", VEHICLE_ID);
     }
 
     private List<String> imageUrls() {

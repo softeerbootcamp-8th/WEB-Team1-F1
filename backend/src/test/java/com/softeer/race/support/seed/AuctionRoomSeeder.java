@@ -56,6 +56,8 @@ public class AuctionRoomSeeder {
 
         private String model = "아반떼 CN7";
         private String mainPhotoUrl = "https://cdn.race.dev/avante.jpg";
+        // 사진과 확장자·경로가 다르다, 둘 다 String 이라 자리가 바뀌어도 컴파일되므로 기본값을 갈라 둔다
+        private String diagnosticReportUrl = "https://cdn.race.dev/avante-report.pdf";
         private long startPrice = DEFAULT_START_PRICE;
         private boolean closed;
 
@@ -71,6 +73,11 @@ public class AuctionRoomSeeder {
 
         public RoomBuilder mainPhotoUrl(String mainPhotoUrl) {
             this.mainPhotoUrl = mainPhotoUrl;
+            return this;
+        }
+
+        public RoomBuilder diagnosticReportUrl(String diagnosticReportUrl) {
+            this.diagnosticReportUrl = diagnosticReportUrl;
             return this;
         }
 
@@ -105,7 +112,7 @@ public class AuctionRoomSeeder {
             Auction auction = TestClock.INSTANCE.at(publishedAt, () -> {
                 // 프로덕션은 방문견적으로 빈 차량을 만들고 평가사가 결과를 내며 채운다, 그 순서를 그대로 밟는다
                 Vehicle vehicle = Vehicle.pendingDiagnosis(seller, spec());
-                vehicle.completeDiagnosis(DEFAULT_MILEAGE, DEFAULT_ESTIMATED_PRICE, mainPhotoUrl);
+                vehicle.completeDiagnosis(DEFAULT_MILEAGE, DEFAULT_ESTIMATED_PRICE, mainPhotoUrl, diagnosticReportUrl);
                 vehicleRepository.save(vehicle);
                 AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, publishedAt));
 

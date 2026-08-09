@@ -70,7 +70,8 @@ public class EvaluationResultService {
 
         Vehicle vehicle = evaluation.getVehicle();
         // 요청 검증이 최소 한 장을 강제하므로 첫 장이 항상 있다
-        vehicle.completeDiagnosis(command.mileage(), command.estimatedPrice(), command.imageUrls().getFirst());
+        vehicle.completeDiagnosis(command.mileage(), command.estimatedPrice(),
+                command.imageUrls().getFirst(), command.diagnosticReportUrl());
 
         // 사진 교체는 기존 서비스를 부른다. 이미 열린 트랜잭션에 참여하므로 한 단위로 묶이고,
         // 사진 주소가 이미지인지 확인하는 것도 그쪽이 한다 — 같은 판정을 두 곳에 두지 않는다
