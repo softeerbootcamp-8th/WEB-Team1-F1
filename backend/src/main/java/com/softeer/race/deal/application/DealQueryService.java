@@ -4,6 +4,9 @@ import com.softeer.race.deal.application.dto.DealCardInfo;
 import com.softeer.race.deal.application.dto.DealSliceInfo;
 import com.softeer.race.deal.domain.DealListRow;
 import com.softeer.race.deal.domain.DealQueryRepository;
+import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.deal.application.dto.DealDetailInfo;
+import com.softeer.race.deal.exception.DealErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
@@ -47,5 +50,15 @@ public class DealQueryService {
                 LocalDateTime.now(clock),
                 hasNext,
                 nextCursor);
+    }
+    /**
+     * 내 거래 하나의 상세
+     *
+     * @throws BusinessException 없는 거래이거나 내가 당사자가 아닐 때, 둘을 구분하지 않는다
+     */
+    public DealDetailInfo detail(long userId, long dealId) {
+        return dealQueryRepository.findDetail(dealId, userId)
+                .map(row -> DealDetailInfo.of(row, userId, LocalDateTime.now(clock)))
+                .orElseThrow(() -> new BusinessException(DealErrorCode.NOT_FOUND));
     }
 }

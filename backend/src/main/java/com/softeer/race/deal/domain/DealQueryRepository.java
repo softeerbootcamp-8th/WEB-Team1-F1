@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
+
 import java.util.List;
 
 /**
@@ -41,4 +43,25 @@ public interface DealQueryRepository extends Repository<Deal, Long> {
     List<DealListRow> findPage(@Param("userId") long userId,
                                @Param("cursor") long cursor,
                                Limit limit);
+    /**
+     * 내가 당사자인 거래 하나
+     * <p>
+     * 남의 거래는 조건에서 걸러 없는 것과 같게 만든다. 권한 없음으로 답하면 그 번호의 거래가
+     * 존재한다는 사실이 새어 나가고, 번호를 훑으면 전체 거래 수를 추정할 수 있다.
+     */
+    @Query("""
+            select new com.softeer.race.deal.domain.DealDetailRow(
+                d.id, d.status, d.finalPrice, d.statusChangedAt, d.createdAt, d.cancellationReason,
+                a.id, v.model, v.modelYear, v.mileage, v.mainPhotoUrl,
+                s.id, case when s.id = :userId then b.realName else s.realName end)
+            from Deal d
+            join d.auction a
+            join a.post p
+            join p.vehicle v
+            join d.seller s
+            join d.buyer b
+            where d.id = :dealId
+                and (s.id = :userId or b.id = :userId)
+            """)
+    Optional<DealDetailRow> findDetail(@Param("dealId") long dealId, @Param("userId") long userId);
 }
