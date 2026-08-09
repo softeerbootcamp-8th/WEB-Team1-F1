@@ -54,6 +54,10 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+      # 빌드보다 먼저 돌린다, 더 빠르고 먼저 깨지는 편이 낫다
+      - name: Test
+        run: pnpm run test
+
       - name: Build
         run: pnpm run build
 
