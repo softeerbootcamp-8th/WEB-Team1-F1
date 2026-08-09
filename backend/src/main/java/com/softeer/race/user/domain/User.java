@@ -72,11 +72,4 @@ public class User extends BaseTimeEntity {
             Role role) {
         return new User(username, email, encodedPassword, realName, phone, role);
     }
-
-    /**
-     * 서비스가 위촉한 평가사인지
-     */
-    public boolean isEvaluator() {
-        return role == Role.EVALUATOR;
-    }
 }
