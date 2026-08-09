@@ -6,6 +6,9 @@ import java.time.LocalDateTime;
 
 /**
  * 거래 목록 카드 한 건
+ * <p>
+ * 상세와 나눈다. 목록은 여러 건을 한 번에 읽어서, 상세에만 쓰는 컬럼을 담으면
+ * 그만큼 곱해 읽게 된다.
  */
 public record DealListRow(
         Long dealId,

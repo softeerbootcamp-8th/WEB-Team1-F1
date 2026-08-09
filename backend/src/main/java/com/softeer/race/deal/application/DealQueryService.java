@@ -1,11 +1,11 @@
 package com.softeer.race.deal.application;
 
+import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.deal.application.dto.DealCardInfo;
+import com.softeer.race.deal.application.dto.DealDetailInfo;
 import com.softeer.race.deal.application.dto.DealSliceInfo;
 import com.softeer.race.deal.domain.DealListRow;
 import com.softeer.race.deal.domain.DealQueryRepository;
-import com.softeer.race.common.exception.BusinessException;
-import com.softeer.race.deal.application.dto.DealDetailInfo;
 import com.softeer.race.deal.exception.DealErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
@@ -51,6 +51,7 @@ public class DealQueryService {
                 hasNext,
                 nextCursor);
     }
+
     /**
      * 내 거래 하나의 상세
      *
