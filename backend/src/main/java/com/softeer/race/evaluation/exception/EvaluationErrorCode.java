@@ -90,10 +90,7 @@ public enum EvaluationErrorCode implements ErrorCode {
      * 배정을 자격의 증명으로 쓰므로 이 검사 하나가 "평가사인가"와 "이 건의 담당인가"를 함께
      * 대신한다 — 배정은 대기 목록에서 수락해야 받는다.
      */
-    NOT_ASSIGNED_EVALUATOR(HttpStatus.FORBIDDEN,
-            "이 신청에 배정된 평가사만 진단서를 등록할 수 있습니다."),
-
-    DIAGNOSTIC_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "등록된 진단서가 없습니다.");
+    NOT_ASSIGNED_EVALUATOR(HttpStatus.FORBIDDEN, "이 신청에 배정된 평가사만 진단서를 등록할 수 있습니다.");
 
     private final HttpStatus status;
     private final String message;

@@ -68,5 +68,4 @@ values (600, 600, 601, DATE_ADD(CURDATE(), INTERVAL 3 DAY), '서울 성동구 �
 insert into vehicle_image (id, vehicle_id, image_url, sort_order, created_at, updated_at)
 values (600, 600, 'https://cdn.race.dev/vehicles/catalog.jpg', 1, NOW(6), NOW(6));
 
--- diagnostic_report는 일부러 심지 않는다
--- 제출이 행을 만든다는 것이 요구사항이라, 픽스처에 없어야 "만들어졌다"를 증명할 수 있다
+-- vehicle.diagnostic_report_url은 일부러 비워 둔다, 제출이 채운다는 것을 증명해야 한다

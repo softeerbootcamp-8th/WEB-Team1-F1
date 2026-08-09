@@ -62,21 +62,27 @@ class VehicleTest {
      * 방문견적으로 만들어진 차량이 값을 갖는 유일한 경로다.
      */
     @Test
-    @DisplayName("진단을 마치면 비어 있던 주행거리와 예상 시세와 대표 사진이 채워진다")
+    @DisplayName("진단을 마치면 비어 있던 주행거리와 예상 시세와 대표 사진과 진단서가 채워진다")
     void completeDiagnosis() {
         // given : 방문견적 신청이 만드는 상태다
         Vehicle vehicle = Vehicle.pendingDiagnosis(mock(User.class), pendingSpec());
         assertThat(vehicle.getMileage()).isNull();
         assertThat(vehicle.getEstimatedPrice()).isNull();
         assertThat(vehicle.getMainPhotoUrl()).isNull();
+        assertThat(vehicle.getDiagnosticReportUrl()).isNull();
 
-        // when
-        vehicle.completeDiagnosis(45_000, 21_500_000L, "https://www.f1race.site/images/a.jpg");
+        // when : 사진과 진단서를 다른 값으로 넘긴다. 둘 다 String 이라 자리를 바꿔도 컴파일되므로
+        //        같은 값을 쓰면 뒤바뀐 것을 이 테스트가 못 잡는다
+        vehicle.completeDiagnosis(45_000, 21_500_000L,
+                "https://www.f1race.site/images/a.jpg",
+                "https://www.f1race.site/documents/a.pdf");
 
         // then
         assertThat(vehicle.getMileage()).isEqualTo(45_000);
         assertThat(vehicle.getEstimatedPrice()).isEqualTo(21_500_000L);
         assertThat(vehicle.getMainPhotoUrl()).isEqualTo("https://www.f1race.site/images/a.jpg");
+        assertThat(vehicle.getDiagnosticReportUrl())
+                .isEqualTo("https://www.f1race.site/documents/a.pdf");
     }
 
     // 평가사가 잘못 적은 값을 고치려면 결과를 다시 제출해야 하고, 그 재제출이 여기로 온다
@@ -84,13 +90,19 @@ class VehicleTest {
     @DisplayName("이미 진단된 차량도 다시 제출한 값으로 덮인다")
     void completeDiagnosisOverwrites() {
         Vehicle vehicle = Vehicle.pendingDiagnosis(mock(User.class), pendingSpec());
-        vehicle.completeDiagnosis(45_000, 21_500_000L, "https://www.f1race.site/images/a.jpg");
+        vehicle.completeDiagnosis(45_000, 21_500_000L,
+                "https://www.f1race.site/images/a.jpg",
+                "https://www.f1race.site/documents/a.pdf");
 
-        vehicle.completeDiagnosis(54_000, 20_800_000L, "https://www.f1race.site/images/b.jpg");
+        vehicle.completeDiagnosis(54_000, 20_800_000L,
+                "https://www.f1race.site/images/b.jpg",
+                "https://www.f1race.site/documents/b.pdf");
 
         assertThat(vehicle.getMileage()).isEqualTo(54_000);
         assertThat(vehicle.getEstimatedPrice()).isEqualTo(20_800_000L);
         assertThat(vehicle.getMainPhotoUrl()).isEqualTo("https://www.f1race.site/images/b.jpg");
+        assertThat(vehicle.getDiagnosticReportUrl())
+                .isEqualTo("https://www.f1race.site/documents/b.pdf");
     }
 
     private static VehicleSpec pendingSpec() {

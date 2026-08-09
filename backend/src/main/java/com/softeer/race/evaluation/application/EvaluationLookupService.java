@@ -3,7 +3,6 @@ package com.softeer.race.evaluation.application;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.info.EvaluationDetailInfo;
 import com.softeer.race.evaluation.application.dto.info.EvaluationSummaryInfo;
-import com.softeer.race.evaluation.domain.DiagnosticReportRepository;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
@@ -29,7 +28,6 @@ import java.util.List;
 public class EvaluationLookupService {
 
     private final EvaluationRepository evaluationRepository;
-    private final DiagnosticReportRepository diagnosticReportRepository;
     private final VehicleImageRepository vehicleImageRepository;
 
     /**
@@ -68,7 +66,6 @@ public class EvaluationLookupService {
 
         return EvaluationDetailInfo.of(
                 evaluation,
-                vehicleImageRepository.findAllByVehicleOrderBySortOrderAsc(evaluation.getVehicle()),
-                diagnosticReportRepository.findByEvaluationId(evaluationId).orElse(null));
+                vehicleImageRepository.findAllByVehicleOrderBySortOrderAsc(evaluation.getVehicle()));
     }
 }
