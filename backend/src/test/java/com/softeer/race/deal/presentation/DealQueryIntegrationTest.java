@@ -12,7 +12,10 @@ import com.softeer.race.deal.domain.DealRepository;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
+import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.http.Cookie;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -68,6 +71,9 @@ class DealQueryIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private AuctionPostRepository auctionPostRepository;
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     private User me;
     private User partner;
@@ -261,6 +267,48 @@ class DealQueryIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.content[0].dealId").value(dealId));
 
         detail(dealId).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("시나리오 10 : 거래가 늘어도 목록 조회에 나가는 쿼리 수가 그대로다")
+    void scenario10_QueryCountDoesNotGrowWithDeals() throws Exception {
+        // given : 두 건일 때의 쿼리 수
+        soldDeal();
+        soldDeal();
+        long withTwo = queryCountWhileListing();
+
+        // when : 한 페이지를 꽉 채울 만큼 늘린다
+        for (int i = 2; i < PAGE_SIZE; i++) {
+            soldDeal();
+        }
+
+        long withFullPage = queryCountWhileListing();
+
+        // then : 연관을 하나씩 따라가는 구조라면 거래 수만큼 조회가 늘어난다
+        list(null).andExpect(jsonPath("$.content.length()").value(PAGE_SIZE));
+        assertThat(withFullPage).isEqualTo(withTwo);
+
+        // 통계가 꺼져 있으면 양쪽이 0이라 위 비교가 그냥 통과한다, 실제로 세고 있는지 확인한다
+        // 상한은 건수와 무관하다는 뜻이다, 페이지를 꽉 채워도 거래 수보다 적게 나간다
+        assertThat(withFullPage).isPositive().isLessThan(PAGE_SIZE);
+    }
+
+    // 목록 요청 한 번에 실제로 나간 JDBC 문 수, 인증 조회처럼 건수와 무관한 것도 함께 세지만
+    // 양쪽에 똑같이 얹히므로 두 값을 비교하는 데는 영향이 없다
+    private long queryCountWhileListing() throws Exception {
+        Statistics statistics = statistics();
+        statistics.clear();
+
+        list(null).andExpect(status().isOk());
+
+        return statistics.getPrepareStatementCount();
+    }
+
+    private Statistics statistics() {
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.setStatisticsEnabled(true);
+
+        return statistics;
     }
 
     /** 내가 판 거래, 낙찰자는 상대다 */
