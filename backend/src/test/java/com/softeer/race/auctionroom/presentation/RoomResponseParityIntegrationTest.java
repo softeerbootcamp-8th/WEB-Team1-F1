@@ -143,7 +143,7 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
     // 마감 30초 안쪽에 넣으면 연장이 걸려 단계가 달라진다, 마지막 입찰을 그 밖에 둔다
     private long resultRoomWonBy(User winner, User loser) {
         return rooms.room(users.user("최판매", Role.GENERAL), RESULT_START_AT)
-                .mainPhotoUrl("https://cdn.race.dev/seltos-1.jpg")
+                .photos("https://cdn.race.dev/seltos-1.jpg", "https://cdn.race.dev/seltos-2.jpg")
                 .startPrice(20_000_000L)
                 .bid(RESULT_START_AT.plusMinutes(5), loser, 21_000_000L)
                 .bid(RESULT_START_AT.plusMinutes(10), winner, 22_000_000L)

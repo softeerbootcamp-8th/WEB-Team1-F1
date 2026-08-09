@@ -5,6 +5,7 @@ import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -23,7 +24,6 @@ public record AuctionRoomDetail(
         int modelYear,
         int mileage,
         FuelType fuelType,
-        String thumbnailUrl,
         String diagnosticReportUrl,
         Long winnerId,
         MaskedName winner
@@ -43,7 +43,6 @@ public record AuctionRoomDetail(
                              int modelYear,
                              int mileage,
                              FuelType fuelType,
-                             String thumbnailUrl,
                              String diagnosticReportUrl,
                              Long winnerId,
                              String winnerRealName) {
@@ -60,7 +59,6 @@ public record AuctionRoomDetail(
                 modelYear,
                 mileage,
                 fuelType,
-                thumbnailUrl,
                 diagnosticReportUrl,
                 winnerId,
                 winnerRealName != null ? MaskedName.mask(winnerRealName) : null);
@@ -76,9 +74,9 @@ public record AuctionRoomDetail(
     /**
      * 화면에 보일 차량 요약
      */
-    public VehicleSummary vehicle() {
+    public VehicleSummary vehicle(List<String> imageUrls) {
         return new VehicleSummary(manufacturer, model, modelYear, mileage, fuelType,
-                thumbnailUrl, diagnosticReportUrl);
+                imageUrls, diagnosticReportUrl);
     }
 
     /**

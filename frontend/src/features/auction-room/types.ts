@@ -27,7 +27,7 @@ export interface RoomVehicle {
   modelYear: number
   mileage: number
   fuelType: FuelType
-  thumbnailUrl: string | null
+  imageUrls: string[]
   /** 출품된 차량은 결과 제출을 거쳤으므로 서버가 항상 채워 보낸다 */
   diagnosticReportUrl: string
 }

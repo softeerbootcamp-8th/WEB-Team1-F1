@@ -1,8 +1,5 @@
 package com.softeer.race.support;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.springframework.beans.factory.annotation.Autowired;
 import com.softeer.race.auction.application.AuctionCloser;
 import com.softeer.race.auction.application.AuctionStarter;
 import com.softeer.race.auction.domain.AuctionRepository;
@@ -11,14 +8,18 @@ import com.softeer.race.bid.domain.BidRepository;
 import com.softeer.race.support.seed.AuctionRoomSeeder;
 import com.softeer.race.support.seed.UserSeeder;
 import com.softeer.race.user.domain.UserRepository;
+import com.softeer.race.vehicle.domain.VehicleImageRepository;
 import com.softeer.race.vehicle.domain.VehicleRepository;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.convention.TestBean;
+import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.mysql.MySQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -72,14 +73,15 @@ public abstract class IntegrationTestSupport {
     @Autowired
     void createSeeders(UserRepository userRepository,
                        VehicleRepository vehicleRepository,
+                       VehicleImageRepository vehicleImageRepository,
                        AuctionPostRepository auctionPostRepository,
                        AuctionRepository auctionRepository,
                        BidRepository bidRepository,
                        AuctionStarter auctionStarter,
                        AuctionCloser auctionCloser) {
         users = new UserSeeder(userRepository);
-        rooms = new AuctionRoomSeeder(vehicleRepository, auctionPostRepository, auctionRepository, bidRepository,
-                auctionStarter, auctionCloser);
+        rooms = new AuctionRoomSeeder(vehicleRepository, vehicleImageRepository, auctionPostRepository,
+                auctionRepository, bidRepository, auctionStarter, auctionCloser);
     }
 
     // 부모 콜백이 자식보다 먼저 돌아, 앞 테스트가 건 시각을 자식이 자기 시각을 걸기 전에 푼다

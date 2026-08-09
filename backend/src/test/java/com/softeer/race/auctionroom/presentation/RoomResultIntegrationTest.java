@@ -62,7 +62,7 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
 
         long endedAuctionId = rooms.room(users.user("최판매", Role.GENERAL), ENDED_START_AT)
                 .model("더 뉴 셀토스")
-                .mainPhotoUrl("https://cdn.race.dev/seltos-1.jpg")
+                .photos("https://cdn.race.dev/seltos-1.jpg", "https://cdn.race.dev/seltos-2.jpg")
                 .diagnosticReportUrl("https://cdn.race.dev/seltos-report.pdf")
                 .startPrice(20_000_000L)
                 .bid(ENDED_START_AT.plusMinutes(5), loser, 21_000_000L)
@@ -89,7 +89,8 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         // then 3 : 목록을 거치지 않고 들어와도 어떤 차였는지 보인다
         response.andExpectAll(
                 jsonPath("$.vehicle.model").value("더 뉴 셀토스"),
-                jsonPath("$.vehicle.thumbnailUrl").value("https://cdn.race.dev/seltos-1.jpg"),
+                jsonPath("$.vehicle.imageUrls.length()").value(2),
+                jsonPath("$.vehicle.imageUrls[0]").value("https://cdn.race.dev/seltos-1.jpg"),
                 jsonPath("$.vehicle.diagnosticReportUrl")
                         .value("https://cdn.race.dev/seltos-report.pdf"));
 

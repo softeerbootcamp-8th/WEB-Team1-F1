@@ -35,6 +35,7 @@ public class AuctionRoomSeeder {
     private static final long DEFAULT_START_PRICE = 10_000_000L;
 
     private final VehicleRepository vehicleRepository;
+    private final VehicleImageRepository vehicleImageRepository;
     private final AuctionPostRepository auctionPostRepository;
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
@@ -55,7 +56,12 @@ public class AuctionRoomSeeder {
         private final List<PlacedBid> bids = new ArrayList<>();
 
         private String model = "아반떼 CN7";
-        private String mainPhotoUrl = "https://cdn.race.dev/avante.jpg";
+        // 프로덕션은 첫 장을 대표로 삼고 나머지를 순서대로 저장한다, 그 규칙을 그대로 밟는다
+        private String[] photos = {
+                "https://cdn.race.dev/avante-1.jpg",
+                "https://cdn.race.dev/avante-2.jpg",
+                "https://cdn.race.dev/avante-3.jpg",
+        };
         // 사진과 확장자·경로가 다르다, 둘 다 String 이라 자리가 바뀌어도 컴파일되므로 기본값을 갈라 둔다
         private String diagnosticReportUrl = "https://cdn.race.dev/avante-report.pdf";
         private long startPrice = DEFAULT_START_PRICE;
@@ -71,8 +77,8 @@ public class AuctionRoomSeeder {
             return this;
         }
 
-        public RoomBuilder mainPhotoUrl(String mainPhotoUrl) {
-            this.mainPhotoUrl = mainPhotoUrl;
+        public RoomBuilder photos(String... photos) {
+            this.photos = photos;
             return this;
         }
 
@@ -112,8 +118,11 @@ public class AuctionRoomSeeder {
             Auction auction = TestClock.INSTANCE.at(publishedAt, () -> {
                 // 프로덕션은 방문견적으로 빈 차량을 만들고 평가사가 결과를 내며 채운다, 그 순서를 그대로 밟는다
                 Vehicle vehicle = Vehicle.pendingDiagnosis(seller, spec());
-                vehicle.completeDiagnosis(DEFAULT_MILEAGE, DEFAULT_ESTIMATED_PRICE, mainPhotoUrl, diagnosticReportUrl);
+                vehicle.completeDiagnosis(DEFAULT_MILEAGE, DEFAULT_ESTIMATED_PRICE, photos[0], diagnosticReportUrl);
                 vehicleRepository.save(vehicle);
+                for (int order = 0; order < photos.length; order++) {
+                    vehicleImageRepository.save(VehicleImage.create(vehicle, photos[order], order));
+                }
                 AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, publishedAt));
 
                 return auctionRepository.save(Auction.schedule(post, startPrice, startAt));
