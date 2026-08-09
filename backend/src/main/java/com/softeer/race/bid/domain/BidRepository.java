@@ -22,7 +22,7 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
      * 알림이 입찰 횟수만큼 쌓여 알림함이 같은 문구로 찬다. 낙찰자는 낙찰 알림을 따로 받으므로 뺀다.
      * <p>
      * 입찰 엔티티가 아니라 id 만 뽑는다. 엔티티로 받으면 bidder 가 지연 로딩이라 사람 수만큼 조회가
-     * 따라붙는데, OSIV 가 켜져 있어 예외 없이 조용히 일어난다.
+     * 따라붙는데, 발행이 트랜잭션 안이라 예외도 없이 조용히 늘어난다.
      */
     @Query("""
             select distinct b.bidder.id
