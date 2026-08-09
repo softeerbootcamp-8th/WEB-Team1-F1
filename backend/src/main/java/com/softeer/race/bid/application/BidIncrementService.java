@@ -16,8 +16,25 @@ public class BidIncrementService {
 
     private final BidIncrementBandRepository bidIncrementBandRepository;
 
-    // 값 변경이 재기동 없이 반영되도록 매번 조회한다, 5행 조회 비용은 입찰 트랜잭션에서 무시할 수준이다
+    /**
+     * 한 번 읽어 붙잡아 두는 구간표. 운영 중 값이 바뀌지 않는 정책 데이터라 입찰마다 다시 읽을 이유가 없다.
+     */
+    private volatile BidIncrementTable cached;
+
+    /**
+     * 구간표를 돌려준다. 처음 한 번만 DB 를 읽고 이후로는 메모리에서 나간다.
+     */
     public BidIncrementTable loadTable() {
-        return new BidIncrementTable(bidIncrementBandRepository.findAll());
+        BidIncrementTable table = cached;
+        return (table != null) ? table : reload();
+    }
+
+    /**
+     * DB 를 다시 읽어 캐시를 갈아 끼운다. 구간표 행을 바꿨다면 재기동하거나 이 메서드를 불러야 반영된다.
+     */
+    public BidIncrementTable reload() {
+        BidIncrementTable table = new BidIncrementTable(bidIncrementBandRepository.findAll());
+        cached = table;
+        return table;
     }
 }
