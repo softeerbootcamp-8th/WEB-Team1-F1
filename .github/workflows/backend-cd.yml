@@ -122,12 +122,32 @@ jobs:
             # 예전 배포가 남긴 .env 가 있으면 compose 가 그걸 먼저 읽어 낡은 값으로 뜬다
             rm -f .env
 
+            # 되돌릴 대상은 pull 전에 잡아둔다, up 이 실패한 뒤엔 이전 컨테이너가 사라져 물어볼 수 없다
+            PREV_IMAGE=$(docker inspect -f '{{.Config.Image}}' race-backend 2>/dev/null || true)
+
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_ACTOR" --password-stdin
             docker compose -f docker-compose.prod.yml pull
 
-            # --wait 가 healthcheck 통과까지 기다린다, 실패하면 로그를 남기고 배포를 실패시킨다
+            # --wait 가 healthcheck 통과까지 기다린다, 실패하면 이전 컨테이너는 이미 교체된 뒤다
             if ! docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 150; then
               docker compose -f docker-compose.prod.yml logs --tail=100 app
+
+              # 이전 이미지가 아직 남아 있는 것은 prune 이 아래 성공 경로에만 있기 때문이다, 위로 옮기면 되돌리기가 깨진다
+              if [ -z "$PREV_IMAGE" ] || [ "$PREV_IMAGE" = "${PREV_IMAGE%:*}" ]; then
+                echo "되돌릴 이미지가 없다, 서비스가 중단된 채로 남는다"
+              elif [ "${PREV_IMAGE##*:}" = "$IMAGE_TAG" ]; then
+                echo "직전 버전이 방금 실패한 버전과 같다, 되돌리지 않는다"
+              else
+                echo "직전 버전으로 되돌린다: $PREV_IMAGE"
+                # 원 배포보다 짧게 끊어, 원인이 환경이라 이전 버전도 실패할 때 대기가 두 배가 되는 것을 막는다
+                if IMAGE_TAG="${PREV_IMAGE##*:}" docker compose -f docker-compose.prod.yml up -d --wait --wait-timeout 60; then
+                  echo "되돌리기 성공, 서비스는 이전 버전으로 동작한다"
+                else
+                  echo "되돌리기 실패, 서비스가 중단된 채로 남는다"
+                fi
+              fi
+
+              # 되돌리기에 성공해도 배포는 실패다, 초록으로 만들면 깨진 배포가 조용히 지나간다
               exit 1
             fi
 
@@ -158,6 +178,8 @@ jobs:
       - name: Notify Slack
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # 배포가 서버 단계에서 멈췄을 때 서비스가 살아 있는지 직접 확인하는 데 쓴다
+          EC2_HOST: ${{ secrets.EC2_HOST }}
           TEST_RESULT: ${{ needs.test.result }}
           BUILD_RESULT: ${{ needs.build-and-push.result }}
           DEPLOY_RESULT: ${{ needs.deploy.result }}
@@ -194,16 +216,27 @@ jobs:
               STAGE="알 수 없음"
             fi
 
+            # 앞 단계 실패는 서버를 건드리지 않았으므로 확인하지 않는다
+            SERVICE=""
+            if [ "$STAGE" = "서버 배포" ]; then
+              if curl -fsS -m 10 -o /dev/null "http://${EC2_HOST}:8080/actuator/health"; then
+                SERVICE="서비스는 정상 동작 중입니다"
+              else
+                SERVICE="서비스가 응답하지 않습니다, 지금 확인이 필요합니다"
+              fi
+            fi
+
             PAYLOAD=$(jq -n \
-              --arg fallback "❌ 서버 배포 실패 (${STAGE}) ${SHORT_SHA}" \
+              --arg fallback "❌ 서버 배포 실패 (${STAGE}) ${SHORT_SHA} ${SERVICE}" \
               --arg stage "$STAGE" \
+              --arg service "$SERVICE" \
               --arg sha "$SHORT_SHA" \
               --arg url "$RUN_URL" \
               '{
                 text: $fallback,
                 blocks: [
                   { type: "header", text: { type: "plain_text", text: "🚨  서버 배포 실패", emoji: true } },
-                  { type: "section", text: { type: "mrkdwn", text: ("*" + $stage + "* 단계에서 멈췄습니다") } },
+                  { type: "section", text: { type: "mrkdwn", text: ("*" + $stage + "* 단계에서 멈췄습니다" + (if $service == "" then "" else "\n" + $service end)) } },
                   { type: "context", elements: [
                       { type: "mrkdwn", text: ("📦  *버전*  `" + $sha + "`") },
                       { type: "mrkdwn", text: ("🔗  <" + $url + "|실행 기록에서 원인 확인>") }
