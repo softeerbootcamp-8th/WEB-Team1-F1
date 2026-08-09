@@ -1,3 +1,6 @@
+import { FileText } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
 import { CarThumb } from '@/components/common/car-thumb'
 import { formatMileage } from '@/lib/format'
 import { FUEL_TYPE_LABEL, MANUFACTURER_LABEL } from '@/features/quote/types'
@@ -7,7 +10,7 @@ interface CarDetailProps {
   vehicle: RoomVehicle
 }
 
-/** 차량 상세 — 썸네일 + 스펙 표. 평가 진단 데이터는 백엔드가 아직 내려주지 않는다. */
+/** 차량 상세 — 썸네일 + 스펙 표 + 진단서 링크. 방의 모든 단계가 이 블록을 같은 자리에 쓴다. */
 export function CarDetail({ vehicle }: CarDetailProps) {
   const specs: { label: string; value: string }[] = [
     { label: '제조사', value: MANUFACTURER_LABEL[vehicle.manufacturer] },
@@ -30,6 +33,14 @@ export function CarDetail({ vehicle }: CarDetailProps) {
           </div>
         ))}
       </dl>
+
+      {/* 새 탭으로 연다, 방 위에 띄우면 읽는 동안 현재가와 남은 시간이 가려진다 */}
+      <Button asChild variant="outline" className="w-full">
+        <a href={vehicle.diagnosticReportUrl} target="_blank" rel="noreferrer">
+          <FileText />
+          진단서 PDF 보기
+        </a>
+      </Button>
     </div>
   )
 }
