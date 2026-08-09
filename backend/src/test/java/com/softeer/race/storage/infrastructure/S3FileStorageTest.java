@@ -35,7 +35,9 @@ class S3FileStorageTest {
 
     private final S3FileStorage s3FileStorage = new S3FileStorage(
             mock(S3Presigner.class),
-            new S3Properties("bucket", "ap-northeast-2", CDN_BASE_URL, Duration.ofMinutes(15)),
+            // 뒤의 셋(endpoint, accessKey, secretKey)은 로컬 개발용이라 비운다, 그 상태가 배포 설정이다
+            new S3Properties("bucket", "ap-northeast-2", CDN_BASE_URL, Duration.ofMinutes(15),
+                    null, null, null),
             Clock.systemDefaultZone());
 
     @DisplayName("이미지로 발급한 키 형태의 주소는 이미지 판정을 통과한다")
