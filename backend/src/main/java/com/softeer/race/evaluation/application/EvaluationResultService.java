@@ -1,9 +1,12 @@
 package com.softeer.race.evaluation.application;
 
 import static com.softeer.race.notification.domain.NotificationType.EVAL_APPROVED;
+import static com.softeer.race.notification.domain.NotificationType.EVAL_REJECTED;
 
 import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.evaluation.application.dto.command.EvaluationRejectCommand;
 import com.softeer.race.evaluation.application.dto.command.EvaluationResultSubmitCommand;
+import com.softeer.race.evaluation.application.dto.info.EvaluationRejectionInfo;
 import com.softeer.race.evaluation.application.dto.info.EvaluationResultInfo;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
@@ -35,8 +38,12 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * <b>평가 행을 잠그고 시작한다.</b> 같은 평가사가 두 번 보내면 사진 교체가 겹쳐 두 벌이 남는다.
  * <p>
- * <b>승인 알림도 여기서 발행한다.</b> 받을 사람이 판매자 하나뿐이라 고를 것이 없다 —
- * 반려 알림이 붙어 갈래가 생기면 그때 {@code AuctionEndNotifier}처럼 뗀다.
+ * <b>승인과 반려를 한 서비스가 맡는다.</b> 방문 결과라는 한 유스케이스의 두 판정이라, 나누면
+ * "배정된 평가사만 결과를 낸다"는 같은 규칙이 두 서비스에 생긴다. 트랜잭션 경계와 잠금 방식도 같다.
+ * <p>
+ * <b>알림도 각 판정이 직접 발행한다.</b> 받을 사람이 판매자 하나뿐이라 고를 것이 없다. 두 판정이
+ * 한 메서드의 분기가 아니라 각자의 메서드라, 알림도 갈래 없이 한 줄씩이다 — 받는 사람을 골라야
+ * 하는 날이 오면 그때 {@code AuctionEndNotifier}처럼 뗀다.
  */
 @Service
 @RequiredArgsConstructor
@@ -102,6 +109,37 @@ public class EvaluationResultService {
                 vehicle.getDiagnosticReportUrl(),
                 evaluation.getUpdatedAt(),
                 keywords);
+    }
+
+    /**
+     * 방문 결과를 반려로 끝낸다. 사유가 함께 저장되고 판매자에게 알림이 간다.
+     * <p>
+     * {@link #submit}과 달리 차량을 건드리지 않는다. 반려된 신청의 차량은 진단 전 상태 그대로
+     * 남아, 판매자가 같은 번호판으로 다시 신청할 수 있다({@code EvaluationStatus.inProgress}가
+     * REJECTED를 빼고 있어 중복 접수 차단에 걸리지 않는다).
+     * <p>
+     * <b>여기서도 평가 행을 잠그고 시작한다.</b> 사진 교체 때문이 아니라, 승인 제출과 반려가
+     * 동시에 들어오면 둘 다 REQUESTED를 읽고 통과한 뒤 나중 쓰기가 앞의 판정을 덮기 때문이다.
+     * 승인이 이겨 버리면 판매자는 반려 알림을 받아 놓고 상태는 APPROVED인 신청을 보게 된다.
+     */
+    @Transactional
+    public EvaluationRejectionInfo reject(EvaluationRejectCommand command) {
+        Evaluation evaluation = evaluationRepository.findByIdForUpdate(command.evaluationId())
+                .orElseThrow(() -> new BusinessException(EvaluationErrorCode.NOT_FOUND));
+
+        evaluation.validateRejectableBy(command.evaluatorId());
+        evaluation.reject(command.reason());
+
+        // submit과 같은 이유로 이 트랜잭션 안에서 발행한다. 반려가 롤백됐는데 알림만 남으면 안 된다.
+        // findByIdForUpdate가 join fetch 없이 읽으므로 vehicle 프록시 초기화 쿼리가 한 번 나간다 —
+        // 잠금 범위를 평가 한 행으로 제한한 대가이고, 트랜잭션 안이라 지연 로딩이 성립한다
+        notificationPublisher.publish(
+                evaluation.getVehicle().getSeller().getId(), EVAL_REJECTED, command.evaluationId());
+
+        // 반려 시각을 응답에 싣는다. 더티 체킹이라 flush 전까지 updatedAt은 배정 시각 그대로다
+        evaluationRepository.flush();
+
+        return EvaluationRejectionInfo.from(evaluation);
     }
 
     private void validateManagedDocument(String fileUrl) {

@@ -18,11 +18,19 @@ values (401, 'visit_lee', 'visit2@race.dev', 'pw',
         '이방문', '01000000401', 'GENERAL',
         NOW(6), NOW(6));
 
+-- 반려 후 재신청 시나리오가 쓸 평가사. 반려는 배정된 평가사만 할 수 있어, 신청을 실제로
+-- 반려 상태까지 끌고 가려면 수락할 사람이 필요하다
+insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
+values (402, 'visit_eval', 'visit-eval@race.dev', 'pw',
+        '박평가', '01000000402', 'EVALUATOR',
+        NOW(6), NOW(6));
+
 -- PK는 쿠키로 보낼 원문 토큰의 SHA-256 hex다
 -- 만료 시각을 하드코딩하지 않는다, 그 날짜가 지나는 순간 전 시나리오가 401이 된다
 insert into user_session (id, user_id, expires_at, created_at, updated_at)
 values (sha2('visit-quote-raw-token', 256), 400, DATE_ADD(NOW(6), INTERVAL 1 HOUR), NOW(6), NOW(6)),
-       (sha2('visit-quote-other-raw-token', 256), 401, DATE_ADD(NOW(6), INTERVAL 1 HOUR), NOW(6), NOW(6));
+       (sha2('visit-quote-other-raw-token', 256), 401, DATE_ADD(NOW(6), INTERVAL 1 HOUR), NOW(6), NOW(6)),
+       (sha2('visit-quote-eval-raw-token', 256), 402, DATE_ADD(NOW(6), INTERVAL 1 HOUR), NOW(6), NOW(6));
 
 -- vehicle과 evaluation은 일부러 심지 않는다
 -- 차량과 신청을 API가 만든다는 것이 요구사항의 핵심이라, 픽스처에 없어야 "만들어졌다"를 증명할 수 있다
