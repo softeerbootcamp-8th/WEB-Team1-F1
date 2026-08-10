@@ -49,10 +49,7 @@ public class AuctionCloser {
         User winner = auction.getWinner();
 
         // 확정 뒤, 알림 앞이어야 한다. 낙찰 알림이 거래 화면을 가리키려면 이 시점에 거래가 있어야 한다.
-        Deal deal = topBidder == null ? null : dealCreator.create(auction, topBidder, now);
-        if (winner != null) {
-            dealCreator.create(auction, winner, now);
-        }
+        Deal deal = winner == null ? null : dealCreator.create(auction, winner, now);
 
         // 확정이 실제로 일어났을 때만 알린다, 유찰도 화면이 알아야 하는 결과라 같은 사건으로 낸다
         eventPublisher.publishEvent(new AuctionClosed(auctionId));
@@ -60,20 +57,7 @@ public class AuctionCloser {
         // 종료와 한 트랜잭션에 둔다. 알림만 남거나, 알림 없이 종료되는 경우를 만들지 않는다.
         // 낙찰자 알림만 경매가 아니라 거래를 가리키므로 거래 식별자를 함께 넘긴다
         auctionEndNotifier.notifyEnd(auctionId,
-                topBidder == null ? null : topBidder.getId(),
+                winner == null ? null : winner.getId(),
                 deal == null ? null : deal.getId());
-    }
-
-    /**
-     * 이 경매의 최고 입찰자, 입찰이 없으면 null 이고 유찰로 끝난다
-     * <p>
-     * 가장 최근 입찰을 최고가 입찰로 쓴다. 쿼리의 계약은 "가장 최근"이지 "최고가"가 아니고,
-     * 둘이 같은 근거는 BidRule 이 현재가 + 상승가 이상만 통과시켜 금액이 단조 증가한다는 데 있다.
-     * 입찰 취소나 대리입찰이 들어오면 그 전제가 깨지고, 깨지는 것은 쿼리가 아니라 낙찰 결과다.
-     */
-    private User topBidderOf(long auctionId) {
-        return bidRepository.findFirstByAuctionIdOrderByIdDesc(auctionId)
-                .map(Bid::getBidder)
-                .orElse(null);
     }
 }
