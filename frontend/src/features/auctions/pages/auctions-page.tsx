@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common/empty-state'
 import { AuctionCard } from '@/features/auctions/components/auction-card'
+import { AuctionPreviewDialog } from '@/features/auctions/components/auction-preview-dialog'
+import type { PreviewStatus } from '@/features/auctions/components/auction-preview-dialog'
 import { AuctionDeleteDialog } from '@/features/auctions/components/auction-delete-dialog'
 import { AuctionEditDialog } from '@/features/auctions/components/auction-edit-dialog'
 import { MyAuctionActions } from '@/features/auctions/components/my-auction-actions'
@@ -88,6 +90,33 @@ export function AuctionsPage() {
 
   const [editing, setEditing] = useState<AuctionListCard | null>(null)
   const [deleting, setDeleting] = useState<AuctionListCard | null>(null)
+
+  // 입장할 수 없는 카드는 방으로 보내지 않고 여기서 연다. 단계는 열 때 판정한 값을 그대로 들고 있는다.
+  const [preview, setPreview] = useState<{
+    auctionId: number
+    status: PreviewStatus
+    card: AuctionListCard | null
+  } | null>(null)
+
+  /**
+   * 알림이나 방에서 되돌아온 딥링크(`?open=3&as=closed`). 목록에 카드가 아직 없어도 열린다.
+   * 방이 되돌릴 때 단계를 함께 실어 주므로 화면이 마감 + 5분을 다시 재지 않는다.
+   */
+  const deepLink = useMemo(() => {
+    const id = Number(searchParams.get('open'))
+    if (!Number.isInteger(id) || id <= 0) return null
+    return { id, status: (searchParams.get('as') === 'closed' ? 'ENDED' : 'NOT_OPEN') as PreviewStatus }
+  }, [searchParams])
+
+  const closePreview = () => {
+    setPreview(null)
+    if (searchParams.has('open')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('open')
+      next.delete('as')
+      setSearchParams(next, { replace: true })
+    }
+  }
 
   // 상태 필터는 서버가 건다. 받아온 카드만 걸러내면 다음 페이지를 읽을수록 화면이 실제와 어긋난다.
   const listGroup = useMemo(
@@ -207,6 +236,9 @@ export function AuctionsPage() {
                   auction={auction}
                   nowMs={nowMs}
                   offsetMs={offsetMs}
+                  onPreview={(card, status) =>
+                    setPreview({ auctionId: card.auctionId, status, card })
+                  }
                   actions={
                     scope === 'MINE' ? (
                       <MyAuctionActions
@@ -245,6 +277,14 @@ export function AuctionsPage() {
         </>
       )}
 
+      {/* 카드를 눌러 연 것이 우선이다, 없으면 딥링크가 연다 */}
+      <AuctionPreviewDialog
+        auctionId={preview?.auctionId ?? deepLink?.id ?? null}
+        status={preview?.status ?? deepLink?.status ?? 'NOT_OPEN'}
+        card={preview?.card ?? cards.find((c) => c.auctionId === deepLink?.id) ?? null}
+        offsetMs={offsetMs}
+        onOpenChange={(open) => !open && closePreview()}
+      />
       <AuctionEditDialog
         auction={editing}
         onOpenChange={(open) => !open && setEditing(null)}

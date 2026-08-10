@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Eye, Gavel, Trophy } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -12,11 +12,10 @@ import { PriceBoard } from '../components/price-board'
 import { BidPanel } from '../components/bid-panel'
 import { BidLedger } from '../components/bid-ledger'
 import { WaitingRoom } from '../components/waiting-room'
-import { RoomNotOpen } from '../components/room-not-open'
 import { CarDetail } from '../components/car-detail'
 import { RoomStateBanner, RoomStateBar } from '../components/room-state-banner'
 import type { RoomStateMode } from '../components/room-state-banner'
-import type { AuctionRoomView, RoomResultView, RoomVehicle, RoomWinner } from '../types'
+import type { AuctionRoomView, RoomVehicle, RoomWinner } from '../types'
 
 export function AuctionRoomPage() {
   const { id } = useParams()
@@ -126,8 +125,6 @@ function RoomContent({ auctionId }: { auctionId: number }) {
   const {
     room,
     entry,
-    opening,
-    result,
     increment,
     nextMin,
     flashKey,
@@ -136,29 +133,15 @@ function RoomContent({ auctionId }: { auctionId: number }) {
     placeBid,
   } = useAuctionRoom(auctionId)
 
-  if (entry === 'NOT_OPEN_YET' && opening) {
-    return (
-      <main
-        aria-label={`${opening.vehicle.model} 경매`}
-        className="mx-auto max-w-7xl px-6 py-8"
-      >
-        <RoomHeading vehicle={opening.vehicle} mode="NOT_OPEN" />
-
-        <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-          <RoomNotOpen opening={opening} clockOffset={clockOffset} />
-          <CarDetail vehicle={opening.vehicle} />
-        </div>
-      </main>
-    )
+  // 들어갈 수 없는 두 단계는 방이 아니라 목록 위 미리보기가 맡는다. 알림이나 북마크로 이 주소를
+  // 바로 열었거나, 목록을 오래 열어 둔 사이 방이 닫힌 경우가 여기로 온다.
+  // 뒤로가기가 닫힌 방으로 되돌아오지 않도록 히스토리를 남기지 않고 바꾼다.
+  if (entry === 'NOT_OPEN_YET') {
+    return <Navigate to={`/auctions?open=${auctionId}`} replace />
   }
 
-  if (entry === 'CLOSED' && result) {
-    return (
-      <main aria-label={`${result.vehicle.model} 경매`} className="mx-auto max-w-7xl px-6 py-8">
-        <RoomHeading vehicle={result.vehicle} mode="CLOSED" />
-        <EndedResult summary={endedFromResult(result)} />
-      </main>
-    )
+  if (entry === 'CLOSED') {
+    return <Navigate to={`/auctions?open=${auctionId}&as=closed`} replace />
   }
 
   if (entry === 'SIGNED_OUT') {
@@ -307,15 +290,6 @@ function endedFromRoom(room: AuctionRoomView): EndedSummary {
   }
 }
 
-function endedFromResult(result: RoomResultView): EndedSummary {
-  return {
-    vehicle: result.vehicle,
-    startPrice: result.startPrice,
-    winningPrice: result.winningPrice,
-    winner: result.winner,
-    bidCount: result.bidCount,
-  }
-}
 
 /** 종료(결과 보기/마감) 화면 */
 function EndedResult({ summary }: { summary: EndedSummary }) {
