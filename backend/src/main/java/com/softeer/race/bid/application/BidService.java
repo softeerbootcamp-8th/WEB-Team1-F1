@@ -85,7 +85,9 @@ public class BidService {
             throw new BusinessException(AUCTION_NOT_LIVE);
         }
 
-        if (isTopBidder(auctionId, bidderId)) {
+        // 잠긴 행에서 읽는다. 잠금 밖 조회는 트랜잭션 스냅샷에 묶여 낡고,
+        // 그 사이 남이 입찰하면 이미 밀려난 사람을 오거절한다.
+        if (auction.isTopBidder(bidderId)) {
             throw new BusinessException(SELF_OUTBID);
         }
 
@@ -95,19 +97,12 @@ public class BidService {
         User bidder = userRepository.getReferenceById(bidderId);
 
         Bid bid = bidRepository.save(Bid.place(auction, bidder, amount));
-        auction.acceptBid(amount, acceptedAt);
+        auction.acceptBid(bidder, amount, acceptedAt);
 
         // 커밋 뒤에 처리된다, 방송이 잠금 안에서 돌면 그 시간이 대기열 전체에 곱해진다
         eventPublisher.publishEvent(new BidAccepted(auctionId));
 
         // acceptBid 뒤에 읽어야 연장된 마감이 담긴다.
         return new BidPlaceInfo(bid.getId(), amount, auction.getCurrentEndTime(), acceptedAt);
-    }
-
-    // 프록시의 식별자 접근은 초기화를 유발하지 않아 추가 쿼리가 없다.
-    private boolean isTopBidder(long auctionId, long bidderId) {
-        return bidRepository.findFirstByAuctionIdOrderByIdDesc(auctionId)
-                .map(top -> top.getBidder().getId() == bidderId)
-                .orElse(false);
     }
 }
