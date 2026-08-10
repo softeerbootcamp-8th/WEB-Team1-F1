@@ -87,7 +87,7 @@ class DealCreationIntegrationTest extends IntegrationTestSupport {
             assertThat(deal.getSeller().getId()).isEqualTo(seller.getId());
             assertThat(deal.getBuyer().getId()).isEqualTo(bob.getId());
             assertThat(deal.getFinalPrice()).isEqualTo(START_PRICE + RAISE);
-            assertThat(deal.getStatus()).isEqualTo(DealStatus.DEPOSIT_PENDING);
+            assertThat(deal.getStatus()).isEqualTo(DealStatus.BUYER_CONFIRM_PENDING);
             assertThat(deal.getStatusChangedAt()).isEqualTo(CLOSED_AT);
         });
     }

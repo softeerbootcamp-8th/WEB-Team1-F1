@@ -1,6 +1,8 @@
 package com.softeer.race.deal.presentation;
 
 import com.softeer.race.auth.domain.AuthenticatedUser;
+import com.softeer.race.deal.presentation.request.DeliveryConfirmRequest;
+import com.softeer.race.deal.presentation.request.TransportSubmitRequest;
 import com.softeer.race.deal.presentation.response.DealDetailResponse;
 import com.softeer.race.deal.presentation.response.DealSliceResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,5 +31,45 @@ public interface DealApi {
             AuthenticatedUser authenticatedUser,
 
             @Parameter(description = "조회할 거래 식별자", example = "12")
+            Long dealId);
+
+    @Operation(summary = "구매 확정",
+            description = "구매자가 거래를 진행하겠다고 확정한다. 판매자에게 서류와 탁송 일정을 "
+                    + "요청하는 알림이 나간다. 지금 상대방 차례이면 403, 이미 지난 단계이면 409 다.")
+    ResponseEntity<Void> confirmPurchase(
+            AuthenticatedUser authenticatedUser,
+
+            @Parameter(description = "거래 식별자", example = "12")
+            Long dealId);
+
+    @Operation(summary = "서류·탁송 일정 제출",
+            description = "판매자가 서류 PDF 주소와 탁송 일시·장소를 낸다. 파일은 업로드 API 로 "
+                    + "미리 올리고 조회 주소만 보낸다. 탁송 일시가 과거이면 400 이다.")
+    ResponseEntity<Void> submitTransport(
+            AuthenticatedUser authenticatedUser,
+
+            @Parameter(description = "거래 식별자", example = "12")
+            Long dealId,
+
+            TransportSubmitRequest request);
+
+    @Operation(summary = "인도 일정 확정",
+            description = "구매자가 탁송 일정에 동의하고 인도 일시·장소를 잡는다. 이 호출로 거래가 "
+                    + "확정되며 양쪽에 알림이 나간다. 인도 일시가 탁송 일시보다 앞서면 400 이다.")
+    ResponseEntity<Void> confirmDelivery(
+            AuthenticatedUser authenticatedUser,
+
+            @Parameter(description = "거래 식별자", example = "12")
+            Long dealId,
+
+            DeliveryConfirmRequest request);
+
+    @Operation(summary = "거래 취소",
+            description = "당사자 누구든 확정 전까지 그만둘 수 있다. 그만둔 쪽이 귀책으로 남고 "
+                    + "상대에게 알림이 나간다. 확정된 거래는 409 다.")
+    ResponseEntity<Void> cancel(
+            AuthenticatedUser authenticatedUser,
+
+            @Parameter(description = "거래 식별자", example = "12")
             Long dealId);
 }

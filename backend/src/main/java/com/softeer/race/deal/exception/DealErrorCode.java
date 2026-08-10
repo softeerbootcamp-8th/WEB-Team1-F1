@@ -6,6 +6,11 @@ import org.springframework.http.HttpStatus;
 public enum DealErrorCode implements ErrorCode {
     // 없는 거래와 남의 거래를 구분해 주지 않는다, 구분하면 존재 여부가 새어 나간다
     NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 거래입니다."),
+    // 당사자이긴 하나 지금 움직일 쪽이 아니다. 거래의 존재는 이미 아는 사람이라 404 로 감출 것이 없다
+    NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "지금은 상대방의 차례입니다."),
+    // 사용자가 값을 고쳐 다시 보낼 수 있는 실패다
+    PAST_TRANSPORT_SCHEDULE(HttpStatus.BAD_REQUEST, "탁송 일시는 현재 시각 이후여야 합니다."),
+    DELIVERY_BEFORE_TRANSPORT(HttpStatus.BAD_REQUEST, "인도 일시는 탁송 일시 이후여야 합니다."),
     INVALID_TRANSITION(HttpStatus.CONFLICT, "지금 단계에서는 진행할 수 없습니다."),
     NOT_CANCELLABLE(HttpStatus.CONFLICT, "취소할 수 없는 단계입니다.");
 

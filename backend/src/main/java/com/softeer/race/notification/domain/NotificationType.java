@@ -42,6 +42,15 @@ public enum NotificationType {
     AUCTION_SOLD("등록하신 차량이 낙찰되었습니다.", "/auctions/%d"),
     AUCTION_FAILED("등록하신 경매가 입찰 없이 종료되었습니다.", "/auctions/%d"),
 
+    // 단계별로 쪼갠다. 하나로 두면 "서류를 올려 주세요"와 "일정을 확인해 주세요"가 같은 문구로 떠서,
+    // 눌러 보기 전에는 무엇을 해야 하는지 알 수 없다
+    DEAL_SELLER_SUBMIT_REQUIRED("구매자가 구매를 확정했습니다. 서류와 탁송 일정을 등록해 주세요.", "/deals/%d"),
+    DEAL_BUYER_SCHEDULE_REQUIRED("판매자가 탁송 일정을 등록했습니다. 인도 일정을 정해 주세요.", "/deals/%d"),
+    DEAL_CONFIRMED("거래가 확정되었습니다. 인도 일정을 확인해 주세요.", "/deals/%d"),
+    DEAL_CANCELLED("거래가 취소되었습니다.", "/deals/%d"),
+
+    // 단계별 종류로 대체돼 더는 발행되지 않는다. 저장된 알림이 자기 종류를 이름으로 들고 있어서,
+    // 지우면 그 행을 읽는 순간 터진다
     DEAL_STATUS_CHANGED("거래가 다음 단계로 넘어갔습니다.", "/deals/%d");
 
     private static final String REFERENCE = "%d";

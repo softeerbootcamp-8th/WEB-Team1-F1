@@ -205,7 +205,7 @@ class DealQueryIntegrationTest extends IntegrationTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.dealId").value(dealId))
                 .andExpect(jsonPath("$.mySide").value("BUYER"))
-                .andExpect(jsonPath("$.status").value("DEPOSIT_PENDING"))
+                .andExpect(jsonPath("$.status").value("BUYER_CONFIRM_PENDING"))
                 .andExpect(jsonPath("$.finalPrice").value(START_PRICE))
                 .andExpect(jsonPath("$.counterpartName").value("박*매"))
                 .andExpect(jsonPath("$.model").exists())
@@ -242,12 +242,12 @@ class DealQueryIntegrationTest extends IntegrationTestSupport {
     @DisplayName("시나리오 8 : 취소된 거래는 사유와 귀책이 함께 온다")
     void scenario8_ShowsCancellation() throws Exception {
         long dealId = boughtDeal();
-        cancel(dealId, CancellationReason.DEPOSIT_TIMEOUT);
+        cancel(dealId, CancellationReason.BUYER_CANCELLED);
 
         detail(dealId)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"))
-                .andExpect(jsonPath("$.cancellationReason").value("DEPOSIT_TIMEOUT"))
+                .andExpect(jsonPath("$.cancellationReason").value("BUYER_CANCELLED"))
 
                 // 귀책은 사유에서 계산되지만 서버가 풀어 준다, 보증금 향방은 서버 정책이다
                 .andExpect(jsonPath("$.faultParty").value("BUYER"));

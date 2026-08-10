@@ -38,7 +38,10 @@ public record DealCardResponse(
 
         @Schema(description = "현재 단계로 넘어온 시각, 상대 시각 표시와 기한 안내에 쓴다",
                 example = "2026-08-09T12:00:00")
-        LocalDateTime statusChangedAt
+        LocalDateTime statusChangedAt,
+
+        @Schema(description = "지금 내가 움직일 차례인지, 목록에서 액션 배지를 켜는 기준", example = "true")
+        boolean actionRequired
 ) {
 
     public static DealCardResponse from(DealCardInfo info) {
@@ -53,6 +56,7 @@ public record DealCardResponse(
                 card.model(),
                 card.thumbnailUrl(),
                 card.counterpartName().value(),
-                card.statusChangedAt());
+                card.statusChangedAt(),
+                card.actionRequiredFor(info.viewerId()));
     }
 }
