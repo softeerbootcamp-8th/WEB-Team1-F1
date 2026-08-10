@@ -1,5 +1,5 @@
 import type { AuctionBadgeStatus, AuctionStatus, DealStatus } from '@/types/domain'
-import type { AuctionListGroup, RoomPhase } from '@/features/auctions/types'
+import type { AuctionListCard, AuctionListGroup } from '@/features/auctions/types'
 import type { BidIncrementBand } from '@/features/auction-room/types'
 
 /**
@@ -36,14 +36,19 @@ export const AUCTION_BADGE_META: Record<
 }
 
 /**
- * 백엔드 5단계 RoomPhase를 뱃지의 4단계로 좁힌다.
- * RESULT·CLOSED만 "종료"로 묶고, 시작 전 두 단계는 그대로 둔다 —
- * 방 개설은 시작 30분 전이라 예정 카드 대부분이 NOT_OPEN이고, 그 안에서 입장 가능한
- * 소수를 골라내는 것이 이 뱃지의 목적이다.
+ * 지금 시각으로 판정한 뱃지 단계. 서버가 준 phase는 조회 시각의 값이라 시간이 지나면 낡는다.
+ *
+ * 시작 전 둘을 나누는 이유는, 방 개설이 시작 30분 전이라 예정 카드 대부분이 아직 입장 전이고
+ * 그중 입장 가능한 소수를 골라내는 것이 이 뱃지의 목적이기 때문이다.
+ *
+ * 마감 뒤는 나누지 않는다. 결과 확인 구간을 따로 보이면 아직 참여할 수 있는 것처럼 읽히고,
+ * 나누지 않은 덕분에 마감 + 5분이라는 서버 상수를 화면이 복제하지 않아도 된다.
  */
-export function roomPhaseToBadgeStatus(phase: RoomPhase): AuctionBadgeStatus {
-  if (phase === 'RESULT' || phase === 'CLOSED') return 'ENDED'
-  return phase
+export function badgeStatusAt(card: AuctionListCard, nowMs: number): AuctionBadgeStatus {
+  if (nowMs < new Date(card.openAt).getTime()) return 'NOT_OPEN'
+  if (nowMs < new Date(card.startAt).getTime()) return 'WAITING'
+  if (nowMs < new Date(card.endAt).getTime()) return 'LIVE'
+  return 'ENDED'
 }
 
 /** 화면의 상태 탭을 목록 API의 filter 값으로. 서버는 "예정"을 PENDING이라 부른다. */
@@ -52,11 +57,52 @@ export function statusToListGroup(status: AuctionStatus): AuctionListGroup {
 }
 
 /**
- * 수정 가능 여부. 서버는 경매방이 열리기 전(now < roomOpenAt)만 허용하고,
- * 그 구간이 곧 NOT_OPEN 단계다. 방이 열린 뒤 요청은 서버가 거부한다.
+ * 지금 시각으로 다시 판정한 목록 그룹. 서버가 준 phase는 조회 시각의 값이라 시간이 지나면 낡는다.
+ * 경계는 서버 쿼리와 같다 — 시작 전은 예정, 시작했고 마감 전이면 진행중, 마감했으면 종료다.
+ * 개장(NOT_OPEN→WAITING)과 결과 열람 종료(RESULT→CLOSED)는 그룹을 바꾸지 않으므로 보지 않는다.
  */
-export function canEditAuction(phase: RoomPhase): boolean {
-  return phase === 'NOT_OPEN'
+export function listGroupAt(card: AuctionListCard, nowMs: number): AuctionListGroup {
+  if (nowMs < new Date(card.startAt).getTime()) return 'PENDING'
+  if (nowMs < new Date(card.endAt).getTime()) return 'LIVE'
+  return 'ENDED'
+}
+
+/**
+ * 지금 시각으로 그룹을 다시 판정해 카드를 재배치한다. 필터가 있으면 그 그룹만 남긴다.
+ *
+ * 정렬하지 않는다. 서버가 [진행중 마감임박순][예정 시작임박순][종료 최근마감순] 순으로 주므로
+ * 순서를 유지한 채 셋으로 나눠 담고 이어 붙이면 자리가 맞는다. 마감된 카드는 진행중 무리의 맨 앞에
+ * 있었으니 종료 무리보다 먼저 담겨 그 맨 앞에 서고, 시작한 카드는 진행중을 다 지난 뒤에 만나므로
+ * 그 맨 뒤에 선다. 덕분에 화면이 복제하는 것은 그룹 경계 하나뿐이고 정렬 규칙 셋은 서버에만 남는다.
+ */
+export function arrangeCards(
+  cards: AuctionListCard[],
+  nowMs: number,
+  filter: AuctionListGroup | null,
+): AuctionListCard[] {
+  const grouped: Record<AuctionListGroup, AuctionListCard[]> = {
+    LIVE: [],
+    PENDING: [],
+    ENDED: [],
+  }
+
+  for (const card of cards) {
+    grouped[listGroupAt(card, nowMs)].push(card)
+  }
+
+  if (filter) return grouped[filter]
+
+  return [...grouped.LIVE, ...grouped.PENDING, ...grouped.ENDED]
+}
+
+/**
+ * 수정 가능 여부. 서버는 경매방이 열리기 전(now < roomOpenAt)만 허용하고,
+ * 그 구간이 곧 입장 전 단계다. 방이 열린 뒤 요청은 서버가 거부한다.
+ */
+// 뱃지 단계를 받는다. 카드가 뱃지를 시각으로 그리므로 버튼도 같은 판정을 써야
+// 한 카드 안에서 뱃지와 버튼이 어긋나지 않는다
+export function canEditAuction(status: AuctionBadgeStatus): boolean {
+  return status === 'NOT_OPEN'
 }
 
 /**
@@ -64,8 +110,19 @@ export function canEditAuction(phase: RoomPhase): boolean {
  * 단계는 시각으로 재는 값이라 마감 직후엔 서버의 상태 전환이 아직 안 끝났을 수 있고,
  * 그때는 서버가 거부하므로 응답 메시지를 그대로 보여준다.
  */
-export function canDeleteAuction(phase: RoomPhase): boolean {
-  return phase === 'RESULT' || phase === 'CLOSED'
+export function canDeleteAuction(status: AuctionBadgeStatus): boolean {
+  return status === 'ENDED'
+}
+
+/**
+ * 서버 시각과 그 응답을 받은 순간의 브라우저 시계 차이. 남은 시간을 서버 기준으로 세는 데 쓴다.
+ * 서버는 남은 시간을 내려주지 않고 절대 시각과 serverTime 만 주며, 세는 것은 화면 몫이다.
+ *
+ * 받은 순간을 인자로 받는다. 나중에 Date.now()로 계산하면 조회 이후 흐른 시간만큼 보정값이
+ * 어긋나므로, 언제 잡아야 하는지를 시그니처가 강제하게 둔다.
+ */
+export function serverClockOffset(serverTimeIso: string, receivedAtMs: number): number {
+  return new Date(serverTimeIso).getTime() - receivedAtMs
 }
 
 /** 경매 시작 시각 최소 리드타임(서버 MIN_LEAD_TIME_HOURS와 같은 1시간) */
