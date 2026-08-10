@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 // 시청자 수는 1초마다 훑지만 대부분은 그대로다, 안 바뀐 것까지 보내면 조용한 방에도 매 초 방송이 나간다
+@DisplayName("시청자 수 변화 감지 테스트")
 class AudienceSnapshotTest {
 
     private static final long AUCTION = 1L;

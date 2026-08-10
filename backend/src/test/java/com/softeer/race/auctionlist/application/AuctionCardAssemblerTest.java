@@ -18,6 +18,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 // 조회와 방송이 같은 카드를 내야 하므로 조립 규칙을 여기서 못 박는다
+@DisplayName("목록 카드 조립 테스트")
 class AuctionCardAssemblerTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 12, 0);
