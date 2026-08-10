@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -15,6 +15,8 @@ import { CinematicCarBackdrop } from '@/components/common/cinematic-car-backdrop
 import { AuctionCard } from '@/features/auctions/components/auction-card'
 import { useAuctionList } from '@/features/auctions/use-auction-list'
 import { useScrollReveal } from '@/hooks/use-scroll-reveal'
+import { useServerClock } from '@/hooks/use-server-clock'
+import { arrangeCards } from '@/lib/auction'
 
 const FEATURES = [
   {
@@ -79,7 +81,13 @@ export function HomePage() {
 
   // 진행중만 서버에서 걸러 받는다. 첫 페이지에 진행중이 없으면 빈 손이던 문제가 사라진다.
   const { cards, offsetMs } = useAuctionList({ scope: 'ALL', filter: 'LIVE' })
-  const liveAuctions = cards.slice(0, 3)
+  const nowMs = useServerClock(offsetMs)
+
+  // 진행중만 받아 오지만 화면을 열어 둔 사이 마감될 수 있다. 끝난 카드는 여기서 빠진다.
+  const liveAuctions = useMemo(
+    () => arrangeCards(cards, nowMs, 'LIVE').slice(0, 3),
+    [cards, nowMs],
+  )
 
   return (
     <main ref={mainRef} aria-label="RACE 홈" className="home-page">
@@ -252,7 +260,7 @@ export function HomePage() {
                 } as CSSProperties
               }
             >
-              <AuctionCard auction={auction} offsetMs={offsetMs} />
+              <AuctionCard auction={auction} nowMs={nowMs} offsetMs={offsetMs} />
             </li>
           ))}
         </ul>

@@ -15,7 +15,8 @@ import { useAuctionList } from '@/features/auctions/use-auction-list'
 import type { AuctionListCard, AuctionListScope } from '@/features/auctions/types'
 import { useAuth } from '@/features/auth/auth-context'
 import { useInfiniteScroll } from '@/hooks/use-infinite-scroll'
-import { statusToListGroup } from '@/lib/auction'
+import { useServerClock } from '@/hooks/use-server-clock'
+import { arrangeCards, badgeStatusAt, statusToListGroup } from '@/lib/auction'
 import { getErrorMessage } from '@/lib/axios'
 import type { AuctionStatus } from '@/types/domain'
 
@@ -115,7 +116,18 @@ export function AuctionsPage() {
     enabled: scope === 'ALL' || (!isAuthLoading && isAuthenticated),
   })
 
+  // 시계 하나로 화면 전체를 굴린다. 카드마다 두면 같은 순간에 카드끼리 다른 시각을 본다.
+  const nowMs = useServerClock(offsetMs)
+
+  // 서버가 준 순서를 지금 시각으로 다시 배치한다. 마감된 카드는 종료 무리로 내려가고,
+  // 상태 탭이 켜져 있으면 그 그룹에서 벗어난 카드는 목록에서 빠진다.
+  const arranged = useMemo(
+    () => arrangeCards(cards, nowMs, listGroup),
+    [cards, nowMs, listGroup],
+  )
+
   // 실패한 뒤에는 관찰을 끊는다. 화면이 그대로라 계속 관찰하면 같은 요청을 무한히 반복한다.
+  // 재배치가 아니라 불러온 개수로 관찰을 다시 건다. 자리만 바뀐 것은 다음 페이지와 무관하다.
   const sentinelRef = useInfiniteScroll({
     enabled: hasNext && !loadMoreError,
     onLoadMore: loadMore,
@@ -184,20 +196,21 @@ export function AuctionsPage() {
             </li>
           ))}
         </ul>
-      ) : cards.length === 0 ? (
+      ) : arranged.length === 0 ? (
         <EmptyState icon={SearchX} {...emptyMessage(scope, filter)} />
       ) : (
         <>
           <ul className={GRID_CLASS}>
-            {cards.map((auction) => (
+            {arranged.map((auction) => (
               <li key={auction.auctionId}>
                 <AuctionCard
                   auction={auction}
+                  nowMs={nowMs}
                   offsetMs={offsetMs}
                   actions={
                     scope === 'MINE' ? (
                       <MyAuctionActions
-                        auction={auction}
+                        status={badgeStatusAt(auction, nowMs)}
                         onEdit={() => setEditing(auction)}
                         onDelete={() => setDeleting(auction)}
                       />

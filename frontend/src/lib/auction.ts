@@ -1,5 +1,5 @@
 import type { AuctionBadgeStatus, AuctionStatus, DealStatus } from '@/types/domain'
-import type { AuctionListCard, AuctionListGroup, RoomPhase } from '@/features/auctions/types'
+import type { AuctionListCard, AuctionListGroup } from '@/features/auctions/types'
 import type { BidIncrementBand } from '@/features/auction-room/types'
 
 /**
@@ -36,14 +36,19 @@ export const AUCTION_BADGE_META: Record<
 }
 
 /**
- * 백엔드 5단계 RoomPhase를 뱃지의 4단계로 좁힌다.
- * RESULT·CLOSED만 "종료"로 묶고, 시작 전 두 단계는 그대로 둔다 —
- * 방 개설은 시작 30분 전이라 예정 카드 대부분이 NOT_OPEN이고, 그 안에서 입장 가능한
- * 소수를 골라내는 것이 이 뱃지의 목적이다.
+ * 지금 시각으로 판정한 뱃지 단계. 서버가 준 phase는 조회 시각의 값이라 시간이 지나면 낡는다.
+ *
+ * 시작 전 둘을 나누는 이유는, 방 개설이 시작 30분 전이라 예정 카드 대부분이 아직 입장 전이고
+ * 그중 입장 가능한 소수를 골라내는 것이 이 뱃지의 목적이기 때문이다.
+ *
+ * 마감 뒤는 나누지 않는다. 결과 확인 구간을 따로 보이면 아직 참여할 수 있는 것처럼 읽히고,
+ * 나누지 않은 덕분에 마감 + 5분이라는 서버 상수를 화면이 복제하지 않아도 된다.
  */
-export function roomPhaseToBadgeStatus(phase: RoomPhase): AuctionBadgeStatus {
-  if (phase === 'RESULT' || phase === 'CLOSED') return 'ENDED'
-  return phase
+export function badgeStatusAt(card: AuctionListCard, nowMs: number): AuctionBadgeStatus {
+  if (nowMs < new Date(card.openAt).getTime()) return 'NOT_OPEN'
+  if (nowMs < new Date(card.startAt).getTime()) return 'WAITING'
+  if (nowMs < new Date(card.endAt).getTime()) return 'LIVE'
+  return 'ENDED'
 }
 
 /** 화면의 상태 탭을 목록 API의 filter 값으로. 서버는 "예정"을 PENDING이라 부른다. */
@@ -92,10 +97,12 @@ export function arrangeCards(
 
 /**
  * 수정 가능 여부. 서버는 경매방이 열리기 전(now < roomOpenAt)만 허용하고,
- * 그 구간이 곧 NOT_OPEN 단계다. 방이 열린 뒤 요청은 서버가 거부한다.
+ * 그 구간이 곧 입장 전 단계다. 방이 열린 뒤 요청은 서버가 거부한다.
  */
-export function canEditAuction(phase: RoomPhase): boolean {
-  return phase === 'NOT_OPEN'
+// 뱃지 단계를 받는다. 카드가 뱃지를 시각으로 그리므로 버튼도 같은 판정을 써야
+// 한 카드 안에서 뱃지와 버튼이 어긋나지 않는다
+export function canEditAuction(status: AuctionBadgeStatus): boolean {
+  return status === 'NOT_OPEN'
 }
 
 /**
@@ -103,8 +110,8 @@ export function canEditAuction(phase: RoomPhase): boolean {
  * 단계는 시각으로 재는 값이라 마감 직후엔 서버의 상태 전환이 아직 안 끝났을 수 있고,
  * 그때는 서버가 거부하므로 응답 메시지를 그대로 보여준다.
  */
-export function canDeleteAuction(phase: RoomPhase): boolean {
-  return phase === 'RESULT' || phase === 'CLOSED'
+export function canDeleteAuction(status: AuctionBadgeStatus): boolean {
+  return status === 'ENDED'
 }
 
 /**

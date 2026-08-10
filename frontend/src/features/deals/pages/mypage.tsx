@@ -121,7 +121,8 @@ export function MyPage() {
           <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {participated.map((a) => (
               <li key={a.id}>
-                <AuctionCard auction={toListCard(a)} />
+                {/* 목업 데이터라 서버 시각이 없다. 뱃지는 이 브라우저 시계로 판정된다 */}
+                <AuctionCard auction={toListCard(a)} nowMs={Date.now()} />
               </li>
             ))}
           </ul>
