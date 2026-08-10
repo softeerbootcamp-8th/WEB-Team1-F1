@@ -11,7 +11,9 @@ import com.softeer.race.vehicle.domain.Manufacturer;
 import com.softeer.race.vehicle.domain.Transmission;
 import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleImage;
+import com.softeer.race.vehicle.application.VehicleKeywordService;
 import com.softeer.race.vehicle.domain.VehicleImageRepository;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,6 +62,9 @@ class EvaluationLookupServiceTest {
     @Mock
     private VehicleImageRepository vehicleImageRepository;
 
+    @Mock
+    private VehicleKeywordService vehicleKeywordService;
+
     @InjectMocks
     private EvaluationLookupService evaluationLookupService;
 
@@ -98,6 +103,8 @@ class EvaluationLookupServiceTest {
         given(vehicleImageRepository.findAllByVehicleOrderBySortOrderAsc(vehicle))
                 .willReturn(images);
         given(vehicle.getDiagnosticReportUrl()).willReturn(DOCUMENT_URL);
+        given(vehicleKeywordService.findByVehicle(vehicle))
+                .willReturn(List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK));
 
         // when
         EvaluationDetailInfo info = evaluationLookupService.findDetail(EVALUATION_ID, SELLER_ID);
@@ -107,6 +114,8 @@ class EvaluationLookupServiceTest {
         assertThat(info.estimatedPrice()).isEqualTo(21_500_000L);
         assertThat(info.imageUrls()).containsExactly(IMAGE_URL);
         assertThat(info.diagnosticReportUrl()).isEqualTo(DOCUMENT_URL);
+        assertThat(info.keywords())
+                .containsExactly(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK);
     }
 
     /**
@@ -123,6 +132,7 @@ class EvaluationLookupServiceTest {
         given(vehicle.getEstimatedPrice()).willReturn(null);
         given(vehicleImageRepository.findAllByVehicleOrderBySortOrderAsc(vehicle))
                 .willReturn(List.of());
+        given(vehicleKeywordService.findByVehicle(vehicle)).willReturn(List.of());
 
         // when
         EvaluationDetailInfo info = evaluationLookupService.findDetail(EVALUATION_ID, SELLER_ID);
@@ -133,6 +143,8 @@ class EvaluationLookupServiceTest {
         assertThat(info.diagnosticReportUrl()).isNull();
         assertThat(info.submittedAt()).isNull();
         assertThat(info.imageUrls()).isEmpty();
+        // 키워드만 null 이 아니다. 진단을 마쳤어도 0개일 수 있어 null 로는 두 경우가 구분되지 않는다
+        assertThat(info.keywords()).isEmpty();
     }
 
     @Test
@@ -149,6 +161,7 @@ class EvaluationLookupServiceTest {
                         assertThat(exception.errorCode()).isEqualTo(EvaluationErrorCode.NOT_FOUND));
 
         then(vehicleImageRepository).shouldHaveNoInteractions();
+        then(vehicleKeywordService).shouldHaveNoInteractions();
     }
 
     @Test

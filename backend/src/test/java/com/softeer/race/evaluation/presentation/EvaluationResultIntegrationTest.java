@@ -211,12 +211,70 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.code").value("EVALUATION_NOT_DIAGNOSABLE"));
     }
 
+    @Test
+    @DisplayName("매긴 키워드가 저장되고 응답에도 정해진 순서로 실려 나간다")
+    void submitStoresKeywords() throws Exception {
+        // given : 선언 순서와 어긋나게, 중복까지 섞어 보낸다
+        List<String> sent = List.of("GOOD_TIRE", "NO_LEAK", "ACCIDENT_FREE", "NO_LEAK");
+
+        // when
+        submitWithKeywords(EVALUATION_ID, EVALUATOR_TOKEN, DOCUMENT_URL, sent, IMAGE_1)
+                .andExpect(status().isOk())
+                // 중복이 사라지고 VehicleKeyword 선언 순서로 정렬돼 나간다
+                .andExpect(jsonPath("$.keywords.length()").value(3))
+                .andExpect(jsonPath("$.keywords[0]").value("ACCIDENT_FREE"))
+                .andExpect(jsonPath("$.keywords[1]").value("NO_LEAK"))
+                .andExpect(jsonPath("$.keywords[2]").value("GOOD_TIRE"));
+
+        // then : 중복을 보냈어도 행은 세 개다. 유니크 제약이 있어 걸러지지 않으면 500이 된다
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "GOOD_TIRE", "NO_LEAK");
+    }
+
+    /**
+     * 키워드 교체가 지우기 전에 넣지 않는지. 식별자 전략이 IDENTITY 라 저장은 INSERT 를 즉시 내지만
+     * 삭제는 커밋까지 미뤄지므로, 사이에 flush 가 없으면 <b>같은 키워드를 그대로 다시 제출하는
+     * 정상 흐름이 유니크 제약 위반으로 500</b>이 된다. 사진 교체에는 그 제약이 없어 이 순서 문제가
+     * 드러나지 않는다.
+     */
+    @Test
+    @DisplayName("다시 제출하면 키워드도 갈아 끼워진다")
+    void submitReplacesKeywords() throws Exception {
+        // given
+        submitWithKeywords(EVALUATION_ID, EVALUATOR_TOKEN, DOCUMENT_URL,
+                List.of("ACCIDENT_FREE", "NO_LEAK"), IMAGE_1)
+                .andExpect(status().isOk());
+
+        // when : 겹치는 것 하나를 그대로 두고 하나를 바꿔 다시 낸다
+        submitWithKeywords(EVALUATION_ID, EVALUATOR_TOKEN, NEW_DOCUMENT_URL,
+                List.of("ACCIDENT_FREE", "GOOD_TIRE"), IMAGE_1)
+                .andExpect(status().isOk());
+
+        // then : 뺀 키워드는 남지 않는다. 남으면 평가사가 뺀 것이 그대로 붙어 있게 된다
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "GOOD_TIRE");
+    }
+
+    @Test
+    @DisplayName("키워드를 하나도 매기지 않아도 제출된다")
+    void submitAcceptsNoKeyword() throws Exception {
+        // when : 매길 것이 없는 차량이 있으므로 0개는 정상이다
+        submitWithKeywords(EVALUATION_ID, EVALUATOR_TOKEN, DOCUMENT_URL, List.of(), IMAGE_1)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.keywords").isEmpty());
+
+        // then : 나머지 결과는 그대로 반영된다
+        assertThat(keywords()).isEmpty();
+        assertThat(statusOf(EVALUATION_ID)).isEqualTo("APPROVED");
+    }
+
     private ResultActions submit(long evaluationId, String rawToken,
                                  String documentUrl, String... imageUrls) throws Exception {
-        String images = String.join(",", List.of(imageUrls).stream()
-                .map(url -> "\"" + url + "\"")
-                .toList());
+        return submitWithKeywords(evaluationId, rawToken, documentUrl,
+                List.of("ACCIDENT_FREE", "NO_LEAK"), imageUrls);
+    }
 
+    private ResultActions submitWithKeywords(long evaluationId, String rawToken, String documentUrl,
+                                             List<String> keywords, String... imageUrls)
+            throws Exception {
         return mockMvc.perform(put("/api/evaluations/" + evaluationId + "/result")
                 .cookie(cookie(rawToken))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -225,9 +283,15 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
                           "mileage": %d,
                           "estimatedPrice": %d,
                           "imageUrls": [%s],
-                          "diagnosticReportUrl": "%s"
+                          "diagnosticReportUrl": "%s",
+                          "keywords": [%s]
                         }
-                        """.formatted(MILEAGE, ESTIMATED_PRICE, images, documentUrl)));
+                        """.formatted(MILEAGE, ESTIMATED_PRICE,
+                        quoted(List.of(imageUrls)), documentUrl, quoted(keywords))));
+    }
+
+    private static String quoted(List<String> values) {
+        return String.join(",", values.stream().map(value -> "\"" + value + "\"").toList());
     }
 
     private static Cookie cookie(String rawToken) {
@@ -240,6 +304,14 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
         return jdbcTemplate.queryForMap(
                 "select mileage, estimated_price, main_photo_url, diagnostic_report_url"
                         + " from vehicle where id = ?", VEHICLE_ID);
+    }
+
+    // 선언 순서로 정렬돼 저장되는 것이 아니라 읽을 때 정렬되므로, 여기서는 이름순으로 뽑아
+    // 어떤 행이 남았는지만 본다. 응답 순서는 위 시나리오가 jsonPath 로 확인한다
+    private List<String> keywords() {
+        return jdbcTemplate.queryForList(
+                "select keyword from vehicle_keyword_tag where vehicle_id = ? order by keyword",
+                String.class, VEHICLE_ID);
     }
 
     private List<String> imageUrls() {

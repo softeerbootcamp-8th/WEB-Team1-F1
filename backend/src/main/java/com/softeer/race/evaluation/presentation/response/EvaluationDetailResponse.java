@@ -4,6 +4,7 @@ import com.softeer.race.evaluation.application.dto.info.EvaluationDetailInfo;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
 import com.softeer.race.vehicle.domain.Transmission;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -84,7 +85,11 @@ public record EvaluationDetailResponse(
 
         @Schema(description = "결과가 제출된 시각. 진단 전에는 null입니다",
                 example = "2026-08-05T18:00:00")
-        LocalDateTime submittedAt
+        LocalDateTime submittedAt,
+
+        @Schema(description = "평가사가 매긴 키워드. 진단 전이거나 매긴 것이 없으면 빈 배열입니다",
+                example = "[\"ACCIDENT_FREE\", \"NO_LEAK\", \"GOOD_TIRE\"]")
+        List<VehicleKeyword> keywords
 ) {
 
     public static EvaluationDetailResponse from(EvaluationDetailInfo info) {
@@ -97,6 +102,6 @@ public record EvaluationDetailResponse(
                 info.model(), info.modelYear(), info.fuelType(), info.transmission(),
 
                 info.mileage(), info.estimatedPrice(), info.imageUrls(),
-                info.diagnosticReportUrl(), info.submittedAt());
+                info.diagnosticReportUrl(), info.submittedAt(), info.keywords());
     }
 }

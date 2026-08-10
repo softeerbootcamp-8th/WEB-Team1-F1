@@ -7,6 +7,7 @@ import com.softeer.race.vehicle.domain.Manufacturer;
 import com.softeer.race.vehicle.domain.Transmission;
 import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleImage;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,8 +16,11 @@ import java.util.List;
  * 신청 한 건의 전부. 목록에서 뺀 진단 결과가 여기 들어온다.
  * <p>
  * <b>진단 전에는 결과 칸이 전부 비어 나간다.</b> mileage · estimatedPrice · diagnosticReportUrl ·
- * submittedAt이 null이고 imageUrls에는 판매 신청이 넣어 둔 카탈로그 이미지만 있다. 그 비어 있음이
- * status와 함께 "아직 평가사가 다녀가지 않았다"를 뜻한다.
+ * submittedAt이 null이고 keywords는 빈 목록이며, imageUrls에는 판매 신청이 넣어 둔 카탈로그 이미지만
+ * 있다. 그 비어 있음이 status와 함께 "아직 평가사가 다녀가지 않았다"를 뜻한다.
+ * <p>
+ * keywords만 null이 아니라 빈 목록인 것은 진단을 마친 차량도 키워드가 0개일 수 있어서다. null로
+ * 구분하려 해도 두 경우가 겹쳐 구분되지 않는다.
  * <p>
  * 원시 타입을 쓰지 않고 {@code Integer} · {@code Long}으로 받는 이유가 그것이다. 진단 전 차량은
  * 두 값이 실제로 비어 있어({@code Vehicle.pendingDiagnosis}) 원시 타입으로 받으면 언박싱에서 터진다.
@@ -55,11 +59,13 @@ public record EvaluationDetailInfo(
         Long estimatedPrice,
         List<String> imageUrls,
         String diagnosticReportUrl,
-        LocalDateTime submittedAt
+        LocalDateTime submittedAt,
+        List<VehicleKeyword> keywords
 ) {
 
     public static EvaluationDetailInfo of(Evaluation evaluation,
-                                          List<VehicleImage> images) {
+                                          List<VehicleImage> images,
+                                          List<VehicleKeyword> keywords) {
         Vehicle vehicle = evaluation.getVehicle();
         User evaluator = evaluation.getEvaluator();
 
@@ -88,6 +94,8 @@ public record EvaluationDetailInfo(
                 vehicle.getDiagnosticReportUrl(),
                 // 제출 시각은 차량이 결과로 채워진 때다. 평가의 updatedAt은 배정에도 움직여
                 // "결과가 올라온 때"를 가리키지 못한다
-                vehicle.isDiagnosed() ? vehicle.getUpdatedAt() : null);
+                vehicle.isDiagnosed() ? vehicle.getUpdatedAt() : null,
+                // 진단 전에는 비어 있다. submittedAt이 null인 것과 같은 뜻이다
+                keywords);
     }
 }

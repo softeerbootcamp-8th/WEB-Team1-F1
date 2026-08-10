@@ -130,7 +130,10 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.imageUrls.length()").value(1))
                 // 담당 평가사와 연락처는 진단 전에도 나간다. 방문 전에 연락해야 하는 값이다
                 .andExpect(jsonPath("$.evaluatorName").value("박평가"))
-                .andExpect(jsonPath("$.contactPhone").value("01012345678"));
+                .andExpect(jsonPath("$.contactPhone").value("01012345678"))
+                // 진단 전에는 null 이 아니라 빈 배열이다. 진단을 마쳐도 0개일 수 있어
+                // null 로는 "아직 안 왔다"와 "매길 게 없었다"가 구분되지 않는다
+                .andExpect(jsonPath("$.keywords").isEmpty());
 
         // when : 담당 평가사가 결과를 제출한다
         submitResult().andExpect(status().isOk());
@@ -143,7 +146,10 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.estimatedPrice").value(21500000))
                 .andExpect(jsonPath("$.imageUrls[0]").value(IMAGE_URL))
                 .andExpect(jsonPath("$.diagnosticReportUrl").value(DOCUMENT_URL))
-                .andExpect(jsonPath("$.submittedAt").exists());
+                .andExpect(jsonPath("$.submittedAt").exists())
+                .andExpect(jsonPath("$.keywords.length()").value(2))
+                .andExpect(jsonPath("$.keywords[0]").value("ACCIDENT_FREE"))
+                .andExpect(jsonPath("$.keywords[1]").value("NO_LEAK"));
     }
 
     @Test
@@ -210,7 +216,8 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
                           "mileage": 45000,
                           "estimatedPrice": 21500000,
                           "imageUrls": ["%s"],
-                          "diagnosticReportUrl": "%s"
+                          "diagnosticReportUrl": "%s",
+                          "keywords": ["ACCIDENT_FREE", "NO_LEAK"]
                         }
                         """.formatted(IMAGE_URL, DOCUMENT_URL)));
     }

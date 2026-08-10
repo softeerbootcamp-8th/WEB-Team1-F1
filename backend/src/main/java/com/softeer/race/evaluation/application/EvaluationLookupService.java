@@ -6,6 +6,7 @@ import com.softeer.race.evaluation.application.dto.info.EvaluationSummaryInfo;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
+import com.softeer.race.vehicle.application.VehicleKeywordService;
 import com.softeer.race.vehicle.domain.VehicleImageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class EvaluationLookupService {
 
     private final EvaluationRepository evaluationRepository;
     private final VehicleImageRepository vehicleImageRepository;
+    private final VehicleKeywordService vehicleKeywordService;
 
     /**
      * 판매자가 낸 신청들. 최신 접수부터.
@@ -51,8 +53,8 @@ public class EvaluationLookupService {
     /**
      * 신청 한 건의 상세. 진단 전이면 결과 칸이 비어 나간다.
      * <p>
-     * 진단서와 사진을 쿼리 두 개로 따로 읽는다. 평가 조회에 함께 조인하면 사진 장수만큼 행이
-     * 불어나 평가와 차량이 중복으로 실려 온다.
+     * 사진과 키워드를 각자의 쿼리로 따로 읽는다. 평가 조회에 함께 조인하면 사진 장수 × 키워드
+     * 개수만큼 행이 불어나 평가와 차량이 중복으로 실려 온다.
      */
     public EvaluationDetailInfo findDetail(long evaluationId, long userId) {
         Evaluation evaluation = evaluationRepository.findWithVehicleById(evaluationId)
@@ -66,6 +68,7 @@ public class EvaluationLookupService {
 
         return EvaluationDetailInfo.of(
                 evaluation,
-                vehicleImageRepository.findAllByVehicleOrderBySortOrderAsc(evaluation.getVehicle()));
+                vehicleImageRepository.findAllByVehicleOrderBySortOrderAsc(evaluation.getVehicle()),
+                vehicleKeywordService.findByVehicle(evaluation.getVehicle()));
     }
 }
