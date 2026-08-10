@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LoaderCircle, PackageSearch } from 'lucide-react'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -38,16 +38,22 @@ function toListCard(auction: MockAuctionCard): AuctionListCard {
   }
 }
 
-/** 탭 이름이 주소에 남아야 상세에서 돌아왔을 때 보던 탭이 유지된다 */
+/**
+ * 탭이 곧 주소다. `/mypage/deals` 처럼 경로에 실어야 상세에서 돌아왔을 때 보던 탭이 유지되고,
+ * 방문견적 상세(`/mypage/evaluations/:id`)와 규칙이 같아진다.
+ */
 const TABS = ['evaluations', 'deals', 'auctions'] as const
+
+type Tab = (typeof TABS)[number]
 
 export function MyPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
 
-  // 모르는 값이 주소에 실려 와도 첫 탭으로 떨어뜨린다, 셋 다 아니면 빈 화면이 된다
-  const requested = searchParams.get('tab')
-  const tab = TABS.includes(requested as (typeof TABS)[number]) ? requested! : 'evaluations'
+  // 모르는 경로가 들어와도 첫 탭으로 떨어뜨린다, 셋 다 아니면 빈 화면이 된다
+  const segment = pathname.split('/')[2]
+  const tab: Tab = TABS.includes(segment as Tab) ? (segment as Tab) : 'evaluations'
 
   if (isLoading) {
     return (
@@ -87,7 +93,7 @@ export function MyPage() {
 
       <Tabs
         value={tab}
-        onValueChange={(next) => setSearchParams({ tab: next }, { replace: true })}
+        onValueChange={(next) => navigate(`/mypage/${next}`, { replace: true })}
       >
         <TabsList>
           <TabsTrigger value="evaluations">방문견적</TabsTrigger>
@@ -100,13 +106,7 @@ export function MyPage() {
         </TabsContent>
 
         <TabsContent value="deals" className="mt-6">
-          {/* 목록 규칙은 한 벌이다. /deals 페이지와 같은 패널을 그대로 쓴다 */}
           <DealListPanel />
-          <div className="mt-6 flex justify-center">
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/deals">거래 페이지에서 보기</Link>
-            </Button>
-          </div>
         </TabsContent>
 
         <TabsContent value="auctions" className="mt-6">
