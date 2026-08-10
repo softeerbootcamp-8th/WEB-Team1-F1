@@ -69,7 +69,8 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
 
         long liveAuctionId = rooms
                 .room(users.user("박판매", Role.GENERAL), START_AT)
-                .mainPhotoUrl("https://cdn.race.dev/avante-1.jpg")
+                .photos("https://cdn.race.dev/avante-1.jpg", "https://cdn.race.dev/avante-2.jpg",
+                        "https://cdn.race.dev/avante-3.jpg")
                 .diagnosticReportUrl("https://cdn.race.dev/avante-report.pdf")
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 40, 5), viewer, 11_000_000L)
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 42, 18), users.user("남궁민수", Role.DEALER), 12_000_000L)
@@ -105,7 +106,8 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.vehicle.modelYear").value(2022),
                 jsonPath("$.vehicle.mileage").value(35000),
                 jsonPath("$.vehicle.fuelType").value("GASOLINE"),
-                jsonPath("$.vehicle.thumbnailUrl").value("https://cdn.race.dev/avante-1.jpg"),
+                jsonPath("$.vehicle.imageUrls.length()").value(3),
+                jsonPath("$.vehicle.imageUrls[0]").value("https://cdn.race.dev/avante-1.jpg"),
                 jsonPath("$.vehicle.diagnosticReportUrl")
                         .value("https://cdn.race.dev/avante-report.pdf"));
 

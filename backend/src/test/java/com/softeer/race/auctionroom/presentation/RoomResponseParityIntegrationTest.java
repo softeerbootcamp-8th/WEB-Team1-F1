@@ -83,6 +83,10 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         assertThat(broadcast.at("/winner/mine").isMissingNode()).isTrue();
         assertThat(broadcast.at("/recentBids/0/mine").isMissingNode()).isTrue();
 
+        // then 2-1 : 차량은 방 안에서 바뀌지 않으므로 방송에 실리지 않는다, 조회가 한 번 준다
+        assertThat(broadcast.at("/vehicle").isMissingNode()).isTrue();
+        assertThat(query.at("/vehicle").isMissingNode()).isFalse();
+
         // then 3 : 그 둘을 걷어내면 나머지는 키도 값도 완전히 같다
         assertSameTree("", broadcast, withoutPersonalization(query));
     }
@@ -124,12 +128,13 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         return keys;
     }
 
-    // 방송에 없는 것은 보는 사람 기준의 판정 둘뿐이다, 그것만 걷어내고 나머지를 통째로 맞춘다
+    // 방송에 없는 것은 보는 사람 기준의 판정 둘과 방 안에서 바뀌지 않는 차량이다
     private JsonNode withoutPersonalization(JsonNode query) {
         ObjectNode copy = (ObjectNode) query.deepCopy();
 
         ((ObjectNode) copy.get("winner")).remove("mine");
         copy.get("recentBids").forEach(bid -> ((ObjectNode) bid).remove("mine"));
+        copy.remove("vehicle");
 
         return copy;
     }
@@ -138,7 +143,7 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
     // 마감 30초 안쪽에 넣으면 연장이 걸려 단계가 달라진다, 마지막 입찰을 그 밖에 둔다
     private long resultRoomWonBy(User winner, User loser) {
         return rooms.room(users.user("최판매", Role.GENERAL), RESULT_START_AT)
-                .mainPhotoUrl("https://cdn.race.dev/seltos-1.jpg")
+                .photos("https://cdn.race.dev/seltos-1.jpg", "https://cdn.race.dev/seltos-2.jpg")
                 .startPrice(20_000_000L)
                 .bid(RESULT_START_AT.plusMinutes(5), loser, 21_000_000L)
                 .bid(RESULT_START_AT.plusMinutes(10), winner, 22_000_000L)

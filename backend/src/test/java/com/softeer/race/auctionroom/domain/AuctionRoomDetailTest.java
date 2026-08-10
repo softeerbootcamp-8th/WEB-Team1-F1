@@ -93,7 +93,6 @@ class AuctionRoomDetailTest {
                 2022,
                 35_000,
                 FuelType.GASOLINE,
-                "https://cdn.race.dev/avante.jpg",
                 "https://cdn.race.dev/avante-report.pdf",
                 winnerId,
                 winnerRealName);

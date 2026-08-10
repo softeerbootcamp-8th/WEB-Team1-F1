@@ -33,7 +33,14 @@ class AuctionRoomReader {
     @Transactional(readOnly = true)
     public Optional<RoomOpening> findOpening(long auctionId) {
         return auctionRoomRepository.findDetailById(auctionId)
-                .map(detail -> RoomOpening.of(detail, LocalDateTime.now(clock)));
+                .map(detail -> RoomOpening.of(detail,
+                        auctionRoomRepository.findPhotoUrls(auctionId), LocalDateTime.now(clock)));
+    }
+
+    // 브로드캐스트는 차량을 보내지 않으므로 find 안에 두면 방송마다 헛되이 한 번 더 읽는다
+    @Transactional(readOnly = true)
+    public List<String> findPhotoUrls(long auctionId) {
+        return auctionRoomRepository.findPhotoUrls(auctionId);
     }
 
     @Transactional(readOnly = true)
