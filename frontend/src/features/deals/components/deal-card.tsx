@@ -19,7 +19,7 @@ export function DealCard({ deal }: { deal: DealCardData }) {
   return (
     <Card className="p-0 transition-colors hover:border-foreground/20">
       <Link
-        to={`/deals/${deal.dealId}`}
+        to={`/mypage/deals/${deal.dealId}`}
         className="flex items-center gap-4 p-5"
         aria-label={`${deal.model} 거래 상세`}
       >
