@@ -48,7 +48,8 @@ values (600, 600, 'HYUNDAI', '아반떼 CN7', 2022, NULL, 'GASOLINE', 'AUTOMATIC
 --      배정을 SQL로 심는다. 수락 API를 거쳐 만들면 이 테스트가 배정 흐름의 정상 동작에 얹히게
 --      되는데, 여기서 확인하려는 것은 "배정된 사람만 붙일 수 있는가"라 그 전제는 주어져야 한다
 -- 601: 반려되어 끝난 신청. 배정은 되어 있으므로 담당자 판정이 아니라 상태에서 걸려야 한다
---      REJECTED로 만드는 공개 경로가 없어 SQL로만 심을 수 있고, 그래서 이 시나리오는 통합에만 있다
+--      반려 API 로 만들 수도 있지만 여기서 확인하려는 것은 "끝난 신청이 막히는가"라 그 전제는
+--      주어져야 한다. 배정을 SQL 로 심는 것과 같은 이유다
 -- 602: 아직 아무도 수락하지 않은 신청. 담당자가 없어 누구도 붙일 수 없다
 insert into evaluation (id, vehicle_id, evaluator_id, visit_date, visit_address, contact_phone,
                         status, reject_reason, created_at, updated_at)
