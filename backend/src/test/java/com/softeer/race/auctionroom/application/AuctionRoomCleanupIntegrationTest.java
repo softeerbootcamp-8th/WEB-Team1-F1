@@ -91,7 +91,8 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
         // when
         auctionRoomStreamService.sweepClosedSubscriptions();
 
-        // then : 살아 있는지 확인만 하고 끝난다, 5초마다 같은 현황을 다시 밀지 않는다
+        // then : 살아 있는지 확인만 하고 끝난다, 주기가 돌 때마다 같은 현황을 다시 밀지 않는다
+        // 이 단정이 걷어내기 주기를 짧게 잡을 수 있는 근거다, 방송이 안 나갔다는 것은 DB 도 안 읽었다는 뜻이다
         assertThat(alive.received()).isEmpty();
     }
 
