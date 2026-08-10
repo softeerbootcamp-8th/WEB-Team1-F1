@@ -62,6 +62,9 @@ class AuctionListServiceTest {
 
     private static final long SELLER_ID = 7L;
 
+    // 차량 id 를 경매 id 와 다른 대역에 둔다. 통합테스트 픽스처가 901번 차량과 101번 경매로 가른 것과 같은 이유다
+    private static final long VEHICLE_ID_BASE = 900L;
+
     @Mock
     private AuctionListRepository auctionListRepository;
 
@@ -345,12 +348,12 @@ class AuctionListServiceTest {
     @Test
     @DisplayName("키워드 맵의 값이 해당 카드에 붙고 없는 차량은 빈 목록이다")
     void attachesKeywordsToMatchingCard() {
-        // given : 1번 차량에만 키워드가 있다
+        // given : 1번 경매의 차량에만 키워드가 있다
         givenLive(List.of(liveRow(1, NOW.minusMinutes(10)), liveRow(2, NOW.minusMinutes(5))));
         givenPending(List.of());
         givenEnded(List.of());
         given(vehicleKeywordService.findByVehicleIds(any()))
-                .willReturn(Map.of(1L, List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK)));
+                .willReturn(Map.of(VEHICLE_ID_BASE + 1, List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK)));
 
         // when
         List<AuctionCardInfo> content = auctionListService.list(null, null).content();
@@ -385,13 +388,13 @@ class AuctionListServiceTest {
         // when
         auctionListService.list(null, null);
 
-        // then : 응답에서 빠지는 21번 차량의 키워드까지 가져올 이유가 없다
+        // then : 응답에서 빠지는 21번째 경매의 차량까지 키워드를 가져올 이유가 없다
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Collection<Long>> requested = ArgumentCaptor.forClass(Collection.class);
         verify(vehicleKeywordService).findByVehicleIds(requested.capture());
         assertThat(requested.getValue())
                 .hasSize(PAGE_SIZE)
-                .doesNotContain((long) FETCH_SIZE);
+                .doesNotContain(VEHICLE_ID_BASE + FETCH_SIZE);
     }
 
     // ================= 상태 필터 =================
@@ -545,7 +548,7 @@ class AuctionListServiceTest {
     private AuctionListRow row(long id, LocalDateTime start) {
         return new AuctionListRow(
                 id,
-                id,                          // 차량 id, 테스트에서는 경매 id 와 같게 둔다
+                VEHICLE_ID_BASE + id,        // 경매 id 와 다른 대역, 같게 두면 둘을 바꿔 껴도 통과한다
                 "https://cdn.race.dev/" + id + ".jpg",
                 "HYUNDAI",
                 "MODEL-" + id,
