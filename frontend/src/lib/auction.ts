@@ -1,4 +1,4 @@
-import type { AuctionBadgeStatus, AuctionStatus, DealStatus } from '@/types/domain'
+import type { AuctionBadgeStatus, AuctionStatus } from '@/types/domain'
 import type { AuctionListCard, AuctionListGroup } from '@/features/auctions/types'
 import type { BidIncrementBand } from '@/features/auction-room/types'
 
@@ -127,44 +127,3 @@ export function serverClockOffset(serverTimeIso: string, receivedAtMs: number): 
 
 /** 경매 시작 시각 최소 리드타임(서버 MIN_LEAD_TIME_HOURS와 같은 1시간) */
 export const MIN_START_LEAD_TIME_MS = 60 * 60 * 1000
-
-/** 거래 파이프라인 단계 순서 (진행률 계산용) */
-export const DEAL_FLOW: DealStatus[] = [
-  'PENDING_SELLER',
-  'CONFIRMED',
-  'IN_TRANSIT',
-  'COMPLETED',
-]
-
-export const DEAL_STATUS_META: Record<
-  DealStatus,
-  { label: string; description: string }
-> = {
-  PENDING_SELLER: {
-    label: '판매자 확정 대기',
-    description: '판매자가 거래를 확정하면 다음 단계로 진행됩니다.',
-  },
-  CONFIRMED: {
-    label: '거래 확정',
-    description: '거래가 확정되었습니다. 탁송/배송을 준비하세요.',
-  },
-  IN_TRANSIT: {
-    label: '배송중',
-    description: '차량이 배송(탁송) 중입니다.',
-  },
-  COMPLETED: {
-    label: '거래 완료',
-    description: '거래가 정상적으로 완료되었습니다.',
-  },
-  CANCELLED: {
-    label: '거래 취소',
-    description: '거래가 취소되었습니다.',
-  },
-}
-
-/** 거래 진행률(0~100). CANCELLED 는 0 취급. */
-export function dealProgress(status: DealStatus): number {
-  if (status === 'CANCELLED') return 0
-  const idx = DEAL_FLOW.indexOf(status)
-  return ((idx + 1) / DEAL_FLOW.length) * 100
-}

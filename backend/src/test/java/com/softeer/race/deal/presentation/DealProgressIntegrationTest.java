@@ -243,7 +243,7 @@ class DealProgressIntegrationTest extends IntegrationTestSupport {
         // 눌렀을 때 할 일이 있는 화면으로 가야 알림이 제 역할을 한다
         assertThat(notificationsOf(seller))
                 .filteredOn(row -> row.type() != AUCTION_SOLD)
-                .allSatisfy(row -> assertThat(row.link()).isEqualTo("/deals/" + dealId));
+                .allSatisfy(row -> assertThat(row.link()).isEqualTo("/mypage/deals/" + dealId));
     }
 
     @Test

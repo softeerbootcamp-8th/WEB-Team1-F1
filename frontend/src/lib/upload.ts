@@ -1,5 +1,43 @@
-import { requestPresignedUploads } from './api'
-import type { UploadContentType } from './types'
+import { axiosInstance } from '@/lib/axios'
+
+/**
+ * 저장소에 올릴 수 있는 형식. 서버 UploadContentType 과 1:1이다.
+ *
+ * 진단서와 거래 서류가 같은 경로로 발급받으므로 feature 하나에 두지 않는다 —
+ * 기능 간 의존을 얕게 두는 규칙에 따라 공용으로 올렸다.
+ */
+export type UploadContentType =
+  | 'image/jpeg'
+  | 'image/png'
+  | 'image/webp'
+  | 'application/pdf'
+
+export interface PresignedUpload {
+  key: string
+  /** 이 주소로 파일을 PUT 한다. 발급 때 적은 형식·크기와 정확히 같아야 한다 */
+  uploadUrl: string
+  /** 업로드 후 조회할 주소. 저장해야 하는 값은 이쪽이다 */
+  fileUrl: string
+  expiresAt: string
+}
+
+export interface PresignedUploadRequest {
+  files: { contentType: UploadContentType; contentLength: number }[]
+}
+
+export interface PresignedUploadResponse {
+  uploads: PresignedUpload[]
+}
+
+export async function requestPresignedUploads(
+  request: PresignedUploadRequest,
+): Promise<PresignedUploadResponse> {
+  const { data } = await axiosInstance.post<PresignedUploadResponse>(
+    '/api/uploads/presigned',
+    request,
+  )
+  return data
+}
 
 export const MAX_IMAGE_COUNT = 20
 export const MAX_IMAGE_SIZE = 10 * 1024 * 1024
