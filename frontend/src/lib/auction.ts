@@ -68,6 +68,17 @@ export function canDeleteAuction(phase: RoomPhase): boolean {
   return phase === 'RESULT' || phase === 'CLOSED'
 }
 
+/**
+ * 서버 시각과 그 응답을 받은 순간의 브라우저 시계 차이. 남은 시간을 서버 기준으로 세는 데 쓴다.
+ * 서버는 남은 시간을 내려주지 않고 절대 시각과 serverTime 만 주며, 세는 것은 화면 몫이다.
+ *
+ * 받은 순간을 인자로 받는다. 나중에 Date.now()로 계산하면 조회 이후 흐른 시간만큼 보정값이
+ * 어긋나므로, 언제 잡아야 하는지를 시그니처가 강제하게 둔다.
+ */
+export function serverClockOffset(serverTimeIso: string, receivedAtMs: number): number {
+  return new Date(serverTimeIso).getTime() - receivedAtMs
+}
+
 /** 경매 시작 시각 최소 리드타임(서버 MIN_LEAD_TIME_HOURS와 같은 1시간) */
 export const MIN_START_LEAD_TIME_MS = 60 * 60 * 1000
 

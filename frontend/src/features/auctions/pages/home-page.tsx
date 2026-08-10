@@ -78,7 +78,7 @@ export function HomePage() {
   }, [])
 
   // 진행중만 서버에서 걸러 받는다. 첫 페이지에 진행중이 없으면 빈 손이던 문제가 사라진다.
-  const { cards } = useAuctionList({ scope: 'ALL', filter: 'LIVE' })
+  const { cards, offsetMs } = useAuctionList({ scope: 'ALL', filter: 'LIVE' })
   const liveAuctions = cards.slice(0, 3)
 
   return (
@@ -252,7 +252,7 @@ export function HomePage() {
                 } as CSSProperties
               }
             >
-              <AuctionCard auction={auction} />
+              <AuctionCard auction={auction} offsetMs={offsetMs} />
             </li>
           ))}
         </ul>

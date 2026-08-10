@@ -101,6 +101,7 @@ export function AuctionsPage() {
 
   const {
     cards,
+    offsetMs,
     isLoading,
     isLoadingMore,
     hasNext,
@@ -192,6 +193,7 @@ export function AuctionsPage() {
               <li key={auction.auctionId}>
                 <AuctionCard
                   auction={auction}
+                  offsetMs={offsetMs}
                   actions={
                     scope === 'MINE' ? (
                       <MyAuctionActions

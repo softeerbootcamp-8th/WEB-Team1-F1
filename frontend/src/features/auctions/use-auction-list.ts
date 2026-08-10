@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { fetchAuctionList } from '@/features/auctions/api'
+import { serverClockOffset } from '@/lib/auction'
 import type {
   AuctionListCard,
   AuctionListCursor,
@@ -30,6 +31,9 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
   const [isLoading, setIsLoading] = useState(enabled)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<unknown>(null)
+  // 서버 시각 - 이 브라우저의 시계. 서버는 남은 시간이 아니라 절대 시각을 주므로,
+  // 시계가 어긋난 사람이 아직 진행 중인 경매를 끝난 것으로 보지 않으려면 이 값이 필요하다.
+  const [offsetMs, setOffsetMs] = useState(0)
   // 이어 읽기 실패는 첫 페이지 실패와 분리한다. 같이 두면 스크롤 도중 한 번 실패했을 때
   // 이미 보고 있던 목록이 통째로 에러 화면으로 바뀐다.
   const [loadMoreError, setLoadMoreError] = useState<unknown>(null)
@@ -60,6 +64,8 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
     fetchAuctionList({ scope, filter })
       .then((page) => {
         if (cancelled) return
+        // 응답이 도착한 이 순간에 잡는다. 렌더 시점에 재면 조회 이후 흐른 시간만큼 어긋난다.
+        setOffsetMs(serverClockOffset(page.serverTime, Date.now()))
         setCards(page.content)
         setCursor(page.nextCursor)
         setHasNext(page.hasNext)
@@ -112,5 +118,15 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), [])
 
-  return { cards, isLoading, isLoadingMore, hasNext, error, loadMoreError, loadMore, reload }
+  return {
+    cards,
+    offsetMs,
+    isLoading,
+    isLoadingMore,
+    hasNext,
+    error,
+    loadMoreError,
+    loadMore,
+    reload,
+  }
 }

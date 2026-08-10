@@ -11,12 +11,14 @@ import type { AuctionListCard as AuctionListCardModel } from '@/features/auction
 
 interface AuctionCardProps {
   auction: AuctionListCardModel
+  /** 서버 시각 - 브라우저 시계. 남은 시간을 브라우저가 아니라 서버 기준으로 센다 */
+  offsetMs?: number
   /** 카드 하단에 덧붙일 조작 영역. 나의 경매에서 수정·삭제 버튼을 넣는다. */
   actions?: React.ReactNode
 }
 
 /** 홈/목록 화면의 경매 카드. 썸네일·차종·현재가/시작가·남은시간. */
-export function AuctionCard({ auction, actions }: AuctionCardProps) {
+export function AuctionCard({ auction, offsetMs = 0, actions }: AuctionCardProps) {
   const status = roomPhaseToBadgeStatus(auction.phase)
   const isLive = status === 'LIVE'
   // 입장 여부와 상관없이 아직 입찰 전이라 값은 똑같이 시작가를 보여준다
@@ -40,13 +42,13 @@ export function AuctionCard({ auction, actions }: AuctionCardProps) {
           {isBeforeStart && (
             <div className="bg-background/85 absolute right-3 bottom-3 rounded-md px-2 py-1 text-xs backdrop-blur">
               <span className="text-muted-foreground">시작까지 </span>
-              <Countdown targetIso={auction.startAt} className="font-medium" />
+              <Countdown targetIso={auction.startAt} offsetMs={offsetMs} className="font-medium" />
             </div>
           )}
           {isLive && (
             <div className="bg-background/85 absolute right-3 bottom-3 rounded-md px-2 py-1 text-xs backdrop-blur">
               <span className="text-muted-foreground">마감 </span>
-              <Countdown targetIso={auction.endAt} className="font-medium" />
+              <Countdown targetIso={auction.endAt} offsetMs={offsetMs} className="font-medium" />
             </div>
           )}
         </div>
