@@ -130,7 +130,7 @@ public class AuctionRoomSeeder {
 
             for (PlacedBid placed : bids) {
                 TestClock.INSTANCE.at(placed.at(), () -> {
-                    auction.acceptBid(placed.amount(), placed.at());
+                    auction.acceptBid(placed.bidder(), placed.amount(), placed.at());
                     bidRepository.save(Bid.place(auction, placed.bidder(), placed.amount()));
 
                     return auctionRepository.save(auction);

@@ -130,15 +130,18 @@ class AuctionTest {
         assertThat(scheduled().isBiddableAt(now)).isEqualTo(biddable);
     }
 
+    // 최고 입찰자와 현재가가 한 사건이라는 계약을 고정한다
+    // 둘을 따로 갱신하면 낙찰자와 낙찰가가 서로 다른 입찰에서 나온다
     @Test
-    @DisplayName("입찰이 성립하면 현재가와 갱신 시각만 바뀐다")
-    void acceptBidUpdatesPriceOnly() {
+    @DisplayName("입찰이 성립하면 현재가와 최고 입찰자가 함께 바뀌고 낙찰자는 그대로다")
+    void acceptBidUpdatesPriceAndTopBidder() {
         Auction auction = scheduled();
         LocalDateTime bidAt = START_TIME.plusMinutes(5);
 
-        auction.acceptBid(12_000_000L, bidAt);
+        auction.acceptBid(ALICE, 12_000_000L, bidAt);
 
         assertThat(auction.getCurrentPrice()).isEqualTo(12_000_000L);
+        assertThat(auction.getTopBidder()).isEqualTo(ALICE);
         assertThat(auction.getPriceUpdatedAt()).isEqualTo(bidAt);
         // 낙찰 확정과 상태 전환은 마감 뒤의 일이라 최고가 갱신이 건드리지 않는다
         assertThat(auction.getWinner()).isNull();
@@ -158,7 +161,7 @@ class AuctionTest {
         Auction auction = scheduled();
         LocalDateTime bidAt = END_TIME.minusSeconds(remainingSeconds);
 
-        auction.acceptBid(12_000_000L, bidAt);
+        auction.acceptBid(ALICE, 12_000_000L, bidAt);
 
         assertThat(auction.getCurrentEndTime())
                 .isEqualTo(extended ? bidAt.plusSeconds(30) : END_TIME);
@@ -170,19 +173,21 @@ class AuctionTest {
     @DisplayName("마감을 지난 시각으로 입찰을 반영하면 서버 결함으로 중단한다")
     @Test
     void acceptBidAfterDeadlineFails() {
-        assertThatThrownBy(() -> scheduled().acceptBid(12_000_000L, END_TIME))
+        assertThatThrownBy(() -> scheduled().acceptBid(ALICE, 12_000_000L, END_TIME))
                 .isInstanceOf(IllegalStateException.class);
     }
 
     // ================= 종료·낙찰 확정 =================
 
+    // 종료는 낙찰자를 인자로 받지 않는다, 현재가를 만든 사람이 그대로 낙찰자가 된다
+    // 낙찰가와 낙찰자가 서로 다른 입찰에서 나올 수 없다는 것이 이 테스트의 계약이다
     @Test
-    @DisplayName("마감에 도달한 경매를 종료하면 최고 입찰자가 낙찰자로 확정된다")
+    @DisplayName("마감에 도달한 경매를 종료하면 현재가를 만든 사람이 낙찰자로 확정된다")
     void close_낙찰() {
         Auction auction = inProgress();
-        auction.acceptBid(12_000_000L, START_TIME.plusMinutes(1));
+        auction.acceptBid(ALICE, 12_000_000L, START_TIME.plusMinutes(1));
 
-        auction.close(ALICE, END_TIME);
+        auction.close(END_TIME);
 
         assertThat(auction.getStatus()).isEqualTo(AuctionStatus.ENDED);
         assertThat(auction.getWinner()).isEqualTo(ALICE);
@@ -195,7 +200,7 @@ class AuctionTest {
     void close_유찰() {
         Auction auction = inProgress();
 
-        auction.close(null, END_TIME);
+        auction.close(END_TIME);
 
         assertThat(auction.getStatus()).isEqualTo(AuctionStatus.FAILED);
         assertThat(auction.getWinner()).isNull();
@@ -223,17 +228,19 @@ class AuctionTest {
     @Test
     @DisplayName("마감 전 경매를 종료하려 하면 서버 결함으로 중단한다")
     void close_마감전_거부() {
-        assertThatThrownBy(() -> inProgress().close(ALICE, END_TIME.minusSeconds(1)))
+        assertThatThrownBy(() -> inProgress().close(END_TIME.minusSeconds(1)))
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    // 아래 유찰 케이스와 짝이다, 입찰 유무로 ENDED와 FAILED 두 경로를 각각 막는지 본다
     @Test
-    @DisplayName("이미 종료된 경매를 다시 종료하려 하면 서버 결함으로 중단한다")
+    @DisplayName("이미 낙찰된 경매를 다시 종료하려 하면 서버 결함으로 중단한다")
     void close_중복_거부() {
         Auction auction = inProgress();
-        auction.close(ALICE, END_TIME);
+        auction.acceptBid(ALICE, 12_000_000L, START_TIME.plusMinutes(1));
+        auction.close(END_TIME);
 
-        assertThatThrownBy(() -> auction.close(ALICE, END_TIME))
+        assertThatThrownBy(() -> auction.close(END_TIME))
                 .isInstanceOf(IllegalStateException.class);
     }
 
@@ -241,9 +248,9 @@ class AuctionTest {
     @DisplayName("유찰된 경매도 다시 종료할 수 없다")
     void close_유찰후_중복_거부() {
         Auction auction = inProgress();
-        auction.close(null, END_TIME);
+        auction.close(END_TIME);
 
-        assertThatThrownBy(() -> auction.close(ALICE, END_TIME))
+        assertThatThrownBy(() -> auction.close(END_TIME))
                 .isInstanceOf(IllegalStateException.class);
     }
 
@@ -254,7 +261,7 @@ class AuctionTest {
     void close_연장된_경매() {
         Auction auction = inProgress();
         LocalDateTime lastBid = END_TIME.minusSeconds(10);
-        auction.acceptBid(12_000_000L, lastBid);
+        auction.acceptBid(ALICE, 12_000_000L, lastBid);
 
         assertThat(auction.isClosableAt(END_TIME)).isFalse();
         assertThat(auction.isClosableAt(lastBid.plusSeconds(30))).isTrue();
@@ -306,7 +313,7 @@ class AuctionTest {
     @DisplayName("이미 끝난 경매는 다시 진행 중으로 돌아가지 않는다")
     void start_종료후_거부() {
         Auction auction = inProgress();
-        auction.close(null, END_TIME);
+        auction.close(END_TIME);
 
         assertThatThrownBy(() -> auction.start(END_TIME))
                 .isInstanceOf(IllegalStateException.class);

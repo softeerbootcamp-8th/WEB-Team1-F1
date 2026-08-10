@@ -5,15 +5,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface BidRepository extends JpaRepository<Bid, Long> {
-
-    /**
-     * 이 경매의 가장 최근 입찰, 연속 입찰 금지 판정에 쓴다
-     * 최고가는 Auction.currentPrice 가 들고 있지만 누가 냈는지는 여기만 안다
-     */
-    Optional<Bid> findFirstByAuctionIdOrderByIdDesc(long auctionId);
 
     /**
      * 이 경매에 입찰한 사람 중 낙찰자를 뺀 회원 id

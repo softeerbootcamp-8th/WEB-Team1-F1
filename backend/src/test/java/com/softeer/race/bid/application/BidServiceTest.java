@@ -121,7 +121,6 @@ class BidServiceTest {
         when(bidIncrementService.loadTable()).thenReturn(table);
         when(bidPreCheckRepository.find(AUCTION_ID, BIDDER_ID)).thenReturn(Optional.of(preCheck()));
         when(auctionRepository.findByIdForUpdate(AUCTION_ID)).thenReturn(Optional.of(auction));
-        when(bidRepository.findFirstByAuctionIdOrderByIdDesc(AUCTION_ID)).thenReturn(Optional.empty());
         // 잠금 앞 사전 판정과 잠금 안 판정이 같은 인자로 두 번 부른다
         when(table.ruleFor(START_PRICE, null))
                 .thenReturn(new BidRule(START_PRICE, INCREMENT, START_PRICE));
