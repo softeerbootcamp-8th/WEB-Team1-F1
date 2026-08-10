@@ -325,7 +325,7 @@ class AuctionListServiceTest {
         givenLive(List.of(liveRow(1, NOW.minusMinutes(10))));
         givenPending(List.of());
         givenEnded(List.of());
-        given(roomChannel.countSubscribers(1L)).willReturn(7);
+        given(roomChannel.countViewers(1L)).willReturn(7);
 
         // when
         AuctionCardInfo card = auctionListService.list(null, null).content().getFirst();

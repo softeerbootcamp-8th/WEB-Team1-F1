@@ -14,7 +14,9 @@ import com.softeer.race.user.domain.User;
 import com.softeer.race.vehicle.application.VehicleImageService;
 import com.softeer.race.vehicle.application.dto.command.VehicleImageRegisterCommand;
 import com.softeer.race.vehicle.application.dto.info.VehicleImageRegisterInfo;
+import com.softeer.race.vehicle.application.VehicleKeywordService;
 import com.softeer.race.vehicle.domain.Vehicle;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,6 +33,7 @@ import static com.softeer.race.notification.domain.NotificationType.EVAL_APPROVE
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willAnswer;
@@ -67,11 +70,17 @@ class EvaluationResultServiceTest {
     private static final String DOCUMENT_URL = "https://cdn.race.dev/documents/2026/08/c.pdf";
     private static final String NEW_DOCUMENT_URL = "https://cdn.race.dev/documents/2026/08/d.pdf";
 
+    private static final List<VehicleKeyword> KEYWORDS =
+            List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK);
+
     @Mock
     private EvaluationRepository evaluationRepository;
 
     @Mock
     private VehicleImageService vehicleImageService;
+
+    @Mock
+    private VehicleKeywordService vehicleKeywordService;
 
     @Mock
     private FileStorage fileStorage;
@@ -100,6 +109,7 @@ class EvaluationResultServiceTest {
         givenManagedDocument(DOCUMENT_URL);
         givenEvaluationFound();
         givenImagesRegistered();
+        givenKeywordsReplaced();
         given(vehicle.getDiagnosticReportUrl()).willReturn(DOCUMENT_URL);
         given(evaluation.getStatus()).willReturn(EvaluationStatus.REQUESTED);
         willAnswer(invocation -> {
@@ -132,6 +142,7 @@ class EvaluationResultServiceTest {
         givenManagedDocument(DOCUMENT_URL);
         givenEvaluationFound();
         givenImagesRegistered();
+        givenKeywordsReplaced();
         given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
 
         // when
@@ -148,6 +159,7 @@ class EvaluationResultServiceTest {
         givenManagedDocument(DOCUMENT_URL);
         givenEvaluationFound();
         givenImagesRegistered();
+        givenKeywordsReplaced();
         given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
 
         // when
@@ -169,6 +181,7 @@ class EvaluationResultServiceTest {
         givenManagedDocument(NEW_DOCUMENT_URL);
         givenEvaluationFound();
         givenImagesRegistered();
+        givenKeywordsReplaced();
         given(vehicle.getDiagnosticReportUrl()).willReturn(NEW_DOCUMENT_URL);
         given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
 
@@ -224,6 +237,7 @@ class EvaluationResultServiceTest {
         givenManagedDocument(DOCUMENT_URL);
         givenEvaluationFound();
         givenImagesRegistered();
+        givenKeywordsReplaced();
         given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
 
         // when
@@ -246,6 +260,10 @@ class EvaluationResultServiceTest {
         given(seller.getId()).willReturn(SELLER_ID);
     }
 
+    private void givenKeywordsReplaced() {
+        given(vehicleKeywordService.replace(any(Vehicle.class), anyList())).willReturn(KEYWORDS);
+    }
+
     private void givenImagesRegistered() {
         given(vehicleImageService.register(any(VehicleImageRegisterCommand.class)))
                 .willReturn(new VehicleImageRegisterInfo(VEHICLE_ID, List.of(
@@ -255,6 +273,7 @@ class EvaluationResultServiceTest {
 
     private static EvaluationResultSubmitCommand command(String diagnosticReportUrl) {
         return new EvaluationResultSubmitCommand(EVALUATION_ID, EVALUATOR_ID,
-                MILEAGE, ESTIMATED_PRICE, List.of(IMAGE_1, IMAGE_2), diagnosticReportUrl);
+                MILEAGE, ESTIMATED_PRICE, List.of(IMAGE_1, IMAGE_2), diagnosticReportUrl,
+                KEYWORDS);
     }
 }

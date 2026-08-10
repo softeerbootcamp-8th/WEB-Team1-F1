@@ -4,7 +4,6 @@ import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
 import com.softeer.race.auctionroom.domain.BidStats;
 import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.auctionroom.domain.RoomPhase;
-import com.softeer.race.auctionroom.domain.VehicleSummary;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,7 +14,6 @@ import java.util.List;
 public record RoomState(
         long auctionId,
         RoomPhase phase,
-        VehicleSummary vehicle,
         long startPrice,
         long currentPrice,
         LocalDateTime openAt,
@@ -37,7 +35,6 @@ public record RoomState(
         return new RoomState(
                 detail.auctionId(),
                 result.phase(),
-                detail.vehicle(),
                 detail.startPrice(),
                 detail.currentPrice(),
                 detail.roomOpenAt(),

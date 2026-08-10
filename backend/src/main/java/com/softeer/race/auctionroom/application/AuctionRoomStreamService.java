@@ -18,11 +18,13 @@ import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.AUCTION_R
 @RequiredArgsConstructor
 public class AuctionRoomStreamService {
 
-    // 나간 사람이 이 시간 안에는 접속자에서 빠진다, 프록시가 유휴 연결을 끊는 것도 이 신호가 막는다
-    private static final long SWEEP_INTERVAL_MILLIS = 5_000L;
+    // 알리지 않고 끊긴 사람이 이 시간 안에는 접속자에서 빠진다, 프록시가 유휴 연결을 끊는 것도 이 신호가 막는다
+    // 정상 종료는 해제 콜백이 즉시 빼 가므로 이 주기는 조용히 사라진 연결만 줍는 안전망이다
+    // 짧게 잡아도 싸다, 메모리를 돌며 소켓에 주석 한 줄을 쓸 뿐이고 실제로 걷어낸 방이 있을 때만 DB 를 읽는다
+    private static final long SWEEP_INTERVAL_MILLIS = 500L;
 
     // 방이 닫히고 이 시간 안에는 남은 연결이 끊긴다, 그동안만 접속자 수가 실제와 어긋난다
-    // 위와 값이 같지만 정해진 이유가 다르다, 한쪽을 바꿔도 다른 쪽은 따라오지 않는다
+    // 위와 이유가 달라 값도 따로 간다, 이쪽은 구독이 있는 방마다 단계를 조회하므로 주기를 줄인 만큼 쿼리가 는다
     private static final long DISCONNECT_INTERVAL_MILLIS = 5_000L;
 
     private final AuctionRoomReader auctionRoomReader;
@@ -93,7 +95,7 @@ public class AuctionRoomStreamService {
      * 방에 열려 있는 구독에 현황을 다시 보낸다, 보는 사람이 없으면 조회도 하지 않는다
      */
     public void refresh(long auctionId) {
-        if (roomChannel.countSubscribers(auctionId) == 0) {
+        if (roomChannel.countViewers(auctionId) == 0) {
             return;
         }
 
@@ -114,7 +116,7 @@ public class AuctionRoomStreamService {
 
         // 연결을 열어 두지 않는 단계면 남은 구독은 접속자가 아니다, 조회·목록과 같은 판정을 여기서도 한다
         int connectedCount = result.phase().allowsConnection()
-                ? roomChannel.countSubscribers(auctionId) : 0;
+                ? roomChannel.countViewers(auctionId) : 0;
 
         roomChannel.broadcast(auctionId, RoomState.of(result, connectedCount));
     }

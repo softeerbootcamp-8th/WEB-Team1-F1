@@ -1,10 +1,12 @@
 package com.softeer.race.evaluation.presentation.request;
 
 import com.softeer.race.evaluation.application.dto.command.EvaluationResultSubmitCommand;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
@@ -47,7 +49,22 @@ public record EvaluationResultSubmitRequest(
                 example = "https://www.f1race.site/documents/2026/08/"
                         + "3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.pdf")
         @NotBlank(message = "진단서 주소는 필수입니다.")
-        String diagnosticReportUrl
+        String diagnosticReportUrl,
+
+        /*
+         * 빈 배열은 허용하지만 필드 자체를 빼는 것은 막는다. 매길 것이 없는 차량이 있으므로 0개는
+         * 정상이지만, 필드가 없는 요청을 0개로 받아 주면 이름을 잘못 적어 보낸 요청도 조용히
+         * 통과해 키워드가 하나도 안 붙은 채 승인된다.
+         *
+         * 중복은 여기서 거르지 않는다. 거부할 만한 잘못이 아니라 같은 값을 두 번 보낸 것과 한 번
+         * 보낸 것의 결과가 같아야 하고, 그 정규화는 VehicleKeywordService.replace가 한다.
+         */
+        @Schema(description = "진단에서 확인한 키워드. 매길 것이 없으면 빈 배열을 보냅니다.",
+                example = "[\"ACCIDENT_FREE\", \"NO_LEAK\", \"GOOD_TIRE\"]")
+        @NotNull(message = "키워드 목록은 필수입니다. 매길 것이 없으면 빈 배열을 보내주세요.")
+        @Size(max = EvaluationResultSubmitRequest.MAX_KEYWORD_COUNT,
+                message = "키워드는 " + EvaluationResultSubmitRequest.MAX_KEYWORD_COUNT + "개까지 매길 수 있습니다.")
+        List<@NotNull(message = "키워드는 비어 있을 수 없습니다.") VehicleKeyword> keywords
 ) {
 
     static final int MAX_MILEAGE_KM = 999_999;
@@ -55,12 +72,22 @@ public record EvaluationResultSubmitRequest(
     /** 업로드 주소 발급 상한과 같게 둔다. 한 번에 발급받은 것을 그대로 보낼 수 있어야 한다 */
     static final int MAX_IMAGE_COUNT = 20;
 
+    /*
+     * 키워드 종류 수와 같게 둔다. 중복을 제거하면 그보다 많을 수 없어 정상 요청을 막지 않고,
+     * 상한이 있어야 수천 건이 담긴 본문이 검증 전에 역직렬화되는 일이 없다.
+     *
+     * VehicleKeyword.values().length 로 쓸 수 없다. 애노테이션 인자는 컴파일 타임 상수여야 한다.
+     * 그래서 둘이 어긋나지 않는지는 테스트가 지킨다.
+     */
+    static final int MAX_KEYWORD_COUNT = 7;
+
     /**
      * 평가사 식별자를 인자로 받는다. 본문으로 받으면 남의 이름을 대고 제출할 수 있어,
      * 배정된 평가사만 제출한다는 규칙이 무의미해진다.
      */
     public EvaluationResultSubmitCommand toCommand(long evaluationId, long evaluatorId) {
         return new EvaluationResultSubmitCommand(
-                evaluationId, evaluatorId, mileage, estimatedPrice, imageUrls, diagnosticReportUrl);
+                evaluationId, evaluatorId, mileage, estimatedPrice, imageUrls, diagnosticReportUrl,
+                keywords);
     }
 }

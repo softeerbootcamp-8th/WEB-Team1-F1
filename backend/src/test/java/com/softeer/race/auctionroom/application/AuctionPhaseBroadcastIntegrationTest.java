@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -173,7 +174,16 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     // 받은 현황만 기록하면 되는 구독, 끊김은 이 테스트가 보지 않는다
     private static final class RecordingSubscriber implements RoomSubscriber {
 
+        // 이 테스트는 사람이 몇인지 보지 않는다, 서로 다른 사람이기만 하면 된다
+        private static final AtomicLong VIEWER_SERIAL = new AtomicLong();
+
         private final List<RoomState> received = new ArrayList<>();
+        private final long viewerId = VIEWER_SERIAL.incrementAndGet();
+
+        @Override
+        public long viewerId() {
+            return viewerId;
+        }
 
         List<RoomState> received() {
             return received;

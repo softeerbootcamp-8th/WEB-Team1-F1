@@ -13,6 +13,7 @@ import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
 import com.softeer.race.vehicle.domain.Transmission;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -207,7 +208,8 @@ class EvaluationLookupControllerTest {
                 CONTACT_PHONE, REQUESTED_AT, EVALUATOR_NAME,
                 VEHICLE_ID, "12가3456", Manufacturer.HYUNDAI, "그랜저 IG", 2021,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
-                mileage, estimatedPrice, imageUrls, diagnosticReportUrl, submittedAt);
+                mileage, estimatedPrice, imageUrls, diagnosticReportUrl, submittedAt,
+                List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK));
     }
 
     private static Cookie sessionCookie() {

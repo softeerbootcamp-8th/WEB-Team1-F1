@@ -15,7 +15,8 @@ import { useAuctionList } from '@/features/auctions/use-auction-list'
 import type { AuctionListCard, AuctionListScope } from '@/features/auctions/types'
 import { useAuth } from '@/features/auth/auth-context'
 import { useInfiniteScroll } from '@/hooks/use-infinite-scroll'
-import { statusToListGroup } from '@/lib/auction'
+import { useServerClock } from '@/hooks/use-server-clock'
+import { arrangeCards, badgeStatusAt, statusToListGroup } from '@/lib/auction'
 import { getErrorMessage } from '@/lib/axios'
 import type { AuctionStatus } from '@/types/domain'
 
@@ -35,6 +36,13 @@ const FILTERS: { value: Filter; label: string }[] = [
  */
 const STATUS_PARAM = 'status'
 const SCOPE_PARAM = 'scope'
+
+/**
+ * 한 줄에 두 장. 네 장씩 놓으면 카드 하나에 담긴 사진·차종·가격이 모두 작아져
+ * 무엇을 보고 고르는 화면인지가 흐려진다. 스켈레톤도 같은 격자를 써야 목록이
+ * 들어올 때 자리가 그대로 유지된다.
+ */
+const GRID_CLASS = 'grid grid-cols-1 gap-5 md:grid-cols-2'
 
 function readFilter(params: URLSearchParams): Filter {
   const raw = params.get(STATUS_PARAM)?.toUpperCase()
@@ -94,6 +102,7 @@ export function AuctionsPage() {
 
   const {
     cards,
+    offsetMs,
     isLoading,
     isLoadingMore,
     hasNext,
@@ -107,7 +116,18 @@ export function AuctionsPage() {
     enabled: scope === 'ALL' || (!isAuthLoading && isAuthenticated),
   })
 
+  // 시계 하나로 화면 전체를 굴린다. 카드마다 두면 같은 순간에 카드끼리 다른 시각을 본다.
+  const nowMs = useServerClock(offsetMs)
+
+  // 서버가 준 순서를 지금 시각으로 다시 배치한다. 마감된 카드는 종료 무리로 내려가고,
+  // 상태 탭이 켜져 있으면 그 그룹에서 벗어난 카드는 목록에서 빠진다.
+  const arranged = useMemo(
+    () => arrangeCards(cards, nowMs, listGroup),
+    [cards, nowMs, listGroup],
+  )
+
   // 실패한 뒤에는 관찰을 끊는다. 화면이 그대로라 계속 관찰하면 같은 요청을 무한히 반복한다.
+  // 재배치가 아니라 불러온 개수로 관찰을 다시 건다. 자리만 바뀐 것은 다음 페이지와 무관하다.
   const sentinelRef = useInfiniteScroll({
     enabled: hasNext && !loadMoreError,
     onLoadMore: loadMore,
@@ -167,26 +187,30 @@ export function AuctionsPage() {
           }
         />
       ) : isLoading || isSessionPending ? (
-        <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 8 }, (_, index) => (
+        <ul className={GRID_CLASS}>
+          {Array.from({ length: 4 }, (_, index) => (
+            // 카드 높이는 열 너비를 따라간다. 고정 높이로 두면 2열로 넓어진 카드와 어긋나
+            // 목록이 들어올 때 화면이 튄다.
             <li key={index}>
-              <Skeleton className="h-80 w-full rounded-xl" />
+              <Skeleton className="aspect-[4/3] w-full rounded-xl md:aspect-[5/4]" />
             </li>
           ))}
         </ul>
-      ) : cards.length === 0 ? (
+      ) : arranged.length === 0 ? (
         <EmptyState icon={SearchX} {...emptyMessage(scope, filter)} />
       ) : (
         <>
-          <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {cards.map((auction) => (
+          <ul className={GRID_CLASS}>
+            {arranged.map((auction) => (
               <li key={auction.auctionId}>
                 <AuctionCard
                   auction={auction}
+                  nowMs={nowMs}
+                  offsetMs={offsetMs}
                   actions={
                     scope === 'MINE' ? (
                       <MyAuctionActions
-                        auction={auction}
+                        status={badgeStatusAt(auction, nowMs)}
                         onEdit={() => setEditing(auction)}
                         onDelete={() => setDeleting(auction)}
                       />

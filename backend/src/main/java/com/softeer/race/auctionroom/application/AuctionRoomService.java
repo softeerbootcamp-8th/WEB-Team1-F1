@@ -30,8 +30,9 @@ public class AuctionRoomService {
             throw new BusinessException(errorCode);
         });
 
-        // 조회는 접속이 아니다, 접속자는 열려 있는 구독 수로만 센다
-        return AuctionRoomView.of(userId, result, roomChannel.countSubscribers(auctionId));
+        // 조회는 접속이 아니다, 접속자는 열려 있는 구독으로만 센다
+        return AuctionRoomView.of(userId, result, roomChannel.countViewers(auctionId),
+                auctionRoomReader.findPhotoUrls(auctionId));
     }
 
     /**
@@ -62,6 +63,7 @@ public class AuctionRoomService {
         AuctionOutcome outcome = detail.outcome()
                 .orElseThrow(() -> new BusinessException(AUCTION_NOT_ENDED));
 
-        return RoomResultView.of(detail, outcome, auctionRoomReader.countBids(auctionId), viewerId);
+        return RoomResultView.of(detail, outcome, auctionRoomReader.countBids(auctionId), viewerId,
+                auctionRoomReader.findPhotoUrls(auctionId));
     }
 }

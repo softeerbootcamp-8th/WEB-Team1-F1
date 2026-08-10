@@ -3,6 +3,7 @@ package com.softeer.race.evaluation.application;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.evaluation.application.dto.command.EvaluationResultSubmitCommand;
 import com.softeer.race.notification.domain.NotificationRepository;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import com.softeer.race.notification.domain.NotificationRow;
 import com.softeer.race.support.IntegrationTestSupport;
 import jakarta.servlet.http.Cookie;
@@ -151,14 +152,16 @@ class EvaluationApprovedNotificationIntegrationTest extends IntegrationTestSuppo
                           "mileage": %d,
                           "estimatedPrice": %d,
                           "imageUrls": ["%s"],
-                          "diagnosticReportUrl": "%s"
+                          "diagnosticReportUrl": "%s",
+                          "keywords": ["ACCIDENT_FREE", "GOOD_TIRE"]
                         }
                         """.formatted(MILEAGE, ESTIMATED_PRICE, IMAGE_URL, documentUrl)));
     }
 
     private static EvaluationResultSubmitCommand command(String documentUrl) {
         return new EvaluationResultSubmitCommand(EVALUATION_ID, EVALUATOR_ID,
-                MILEAGE, ESTIMATED_PRICE, List.of(IMAGE_URL), documentUrl);
+                MILEAGE, ESTIMATED_PRICE, List.of(IMAGE_URL), documentUrl,
+                List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.GOOD_TIRE));
     }
 
     private List<NotificationRow> notificationsOf(long userId) {

@@ -15,9 +15,6 @@ public record RoomStateResponse(
         @Schema(description = "방 단계, 이 이름들이 API 계약이라 값을 그대로 비교해도 된다", example = "LIVE")
         RoomPhase phase,
 
-        @Schema(description = "경매 차량")
-        VehicleResponse vehicle,
-
         @Schema(description = "시작가", example = "10000000")
         long startPrice,
 
@@ -57,7 +54,6 @@ public record RoomStateResponse(
         return new RoomStateResponse(
                 state.auctionId(),
                 state.phase(),
-                VehicleResponse.from(state.vehicle()),
                 state.startPrice(),
                 state.currentPrice(),
                 state.openAt(),

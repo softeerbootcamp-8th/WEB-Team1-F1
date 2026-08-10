@@ -309,12 +309,12 @@ class AuctionServiceTest {
         return Auction.schedule(post, START_PRICE, startAt);
     }
 
-    // 상태 전이를 직접 세팅하지 않고 도메인 전이를 그대로 태운다, 유찰(FAILED)로 종료해 낙찰자 목이 없어도 되게 한다
+    // 상태 전이를 직접 세팅하지 않고 도메인 전이를 그대로 태운다, 입찰을 넣지 않아 유찰(FAILED)로 끝난다
     private Auction endedAuction() {
         LocalDateTime startAt = LocalDateTime.of(2026, 7, 20, 10, 0);
         Auction auction = auctionOf(startAt);
         auction.start(startAt);
-        auction.close(null, auction.getCurrentEndTime());
+        auction.close(auction.getCurrentEndTime());
 
         return auction;
     }

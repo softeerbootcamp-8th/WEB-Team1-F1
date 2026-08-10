@@ -51,6 +51,10 @@ public class Auction extends BaseTimeEntity {
 
     private Long currentPrice;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "top_bidder_id")
+    private User topBidder;
+
     @Column(nullable = false)
     private LocalDateTime roomOpenAt;
 
@@ -124,17 +128,12 @@ public class Auction extends BaseTimeEntity {
         return !now.isBefore(startTime) && now.isBefore(currentEndTime);
     }
 
-    /**
-     * 입찰 성립을 경매에 반영한다.
-     * <p>
-     * 낙찰자와 status는 건드리지 않는다. 최고가 갱신과 낙찰 확정은 다른 사건이고,
-     * 마감 전에 낙찰자를 정하면 연장이 걸렸을 때 잘못된 낙찰자가 남는다.
-     *
-     * @param acceptedAt 요청이 도착한 시각이 아니라 이 입찰이 순서를 배정받은 시각이다.
-     *                   호출자가 잠금을 얻은 뒤에 찍어야 하고, isBiddableAt 판정에 쓴 것과 같은 값이어야 한다.
-     *                   마감을 지난 시각이면 extendIfClosingSoon이 IllegalStateException을 던진다.
-     */
-    public void acceptBid(long amount, LocalDateTime acceptedAt) {
+    public boolean isTopBidder(long bidderId) {
+        return topBidder != null && topBidder.getId() == bidderId;
+    }
+
+    public void acceptBid(User bidder, long amount, LocalDateTime acceptedAt) {
+        this.topBidder = bidder;
         this.currentPrice = amount;
         this.priceUpdatedAt = acceptedAt;
         extendIfClosingSoon(acceptedAt);
@@ -161,11 +160,10 @@ public class Auction extends BaseTimeEntity {
      * <p>
      * 현재가는 건드리지 않는다. 마지막으로 성립한 입찰이 이미 채워둔 값이 그대로 낙찰가다.
      *
-     * @param topBidder 종료 시점의 최고 입찰자, 입찰이 한 건도 없으면 null 이고 유찰로 끝난다
-     * @param now       isClosableAt 판정에 쓴 것과 같은 값이어야 한다.
-     *                  호출자가 잠금을 얻은 뒤에 찍어야 한다.
+     * @param now isClosableAt 판정에 쓴 것과 같은 값이어야 한다.
+     *            호출자가 잠금을 얻은 뒤에 찍어야 한다.
      */
-    public void close(User topBidder, LocalDateTime now) {
+    public void close(LocalDateTime now) {
         // 호출자가 잠금 안에서 isClosableAt으로 걸렀다면 여기 도달할 수 없다.
         // 도달했다면 판정과 확정이 다른 시각을 봤거나 잠금 없이 불렀다는 뜻이라 서버 결함이다.
         // extendIfClosingSoon과 같은 이유로 BusinessException을 쓰지 않는다.

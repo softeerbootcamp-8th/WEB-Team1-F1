@@ -3,8 +3,6 @@ package com.softeer.race.auction.application;
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionClosed;
 import com.softeer.race.auction.domain.AuctionRepository;
-import com.softeer.race.bid.domain.Bid;
-import com.softeer.race.bid.domain.BidRepository;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.deal.application.DealCreator;
 import com.softeer.race.deal.domain.Deal;
@@ -21,7 +19,6 @@ import java.time.LocalDateTime;
 public class AuctionCloser {
 
     private final AuctionRepository auctionRepository;
-    private final BidRepository bidRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
     private final AuctionEndNotifier auctionEndNotifier;
@@ -44,11 +41,18 @@ public class AuctionCloser {
             return;
         }
 
-        User topBidder = topBidderOf(auctionId);
-        auction.close(topBidder, now);
+        // 낙찰자를 여기서 고르지 않는다. 경매가 현재가를 만든 사람을 그대로 낙찰자로 확정하므로
+        // 낙찰가와 낙찰자가 서로 다른 입찰에서 나올 수 없다.
+        auction.close(now);
+
+        // 입찰이 한 건도 없었으면 비어 있고, 그때가 유찰이다
+        User winner = auction.getWinner();
 
         // 확정 뒤, 알림 앞이어야 한다. 낙찰 알림이 거래 화면을 가리키려면 이 시점에 거래가 있어야 한다.
         Deal deal = topBidder == null ? null : dealCreator.create(auction, topBidder, now);
+        if (winner != null) {
+            dealCreator.create(auction, winner, now);
+        }
 
         // 확정이 실제로 일어났을 때만 알린다, 유찰도 화면이 알아야 하는 결과라 같은 사건으로 낸다
         eventPublisher.publishEvent(new AuctionClosed(auctionId));

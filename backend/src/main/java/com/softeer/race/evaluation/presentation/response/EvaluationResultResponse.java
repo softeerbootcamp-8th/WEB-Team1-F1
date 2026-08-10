@@ -1,6 +1,7 @@
 package com.softeer.race.evaluation.presentation.response;
 
 import com.softeer.race.evaluation.application.dto.info.EvaluationResultInfo;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
@@ -40,13 +41,17 @@ public record EvaluationResultResponse(
 
         @Schema(description = "결과가 제출된 시각. 다시 제출하면 갱신됩니다",
                 example = "2026-08-05T15:30:00")
-        LocalDateTime submittedAt
+        LocalDateTime submittedAt,
+
+        @Schema(description = "매겨진 키워드. 중복이 제거되고 정해진 표시 순서로 정렬돼 나갑니다",
+                example = "[\"ACCIDENT_FREE\", \"NO_LEAK\", \"GOOD_TIRE\"]")
+        List<VehicleKeyword> keywords
 ) {
 
     public static EvaluationResultResponse from(EvaluationResultInfo info) {
         return new EvaluationResultResponse(
                 info.evaluationId(), info.vehicleId(), info.status(),
                 info.mileage(), info.estimatedPrice(), info.imageUrls(),
-                info.diagnosticReportUrl(), info.submittedAt());
+                info.diagnosticReportUrl(), info.submittedAt(), info.keywords());
     }
 }

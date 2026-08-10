@@ -100,28 +100,32 @@ export function useAuctionRoom(auctionId: number) {
     prevEndAt.current = state.endAt
     setClockOffset(new Date(state.serverTime).getTime() - Date.now())
 
-    setRoom({
-      auctionId: state.auctionId,
-      phase: state.phase,
-      vehicle: state.vehicle,
-      startPrice: state.startPrice,
-      currentPrice: state.currentPrice,
-      openAt: state.openAt,
-      startAt: state.startAt,
-      endAt: state.endAt,
-      serverTime: state.serverTime,
-      connectedCount: state.connectedCount,
-      bidderCount: state.bidderCount,
-      bidCount: state.bidCount,
-      winner:
-        state.winner == null
-          ? null
-          : { name: state.winner.name, mine: myBidAmounts.current.has(state.currentPrice) },
-      recentBids: state.recentBids.map((b) => ({
-        ...b,
-        mine: myBidAmounts.current.has(b.amount),
-      })),
-    })
+    // 차량은 방송이 보내지 않으므로 최초 조회로 받은 것을 이어받는다.
+    // 구독은 조회에 성공한 뒤에만 시작하므로 prev 가 비어 있을 수 없다
+    setRoom((prev) =>
+      prev == null
+        ? prev
+        : {
+            ...prev,
+            phase: state.phase,
+            startPrice: state.startPrice,
+            currentPrice: state.currentPrice,
+            openAt: state.openAt,
+            startAt: state.startAt,
+            endAt: state.endAt,
+            serverTime: state.serverTime,
+            connectedCount: state.connectedCount,
+            bidderCount: state.bidderCount,
+            bidCount: state.bidCount,
+            winner:
+              state.winner == null
+                ? null
+                : { name: state.winner.name, mine: myBidAmounts.current.has(state.currentPrice) },
+            recentBids: state.recentBids.map((b) => ({
+              ...b,
+              mine: myBidAmounts.current.has(b.amount),
+            })),
+          })
   }, [markExtended])
 
   useEffect(() => {

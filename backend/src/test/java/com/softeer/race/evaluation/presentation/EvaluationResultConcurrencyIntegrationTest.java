@@ -122,7 +122,8 @@ class EvaluationResultConcurrencyIntegrationTest extends IntegrationTestSupport 
                           "mileage": 45000,
                           "estimatedPrice": 21500000,
                           "imageUrls": ["%s"],
-                          "diagnosticReportUrl": "%s"
+                          "diagnosticReportUrl": "%s",
+                          "keywords": ["ACCIDENT_FREE", "NO_LEAK"]
                         }
                         """.formatted(IMAGE_URL, documentUrl)));
     }

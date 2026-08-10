@@ -12,9 +12,12 @@ import com.softeer.race.notification.application.NotificationPublisher;
 import com.softeer.race.storage.domain.FileCategory;
 import com.softeer.race.storage.domain.FileStorage;
 import com.softeer.race.vehicle.application.VehicleImageService;
+import com.softeer.race.vehicle.application.VehicleKeywordService;
 import com.softeer.race.vehicle.application.dto.command.VehicleImageRegisterCommand;
 import com.softeer.race.vehicle.application.dto.info.VehicleImageRegisterInfo;
 import com.softeer.race.vehicle.domain.Vehicle;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +45,7 @@ public class EvaluationResultService {
 
     private final EvaluationRepository evaluationRepository;
     private final VehicleImageService vehicleImageService;
+    private final VehicleKeywordService vehicleKeywordService;
     private final FileStorage fileStorage;
     private final NotificationPublisher notificationPublisher;
 
@@ -70,6 +74,11 @@ public class EvaluationResultService {
         VehicleImageRegisterInfo images = vehicleImageService.register(
                 new VehicleImageRegisterCommand(vehicle.getId(), command.imageUrls()));
 
+        // 키워드도 사진과 같이 통째로 교체한다. 재제출이 결과를 갈아 끼우는 것이므로 앞서 매긴
+        // 키워드가 남으면 평가사가 뺀 키워드가 그대로 붙어 있게 된다.
+        // 저장된 목록을 돌려받아 응답에 쓴다 — 중복 제거와 정렬이 거기서 끝나 있다
+        List<VehicleKeyword> keywords = vehicleKeywordService.replace(vehicle, command.keywords());
+
         evaluation.approve();
 
         // 이 트랜잭션 안에서 발행한다. 제출이 롤백됐는데 승인 알림만 남으면 안 된다.
@@ -91,7 +100,8 @@ public class EvaluationResultService {
                         .map(VehicleImageRegisterInfo.RegisteredImage::imageUrl)
                         .toList(),
                 vehicle.getDiagnosticReportUrl(),
-                evaluation.getUpdatedAt());
+                evaluation.getUpdatedAt(),
+                keywords);
     }
 
     private void validateManagedDocument(String fileUrl) {
