@@ -27,7 +27,9 @@ export function AuctionCard({ auction, actions }: AuctionCardProps) {
   return (
     <Card className="group gap-0 overflow-hidden py-0 transition-[transform,box-shadow,border-color] duration-500 ease-out hover:-translate-y-1.5 hover:border-foreground/20 hover:shadow-xl hover:shadow-black/10">
       <Link to={`/auctions/${auction.auctionId}`} className="block">
-        <div className="bg-muted relative aspect-[4/3] overflow-hidden">
+        {/* 2열 구간에서는 사진을 크게 눕힌다. 열이 넓어 4:3이면 사진 한 장이 화면 높이를
+            다 먹고, 한 화면에 두 장밖에 남지 않아 고를 대상이 눈에 들어오지 않는다 */}
+        <div className="bg-muted relative aspect-[4/3] overflow-hidden md:aspect-[5/2]">
           <CarThumb
             src={auction.thumbnailUrl ?? undefined}
             alt={auction.model}
@@ -50,33 +52,35 @@ export function AuctionCard({ auction, actions }: AuctionCardProps) {
         </div>
       </Link>
 
-      <div className="flex flex-col gap-3 p-4">
+      <div className="flex flex-col gap-2 p-4">
         <Link to={`/auctions/${auction.auctionId}`}>
-          <h3 className="truncate font-semibold tracking-tight">{auction.model}</h3>
+          <h3 className="truncate text-lg font-semibold tracking-tight md:text-xl">
+            {auction.model}
+          </h3>
         </Link>
 
         {/* 뱃지는 사진 위가 아니라 이 줄에 둔다. 제목 줄에 붙이면 트림이 긴 차종에서
             제목이 잘리는데, 연식·주행거리는 글자가 짧아 오른쪽이 늘 비어 있다 */}
         <div className="flex items-center justify-between gap-2">
-          <dl className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          <dl className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             <div className="flex items-center gap-1">
               <span className="tabular">{auction.modelYear}년</span>
             </div>
             <span aria-hidden>·</span>
             <div className="flex items-center gap-1">
-              <Gauge className="size-3.5" />
+              <Gauge className="size-4" />
               <span className="tabular">{formatMileage(auction.mileage)}</span>
             </div>
           </dl>
           <StatusBadge status={status} />
         </div>
 
-        <div className="flex items-end justify-between border-t pt-3">
+        <div className="flex items-end justify-between gap-3 border-t pt-3">
           <div>
             <p className="text-muted-foreground text-xs">{priceLabel}</p>
-            <p className="tabular text-xl font-semibold tracking-tight">
+            <p className="tabular text-2xl font-semibold tracking-tight">
               {formatManwon(price)}
-              <span className="text-muted-foreground ml-1 text-sm font-normal">
+              <span className="text-muted-foreground ml-1 text-base font-normal">
                 원
               </span>
             </p>

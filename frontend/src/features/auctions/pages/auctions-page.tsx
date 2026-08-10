@@ -36,6 +36,13 @@ const FILTERS: { value: Filter; label: string }[] = [
 const STATUS_PARAM = 'status'
 const SCOPE_PARAM = 'scope'
 
+/**
+ * 한 줄에 두 장. 네 장씩 놓으면 카드 하나에 담긴 사진·차종·가격이 모두 작아져
+ * 무엇을 보고 고르는 화면인지가 흐려진다. 스켈레톤도 같은 격자를 써야 목록이
+ * 들어올 때 자리가 그대로 유지된다.
+ */
+const GRID_CLASS = 'grid grid-cols-1 gap-5 md:grid-cols-2'
+
 function readFilter(params: URLSearchParams): Filter {
   const raw = params.get(STATUS_PARAM)?.toUpperCase()
   return FILTERS.some((item) => item.value === raw) ? (raw as Filter) : 'ALL'
@@ -167,10 +174,12 @@ export function AuctionsPage() {
           }
         />
       ) : isLoading || isSessionPending ? (
-        <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 8 }, (_, index) => (
+        <ul className={GRID_CLASS}>
+          {Array.from({ length: 4 }, (_, index) => (
+            // 카드 높이는 열 너비를 따라간다. 고정 높이로 두면 2열로 넓어진 카드와 어긋나
+            // 목록이 들어올 때 화면이 튄다.
             <li key={index}>
-              <Skeleton className="h-80 w-full rounded-xl" />
+              <Skeleton className="aspect-[4/3] w-full rounded-xl md:aspect-[5/4]" />
             </li>
           ))}
         </ul>
@@ -178,7 +187,7 @@ export function AuctionsPage() {
         <EmptyState icon={SearchX} {...emptyMessage(scope, filter)} />
       ) : (
         <>
-          <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <ul className={GRID_CLASS}>
             {cards.map((auction) => (
               <li key={auction.auctionId}>
                 <AuctionCard
