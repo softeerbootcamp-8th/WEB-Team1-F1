@@ -1,6 +1,8 @@
 /**
- * 거래 상세의 실제 API 계약. `@/types/domain` 의 Deal 은 마이페이지가 쓰는 목 타입이라 별개다 —
- * 경매 목록이 `features/auctions/types.ts` 를 따로 둔 것과 같은 이유이고, 목 화면은 #194 에서 정리한다.
+ * 거래 API 계약. 백엔드 deal 도메인의 응답 레코드와 1:1로 맞춘다.
+ *
+ * 단계 이름은 서버가 단일 소스라 화면에서 임의로 늘리거나 줄이지 않는다. 경매 목록이
+ * `features/auctions/types.ts` 를 따로 둔 것과 같은 자리다.
  */
 
 /**
@@ -125,14 +127,14 @@ export function dealGuide(status: DealStatus, actionRequired: boolean): string {
   }
 
   const mine: Record<Exclude<DealStatus, 'CONFIRMED' | 'CANCELLED'>, string> = {
-    BUYER_CONFIRM_PENDING: '구매를 확정하면 판매자에게 서류와 탁송 일정을 요청합니다.',
-    SELLER_SUBMIT_PENDING: '판매 서류와 탁송 일정·장소를 등록해 주세요.',
-    BUYER_SCHEDULE_PENDING: '판매자가 올린 탁송 일정을 확인하고 인도 일정을 정해 주세요.',
+    BUYER_CONFIRM_PENDING: '구매를 확정해 주세요!',
+    SELLER_SUBMIT_PENDING: '판매 서류와 탁송 일정을 입력해 주세요!',
+    BUYER_SCHEDULE_PENDING: '탁송 정보를 확인하고 인도 일정을 입력해 주세요!',
   }
   const theirs: Record<Exclude<DealStatus, 'CONFIRMED' | 'CANCELLED'>, string> = {
-    BUYER_CONFIRM_PENDING: '구매자가 구매를 확정하기를 기다리고 있습니다.',
-    SELLER_SUBMIT_PENDING: '판매자가 서류와 탁송 일정을 등록하기를 기다리고 있습니다.',
-    BUYER_SCHEDULE_PENDING: '구매자가 인도 일정을 정하기를 기다리고 있습니다.',
+    BUYER_CONFIRM_PENDING: '구매자의 구매 확정을 기다리고 있습니다.',
+    SELLER_SUBMIT_PENDING: '판매자의 서류와 탁송 일정 입력을 기다리고 있습니다.',
+    BUYER_SCHEDULE_PENDING: '구매자의 인도 일정 입력을 기다리고 있습니다.',
   }
 
   return actionRequired ? mine[status] : theirs[status]

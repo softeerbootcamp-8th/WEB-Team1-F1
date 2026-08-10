@@ -1,11 +1,11 @@
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, CircleAlert, Clock3 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { CarThumb } from '@/components/common/car-thumb'
 import { formatKRW, formatRelativeTime } from '@/lib/format'
-import { DEAL_STATUS_META } from '../types'
+import { DEAL_STATUS_META, dealGuide } from '../types'
 import type { DealCard as DealCardData } from '../types'
 
 /**
@@ -14,6 +14,7 @@ import type { DealCard as DealCardData } from '../types'
  */
 export function DealCard({ deal }: { deal: DealCardData }) {
   const cancelled = deal.status === 'CANCELLED'
+  const pending = deal.status !== 'CONFIRMED' && !cancelled
   const meta = DEAL_STATUS_META[deal.status]
 
   return (
@@ -32,12 +33,26 @@ export function DealCard({ deal }: { deal: DealCardData }) {
             <Badge variant={cancelled ? 'destructive' : deal.status === 'CONFIRMED' ? 'success' : 'secondary'}>
               {meta.label}
             </Badge>
-            {/* 내 차례라는 표시가 목록에서 가장 먼저 보여야 하는 정보다 */}
-            {deal.actionRequired && <Badge variant="warning">내 차례</Badge>}
           </div>
 
           <h3 className="mt-2 truncate font-semibold">{deal.model}</h3>
           <p className="tabular mt-1 font-semibold">{formatKRW(deal.finalPrice)}</p>
+          {pending && (
+            <p
+              className={
+                deal.actionRequired
+                  ? 'text-closing-soon mt-2 flex items-start gap-1.5 text-sm font-semibold'
+                  : 'text-muted-foreground mt-2 flex items-start gap-1.5 text-sm'
+              }
+            >
+              {deal.actionRequired ? (
+                <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+              ) : (
+                <Clock3 className="mt-0.5 size-4 shrink-0" aria-hidden />
+              )}
+              <span>{dealGuide(deal.status, deal.actionRequired)}</span>
+            </p>
+          )}
           <p className="text-muted-foreground mt-1 text-xs">
             {deal.mySide === 'BUYER' ? '판매자' : '구매자'} {deal.counterpartName} ·{' '}
             {formatRelativeTime(deal.statusChangedAt)}

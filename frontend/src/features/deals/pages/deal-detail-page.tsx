@@ -4,6 +4,10 @@ import { toast } from 'sonner'
 import {
   ArrowLeft,
   CalendarClock,
+  CircleAlert,
+  CircleCheckBig,
+  CircleX,
+  Clock3,
   FileText,
   Gavel,
   LoaderCircle,
@@ -142,14 +146,25 @@ export function DealDetailPage() {
       {!cancelled && <DealSteps status={deal.status} />}
 
       {/* 내 차례인지 아닌지에 따라 문장이 갈린다, "나는 기다리면 되는가"가 한눈에 읽혀야 한다 */}
-      <p
+      <div
         className={cn(
-          'mt-6 rounded-lg border px-5 py-4 text-sm',
-          deal.actionRequired ? 'border-primary/40 bg-muted font-medium' : 'text-muted-foreground',
+          'mt-6 flex items-start gap-2 rounded-lg border px-5 py-4 text-sm',
+          deal.actionRequired
+            ? 'border-closing-soon/40 bg-closing-soon/5 text-closing-soon font-semibold'
+            : 'text-muted-foreground',
         )}
       >
-        {dealGuide(deal.status, deal.actionRequired)}
-      </p>
+        {deal.actionRequired ? (
+          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+        ) : deal.status === 'CONFIRMED' ? (
+          <CircleCheckBig className="mt-0.5 size-4 shrink-0" aria-hidden />
+        ) : deal.status === 'CANCELLED' ? (
+          <CircleX className="mt-0.5 size-4 shrink-0" aria-hidden />
+        ) : (
+          <Clock3 className="mt-0.5 size-4 shrink-0" aria-hidden />
+        )}
+        <p>{dealGuide(deal.status, deal.actionRequired)}</p>
+      </div>
 
       <DealActions deal={deal} onDone={refresh} />
 
