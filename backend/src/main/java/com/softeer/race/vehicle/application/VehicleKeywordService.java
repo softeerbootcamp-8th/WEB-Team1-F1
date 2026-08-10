@@ -2,13 +2,18 @@ package com.softeer.race.vehicle.application;
 
 import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
+import com.softeer.race.vehicle.domain.VehicleKeywordRow;
 import com.softeer.race.vehicle.domain.VehicleKeywordTag;
 import com.softeer.race.vehicle.domain.VehicleKeywordTagRepository;
-import java.util.Comparator;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 차량에 매겨진 키워드 읽기와 교체.
@@ -72,5 +77,20 @@ public class VehicleKeywordService {
      */
     private static List<VehicleKeyword> sorted(List<VehicleKeyword> keywords) {
         return keywords.stream().sorted(Comparator.naturalOrder()).toList();
+    }
+
+    public Map<Long, List<VehicleKeyword>> findByVehicleIds(Collection<Long> vehicleIds) {
+        if (vehicleIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return vehicleKeywordTagRepository.findRowsByVehicleIdIn(vehicleIds).stream()
+                .collect(Collectors.groupingBy(
+                                VehicleKeywordRow::vehicleId,
+                                Collectors.collectingAndThen(
+                                        Collectors.mapping(VehicleKeywordRow::keyword, Collectors.toList()),
+                                        VehicleKeywordService::sorted)
+                        )
+                );
     }
 }

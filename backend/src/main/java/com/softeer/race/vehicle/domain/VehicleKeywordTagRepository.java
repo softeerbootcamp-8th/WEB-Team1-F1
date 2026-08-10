@@ -1,7 +1,11 @@
 package com.softeer.race.vehicle.domain;
 
-import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Collection;
+import java.util.List;
 
 public interface VehicleKeywordTagRepository extends JpaRepository<VehicleKeywordTag, Long> {
 
@@ -19,4 +23,11 @@ public interface VehicleKeywordTagRepository extends JpaRepository<VehicleKeywor
      * 컨텍스트를 우회해 같은 트랜잭션에 남은 엔티티가 stale 이 된다.
      */
     void deleteAllByVehicle(Vehicle vehicle);
+
+    @Query("""
+            select new com.softeer.race.vehicle.domain.VehicleKeywordRow(t.vehicle.id, t.keyword)
+            from VehicleKeywordTag t
+            where t.vehicle.id in :vehicleIds
+            """)
+    List<VehicleKeywordRow> findRowsByVehicleIdIn(@Param("vehicleIds") Collection<Long> vehicleIds);
 }

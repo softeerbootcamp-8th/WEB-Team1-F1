@@ -2,9 +2,12 @@ package com.softeer.race.auctionlist.presentation.response;
 
 import com.softeer.race.auctionlist.application.dto.AuctionCardInfo;
 import com.softeer.race.auctionroom.domain.RoomPhase;
+import com.softeer.race.vehicle.domain.Manufacturer;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Schema(description = "목록 카드 한 장")
 public record AuctionCardResponse(
@@ -18,6 +21,9 @@ public record AuctionCardResponse(
         @Schema(description = "대표 이미지, 없으면 null", example = "https://cdn.race.dev/1.jpg")
         String thumbnailUrl,
 
+        @Schema(description = "제조사", example = "HYUNDAI")
+        Manufacturer manufacturer,
+
         @Schema(description = "차량 모델명", example = "아반떼 CN7")
         String model,
 
@@ -26,6 +32,9 @@ public record AuctionCardResponse(
 
         @Schema(description = "주행거리(km)", example = "35000")
         Integer mileage,
+
+        @Schema(description = "평가사가 진단에서 확인한 키워드, 표시 순서대로, 없으면 빈 배열", example = "[\"ACCIDENT_FREE\", \"NO_LEAK\"]")
+        List<VehicleKeyword> keywords,
 
         @Schema(description = "시작가(원)", example = "10000000")
         Long startPrice,
@@ -50,9 +59,11 @@ public record AuctionCardResponse(
                 info.auctionId(),
                 info.phase(),
                 info.thumbnailUrl(),
+                info.manufacturer(),
                 info.model(),
                 info.modelYear(),
                 info.mileage(),
+                info.keywords(),
                 info.startPrice(),
                 info.currentPrice(),
                 info.openAt(),
