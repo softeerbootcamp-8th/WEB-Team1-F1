@@ -8,6 +8,8 @@ import com.softeer.race.auctionlist.domain.AuctionListRepository;
 import com.softeer.race.auctionlist.domain.AuctionListRow;
 import com.softeer.race.auctionroom.application.RoomChannel;
 import com.softeer.race.auctionroom.domain.RoomPhase;
+import com.softeer.race.vehicle.application.VehicleKeywordService;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +29,7 @@ public class AuctionListService {
     // 그리드 한 페이지에 보이는 카드 수.
     private static final int PAGE_SIZE = 20;
 
+    private final VehicleKeywordService vehicleKeywordService;
     private final AuctionListRepository auctionListRepository;
     private final RoomChannel roomChannel;
     private final Clock clock;
@@ -51,8 +55,11 @@ public class AuctionListService {
         boolean hasNext = found.size() > PAGE_SIZE;
         List<Positioned> page = hasNext ? found.subList(0, PAGE_SIZE) : found;
 
+        Map<Long, List<VehicleKeyword>> keywords = vehicleKeywordService.findByVehicleIds(
+                page.stream().map(positioned -> positioned.row().vehicleId()).toList());
+
         List<AuctionCardInfo> content = page.stream()
-                .map(positioned -> toCard(positioned.row(), now))
+                .map(positioned -> toCard(positioned.row(), now, keywords))
                 .toList();
 
         AuctionListCursor next = hasNext ? nextCursor(snapshotAt, page.getLast()) : null;
@@ -119,7 +126,7 @@ public class AuctionListService {
         };
     }
 
-    private AuctionCardInfo toCard(AuctionListRow row, LocalDateTime now) {
+    private AuctionCardInfo toCard(AuctionListRow row, LocalDateTime now, Map<Long, List<VehicleKeyword>> keywords) {
         // 단계 판정은 경매방과 한 벌을 쓴다. 복제하면 같은 경매가 두 화면에서 다른 단계로 보일 수 있다.
         // 정렬은 snapshotAt 기준이지만 단계는 지금 시각으로 잰다. 깊은 페이지에서도 배지는 맞아야 한다.
         RoomPhase phase = RoomPhase.at(now, row.roomOpenAt(), row.startTime(), row.currentEndTime());
@@ -132,9 +139,11 @@ public class AuctionListService {
                 row.auctionId(),
                 phase,
                 row.thumbnailUrl(),
+                row.manufacturerType(),
                 row.model(),
                 row.modelYear(),
                 row.mileage(),
+                keywords.getOrDefault(row.vehicleId(), List.of()),
                 row.startPrice(),
                 row.displayPrice(),
                 row.roomOpenAt(),

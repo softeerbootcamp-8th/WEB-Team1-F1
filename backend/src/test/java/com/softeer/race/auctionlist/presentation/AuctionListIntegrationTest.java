@@ -77,11 +77,16 @@ class AuctionListIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.content[0].auctionId").value(101))
                 .andExpect(jsonPath("$.content[0].phase").value("LIVE"));
 
-        // then 2 : 경매글과 차량에서
+        // then 2 : 경매글과 차량에서. 제조사는 표시 문구가 아니라 코드로 내리고 문구는 화면이 매핑한다
         response.andExpect(jsonPath("$.content[0].thumbnailUrl").value("https://cdn.race.dev/101.jpg"))
+                .andExpect(jsonPath("$.content[0].manufacturer").value("HYUNDAI"))
                 .andExpect(jsonPath("$.content[0].model").value("아반떼 CN7"))
                 .andExpect(jsonPath("$.content[0].modelYear").value(2022))
                 .andExpect(jsonPath("$.content[0].mileage").value(35000));
+
+        // then 2-1 : 키워드는 저장 순서(GOOD_TIRE 부터)가 아니라 선언 순서다
+        response.andExpect(jsonPath("$.content[0].keywords")
+                .value(org.hamcrest.Matchers.contains("ACCIDENT_FREE", "NO_LEAK", "GOOD_TIRE")));
 
         // then 3 : 남은 초가 아니라 절대 시각을 준다. 카운트다운은 화면이 돌린다
         response.andExpect(jsonPath("$.content[0].openAt").value("2026-08-03T11:20:00"))
@@ -106,6 +111,21 @@ class AuctionListIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.content[1].auctionId").value(102))
                 .andExpect(jsonPath("$.content[1].startPrice").value(38000000))
                 .andExpect(jsonPath("$.content[1].currentPrice").value(38000000));
+    }
+
+    @Test
+    @DisplayName("키워드가 매겨지지 않은 차량은 null 이 아니라 빈 배열로 나간다")
+    void keywordlessCardCarriesEmptyArray() throws Exception {
+        // given : 102번 차량에는 키워드가 없다. 평가를 거치지 않고 출품된 차가 그렇다
+
+        // when
+        ResultActions response = mockMvc.perform(get("/api/auctions"));
+
+        // then : null 이면 화면이 분기를 하나 더 진다
+        response.andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[1].auctionId").value(102))
+                .andExpect(jsonPath("$.content[1].keywords").isArray())
+                .andExpect(jsonPath("$.content[1].keywords").isEmpty());
     }
 
     @Test
