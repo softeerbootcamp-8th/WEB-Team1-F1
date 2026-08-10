@@ -1,5 +1,6 @@
 package com.softeer.race.bid.presentation;
 
+import com.jayway.jsonpath.JsonPath;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
 import jakarta.servlet.http.Cookie;
@@ -50,6 +51,7 @@ class BidIntegrationTest extends IntegrationTestSupport {
     private static final long LIVE_AUCTION = 51L;
     private static final long WAITING_AUCTION = 52L;
     private static final long CLOSING_AUCTION = 53L;
+    private static final long MISSING_AUCTION = 9999L;
 
     private static final long SELLER_ID = 51L;
 
@@ -120,6 +122,14 @@ class BidIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("시나리오 4-0 : 시작 전 경매에 낮은 금액이 와도 사유는 금액이 아니라 단계다")
+    void reportsNotLiveBeforeAmountOnWaitingAuction() throws Exception {
+        bid(WAITING_AUCTION, ALICE_TOKEN, 19_000_000)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("AUCTION_NOT_LIVE"));
+    }
+
+    @Test
     @DisplayName("시나리오 5 : 판매자는 자기 차량에 입찰할 수 없다")
     void rejectsSellerBid() throws Exception {
         bid(LIVE_AUCTION, SELLER_TOKEN, START_PRICE)
@@ -138,6 +148,16 @@ class BidIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.code").value("EVALUATOR_CANNOT_BID"));
 
         assertThat(bidCount(LIVE_AUCTION)).isZero();
+    }
+
+    // 없는 리소스에 대한 권한 사유는 알려줄 것이 아니라 404 가 먼저다
+    // 자격을 함께 어긴 요청으로 재는 이유는, 평범한 요청은 검사 순서를 바꿔도 통과해 버리기 때문이다
+    @Test
+    @DisplayName("시나리오 5-2 : 없는 경매에는 자격 사유보다 경매 없음이 먼저 나간다")
+    void reportsMissingAuctionBeforeEvaluatorRule() throws Exception {
+        bid(MISSING_AUCTION, EVALUATOR_TOKEN, START_PRICE)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("AUCTION_NOT_FOUND"));
     }
 
     @Test
@@ -207,7 +227,8 @@ class BidIntegrationTest extends IntegrationTestSupport {
         CountDownLatch fire = new CountDownLatch(1);
         CountDownLatch done = new CountDownLatch(threads);
         // sleep 으로 시점을 맞추면 느린 러너에서 간헐적으로 깨진다, 래치로 조율한다
-        List<Integer> statuses = Collections.synchronizedList(new java.util.ArrayList<>());
+        // 상태코드만 모으면 거절 사유가 바뀌어도 초록으로 지나간다, 사유까지 함께 본다
+        List<String> outcomes = Collections.synchronizedList(new java.util.ArrayList<>());
         ExecutorService pool = Executors.newFixedThreadPool(threads);
 
         for (String token : List.of(ALICE_TOKEN, BOB_TOKEN)) {
@@ -215,8 +236,7 @@ class BidIntegrationTest extends IntegrationTestSupport {
                 try {
                     ready.countDown();
                     fire.await();
-                    statuses.add(bid(LIVE_AUCTION, token, START_PRICE).andReturn()
-                            .getResponse().getStatus());
+                    outcomes.add(outcomeOf(bid(LIVE_AUCTION, token, START_PRICE)));
                 } catch (Exception e) {
                     throw new IllegalStateException(e);
                 } finally {
@@ -231,7 +251,7 @@ class BidIntegrationTest extends IntegrationTestSupport {
         pool.shutdownNow();
 
         // 뒤에 락을 얻은 쪽은 갱신된 현재가를 보고 최소 금액 미달로 거절된다
-        assertThat(statuses).containsExactlyInAnyOrder(201, 409);
+        assertThat(outcomes).containsExactlyInAnyOrder("201", "409 BID_AMOUNT_TOO_LOW");
         assertThat(bidCount(LIVE_AUCTION)).isEqualTo(1);
         assertThat(currentPriceOf(LIVE_AUCTION)).isEqualTo(START_PRICE);
     }
@@ -239,8 +259,12 @@ class BidIntegrationTest extends IntegrationTestSupport {
     /**
      * 멱등 키를 두지 않은 근거다.
      * <p>
-     * 응답 유실로 클라이언트가 같은 요청을 다시 보내도, 금액이 같으면 이제 최소 금액에 못 미치고
-     * 직전 입찰자도 본인이라 두 규칙에 각각 걸린다. 재전송이 성립할 경로가 없다.
+     * 응답 유실로 클라이언트가 같은 요청을 다시 보내도, 금액이 같으면 최소 금액에 못 미치고
+     * 직전 입찰자도 본인이라 두 규칙이 겹쳐 막는다. 재전송이 성립할 경로가 없다.
+     * <p>
+     * 먼저 도달하는 쪽만 사유가 되므로 어느 것이 나가는지까지 고정한다. 지금은 하한 검사가
+     * 잠금 앞으로 올라가 SELF_OUTBID 보다 앞선다. last_bidder_id 를 Auction 이 들게 되면
+     * 사유가 SELF_OUTBID 로 돌아가고 이 단언이 깨지므로, 그 변경을 모르고 지나칠 수 없다.
      */
     @Test
     @DisplayName("시나리오 11 : 같은 요청이 두 번 도착해도 입찰은 한 번만 성립한다")
@@ -248,7 +272,8 @@ class BidIntegrationTest extends IntegrationTestSupport {
         bid(LIVE_AUCTION, ALICE_TOKEN, START_PRICE).andExpect(status().isCreated());
 
         bid(LIVE_AUCTION, ALICE_TOKEN, START_PRICE)
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("BID_AMOUNT_TOO_LOW"));
 
         assertThat(bidCount(LIVE_AUCTION)).isEqualTo(1);
         assertThat(currentPriceOf(LIVE_AUCTION)).isEqualTo(START_PRICE);
@@ -268,6 +293,17 @@ class BidIntegrationTest extends IntegrationTestSupport {
 
     private static String body(long amount) {
         return "{\"amount\": %d}".formatted(amount);
+    }
+
+    // 성립이면 상태코드만, 거절이면 사유까지 붙인다
+    private String outcomeOf(ResultActions result) throws Exception {
+        var response = result.andReturn().getResponse();
+        if (response.getStatus() == 201) {
+            return "201";
+        }
+
+        return "%d %s".formatted(response.getStatus(),
+                JsonPath.read(response.getContentAsString(), "$.code").toString());
     }
 
     private Integer bidCount(long auctionId) {

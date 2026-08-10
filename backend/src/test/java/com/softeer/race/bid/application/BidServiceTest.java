@@ -5,6 +5,8 @@ import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.auctionpost.domain.AuctionPost;
 import org.springframework.context.ApplicationEventPublisher;
 import com.softeer.race.bid.domain.BidIncrementTable;
+import com.softeer.race.bid.domain.BidPreCheck;
+import com.softeer.race.bid.domain.BidPreCheckRepository;
 import com.softeer.race.bid.domain.BidRepository;
 import com.softeer.race.bid.domain.BidRule;
 import com.softeer.race.bid.exception.BidErrorCode;
@@ -28,21 +30,22 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 잠금 대기 중에 흐른 시간을 판정이 반영하는지
+ * 잠금 경계를 기준으로 무엇이 언제 일어나는지
  * <p>
  * 통합 테스트는 Clock.fixed 를 쓰므로 시각이 흐르지 않는다. 그래서 acceptedAt 을 잠금 앞으로
- * 되돌려도 통합 시나리오 11개가 전부 통과한다. 이 클래스만 그 위치를 고정한다.
+ * 되돌려도 통합 시나리오가 전부 통과한다. 이 클래스만 그 위치를 고정한다.
  * <p>
- * 검증 대상이 "무엇을 호출하는가"가 아니라 "언제 시각을 읽는가"라서 단위 테스트로 둔다.
- * 실제 잠금 대기를 만들려면 다른 트랜잭션을 수십 초 붙잡아야 하고, 그런 테스트는 느리고 불안정하다.
+ * 사전 판정이 잠금 앞에서 끝나는지도 거절 사유로는 보이지 않는다 — 잠금 안에서 걸러도 같은 코드가
+ * 나가므로, findByIdForUpdate 를 불렀는지로만 확인된다. 둘 다 호출 위치가 검증 대상이라 단위 테스트로 둔다.
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("입찰 접수 시각 판정")
+@DisplayName("입찰 접수의 잠금 경계")
 class BidServiceTest {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
@@ -59,6 +62,7 @@ class BidServiceTest {
 
     private static final long AUCTION_ID = 1L;
     private static final long BIDDER_ID = 11L;
+    private static final long SELLER_ID = 12L;
     private static final long START_PRICE = 24_800_000L;
     private static final long INCREMENT = 50_000L;
 
@@ -68,6 +72,8 @@ class BidServiceTest {
     private BidRepository bidRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private BidPreCheckRepository bidPreCheckRepository;
     @Mock
     private BidIncrementService bidIncrementService;
     @Mock
@@ -83,8 +89,9 @@ class BidServiceTest {
         BidService bidService = bidService(clock);
 
         when(bidIncrementService.loadTable()).thenReturn(table);
-        when(userRepository.findById(BIDDER_ID)).thenReturn(Optional.of(bidder()));
-        when(auctionRepository.isSeller(AUCTION_ID, BIDDER_ID)).thenReturn(false);
+        when(bidPreCheckRepository.find(AUCTION_ID, BIDDER_ID)).thenReturn(Optional.of(preCheck()));
+        when(table.ruleFor(START_PRICE, null))
+                .thenReturn(new BidRule(START_PRICE, INCREMENT, START_PRICE));
         // 잠금을 얻기까지 40초를 기다린 상황을 만든다
         when(auctionRepository.findByIdForUpdate(AUCTION_ID)).thenAnswer(invocation -> {
             clock.advance(LOCK_WAIT);
@@ -112,12 +119,13 @@ class BidServiceTest {
         BidService bidService = bidService(clock);
 
         when(bidIncrementService.loadTable()).thenReturn(table);
-        when(userRepository.findById(BIDDER_ID)).thenReturn(Optional.of(bidder()));
-        when(auctionRepository.isSeller(AUCTION_ID, BIDDER_ID)).thenReturn(false);
+        when(bidPreCheckRepository.find(AUCTION_ID, BIDDER_ID)).thenReturn(Optional.of(preCheck()));
         when(auctionRepository.findByIdForUpdate(AUCTION_ID)).thenReturn(Optional.of(auction));
         when(bidRepository.findFirstByAuctionIdOrderByIdDesc(AUCTION_ID)).thenReturn(Optional.empty());
+        // 잠금 앞 사전 판정과 잠금 안 판정이 같은 인자로 두 번 부른다
         when(table.ruleFor(START_PRICE, null))
                 .thenReturn(new BidRule(START_PRICE, INCREMENT, START_PRICE));
+        when(userRepository.getReferenceById(BIDDER_ID)).thenReturn(bidder());
         when(bidRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         bidService.place(AUCTION_ID, BIDDER_ID, START_PRICE);
@@ -128,10 +136,68 @@ class BidServiceTest {
         assertThat(auction.getExtensionCount()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("최소 금액에 못 미치는 입찰은 잠금을 잡기 전에 거절한다")
+    void rejectsAmountBelowMinimumBeforeLock() {
+        BidService bidService = bidService(new AdvancingClock(BEFORE_LOCK));
+
+        when(bidIncrementService.loadTable()).thenReturn(table);
+        when(bidPreCheckRepository.find(AUCTION_ID, BIDDER_ID))
+                .thenReturn(Optional.of(new BidPreCheck(
+                        Role.DEALER, SELLER_ID, START_PRICE, START_PRICE, START_TIME, END_TIME)));
+        when(table.ruleFor(START_PRICE, START_PRICE))
+                .thenReturn(new BidRule(START_PRICE, INCREMENT, START_PRICE + INCREMENT));
+
+        assertThatThrownBy(() -> bidService.place(AUCTION_ID, BIDDER_ID, START_PRICE))
+                .isInstanceOf(BusinessException.class)
+                .extracting(thrown -> ((BusinessException) thrown).errorCode())
+                .isEqualTo(BidErrorCode.BID_AMOUNT_TOO_LOW);
+
+        // 거절 사유만 보면 잠금 안에서 걸러도 통과한다, 이 검증이 조기 거절의 유일한 증거다
+        verify(auctionRepository, never()).findByIdForUpdate(anyLong());
+    }
+
+    @Test
+    @DisplayName("마감된 경매에 낮은 금액이 오면 금액이 아니라 마감을 사유로 거절한다")
+    void reportsNotLiveBeforeAmountOnClosedAuction() {
+        Auction auction = scheduledAuction();
+        BidService bidService = bidService(new AdvancingClock(END_TIME.plusSeconds(1)));
+
+        when(bidPreCheckRepository.find(AUCTION_ID, BIDDER_ID))
+                .thenReturn(Optional.of(new BidPreCheck(
+                        Role.DEALER, SELLER_ID, START_PRICE, START_PRICE, START_TIME, END_TIME)));
+        when(auctionRepository.findByIdForUpdate(AUCTION_ID)).thenReturn(Optional.of(auction));
+
+        assertThatThrownBy(() -> bidService.place(AUCTION_ID, BIDDER_ID, START_PRICE))
+                .isInstanceOf(BusinessException.class)
+                .extracting(thrown -> ((BusinessException) thrown).errorCode())
+                .isEqualTo(BidErrorCode.AUCTION_NOT_LIVE);
+    }
+
+    @Test
+    @DisplayName("회원이 없으면 경매를 잠그기 전에 거절한다")
+    void rejectsMissingBidderBeforeLock() {
+        BidService bidService = bidService(new AdvancingClock(BEFORE_LOCK));
+
+        when(bidPreCheckRepository.find(AUCTION_ID, BIDDER_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> bidService.place(AUCTION_ID, BIDDER_ID, START_PRICE))
+                .isInstanceOf(BusinessException.class)
+                .extracting(thrown -> ((BusinessException) thrown).errorCode())
+                .isEqualTo(BidErrorCode.BIDDER_NOT_FOUND);
+
+        verify(auctionRepository, never()).findByIdForUpdate(anyLong());
+    }
+
     private BidService bidService(Clock clock) {
         return new BidService(
-                auctionRepository, bidRepository, userRepository, bidIncrementService,
-                eventPublisher, clock);
+                auctionRepository, bidRepository, userRepository, bidPreCheckRepository,
+                bidIncrementService, eventPublisher, clock);
+    }
+
+    // 입찰이 없는 진행 중 경매, 입찰자는 판매자도 평가사도 아니다
+    private BidPreCheck preCheck() {
+        return new BidPreCheck(Role.DEALER, SELLER_ID, START_PRICE, null, START_TIME, END_TIME);
     }
 
     private Auction scheduledAuction() {
