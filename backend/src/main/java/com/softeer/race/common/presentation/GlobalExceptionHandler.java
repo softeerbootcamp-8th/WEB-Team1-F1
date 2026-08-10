@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.validation.method.ParameterErrors;
@@ -51,6 +52,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         ProblemDetail body = createProblemDetail(
                 exception, errorCode.status(), exception.getMessage(), null, null, request);
+        body.setProperty(CODE, errorCode.code());
+
+        return handleExceptionInternal(exception, body, new HttpHeaders(), errorCode.status(), request);
+    }
+
+    /**
+     * 낙관적 락 충돌
+     * <p>
+     * 버전 검사는 커밋 시점에 일어나 서비스 메서드 안에서는 잡을 수 없다. 그래서 여기서 받는다.
+     * 다시 읽고 다시 시도하면 해소되는 실패라 서버 버그(500)와 갈라 409 로 답한다.
+     */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public @Nullable ResponseEntity<Object> handleOptimisticLockFailure(
+            ObjectOptimisticLockingFailureException exception, WebRequest request) {
+
+        ErrorCode errorCode = CommonErrorCode.CONCURRENT_MODIFICATION;
+        log.warn("낙관적 락 충돌: {} [{}]", exception.getMessage(), request.getDescription(false));
+
+        ProblemDetail body = createProblemDetail(
+                exception, errorCode.status(), errorCode.message(), null, null, request);
         body.setProperty(CODE, errorCode.code());
 
         return handleExceptionInternal(exception, body, new HttpHeaders(), errorCode.status(), request);

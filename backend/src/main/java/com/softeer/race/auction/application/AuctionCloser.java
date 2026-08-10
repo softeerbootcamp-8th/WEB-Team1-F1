@@ -5,6 +5,7 @@ import com.softeer.race.auction.domain.AuctionClosed;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.deal.application.DealCreator;
+import com.softeer.race.deal.domain.Deal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -48,16 +49,15 @@ public class AuctionCloser {
         User winner = auction.getWinner();
 
         // 확정 뒤, 알림 앞이어야 한다. 낙찰 알림이 거래 화면을 가리키려면 이 시점에 거래가 있어야 한다.
-        if (winner != null) {
-            dealCreator.create(auction, winner, now);
-        }
+        Deal deal = winner == null ? null : dealCreator.create(auction, winner, now);
 
         // 확정이 실제로 일어났을 때만 알린다, 유찰도 화면이 알아야 하는 결과라 같은 사건으로 낸다
         eventPublisher.publishEvent(new AuctionClosed(auctionId));
 
         // 종료와 한 트랜잭션에 둔다. 알림만 남거나, 알림 없이 종료되는 경우를 만들지 않는다.
-        // 엔티티가 아니라 식별자를 넘긴다 — 발행이 쓰는 것은 식별자뿐이고, 프록시의 getId 는
-        // 초기화를 일으키지 않아 낙찰자 조회가 추가로 나가지 않는다
-        auctionEndNotifier.notifyEnd(auctionId, winner == null ? null : winner.getId());
+        // 낙찰자 알림만 경매가 아니라 거래를 가리키므로 거래 식별자를 함께 넘긴다
+        auctionEndNotifier.notifyEnd(auctionId,
+                winner == null ? null : winner.getId(),
+                deal == null ? null : deal.getId());
     }
 }

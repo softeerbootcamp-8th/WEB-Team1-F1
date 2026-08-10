@@ -19,6 +19,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -76,6 +77,22 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("낙관적 락 충돌은 500이 아니라 409로 내려간다")
+    void optimisticLockFailure() throws Exception {
+        // 다시 읽고 다시 시도하면 해소되는 실패다, 500 으로 나가면 클라이언트가 할 수 있는 일이
+        // 없다는 신호가 되고 서버 버그를 찾을 때 로그도 함께 오염된다
+        mockMvc.perform(get("/test/conflict"))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("CONCURRENT_MODIFICATION"))
+
+                // 내부 사정(어느 엔티티의 몇 번 행인지)이 사용자에게 새어 나가지 않는다
+                .andExpect(jsonPath("$.detail")
+                        .value("다른 사용자가 먼저 변경했습니다. 새로 불러온 뒤 다시 시도해 주세요."))
+                .andExpect(jsonPath("$.instance").value("/test/conflict"));
+    }
+
+    @Test
     @DisplayName("매핑되지 않은 예외는 500으로 내려가고 내부 메시지를 노출하지 않는다")
     void unexpectedException() throws Exception {
         mockMvc.perform(get("/test/unexpected"))
@@ -99,6 +116,13 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/param")
         void param(@RequestParam @Positive int size) {
+        }
+
+        // 실제 충돌은 커밋 시점에 Hibernate 가 던진 것을 Spring 이 이 타입으로 바꿔 올린다,
+        // 여기서는 응답 계약만 보므로 같은 타입을 직접 던진다
+        @GetMapping("/conflict")
+        void conflict() {
+            throw new ObjectOptimisticLockingFailureException(Object.class, 1L);
         }
 
         @GetMapping("/unexpected")

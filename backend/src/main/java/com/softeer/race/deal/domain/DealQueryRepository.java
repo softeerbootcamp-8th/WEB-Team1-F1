@@ -53,6 +53,7 @@ public interface DealQueryRepository extends Repository<Deal, Long> {
             select new com.softeer.race.deal.domain.DealDetailRow(
                 d.id, d.status, d.finalPrice, d.statusChangedAt, d.createdAt, d.cancellationReason,
                 a.id, v.model, v.modelYear, v.mileage, v.mainPhotoUrl,
+                d.documentUrl, d.transportAt, d.transportLocation, d.deliveryAt, d.deliveryLocation,
                 s.id, case when s.id = :userId then b.realName else s.realName end)
             from Deal d
             join d.auction a

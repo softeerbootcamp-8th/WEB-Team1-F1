@@ -37,4 +37,11 @@ public record DealListRow(
     public DealSide sideOf(long viewerId) {
         return sellerId == viewerId ? DealSide.SELLER : DealSide.BUYER;
     }
+
+    /**
+     * 조회한 사람이 지금 움직일 차례인지, 목록 카드가 "내 차례" 배지를 켜는 기준이다
+     */
+    public boolean actionRequiredFor(long viewerId) {
+        return status.waitingFor() == sideOf(viewerId);
+    }
 }
