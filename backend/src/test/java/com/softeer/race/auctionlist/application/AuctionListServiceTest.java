@@ -309,8 +309,8 @@ class AuctionListServiceTest {
     }
 
     @Test
-    @DisplayName("닫힌 단계는 접속자를 세지 않는다")
-    void closedPhase_hasNoViewerCount() {
+    @DisplayName("단계는 저장된 상태가 아니라 지금 시각으로 갈린다")
+    void phaseComesFromTheClock() {
         // given : 마감 후 5분이 지난 경매
         givenLive(List.of());
         givenPending(List.of());
@@ -319,9 +319,9 @@ class AuctionListServiceTest {
         // when
         AuctionCardInfo card = auctionListService.list(null, null).content().getFirst();
 
-        // then : 경매방도 세지 않는 구간이라 목록만 다른 수를 보이면 안 된다
+        // then : 접속자 수가 단계에 따라 갈리는지는 AuctionCardAssemblerTest 가 본다.
+        // 여기서 같이 보면 목이 스텁 없이 0을 돌려주어 판정을 지워도 통과하는 공허한 단정이 된다
         assertThat(card.phase()).isEqualTo(RoomPhase.CLOSED);
-        assertThat(card.connectedCount()).isZero();
     }
 
     @Test
