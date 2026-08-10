@@ -1,5 +1,6 @@
 package com.softeer.race.evaluation.application.dto.command;
 
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import java.util.List;
 
 /**
@@ -15,6 +16,7 @@ import java.util.List;
  * @param estimatedPrice      평가사가 산정한 예상 시세(원)
  * @param imageUrls           차량 사진 주소. 보낸 순서가 표시 순서이고 첫 장이 대표 이미지가 된다
  * @param diagnosticReportUrl 진단서 PDF 주소
+ * @param keywords            평가사가 진단에서 확인해 매긴 키워드. 매길 것이 없으면 비어 있다
  */
 public record EvaluationResultSubmitCommand(
         long evaluationId,
@@ -22,6 +24,7 @@ public record EvaluationResultSubmitCommand(
         int mileage,
         long estimatedPrice,
         List<String> imageUrls,
-        String diagnosticReportUrl
+        String diagnosticReportUrl,
+        List<VehicleKeyword> keywords
 ) {
 }
