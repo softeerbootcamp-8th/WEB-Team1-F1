@@ -41,7 +41,7 @@ const SCOPE_PARAM = 'scope'
  * 무엇을 보고 고르는 화면인지가 흐려진다. 스켈레톤도 같은 격자를 써야 목록이
  * 들어올 때 자리가 그대로 유지된다.
  */
-const GRID_CLASS = 'grid grid-cols-1 gap-6 md:grid-cols-2'
+const GRID_CLASS = 'grid grid-cols-1 gap-5 md:grid-cols-2'
 
 function readFilter(params: URLSearchParams): Filter {
   const raw = params.get(STATUS_PARAM)?.toUpperCase()

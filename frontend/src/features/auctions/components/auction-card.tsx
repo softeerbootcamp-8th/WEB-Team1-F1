@@ -27,9 +27,9 @@ export function AuctionCard({ auction, actions }: AuctionCardProps) {
   return (
     <Card className="group gap-0 overflow-hidden py-0 transition-[transform,box-shadow,border-color] duration-500 ease-out hover:-translate-y-1.5 hover:border-foreground/20 hover:shadow-xl hover:shadow-black/10">
       <Link to={`/auctions/${auction.auctionId}`} className="block">
-        {/* 카드가 넓어지는 구간에서는 사진을 눕힌다. 4:3을 그대로 두면 사진 한 장이
-            화면 높이를 다 먹어 한 번에 한 대밖에 눈에 들어오지 않는다 */}
-        <div className="bg-muted relative aspect-[4/3] overflow-hidden md:aspect-[16/9]">
+        {/* 2열 구간에서는 사진을 크게 눕힌다. 열이 넓어 4:3이면 사진 한 장이 화면 높이를
+            다 먹고, 한 화면에 두 장밖에 남지 않아 고를 대상이 눈에 들어오지 않는다 */}
+        <div className="bg-muted relative aspect-[4/3] overflow-hidden md:aspect-[5/2]">
           <CarThumb
             src={auction.thumbnailUrl ?? undefined}
             alt={auction.model}
@@ -52,7 +52,7 @@ export function AuctionCard({ auction, actions }: AuctionCardProps) {
         </div>
       </Link>
 
-      <div className="flex flex-col gap-3 p-5">
+      <div className="flex flex-col gap-2 p-4">
         <Link to={`/auctions/${auction.auctionId}`}>
           <h3 className="truncate text-lg font-semibold tracking-tight md:text-xl">
             {auction.model}
@@ -75,10 +75,10 @@ export function AuctionCard({ auction, actions }: AuctionCardProps) {
           <StatusBadge status={status} />
         </div>
 
-        <div className="flex items-end justify-between gap-3 border-t pt-4">
+        <div className="flex items-end justify-between gap-3 border-t pt-3">
           <div>
             <p className="text-muted-foreground text-xs">{priceLabel}</p>
-            <p className="tabular text-2xl font-semibold tracking-tight md:text-3xl">
+            <p className="tabular text-2xl font-semibold tracking-tight">
               {formatManwon(price)}
               <span className="text-muted-foreground ml-1 text-base font-normal">
                 원
