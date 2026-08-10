@@ -236,34 +236,35 @@ function LiveRoom({
         flashKey={flashKey}
       />
 
-      <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+      {/* 차량과 호가창을 갈라 세 칸으로 둔다, 둘이 한 칸을 다투면 입찰 패널이 첫 화면 밖으로 밀린다 */}
+      <div className="grid gap-5 lg:grid-cols-[1.05fr_1fr_360px]">
         <CarDetail vehicle={room.vehicle} />
+
+        <div className="rounded-xl border p-5">
+          <BidLedger bids={room.recentBids} totalBidCount={room.bidCount} />
+        </div>
 
         <div className="space-y-4">
           <dl className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border p-4">
-              <dt className="text-muted-foreground flex items-center gap-2 text-xs">
+              <dt className="text-muted-foreground flex items-center gap-2 text-sm">
                 <Eye className="size-4" />
                 실시간 시청자
               </dt>
-              <dd className="tabular mt-2 text-2xl font-semibold">
+              <dd className="tabular mt-2 text-3xl font-semibold">
                 {room.connectedCount}명
               </dd>
             </div>
             <div className="rounded-xl border p-4">
-              <dt className="text-muted-foreground flex items-center gap-2 text-xs">
+              <dt className="text-muted-foreground flex items-center gap-2 text-sm">
                 <Gavel className="size-4" />
                 입찰 참여자
               </dt>
-              <dd className="tabular mt-2 text-2xl font-semibold">
+              <dd className="tabular mt-2 text-3xl font-semibold">
                 {room.bidderCount}명
               </dd>
             </div>
           </dl>
-
-          <div className="rounded-xl border p-5">
-            <BidLedger bids={room.recentBids} totalBidCount={room.bidCount} />
-          </div>
 
           <BidPanel
             currentPrice={room.currentPrice}
