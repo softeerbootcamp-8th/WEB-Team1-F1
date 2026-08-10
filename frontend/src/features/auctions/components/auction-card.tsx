@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Eye, Gauge } from 'lucide-react'
 
+import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { CarThumb } from '@/components/common/car-thumb'
 import { StatusBadge } from '@/components/common/status-badge'
@@ -9,10 +10,14 @@ import { Countdown } from '@/components/common/countdown'
 import { formatManwon, formatMileage } from '@/lib/format'
 import { badgeStatusAt } from '@/lib/auction'
 import type { AuctionBadgeStatus } from '@/types/domain'
+import { MANUFACTURER_LABEL, VEHICLE_KEYWORD_LABEL } from '@/features/quote/types'
 import type {
   AuctionListCard as AuctionListCardModel,
   RoomPhase,
 } from '@/features/auctions/types'
+
+// 카드에 보일 키워드 수. 나머지는 세지 않고 그냥 두며, 전부 보려면 경매방으로 들어간다.
+const KEYWORD_DISPLAY_LIMIT = 4
 
 interface AuctionCardProps {
   auction: AuctionListCardModel
@@ -109,10 +114,23 @@ export function AuctionCard({
 
       <div className="flex flex-col gap-2 p-4">
         <Open className="block w-full text-left">
+          {/* 한 줄로 고정한다. 제목이 카드마다 한 줄이거나 두 줄이면 그리드에서 행 높이가
+              들쭉날쭉해지므로, 제조사까지 붙어 넘치는 글자는 줄이지 않고 말줄임으로 자른다 */}
           <h3 className="truncate text-lg font-semibold tracking-tight md:text-xl">
-            {auction.model}
+            {MANUFACTURER_LABEL[auction.manufacturer]} {auction.model}
           </h3>
         </Open>
+
+        {/* 진단을 거치지 않은 차량은 keywords 가 빈 배열이다. 그래도 줄은 항상 그린다 —
+            줄을 없애 버리면 키워드 있는 카드만 한 줄 더 길어져 그리드 행 높이가 어긋난다.
+            좁은 폭에서 넘치는 만큼은 overflow-hidden 이 잘라 두 줄로 넘어가지 않는다 */}
+        <div className="flex h-6 flex-nowrap gap-1 overflow-hidden">
+          {auction.keywords.slice(0, KEYWORD_DISPLAY_LIMIT).map((keyword) => (
+            <Badge key={keyword} variant="secondary">
+              {VEHICLE_KEYWORD_LABEL[keyword]}
+            </Badge>
+          ))}
+        </div>
 
         {/* 뱃지는 사진 위가 아니라 이 줄에 둔다. 제목 줄에 붙이면 트림이 긴 차종에서
             제목이 잘리는데, 연식·주행거리는 글자가 짧아 오른쪽이 늘 비어 있다 */}

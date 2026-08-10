@@ -28,9 +28,13 @@ function toListCard(auction: MockAuctionCard): AuctionListCard {
     auctionId: auction.id,
     phase: STATUS_TO_PHASE[auction.status],
     thumbnailUrl: auction.thumbnailUrl || null,
+    // mock 에는 제조사가 없다. 담긴 여섯 대가 모두 기아 차종이라 그대로 고정한다
+    manufacturer: 'KIA',
     model: auction.car.name,
     modelYear: auction.car.year,
     mileage: auction.car.mileageKm,
+    // mock 의 evaluationKeywords 는 '무사고' 같은 자유 문자열이라 VehicleKeyword 코드로 옮길 수 없다
+    keywords: [],
     startPrice: auction.startPrice,
     currentPrice: auction.currentPrice,
     openAt: auction.startAt,
