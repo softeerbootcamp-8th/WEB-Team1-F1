@@ -96,6 +96,11 @@ export type NotificationType =
   | 'AUCTION_ENDED'
   | 'AUCTION_SOLD'
   | 'AUCTION_FAILED'
+  | 'DEAL_SELLER_SUBMIT_REQUIRED'
+  | 'DEAL_BUYER_SCHEDULE_REQUIRED'
+  | 'DEAL_CONFIRMED'
+  | 'DEAL_CANCELLED'
+  /** 단계별 종류로 대체돼 더는 발행되지 않는다. 이미 쌓인 알림이 이 이름을 들고 있어 지우지 못한다 */
   | 'DEAL_STATUS_CHANGED'
 
 export interface AppNotification {

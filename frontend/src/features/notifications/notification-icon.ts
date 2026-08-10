@@ -1,9 +1,13 @@
 import {
+  Ban,
+  CalendarClock,
   CheckCheck,
   CircleOff,
   CircleX,
+  FileUp,
   Gavel,
   HandCoins,
+  Handshake,
   PackageCheck,
   PartyPopper,
   Trophy,
@@ -27,5 +31,9 @@ export const NOTIFICATION_ICON: Record<NotificationType, LucideIcon> = {
   AUCTION_ENDED: Gavel,
   AUCTION_SOLD: HandCoins,
   AUCTION_FAILED: CircleOff,
+  DEAL_SELLER_SUBMIT_REQUIRED: FileUp,
+  DEAL_BUYER_SCHEDULE_REQUIRED: CalendarClock,
+  DEAL_CONFIRMED: Handshake,
+  DEAL_CANCELLED: Ban,
   DEAL_STATUS_CHANGED: PackageCheck,
 }
