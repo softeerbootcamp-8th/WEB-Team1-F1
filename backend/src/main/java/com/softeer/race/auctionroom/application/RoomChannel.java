@@ -20,9 +20,10 @@ public interface RoomChannel {
     boolean unsubscribe(long auctionId, RoomSubscriber subscriber);
 
     /**
-     * 방에 등록된 구독 수, 접속자로 셀지는 단계가 정한다
+     * 방을 보고 있는 사람 수, 한 사람이 창을 여럿 열어도 하나로 센다
      */
-    int countSubscribers(long auctionId);
+    // 접속자로 셀지는 단계가 정한다
+    int countViewers(long auctionId);
 
     /**
      * 방의 모든 구독에 현황 전송, 닫힌 구독은 순회가 끝난 뒤 걷어낸다

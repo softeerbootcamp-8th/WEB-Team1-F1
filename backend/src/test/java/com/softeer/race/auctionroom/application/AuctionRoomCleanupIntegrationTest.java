@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -62,7 +63,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("조용히 끊긴 구독을 걷어내면 남은 구독이 줄어든 접속자 수를 받는다")
+    @DisplayName("시나리오 1 : 조용히 끊긴 구독을 걷어내면 남은 구독이 줄어든 접속자 수를 받는다")
     void sweepNotifiesRemainingSubscribers() {
         // given : 두 사람이 진행 중인 방에 있다가 한쪽이 알리지 않고 사라진다
         long auctionId = liveRoom();
@@ -75,14 +76,14 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
 
         // then 1 : 남은 사람은 줄어든 접속자 수를 받는다, 다시 조회하지 않았는데 갱신된다
         assertThat(alive.lastState().connectedCount()).isEqualTo(1);
-        assertThat(roomChannel.countSubscribers(auctionId)).isEqualTo(1);
+        assertThat(roomChannel.countViewers(auctionId)).isEqualTo(1);
 
         // then 2 : 사라진 쪽에는 아무것도 보내지 않는다
         assertThat(gone.received()).isEmpty();
     }
 
     @Test
-    @DisplayName("아무도 끊기지 않았으면 현황을 새로 보내지 않는다")
+    @DisplayName("시나리오 2 : 아무도 끊기지 않았으면 현황을 새로 보내지 않는다")
     void sweepStaysQuietWhenAllOpen() {
         // given
         subscribe(liveRoom(), alive);
@@ -95,7 +96,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("방이 닫히면 남은 구독은 접속자에서 빠지고 새 조회는 거절된다")
+    @DisplayName("시나리오 3 : 방이 닫히면 남은 구독은 접속자에서 빠지고 새 조회는 거절된다")
     void closedRoomCountsNobodyAsConnected() {
         // given : 진행 중일 때 둘이 들어와 있다
         long auctionId = liveRoom();
@@ -118,7 +119,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("한 방의 데이터 결함이 다른 방의 갱신을 멈추지 않는다")
+    @DisplayName("시나리오 4 : 한 방의 데이터 결함이 다른 방의 갱신을 멈추지 않는다")
     void brokenRoomDoesNotStopOtherRooms() {
         // given : 한 글자 실명 입찰자가 있는 방, 호가를 마스킹하는 순간 터진다
         long brokenRoom = liveRoomWithBidderNamed("김");
@@ -147,7 +148,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("걷어낸 뒤 뒤늦게 온 해제는 현황을 다시 보내지 않는다")
+    @DisplayName("시나리오 5 : 걷어낸 뒤 뒤늦게 온 해제는 현황을 다시 보내지 않는다")
     void lateReleaseAfterSweepDoesNotRefreshAgain() {
         // given : 한 명이 조용히 사라져 청소가 걷어냈고, 남은 사람은 줄어든 수를 이미 받았다
         long auctionId = liveRoom();
@@ -166,7 +167,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("결과 구간까지 지난 방은 남은 연결을 서버가 끊는다")
+    @DisplayName("시나리오 6 : 결과 구간까지 지난 방은 남은 연결을 서버가 끊는다")
     void closedRoomConnectionsAreCutByServer() {
         // given : 진행 중일 때 둘이 들어와 있다
         long auctionId = liveRoom();
@@ -180,14 +181,14 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
         // then 1 : 둘 다 서버가 끝냈고 명부에도 남지 않는다
         assertThat(alive.closedByServer).isTrue();
         assertThat(gone.closedByServer).isTrue();
-        assertThat(roomChannel.countSubscribers(auctionId)).isZero();
+        assertThat(roomChannel.countViewers(auctionId)).isZero();
 
         // then 2 : 끊는 동안 현황을 다시 보내지 않는다, 명부를 먼저 비우므로 갱신할 방이 없다
         assertThat(alive.received()).isEmpty();
     }
 
     @Test
-    @DisplayName("아직 열려 있는 방의 연결은 끊지 않는다")
+    @DisplayName("시나리오 7 : 아직 열려 있는 방의 연결은 끊지 않는다")
     void openRoomKeepsConnections() {
         // given : 진행 중인 방에 한 사람이 있다
         long auctionId = liveRoom();
@@ -198,7 +199,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
 
         // then : 볼 것이 남은 방이라 그대로 둔다
         assertThat(alive.closedByServer).isFalse();
-        assertThat(roomChannel.countSubscribers(auctionId)).isEqualTo(1);
+        assertThat(roomChannel.countViewers(auctionId)).isEqualTo(1);
     }
 
     private long liveRoom() {
@@ -215,9 +216,18 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
     // 열려 있다가 알리지 않고 끊긴 연결, 청소가 찔러 봐야 드러난다
     private static class FakeSubscriber implements RoomSubscriber {
 
+        // 이 테스트는 사람이 몇인지 보지 않는다, 서로 다른 사람이기만 하면 된다
+        private static final AtomicLong VIEWER_SERIAL = new AtomicLong();
+
         private final List<RoomState> received = new ArrayList<>();
+        private final long viewerId = VIEWER_SERIAL.incrementAndGet();
         private boolean open = true;
         private boolean closedByServer;
+
+        @Override
+        public long viewerId() {
+            return viewerId;
+        }
 
         void disconnect() {
             open = false;

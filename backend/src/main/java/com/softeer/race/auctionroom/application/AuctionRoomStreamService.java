@@ -93,7 +93,7 @@ public class AuctionRoomStreamService {
      * 방에 열려 있는 구독에 현황을 다시 보낸다, 보는 사람이 없으면 조회도 하지 않는다
      */
     public void refresh(long auctionId) {
-        if (roomChannel.countSubscribers(auctionId) == 0) {
+        if (roomChannel.countViewers(auctionId) == 0) {
             return;
         }
 
@@ -114,7 +114,7 @@ public class AuctionRoomStreamService {
 
         // 연결을 열어 두지 않는 단계면 남은 구독은 접속자가 아니다, 조회·목록과 같은 판정을 여기서도 한다
         int connectedCount = result.phase().allowsConnection()
-                ? roomChannel.countSubscribers(auctionId) : 0;
+                ? roomChannel.countViewers(auctionId) : 0;
 
         roomChannel.broadcast(auctionId, RoomState.of(result, connectedCount));
     }
