@@ -89,7 +89,7 @@ export const CarPhotos = memo(function CarPhotos({
   return (
     <div className={cn('space-y-3', className)}>
       {/* 끝에서 처음으로 돌아온다, 장수가 적어 한 바퀴가 금방이다 */}
-      <Carousel setApi={setApi} opts={{ loop: hasMany }} className="w-full">
+      <Carousel setApi={setApi} opts={{ loop: hasMany, duration: 20 }} className="w-full">
         <CarouselContent>
           {imageUrls.map((url, index) => (
             <CarouselItem key={url}>
