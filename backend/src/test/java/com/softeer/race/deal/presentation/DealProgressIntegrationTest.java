@@ -54,7 +54,10 @@ class DealProgressIntegrationTest extends IntegrationTestSupport {
     private static final String TRANSPORT_AT = "2026-08-20T14:00:00";
     private static final String DELIVERY_AT = "2026-08-21T10:00:00";
 
-    private static final String DOCUMENT_URL = "https://cdn.race.dev/deal/doc.pdf";
+    // test/resources 의 cdn-base-url 아래, 문서로 발급했을 때 나오는 키 형태여야 통과한다
+    private static final String CDN_BASE_URL = "https://cdn.test.local";
+    private static final String DOCUMENT_URL =
+            CDN_BASE_URL + "/documents/2026/08/123e4567-e89b-12d3-a456-426614174000.pdf";
     private static final String TRANSPORT_LOCATION = "서울시 강남구 테헤란로 123";
     private static final String DELIVERY_LOCATION = "부산시 해운대구 센텀중앙로 55";
 
@@ -172,6 +175,25 @@ class DealProgressIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("시나리오 5-1 : 우리가 발급하지 않은 서류 주소는 400 이다")
+    void scenario5_1_RejectsUnmanagedDocument() throws Exception {
+        confirmPurchase(BUYER_TOKEN).andExpect(status().isNoContent());
+
+        // 남의 도메인. 저장되면 거래 화면이 통제할 수 없는 곳을 서류라고 가리킨다
+        submitTransport(SELLER_TOKEN, TRANSPORT_AT, "https://evil.example.com/x.pdf")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("UNMANAGED_DOCUMENT_URL"));
+
+        // 우리가 발급했지만 이미지다. "우리 주소인가"만 물으면 여기서 뚫린다
+        submitTransport(SELLER_TOKEN, TRANSPORT_AT,
+                CDN_BASE_URL + "/images/2026/08/123e4567-e89b-12d3-a456-426614174000.jpg")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("UNMANAGED_DOCUMENT_URL"));
+
+        detail(SELLER_TOKEN).andExpect(jsonPath("$.status").value("SELLER_SUBMIT_PENDING"));
+    }
+
+    @Test
     @DisplayName("시나리오 6 : 인도 일시가 탁송보다 앞서면 400 이다")
     void scenario6_RejectsDeliveryBeforeTransport() throws Exception {
         confirmPurchase(BUYER_TOKEN).andExpect(status().isNoContent());
@@ -261,12 +283,17 @@ class DealProgressIntegrationTest extends IntegrationTestSupport {
     }
 
     private ResultActions submitTransport(String token, String transportAt) throws Exception {
+        return submitTransport(token, transportAt, DOCUMENT_URL);
+    }
+
+    private ResultActions submitTransport(String token, String transportAt, String documentUrl)
+            throws Exception {
         return mockMvc.perform(post("/api/deals/{dealId}/transport", dealId)
                 .cookie(sessionCookie(token))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"documentUrl": "%s", "transportAt": "%s", "transportLocation": "%s"}
-                        """.formatted(DOCUMENT_URL, transportAt, TRANSPORT_LOCATION)));
+                        """.formatted(documentUrl, transportAt, TRANSPORT_LOCATION)));
     }
 
     private ResultActions confirmDelivery(String token, String deliveryAt) throws Exception {

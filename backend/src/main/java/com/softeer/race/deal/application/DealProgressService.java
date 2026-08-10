@@ -12,6 +12,8 @@ import com.softeer.race.deal.domain.DealRepository;
 import com.softeer.race.deal.domain.DealSide;
 import com.softeer.race.deal.exception.DealErrorCode;
 import com.softeer.race.notification.application.NotificationPublisher;
+import com.softeer.race.storage.domain.FileCategory;
+import com.softeer.race.storage.domain.FileStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,7 @@ public class DealProgressService {
 
     private final DealRepository dealRepository;
     private final NotificationPublisher notificationPublisher;
+    private final FileStorage fileStorage;
     private final Clock clock;
 
     /**
@@ -54,6 +57,9 @@ public class DealProgressService {
      */
     public void submitTransport(long userId, long dealId, String documentUrl,
                                 LocalDateTime transportAt, String transportLocation) {
+        // 거래를 읽기 전에 본다, 값이 애초에 말이 안 되면 DB 를 건드릴 이유가 없다
+        validateManagedDocument(documentUrl);
+
         Deal deal = myTurn(dealId, userId);
 
         deal.submitTransport(documentUrl, transportAt, transportLocation, now());
@@ -112,6 +118,18 @@ public class DealProgressService {
         }
 
         return deal;
+    }
+
+    /**
+     * 우리가 발급한 문서 주소인지
+     * <p>
+     * 종류를 DOCUMENT 로 못 박는다. "우리가 발급한 주소인가"만 물으면 차량 사진도 우리가 발급한
+     * 것이라 통과해 서류 자리에 사진이 박힌다. 차량 이미지·진단서가 쓰는 판정과 같은 것이다.
+     */
+    private void validateManagedDocument(String documentUrl) {
+        if (!fileStorage.isManagedUrl(documentUrl, FileCategory.DOCUMENT)) {
+            throw new BusinessException(DealErrorCode.UNMANAGED_DOCUMENT_URL);
+        }
     }
 
     private Deal find(long dealId) {
