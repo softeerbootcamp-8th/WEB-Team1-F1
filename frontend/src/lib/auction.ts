@@ -1,5 +1,5 @@
 import type { AuctionBadgeStatus, AuctionStatus, DealStatus } from '@/types/domain'
-import type { AuctionListGroup, RoomPhase } from '@/features/auctions/types'
+import type { AuctionListCard, AuctionListGroup, RoomPhase } from '@/features/auctions/types'
 import type { BidIncrementBand } from '@/features/auction-room/types'
 
 /**
@@ -49,6 +49,45 @@ export function roomPhaseToBadgeStatus(phase: RoomPhase): AuctionBadgeStatus {
 /** 화면의 상태 탭을 목록 API의 filter 값으로. 서버는 "예정"을 PENDING이라 부른다. */
 export function statusToListGroup(status: AuctionStatus): AuctionListGroup {
   return status === 'SCHEDULED' ? 'PENDING' : status
+}
+
+/**
+ * 지금 시각으로 다시 판정한 목록 그룹. 서버가 준 phase는 조회 시각의 값이라 시간이 지나면 낡는다.
+ * 경계는 서버 쿼리와 같다 — 시작 전은 예정, 시작했고 마감 전이면 진행중, 마감했으면 종료다.
+ * 개장(NOT_OPEN→WAITING)과 결과 열람 종료(RESULT→CLOSED)는 그룹을 바꾸지 않으므로 보지 않는다.
+ */
+export function listGroupAt(card: AuctionListCard, nowMs: number): AuctionListGroup {
+  if (nowMs < new Date(card.startAt).getTime()) return 'PENDING'
+  if (nowMs < new Date(card.endAt).getTime()) return 'LIVE'
+  return 'ENDED'
+}
+
+/**
+ * 지금 시각으로 그룹을 다시 판정해 카드를 재배치한다. 필터가 있으면 그 그룹만 남긴다.
+ *
+ * 정렬하지 않는다. 서버가 [진행중 마감임박순][예정 시작임박순][종료 최근마감순] 순으로 주므로
+ * 순서를 유지한 채 셋으로 나눠 담고 이어 붙이면 자리가 맞는다. 마감된 카드는 진행중 무리의 맨 앞에
+ * 있었으니 종료 무리보다 먼저 담겨 그 맨 앞에 서고, 시작한 카드는 진행중을 다 지난 뒤에 만나므로
+ * 그 맨 뒤에 선다. 덕분에 화면이 복제하는 것은 그룹 경계 하나뿐이고 정렬 규칙 셋은 서버에만 남는다.
+ */
+export function arrangeCards(
+  cards: AuctionListCard[],
+  nowMs: number,
+  filter: AuctionListGroup | null,
+): AuctionListCard[] {
+  const grouped: Record<AuctionListGroup, AuctionListCard[]> = {
+    LIVE: [],
+    PENDING: [],
+    ENDED: [],
+  }
+
+  for (const card of cards) {
+    grouped[listGroupAt(card, nowMs)].push(card)
+  }
+
+  if (filter) return grouped[filter]
+
+  return [...grouped.LIVE, ...grouped.PENDING, ...grouped.ENDED]
 }
 
 /**

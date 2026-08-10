@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import type { BidIncrementBand } from '@/features/auction-room/types'
-import type { RoomPhase } from '@/features/auctions/types'
+import type { AuctionListCard, RoomPhase } from '@/features/auctions/types'
 
 import {
+  arrangeCards,
   canDeleteAuction,
   canEditAuction,
   incrementForPrice,
+  listGroupAt,
   roomPhaseToBadgeStatus,
 } from './auction'
 
@@ -77,5 +79,79 @@ describe('경매 수정과 삭제 가능 여부', () => {
   it('끝난 경매만 삭제할 수 있다', () => {
     const deletable = phases.filter(canDeleteAuction)
     expect(deletable).toEqual(['RESULT', 'CLOSED'])
+  })
+})
+
+// ================= 시각으로 다시 판정하는 그룹과 자리 =================
+
+/** 서버가 주는 것과 같은 오프셋 없는 KST 문자열 */
+function at(time: string): number {
+  return new Date(`2026-08-03T${time}`).getTime()
+}
+
+// phase 는 서버가 조회 시각에 계산해 둔 값이다. 시간이 지나면 낡으므로 아래 함수들은 이 값을
+// 보지 않는다. 낡았다는 것을 드러내려고 픽스처에서는 전부 LIVE 로 채워 둔다
+function card(auctionId: number, startAt: string, endAt: string): AuctionListCard {
+  return {
+    auctionId,
+    phase: 'LIVE',
+    thumbnailUrl: null,
+    model: `차 ${auctionId}`,
+    modelYear: 2022,
+    mileage: 30_000,
+    startPrice: 10_000_000,
+    currentPrice: 10_000_000,
+    openAt: '2026-08-03T00:00:00',
+    startAt: `2026-08-03T${startAt}`,
+    endAt: `2026-08-03T${endAt}`,
+    connectedCount: 0,
+  }
+}
+
+const ids = (cards: AuctionListCard[]) => cards.map((it) => it.auctionId)
+
+// 12:00 기준으로 서버가 내려주는 한 페이지. 진행중은 마감 임박순, 예정은 시작 임박순,
+// 종료는 최근 마감순이고 그 셋을 이어 붙인 것이 응답의 순서다
+const page: AuctionListCard[] = [
+  card(1, '11:50:00', '12:10:00'),
+  card(2, '11:55:00', '12:15:00'),
+  card(3, '12:05:00', '12:25:00'),
+  card(4, '12:30:00', '12:50:00'),
+  card(5, '11:35:00', '11:55:00'),
+  card(6, '11:10:00', '11:30:00'),
+]
+
+describe('listGroupAt', () => {
+  it('경계 시각은 서버와 같은 쪽에 붙는다', () => {
+    // 서버 쿼리가 start_time <= now 이고 now < current_end_time 인 것을 진행중으로 본다
+    expect(listGroupAt(card(1, '12:00:00', '12:20:00'), at('12:00:00'))).toBe('LIVE')
+    expect(listGroupAt(card(1, '12:00:00', '12:20:00'), at('11:59:59'))).toBe('PENDING')
+    expect(listGroupAt(card(1, '11:40:00', '12:00:00'), at('12:00:00'))).toBe('ENDED')
+  })
+})
+
+describe('arrangeCards', () => {
+  it('서버가 준 순서를 그 시각 그대로 다시 배치하면 순서가 그대로다', () => {
+    // 서버의 정렬과 어긋나지 않는다는 계약. 서버 order by 가 바뀌면 여기서 깨진다
+    expect(ids(arrangeCards(page, at('12:00:00'), null))).toEqual([1, 2, 3, 4, 5, 6])
+  })
+
+  it('마감이 지난 카드가 종료 무리 맨 앞으로 간다', () => {
+    // 1번이 12:10 에 마감된다. 종료는 최근 마감순이라 그 무리의 맨 앞이 제자리다
+    expect(ids(arrangeCards(page, at('12:10:00'), null))).toEqual([2, 3, 4, 1, 5, 6])
+  })
+
+  it('시작한 카드는 예정에서 빠지고 진행중으로 분류된다', () => {
+    // 전체 목록에서는 자리가 안 바뀐다. 예정 무리의 맨 앞이 곧 진행중 무리의 맨 뒤라서다
+    // 그래서 이 전이의 관찰 가능한 결과는 순서가 아니라 그룹이고, 필터를 켜야 드러난다
+    expect(ids(arrangeCards(page, at('12:05:00'), null))).toEqual([1, 2, 3, 4, 5, 6])
+    expect(ids(arrangeCards(page, at('12:05:00'), 'PENDING'))).toEqual([4])
+    expect(ids(arrangeCards(page, at('12:05:00'), 'LIVE'))).toEqual([1, 2, 3])
+  })
+
+  it('필터가 켜지면 그 그룹이 아닌 카드는 빠진다', () => {
+    // 12:10 이면 1번은 마감됐고 3번은 이미 시작했다, 진행중에 둘이 남는다
+    expect(ids(arrangeCards(page, at('12:10:00'), 'LIVE'))).toEqual([2, 3])
+    expect(ids(arrangeCards(page, at('12:10:00'), 'ENDED'))).toEqual([1, 5, 6])
   })
 })
