@@ -1,4 +1,4 @@
-import type { AuctionStatus, DealStatus } from '@/types/domain'
+import type { AuctionBadgeStatus, AuctionStatus, DealStatus } from '@/types/domain'
 import type { AuctionListGroup, RoomPhase } from '@/features/auctions/types'
 import type { BidIncrementBand } from '@/features/auction-room/types'
 
@@ -20,24 +20,30 @@ export function incrementForPrice(
 /** 소프트 클로즈 임계 — 남은 시간이 이 값 이하이면 마감 임박 */
 export const SOFT_CLOSE_THRESHOLD_MS = 30_000
 
-/** 경매 상태 뱃지 메타 (라벨 + Badge variant) */
-export const AUCTION_STATUS_META: Record<
-  AuctionStatus,
-  { label: string; variant: 'live' | 'scheduled' | 'ended' }
+/**
+ * 경매 상태 뱃지 메타 (라벨 + Badge variant).
+ * 시작 전 두 단계는 "입장"이라는 한 축의 전/후로 부른다. 경매방(RoomStateBanner)과 같은 말이라
+ * 목록에서 뱃지를 보고 들어간 사람이 같은 상태를 두 이름으로 만나지 않는다.
+ */
+export const AUCTION_BADGE_META: Record<
+  AuctionBadgeStatus,
+  { label: string; variant: 'live' | 'scheduled' | 'waiting' | 'ended' }
 > = {
+  NOT_OPEN: { label: '입장 전', variant: 'scheduled' },
+  WAITING: { label: '입장 가능', variant: 'waiting' },
   LIVE: { label: '진행중', variant: 'live' },
-  SCHEDULED: { label: '예정', variant: 'scheduled' },
   ENDED: { label: '종료', variant: 'ended' },
 }
 
 /**
- * 백엔드 5단계 RoomPhase를 화면의 3단계 AuctionStatus로 좁힌다.
- * NOT_OPEN·WAITING은 아직 입찰 전이라 "예정"으로, RESULT·CLOSED는 "종료"로 묶는다.
+ * 백엔드 5단계 RoomPhase를 뱃지의 4단계로 좁힌다.
+ * RESULT·CLOSED만 "종료"로 묶고, 시작 전 두 단계는 그대로 둔다 —
+ * 방 개설은 시작 30분 전이라 예정 카드 대부분이 NOT_OPEN이고, 그 안에서 입장 가능한
+ * 소수를 골라내는 것이 이 뱃지의 목적이다.
  */
-export function roomPhaseToStatus(phase: RoomPhase): AuctionStatus {
-  if (phase === 'LIVE') return 'LIVE'
-  if (phase === 'NOT_OPEN' || phase === 'WAITING') return 'SCHEDULED'
-  return 'ENDED'
+export function roomPhaseToBadgeStatus(phase: RoomPhase): AuctionBadgeStatus {
+  if (phase === 'RESULT' || phase === 'CLOSED') return 'ENDED'
+  return phase
 }
 
 /** 화면의 상태 탭을 목록 API의 filter 값으로. 서버는 "예정"을 PENDING이라 부른다. */

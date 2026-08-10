@@ -19,8 +19,8 @@ export function MyAuctionActions({ auction, onEdit, onDelete }: MyAuctionActions
   const deletable = canDeleteAuction(auction.phase)
 
   if (!editable && !deletable) {
-    // 방이 열렸는데 아직 시작 전이면 뱃지는 그대로 "예정"이다. 옆의 예정 카드에는 수정 버튼이
-    // 있는데 이 카드만 없는 상태라, 사라진 이유를 밝히지 않으면 같은 상태로 보인다.
+    // 방이 열린 카드는 뱃지가 "입장 가능"으로 갈리지만, 그 뱃지는 입장 여부를 말할 뿐
+    // 수정이 막힌 이유까지 설명하지는 않는다. 버튼이 사라진 까닭은 따로 밝힌다.
     const message =
       auction.phase === 'WAITING'
         ? '경매방이 열려 수정할 수 없습니다.'

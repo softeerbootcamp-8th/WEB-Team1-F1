@@ -22,6 +22,13 @@ export interface User {
 /** 경매 진행 상태 (스케줄러 자동 전이: SCHEDULED → LIVE → ENDED) */
 export type AuctionStatus = 'SCHEDULED' | 'LIVE' | 'ENDED'
 
+/**
+ * 카드 뱃지가 보여주는 단계. 서버의 3단계 AuctionStatus와 달리 시작 전을 둘로 가른다 —
+ * 대기실이 열렸는지(= 지금 들어갈 수 있는지)는 목록에서 알려줄 값이지 상태 필터의 단위가 아니다.
+ * 값 이름은 경매방의 RoomPhase·RoomStateMode와 맞춰 같은 단계를 같은 말로 부른다.
+ */
+export type AuctionBadgeStatus = 'NOT_OPEN' | 'WAITING' | 'LIVE' | 'ENDED'
+
 export interface CarSummary {
   name: string // 차종/모델 (ex. 더 뉴 K5)
   year: number

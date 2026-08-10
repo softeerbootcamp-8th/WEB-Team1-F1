@@ -5,8 +5,8 @@ import { Card } from '@/components/ui/card'
 import { CarThumb } from '@/components/common/car-thumb'
 import { StatusBadge } from '@/components/common/status-badge'
 import { Countdown } from '@/components/common/countdown'
-import { formatKRW, formatManwon, formatMileage } from '@/lib/format'
-import { roomPhaseToStatus } from '@/lib/auction'
+import { formatManwon, formatMileage } from '@/lib/format'
+import { roomPhaseToBadgeStatus } from '@/lib/auction'
 import type { AuctionListCard as AuctionListCardModel } from '@/features/auctions/types'
 
 interface AuctionCardProps {
@@ -17,10 +17,12 @@ interface AuctionCardProps {
 
 /** 홈/목록 화면의 경매 카드. 썸네일·차종·현재가/시작가·남은시간. */
 export function AuctionCard({ auction, actions }: AuctionCardProps) {
-  const status = roomPhaseToStatus(auction.phase)
+  const status = roomPhaseToBadgeStatus(auction.phase)
   const isLive = status === 'LIVE'
+  // 입장 여부와 상관없이 아직 입찰 전이라 값은 똑같이 시작가를 보여준다
+  const isBeforeStart = status === 'NOT_OPEN' || status === 'WAITING'
   const priceLabel = isLive ? '현재가' : status === 'ENDED' ? '낙찰가' : '시작가'
-  const price = isLive || status === 'ENDED' ? auction.currentPrice : auction.startPrice
+  const price = isBeforeStart ? auction.startPrice : auction.currentPrice
 
   return (
     <Card className="group gap-0 overflow-hidden py-0 transition-[transform,box-shadow,border-color] duration-500 ease-out hover:-translate-y-1.5 hover:border-foreground/20 hover:shadow-xl hover:shadow-black/10">
@@ -31,10 +33,9 @@ export function AuctionCard({ auction, actions }: AuctionCardProps) {
             alt={auction.model}
             className="transition-transform duration-500 group-hover:scale-105"
           />
-          <div className="absolute top-3 left-3">
-            <StatusBadge status={status} />
-          </div>
-          {status === 'SCHEDULED' && (
+          {/* 입장 전에도 개설 시각이 아니라 시작 시각을 센다. 개설은 시작 30분 전 고정이라
+              따로 세어 봐야 새 정보가 없고, 카드마다 기준이 달라지면 남은 시간끼리 비교가 깨진다 */}
+          {isBeforeStart && (
             <div className="bg-background/85 absolute right-3 bottom-3 rounded-md px-2 py-1 text-xs backdrop-blur">
               <span className="text-muted-foreground">시작까지 </span>
               <Countdown targetIso={auction.startAt} className="font-medium" />
@@ -54,16 +55,21 @@ export function AuctionCard({ auction, actions }: AuctionCardProps) {
           <h3 className="truncate font-semibold tracking-tight">{auction.model}</h3>
         </Link>
 
-        <dl className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-          <div className="flex items-center gap-1">
-            <span className="tabular">{auction.modelYear}년</span>
-          </div>
-          <span aria-hidden>·</span>
-          <div className="flex items-center gap-1">
-            <Gauge className="size-3.5" />
-            <span className="tabular">{formatMileage(auction.mileage)}</span>
-          </div>
-        </dl>
+        {/* 뱃지는 사진 위가 아니라 이 줄에 둔다. 제목 줄에 붙이면 트림이 긴 차종에서
+            제목이 잘리는데, 연식·주행거리는 글자가 짧아 오른쪽이 늘 비어 있다 */}
+        <div className="flex items-center justify-between gap-2">
+          <dl className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+            <div className="flex items-center gap-1">
+              <span className="tabular">{auction.modelYear}년</span>
+            </div>
+            <span aria-hidden>·</span>
+            <div className="flex items-center gap-1">
+              <Gauge className="size-3.5" />
+              <span className="tabular">{formatMileage(auction.mileage)}</span>
+            </div>
+          </dl>
+          <StatusBadge status={status} />
+        </div>
 
         <div className="flex items-end justify-between border-t pt-3">
           <div>
@@ -73,9 +79,6 @@ export function AuctionCard({ auction, actions }: AuctionCardProps) {
               <span className="text-muted-foreground ml-1 text-sm font-normal">
                 원
               </span>
-            </p>
-            <p className="text-muted-foreground/70 tabular text-[11px]">
-              {formatKRW(price)}
             </p>
           </div>
           <div className="text-muted-foreground flex items-center gap-1 text-xs">
