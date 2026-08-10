@@ -93,7 +93,7 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
         assertThat(delivered.createdAt()).isEqualTo(NOW);
 
         // then 2 : 종류와 참조로 조립한 이동 주소가 함께 온다
-        assertThat(delivered.link()).isEqualTo("/deals/" + DEAL_ID);
+        assertThat(delivered.link()).isEqualTo("/mypage/deals/" + DEAL_ID);
 
         // then 3 : 배지에 그대로 쓸 건수가 실려 온다
         assertThat(subscriber.received.getFirst().unreadCount()).isEqualTo(1);

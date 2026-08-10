@@ -22,7 +22,7 @@ public record NotificationResponse(
         @Schema(description = "읽음 여부", example = "false")
         boolean read,
 
-        @Schema(description = "알림을 눌렀을 때 이동할 화면 주소", example = "/deals/7")
+        @Schema(description = "알림을 눌렀을 때 이동할 화면 주소", example = "/mypage/deals/7")
         String link,
 
         @Schema(description = "발행 시각", example = "2026-08-03T12:00:00")
