@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
  * 알림 목록 한 줄
  * <p>
  * 엔티티가 아니라 프로젝션으로 받는다. 엔티티로 받으면 user 가 지연 로딩이라 목록을 훑는 사이
- * 회원 조회가 건수만큼 따라붙는데, OSIV 가 켜져 있어 예외 없이 조용히 일어난다.
+ * 회원 조회가 건수만큼 따라붙고, OSIV 를 꺼 둬서 트랜잭션 밖에서 훑으면 아예 터진다.
  */
 public record NotificationRow(
         long id,
