@@ -70,7 +70,7 @@ export function DealDetailPage() {
           title="잘못된 거래 번호입니다"
           action={
             <Button asChild>
-              <Link to="/mypage">마이페이지</Link>
+              <Link to="/deals">내 거래</Link>
             </Button>
           }
         />
@@ -96,7 +96,7 @@ export function DealDetailPage() {
           description={getErrorMessage(query.error, '존재하지 않거나 조회 권한이 없는 거래입니다.')}
           action={
             <Button asChild>
-              <Link to="/mypage">마이페이지</Link>
+              <Link to="/deals">내 거래</Link>
             </Button>
           }
         />
@@ -110,9 +110,9 @@ export function DealDetailPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-12" aria-label="거래 상세">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link to="/mypage">
+        <Link to="/deals">
           <ArrowLeft />
-          마이페이지
+          내 거래
         </Link>
       </Button>
 

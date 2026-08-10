@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { LoaderCircle, PackageSearch } from 'lucide-react'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -38,8 +38,16 @@ function toListCard(auction: MockAuctionCard): AuctionListCard {
   }
 }
 
+/** 탭 이름이 주소에 남아야 상세에서 돌아왔을 때 보던 탭이 유지된다 */
+const TABS = ['evaluations', 'deals', 'auctions'] as const
+
 export function MyPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // 모르는 값이 주소에 실려 와도 첫 탭으로 떨어뜨린다, 셋 다 아니면 빈 화면이 된다
+  const requested = searchParams.get('tab')
+  const tab = TABS.includes(requested as (typeof TABS)[number]) ? requested! : 'evaluations'
 
   if (isLoading) {
     return (
@@ -77,7 +85,10 @@ export function MyPage() {
         <Badge variant="outline">{ROLE_LABEL[user.role]} 회원</Badge>
       </header>
 
-      <Tabs defaultValue="evaluations">
+      <Tabs
+        value={tab}
+        onValueChange={(next) => setSearchParams({ tab: next }, { replace: true })}
+      >
         <TabsList>
           <TabsTrigger value="evaluations">방문견적</TabsTrigger>
           <TabsTrigger value="deals">내 거래</TabsTrigger>
