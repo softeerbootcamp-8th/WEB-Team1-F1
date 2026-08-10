@@ -35,10 +35,20 @@ public class InMemoryRoomChannel implements RoomChannel {
     }
 
     @Override
-    public int countSubscribers(long auctionId) {
+    public int countViewers(long auctionId) {
         Set<RoomSubscriber> subscribers = subscribersByAuction.get(auctionId);
 
-        return subscribers == null ? 0 : subscribers.size();
+        if (subscribers == null) {
+            return 0;
+        }
+
+        // 구독이 빠지면 그 사람도 같이 사라지므로 사람을 따로 명부에 들고 정리할 것이 없다
+        Set<Long> viewers = new HashSet<>();
+        for (RoomSubscriber subscriber : subscribers) {
+            viewers.add(subscriber.viewerId());
+        }
+
+        return viewers.size();
     }
 
     @Override

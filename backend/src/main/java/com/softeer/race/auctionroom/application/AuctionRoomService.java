@@ -30,8 +30,8 @@ public class AuctionRoomService {
             throw new BusinessException(errorCode);
         });
 
-        // 조회는 접속이 아니다, 접속자는 열려 있는 구독 수로만 센다
-        return AuctionRoomView.of(userId, result, roomChannel.countSubscribers(auctionId),
+        // 조회는 접속이 아니다, 접속자는 열려 있는 구독으로만 센다
+        return AuctionRoomView.of(userId, result, roomChannel.countViewers(auctionId),
                 auctionRoomReader.findPhotoUrls(auctionId));
     }
 
