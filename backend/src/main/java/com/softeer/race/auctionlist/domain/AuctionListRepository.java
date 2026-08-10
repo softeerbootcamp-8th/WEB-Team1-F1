@@ -26,7 +26,7 @@ public interface AuctionListRepository extends Repository<Auction, Long> {
      */
     String SELECT_CARD_SQL = """
             select /*+ JOIN_ORDER(a, p, v) */
-                a.id, v.main_photo_url, v.model, v.model_year, v.mileage,
+                a.id, v.id, v.main_photo_url, v.manufacturer, v.model, v.model_year, v.mileage,
                 a.start_price, a.current_price, a.room_open_at, a.start_time, a.current_end_time
             from auction a
             join auction_post p on p.id = a.post_id
@@ -36,7 +36,7 @@ public interface AuctionListRepository extends Repository<Auction, Long> {
 
     String SELECT_CARD = """
             select new com.softeer.race.auctionlist.domain.AuctionListRow(
-                a.id, v.mainPhotoUrl, v.model, v.modelYear, v.mileage,
+                a.id, v.id, v.mainPhotoUrl, str(v.manufacturer), v.model, v.modelYear, v.mileage,
                 a.startPrice, a.currentPrice, a.roomOpenAt, a.startTime, a.currentEndTime)
             from Auction a
             join a.post p

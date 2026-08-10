@@ -41,6 +41,9 @@ public interface EvaluationLookupApi {
 
                     아직 진단 전이면 그 값들이 null이고 imageUrls에는 카탈로그 이미지만 있습니다.
 
+                    status가 REJECTED면 rejectReason에 평가사가 남긴 반려 사유가 들어 있습니다.
+                    그 외의 상태에서는 null입니다.
+
                     **신청한 판매자와 배정된 평가사만 조회할 수 있습니다.** 방문 주소가 들어 있어
                     진단서 조회처럼 열어 둘 수 없습니다.
                     """)

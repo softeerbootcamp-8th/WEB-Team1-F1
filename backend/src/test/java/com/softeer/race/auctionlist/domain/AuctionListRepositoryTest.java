@@ -1,9 +1,11 @@
 package com.softeer.race.auctionlist.domain;
 
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.vehicle.domain.Manufacturer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Limit;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -172,7 +174,11 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
         // then 1 : 경매글에서
         assertThat(row.thumbnailUrl()).isEqualTo("https://cdn.race.dev/101.jpg");
 
-        // then 2 : 차량에서
+        // then 2 : 차량에서. 제조사는 저장 문자열 그대로 담기고 enum 복원은 manufacturerType() 이 한다.
+        // 차량 id 는 경매 id(101)와 일부러 다른 대역이다. 같으면 a.id 와 뒤바뀌어도 통과한다
+        assertThat(row.vehicleId()).isEqualTo(901L);
+        assertThat(row.manufacturer()).isEqualTo("HYUNDAI");
+        assertThat(row.manufacturerType()).isEqualTo(Manufacturer.HYUNDAI);
         assertThat(row.model()).isEqualTo("아반떼 CN7");
         assertThat(row.modelYear()).isEqualTo(2022);
         assertThat(row.mileage()).isEqualTo(35000);
@@ -183,6 +189,24 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
         assertThat(row.roomOpenAt()).isEqualTo(LocalDateTime.of(2026, 8, 3, 11, 20));
         assertThat(row.startTime()).isEqualTo(LocalDateTime.of(2026, 8, 3, 11, 50));
         assertThat(row.currentEndTime()).isEqualTo(LocalDateTime.of(2026, 8, 3, 12, 10));
+    }
+
+    @Test
+    @DisplayName("나의 경매 쿼리도 카드 값을 같은 자리에 채운다")
+    void myQueries_mapSameFields() {
+        // given : 공개 목록은 네이티브, 나의 경매는 JPQL 이라 매핑 경로가 다르다.
+        // 컬럼을 한쪽에만 추가하면 여기서 갈린다. 픽스처의 판매자는 100번이다
+
+        // when
+        AuctionListRow row = auctionListRepository.findMyLivePage(
+                100L, SNAPSHOT_AT, AuctionListGroup.LIVE.startSortAt(),
+                AuctionListGroup.LIVE.startAuctionId(), Limit.of(1)).getFirst();
+
+        // then : 네이티브 쪽 매핑 테스트와 같은 값이 나와야 한다
+        assertThat(row.auctionId()).isEqualTo(101L);
+        assertThat(row.vehicleId()).isEqualTo(901L);
+        assertThat(row.manufacturer()).isEqualTo("HYUNDAI");
+        assertThat(row.model()).isEqualTo("아반떼 CN7");
     }
 
     @Test

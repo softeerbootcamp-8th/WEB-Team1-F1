@@ -6,8 +6,10 @@ import com.softeer.race.auctionlist.application.dto.AuctionListInfo;
 import com.softeer.race.auctionlist.domain.AuctionListGroup;
 import com.softeer.race.auctionlist.domain.AuctionListRepository;
 import com.softeer.race.auctionlist.domain.AuctionListRow;
-import com.softeer.race.auctionroom.domain.RoomPhase;
 import com.softeer.race.auctionroom.application.RoomChannel;
+import com.softeer.race.auctionroom.domain.RoomPhase;
+import com.softeer.race.vehicle.application.VehicleKeywordService;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,21 +19,18 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 /**
  * 그룹을 넘나들며 한 페이지를 채우는 순회 로직
@@ -69,11 +68,16 @@ class AuctionListServiceTest {
     @Mock
     private RoomChannel roomChannel;
 
+    // 스텁하지 않으면 Mockito 기본값인 빈 맵이 돌아온다. 키워드와 무관한 테스트는 그 값이면 충분하다.
+    @Mock
+    private VehicleKeywordService vehicleKeywordService;
+
     private AuctionListService auctionListService;
 
     @BeforeEach
     void setUp() {
-        auctionListService = new AuctionListService(auctionListRepository, roomChannel, FIXED_CLOCK);
+        auctionListService = new AuctionListService(
+                vehicleKeywordService, auctionListRepository, roomChannel, FIXED_CLOCK);
     }
 
     // ================= 그룹 순회 =================
@@ -334,6 +338,60 @@ class AuctionListServiceTest {
         assertThat(card.connectedCount()).isEqualTo(7);
     }
 
+    // ================= 키워드 =================
+
+    @Test
+    @DisplayName("키워드 맵의 값이 해당 카드에 붙고 없는 차량은 빈 목록이다")
+    void attachesKeywordsToMatchingCard() {
+        // given : 1번 차량에만 키워드가 있다
+        givenLive(List.of(liveRow(1, NOW.minusMinutes(10)), liveRow(2, NOW.minusMinutes(5))));
+        givenPending(List.of());
+        givenEnded(List.of());
+        given(vehicleKeywordService.findByVehicleIds(any()))
+                .willReturn(Map.of(1L, List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK)));
+
+        // when
+        List<AuctionCardInfo> content = auctionListService.list(null, null).content();
+
+        // then : 진단을 거치지 않은 차량은 null 이 아니라 빈 목록이다. null 처리를 화면에 떠넘기지 않는다
+        assertThat(content.get(0).keywords())
+                .containsExactly(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK);
+        assertThat(content.get(1).keywords()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("키워드는 카드마다가 아니라 페이지당 한 번만 읽는다")
+    void loadsKeywordsOncePerPage() {
+        // given : 세 그룹에서 카드 9장이 나온다
+        givenLive(liveRows(1, 3));
+        givenPending(pendingRows(100, 3));
+        givenEnded(endedRows(200, 3));
+
+        // when
+        auctionListService.list(null, null);
+
+        // then : 카드마다 읽으면 페이지 크기만큼 조회가 나간다
+        then(vehicleKeywordService).should(times(1)).findByVehicleIds(any());
+    }
+
+    @Test
+    @DisplayName("다음 페이지 판단용으로 더 읽은 카드의 차량은 키워드 조회에 넣지 않는다")
+    void excludesTrimmedRowFromKeywordLookup() {
+        // given : 21건이 나와 마지막 한 건은 버려진다
+        givenLive(liveRows(1, FETCH_SIZE));
+
+        // when
+        auctionListService.list(null, null);
+
+        // then : 응답에서 빠지는 21번 차량의 키워드까지 가져올 이유가 없다
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Collection<Long>> requested = ArgumentCaptor.forClass(Collection.class);
+        verify(vehicleKeywordService).findByVehicleIds(requested.capture());
+        assertThat(requested.getValue())
+                .hasSize(PAGE_SIZE)
+                .doesNotContain((long) FETCH_SIZE);
+    }
+
     // ================= 상태 필터 =================
 
     @Test
@@ -485,7 +543,9 @@ class AuctionListServiceTest {
     private AuctionListRow row(long id, LocalDateTime start) {
         return new AuctionListRow(
                 id,
+                id,                          // 차량 id, 테스트에서는 경매 id 와 같게 둔다
                 "https://cdn.race.dev/" + id + ".jpg",
+                "HYUNDAI",
                 "MODEL-" + id,
                 2022,
                 35000,

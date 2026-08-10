@@ -21,6 +21,7 @@ class EvaluationTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 4);
     private static final String VISIT_ADDRESS = "서울 성동구 왕십리로 83";
     private static final String CONTACT_PHONE = "01012345678";
+    private static final String REJECT_REASON = "번호판이 등록된 차량과 일치하지 않습니다.";
 
     private static final long SELLER_ID = 600L;
     private static final long EVALUATOR_ID = 601L;
@@ -118,8 +119,7 @@ class EvaluationTest {
         Evaluation evaluation = requested();
         evaluation.assignTo(evaluator(EVALUATOR_ID));
 
-        // when & then : 반려된 신청 거부(NOT_DIAGNOSABLE)는 REJECTED로 만드는 공개 경로가 없어
-        //               픽스처로 상태를 심는 통합테스트가 맡는다
+        // when & then
         assertThatCode(() -> evaluation.validateDiagnosableBy(EVALUATOR_ID))
                 .doesNotThrowAnyException();
     }
@@ -196,6 +196,100 @@ class EvaluationTest {
     }
 
     @Test
+    @DisplayName("반려하면 REJECTED가 되고 사유가 남으며 담당자는 그대로다")
+    void reject() {
+        // given
+        Evaluation evaluation = requested();
+        User evaluator = evaluator(EVALUATOR_ID);
+        evaluation.assignTo(evaluator);
+
+        // when
+        evaluation.reject(REJECT_REASON);
+
+        // then : 반려가 배정을 지우면 "누가 반려했는지"를 되짚을 수 없게 된다
+        assertThat(evaluation.getStatus()).isEqualTo(EvaluationStatus.REJECTED);
+        assertThat(evaluation.getRejectReason()).isEqualTo(REJECT_REASON);
+        assertThat(evaluation.getEvaluator()).isSameAs(evaluator);
+    }
+
+    @Test
+    @DisplayName("배정된 평가사는 REQUESTED인 신청을 반려할 수 있다")
+    void validateRejectableBy() {
+        Evaluation evaluation = requested();
+        evaluation.assignTo(evaluator(EVALUATOR_ID));
+
+        assertThatCode(() -> evaluation.validateRejectableBy(EVALUATOR_ID))
+                .doesNotThrowAnyException();
+    }
+
+    /**
+     * 반려와 진단서 첨부가 상태 조건에서 갈라지는 지점을 고정한다. 재제출을 위해 APPROVED를
+     * 허용하는 {@code validateDiagnosableBy}와 한 검사로 합치면 여기가 통과해 버리고, 이미 나간
+     * 승인 알림과 그 사이 올라간 경매글이 진단 결과 없는 차량을 가리키게 된다.
+     */
+    @Test
+    @DisplayName("이미 승인된 신청은 반려할 수 없다(NOT_REJECTABLE)")
+    void validateRejectableByRejectsApproved() {
+        Evaluation evaluation = requested();
+        evaluation.assignTo(evaluator(EVALUATOR_ID));
+        evaluation.approve();
+
+        assertThatThrownBy(() -> evaluation.validateRejectableBy(EVALUATOR_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.NOT_REJECTABLE));
+    }
+
+    // 사유를 고쳐 쓰는 것은 다른 유스케이스다. 허용하면 판매자가 이미 읽은 사유가 조용히 바뀐다
+    @Test
+    @DisplayName("이미 반려된 신청을 다시 반려할 수 없다(NOT_REJECTABLE)")
+    void validateRejectableByRejectsRejected() {
+        Evaluation evaluation = requested();
+        evaluation.assignTo(evaluator(EVALUATOR_ID));
+        evaluation.reject(REJECT_REASON);
+
+        assertThatThrownBy(() -> evaluation.validateRejectableBy(EVALUATOR_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.NOT_REJECTABLE));
+
+        assertThat(evaluation.getRejectReason()).isEqualTo(REJECT_REASON);
+    }
+
+    // 담당자 검사를 진단서 첨부와 공유한다. 한쪽만 고치면 여기서 갈린다
+    @Test
+    @DisplayName("배정 전이면 EVALUATOR_NOT_ASSIGNED, 남의 담당이면 NOT_ASSIGNED_EVALUATOR로 반려를 막는다")
+    void validateRejectableByChecksAssignment() {
+        assertThatThrownBy(() -> requested().validateRejectableBy(EVALUATOR_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.EVALUATOR_NOT_ASSIGNED));
+
+        Evaluation assigned = requested();
+        assigned.assignTo(evaluator(EVALUATOR_ID));
+
+        assertThatThrownBy(() -> assigned.validateRejectableBy(OTHER_EVALUATOR_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.NOT_ASSIGNED_EVALUATOR));
+    }
+
+    // 반려로 끝난 신청은 진단서를 받지 않는다. 받으면 상태와 데이터가 어긋나고,
+    // 재신청으로 생긴 새 평가와 어느 쪽이 유효한지 알 수 없어진다
+    @Test
+    @DisplayName("반려된 신청에는 진단 결과를 붙일 수 없다(NOT_DIAGNOSABLE)")
+    void validateDiagnosableByRejectsRejected() {
+        Evaluation evaluation = requested();
+        evaluation.assignTo(evaluator(EVALUATOR_ID));
+        evaluation.reject(REJECT_REASON);
+
+        assertThatThrownBy(() -> evaluation.validateDiagnosableBy(EVALUATOR_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.NOT_DIAGNOSABLE));
+    }
+
+    @Test
     @DisplayName("신청한 판매자와 배정된 평가사는 상세를 볼 수 있다")
     void isViewableBy() {
         // given
@@ -230,8 +324,6 @@ class EvaluationTest {
         return evaluator;
     }
 
-    // 평가가 끝난 신청(NOT_ASSIGNABLE)은 여기서 만들 수 없다. status를 바꾸는 방법이 아직 없어
-    // 리플렉션 없이는 그 상태에 도달하지 못하므로, 그 경로는 픽스처로 상태를 심는 통합테스트가 맡는다
     private Evaluation requested() {
         return Evaluation.request(
                 mock(Vehicle.class), TODAY.plusDays(16), VISIT_ADDRESS, CONTACT_PHONE, TODAY);
