@@ -1,120 +1,51 @@
-import { toast } from 'sonner'
+import { ChevronRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
+import { Card } from '@/components/ui/card'
 import { CarThumb } from '@/components/common/car-thumb'
-import { cn } from '@/lib/utils'
 import { formatKRW, formatRelativeTime } from '@/lib/format'
-import {
-  DEAL_FLOW,
-  DEAL_STATUS_META,
-  dealProgress,
-} from '@/lib/auction'
-import type { Deal } from '@/types/domain'
+import { DEAL_STATUS_META } from '../types'
+import type { DealCard as DealCardData } from '../types'
 
-interface DealCardProps {
-  deal: Deal
-  onAction: (dealId: number, label: string) => void
-}
-
-/** 거래 카드 — 파이프라인 진행률 + (이 거래에서의) 내 역할별 액션. */
-export function DealCard({ deal, onAction }: DealCardProps) {
-  const meta = DEAL_STATUS_META[deal.status]
-  const progress = dealProgress(deal.status)
+/**
+ * 거래 목록 카드. 카드 전체가 상세로 가는 링크다 — 이 화면에서 할 수 있는 일이 그것뿐이라
+ * 버튼을 따로 두면 누를 곳이 두 군데가 된다.
+ */
+export function DealCard({ deal }: { deal: DealCardData }) {
   const cancelled = deal.status === 'CANCELLED'
+  const meta = DEAL_STATUS_META[deal.status]
 
   return (
-    <Card className="gap-4 p-5">
-      <div className="flex gap-4">
+    <Card className="p-0 transition-colors hover:border-foreground/20">
+      <Link
+        to={`/deals/${deal.dealId}`}
+        className="flex items-center gap-4 p-5"
+        aria-label={`${deal.model} 거래 상세`}
+      >
         <div className="bg-muted size-20 shrink-0 overflow-hidden rounded-lg border">
-          <CarThumb src={deal.thumbnailUrl} alt={deal.carName} />
+          <CarThumb src={deal.thumbnailUrl ?? undefined} alt={deal.model} />
         </div>
+
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="truncate font-semibold">{deal.carName}</h3>
-            <Badge variant={cancelled ? 'destructive' : deal.status === 'COMPLETED' ? 'success' : 'secondary'}>
+          <div className="flex items-center gap-2">
+            <Badge variant={cancelled ? 'destructive' : deal.status === 'CONFIRMED' ? 'success' : 'secondary'}>
               {meta.label}
             </Badge>
+            {/* 내 차례라는 표시가 목록에서 가장 먼저 보여야 하는 정보다 */}
+            {deal.actionRequired && <Badge variant="warning">내 차례</Badge>}
           </div>
-          <p className="tabular text-price-up mt-1 text-lg font-semibold">
-            {formatKRW(deal.finalPrice)}
-          </p>
-          <p className="text-muted-foreground text-xs">
-            {deal.myRole === 'BUYER' ? '판매자' : '구매자'} {deal.counterpartNickname} ·{' '}
-            {formatRelativeTime(deal.updatedAt)}
+
+          <h3 className="mt-2 truncate font-semibold">{deal.model}</h3>
+          <p className="tabular mt-1 font-semibold">{formatKRW(deal.finalPrice)}</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            {deal.mySide === 'BUYER' ? '판매자' : '구매자'} {deal.counterpartName} ·{' '}
+            {formatRelativeTime(deal.statusChangedAt)}
           </p>
         </div>
-      </div>
 
-      {!cancelled && (
-        <div className="space-y-2">
-          <Progress
-            value={progress}
-            indicatorClassName={deal.status === 'COMPLETED' ? 'bg-price-up' : undefined}
-          />
-          <ol className="text-muted-foreground flex justify-between text-[11px]">
-            {DEAL_FLOW.map((s) => (
-              <li
-                key={s}
-                className={cn(
-                  DEAL_FLOW.indexOf(s) <= DEAL_FLOW.indexOf(deal.status) &&
-                    'text-foreground font-medium',
-                )}
-              >
-                {DEAL_STATUS_META[s].label.replace(' 대기', '')}
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      <p className="text-muted-foreground border-t pt-3 text-sm">{meta.description}</p>
-
-      <DealActions deal={deal} onAction={onAction} />
+        <ChevronRight className="text-muted-foreground size-5 shrink-0" aria-hidden />
+      </Link>
     </Card>
   )
-}
-
-/** 거래에서의 내 역할(판매자/구매자)에 따른 액션 버튼. */
-function DealActions({ deal, onAction }: DealCardProps) {
-  const act = (label: string) => {
-    onAction(deal.id, label)
-    toast.success(`${label} 처리되었습니다`)
-  }
-
-  // 이 거래의 판매자: 확정/철회, 탁송 입력
-  if (deal.myRole === 'SELLER') {
-    if (deal.status === 'PENDING_SELLER') {
-      return (
-        <div className="flex gap-2">
-          <Button size="sm" className="flex-1" onClick={() => act('거래 확정')}>
-            확정
-          </Button>
-          <Button size="sm" variant="outline" className="flex-1" onClick={() => act('거래 철회')}>
-            철회
-          </Button>
-        </div>
-      )
-    }
-    if (deal.status === 'CONFIRMED') {
-      return (
-        <Button size="sm" className="w-full" onClick={() => act('탁송 정보 입력')}>
-          탁송 정보 입력
-        </Button>
-      )
-    }
-  }
-
-  // 이 거래의 구매자: 배송 입력
-  if (deal.myRole === 'BUYER' && deal.status === 'IN_TRANSIT') {
-    return (
-      <Button size="sm" className="w-full" onClick={() => act('배송 정보 입력')}>
-        배송 정보 입력
-      </Button>
-    )
-  }
-
-  return null
 }

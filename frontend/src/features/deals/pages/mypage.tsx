@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { LoaderCircle, PackageSearch } from 'lucide-react'
 
@@ -11,9 +10,8 @@ import { MOCK_AUCTIONS } from '@/features/auctions/mock'
 import type { AuctionListCard, RoomPhase } from '@/features/auctions/types'
 import { ROLE_LABEL, useAuth } from '@/features/auth/auth-context'
 import { MyRequestsPanel } from '@/features/evaluations/components/my-requests-panel'
-import { DealCard } from '../components/deal-card'
-import { MOCK_DEALS } from '../mock'
-import type { AuctionCard as MockAuctionCard, Deal } from '@/types/domain'
+import { DealListPanel } from '../components/deal-list-panel'
+import type { AuctionCard as MockAuctionCard } from '@/types/domain'
 
 // 마이페이지는 아직 실제 Deal/참여 경매 API가 없어 mock을 쓴다.
 // AuctionCard 컴포넌트는 실제 목록 API 계약을 따르므로 여기서만 변환해 맞춘다.
@@ -42,7 +40,6 @@ function toListCard(auction: MockAuctionCard): AuctionListCard {
 
 export function MyPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
-  const [deals, setDeals] = useState<Deal[]>(MOCK_DEALS)
 
   if (isLoading) {
     return (
@@ -69,20 +66,6 @@ export function MyPage() {
     )
   }
 
-  // 상태 전이 시뮬레이션
-  const advance = (dealId: number, label: string) => {
-    setDeals((prev) =>
-      prev.map((d) => {
-        if (d.id !== dealId) return d
-        if (label === '거래 철회') return { ...d, status: 'CANCELLED' }
-        if (label === '거래 확정') return { ...d, status: 'CONFIRMED' }
-        if (label === '탁송 정보 입력') return { ...d, status: 'IN_TRANSIT' }
-        if (label === '배송 정보 입력') return { ...d, status: 'COMPLETED' }
-        return d
-      }),
-    )
-  }
-
   const participated = MOCK_AUCTIONS.filter((a) => a.status !== 'SCHEDULED').slice(0, 4)
 
   return (
@@ -106,15 +89,13 @@ export function MyPage() {
         </TabsContent>
 
         <TabsContent value="deals" className="mt-6">
-          {deals.length === 0 ? (
-            <EmptyState icon={PackageSearch} title="진행중인 거래가 없습니다" />
-          ) : (
-            <div className="grid gap-5 md:grid-cols-2">
-              {deals.map((deal) => (
-                <DealCard key={deal.id} deal={deal} onAction={advance} />
-              ))}
-            </div>
-          )}
+          {/* 목록 규칙은 한 벌이다. /deals 페이지와 같은 패널을 그대로 쓴다 */}
+          <DealListPanel />
+          <div className="mt-6 flex justify-center">
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/deals">거래 페이지에서 보기</Link>
+            </Button>
+          </div>
         </TabsContent>
 
         <TabsContent value="auctions" className="mt-6">

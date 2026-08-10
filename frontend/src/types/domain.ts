@@ -59,29 +59,7 @@ export interface AuctionCard {
   endAt: string // ISO — 종료 예정 시각
 }
 
-/** 거래(Deal) 상태 파이프라인 */
-export type DealStatus =
-  | 'PENDING_SELLER'
-  | 'CONFIRMED'
-  | 'IN_TRANSIT'
-  | 'COMPLETED'
-  | 'CANCELLED'
-
-/** 이 거래에서 내가 어느 쪽인지 (개인·딜러 모두 양쪽 다 될 수 있다) */
-export type DealSide = 'SELLER' | 'BUYER'
-
-export interface Deal {
-  id: number
-  auctionId: number
-  carName: string
-  thumbnailUrl: string
-  finalPrice: number
-  status: DealStatus
-  /** 이 거래에서 내 역할(판매자/구매자) — 액션 분기 기준 */
-  myRole: DealSide
-  counterpartNickname: string
-  updatedAt: string
-}
+// 거래 계약은 `features/deals/types.ts` 에 있다. 서버 응답과 1:1이라 feature 안에 둔다.
 
 /**
  * 알림 종류 — 백엔드 NotificationType과 1:1로 맞춘다.

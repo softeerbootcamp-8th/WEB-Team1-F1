@@ -22,6 +22,43 @@ export type FaultParty = 'SELLER' | 'BUYER'
 
 export type CancellationReason = 'BUYER_CANCELLED' | 'SELLER_CANCELLED'
 
+/** GET /api/deals 의 카드 한 장. 상세와 나눈다 — 목록은 여러 건을 한 번에 읽는다 */
+export interface DealCard {
+  dealId: number
+  auctionId: number
+  status: DealStatus
+  mySide: DealSide
+  finalPrice: number
+  model: string
+  thumbnailUrl: string | null
+  counterpartName: string
+  statusChangedAt: string
+  /** 지금 내가 움직일 차례인지. 목록에서 가장 먼저 보고 싶은 값이다 */
+  actionRequired: boolean
+}
+
+/** GET /api/deals 한 페이지. 첫 요청은 커서 없이, 이후는 nextCursor 를 그대로 돌려보낸다 */
+export interface DealSlice {
+  content: DealCard[]
+  serverTime: string
+  hasNext: boolean
+  nextCursor: number | null
+}
+
+/** POST /api/deals/{dealId}/transport */
+export interface TransportSubmitRequest {
+  /** 업로드 API 로 먼저 올리고 받은 조회 주소 */
+  documentUrl: string
+  transportAt: string
+  transportLocation: string
+}
+
+/** POST /api/deals/{dealId}/delivery. 동의 여부를 따로 보내지 않는다 — 보내는 것이 곧 동의다 */
+export interface DeliveryConfirmRequest {
+  deliveryAt: string
+  deliveryLocation: string
+}
+
 /** GET /api/deals/{dealId} */
 export interface DealDetail {
   dealId: number

@@ -13,6 +13,7 @@ import { SellResultPage } from '@/features/sell/pages/sell-result-page'
 import { PriceQuotePage } from '@/features/quote/pages/price-quote-page'
 import { QuoteResultPage } from '@/features/quote/pages/quote-result-page'
 import { MyPage } from '@/features/deals/pages/mypage'
+import { DealsPage } from '@/features/deals/pages/deals-page'
 import { DealDetailPage } from '@/features/deals/pages/deal-detail-page'
 import { LoginPage } from '@/features/auth/pages/login-page'
 import { SignupPage } from '@/features/auth/pages/signup-page'
@@ -43,6 +44,7 @@ export function AppRouter() {
         <Route path="/evaluations/my" element={<MyAssignmentsPage />} />
         <Route path="/evaluations/:evaluationId/result" element={<EvaluationResultPage />} />
         <Route path="/mypage" element={<MyPage />} />
+        <Route path="/deals" element={<DealsPage />} />
         {/* 알림 딥링크의 목적지. 주소를 바꾸면 이미 쌓인 알림까지 소급해 바뀐다 */}
         <Route path="/deals/:dealId" element={<DealDetailPage />} />
         <Route path="/mypage/evaluations/:evaluationId" element={<MyRequestDetailPage />} />

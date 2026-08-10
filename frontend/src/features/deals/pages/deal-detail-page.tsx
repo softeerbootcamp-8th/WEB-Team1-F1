@@ -1,4 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import {
   ArrowLeft,
   CalendarClock,
@@ -18,25 +20,48 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getErrorMessage } from '@/lib/axios'
 import { cn } from '@/lib/utils'
 import { formatDateTime, formatKRW, formatMileage } from '@/lib/format'
-import { fetchDealDetail } from '../api'
+import { cancelDeal, fetchDealDetail } from '../api'
+import { DealActions } from '../components/deal-actions'
 import { DEAL_FLOW, DEAL_STATUS_META, dealGuide } from '../types'
 import type { DealStatus } from '../types'
 
 /**
- * 거래 상세. 낙찰 알림이 가리키는 목적지다.
+ * 거래 상세. 낙찰 알림이 가리키는 목적지이고, 단계를 실제로 진행시키는 화면이다.
  *
- * <b>읽기 전용이다.</b> 단계별 행동(구매 확정·서류 제출·인도 일정)은 #194 에서 붙인다. 버튼을 미리
- * 그려 두면 눌러도 아무 일이 없어, 이 이슈가 애초에 지적한 문제를 그대로 다시 만든다.
+ * 액션은 전부 204 라 응답에 새 상태가 없다. 그래서 전이 뒤에는 상세를 다시 읽어 화면을 맞춘다 —
+ * 화면이 다음 단계를 스스로 계산하면 서버의 단계 표를 복제하게 되고, 둘이 어긋나는 순간 조용히 틀린다.
  */
 export function DealDetailPage() {
   const { dealId: dealIdParam } = useParams()
   const dealId = Number(dealIdParam)
+  const queryClient = useQueryClient()
+  const [isCancelling, setIsCancelling] = useState(false)
 
   const query = useQuery({
     queryKey: ['deals', 'detail', dealId],
     queryFn: () => fetchDealDetail(dealId),
     enabled: Number.isInteger(dealId) && dealId > 0,
   })
+
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['deals', 'detail', dealId] })
+  }
+
+  const cancel = async () => {
+    // 되돌릴 수 없는 행동이라 한 번 묻는다. 확정 전이라도 상대는 이미 준비를 시작했을 수 있다
+    if (!window.confirm('거래를 그만두시겠습니까? 취소한 쪽이 귀책으로 남습니다.')) return
+
+    setIsCancelling(true)
+    try {
+      await cancelDeal(dealId)
+      toast.success('거래를 취소했습니다.')
+      refresh()
+    } catch (cause) {
+      toast.error(getErrorMessage(cause, '거래 취소에 실패했습니다.'))
+    } finally {
+      setIsCancelling(false)
+    }
+  }
 
   if (!Number.isInteger(dealId) || dealId <= 0) {
     return (
@@ -126,6 +151,8 @@ export function DealDetailPage() {
         {dealGuide(deal.status, deal.actionRequired)}
       </p>
 
+      <DealActions deal={deal} onDone={refresh} />
+
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -206,6 +233,15 @@ export function DealDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 확정 전까지는 양쪽 누구든 그만둘 수 있다. 내 차례가 아니어도 빠질 수 있어야 한다 */}
+      {!cancelled && deal.status !== 'CONFIRMED' && (
+        <div className="mt-8 border-t pt-6">
+          <Button variant="ghost" size="sm" onClick={cancel} disabled={isCancelling}>
+            거래 그만두기
+          </Button>
+        </div>
+      )}
 
       {deal.status === 'CONFIRMED' && (
         <p className="text-muted-foreground mt-8 flex items-start gap-2 text-sm">
