@@ -22,6 +22,8 @@ const badgeVariants = cva(
         live: 'border-transparent bg-[color-mix(in_oklab,var(--status-live)_12%,var(--background))] text-status-live',
         scheduled:
           'border-transparent bg-[color-mix(in_oklab,var(--status-scheduled)_12%,var(--background))] text-status-scheduled',
+        waiting:
+          'border-transparent bg-[color-mix(in_oklab,var(--status-waiting)_12%,var(--background))] text-status-waiting',
         ended: 'border-transparent bg-muted text-muted-foreground',
         warning:
           'border-transparent bg-closing-soon/15 text-closing-soon',

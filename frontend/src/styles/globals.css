@@ -58,8 +58,9 @@
   --success: oklch(0.6 0.15 150);
   --warning: oklch(0.72 0.17 65);
 
-  /* 경매 상태 뱃지: 예정 / 진행 / 종료 */
-  --status-scheduled: oklch(0.55 0 0); /* 예정 — 중립 실버 */
+  /* 경매 상태 뱃지: 입장 전 / 입장 가능 / 진행 / 종료 */
+  --status-scheduled: oklch(0.55 0 0); /* 입장 전 — 중립 실버, 예정 카드 대부분이 이 상태다 */
+  --status-waiting: oklch(0.6 0.14 68); /* 입장 가능 — 앰버, 대기실 배너(warning)와 같은 계열 */
   --status-live: oklch(0.58 0.21 25); /* 진행 — 레드 */
   --status-ended: oklch(0.75 0 0); /* 종료 — 흐린 실버 */
 
@@ -119,6 +120,7 @@
   --warning: oklch(0.78 0.16 65);
 
   --status-scheduled: oklch(0.7 0 0);
+  --status-waiting: oklch(0.8 0.15 68);
   --status-live: oklch(0.68 0.21 25);
   --status-ended: oklch(0.5 0 0);
 
@@ -175,6 +177,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-status-scheduled: var(--status-scheduled);
+  --color-status-waiting: var(--status-waiting);
   --color-status-live: var(--status-live);
   --color-status-ended: var(--status-ended);
   --color-deal-pending: var(--deal-pending);
