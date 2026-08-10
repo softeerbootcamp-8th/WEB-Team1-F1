@@ -36,8 +36,8 @@ export function CarDetail({ vehicle }: CarDetailProps) {
       <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
         {specs.map((s) => (
           <div key={s.label} className="bg-card p-4">
-            <dt className="text-muted-foreground text-xs">{s.label}</dt>
-            <dd className="tabular mt-1 font-semibold">{s.value}</dd>
+            <dt className="text-muted-foreground text-sm">{s.label}</dt>
+            <dd className="tabular mt-1 text-lg font-semibold">{s.value}</dd>
           </div>
         ))}
       </dl>
@@ -57,12 +57,17 @@ export function CarDetail({ vehicle }: CarDetailProps) {
  * 평가사가 올린 순서 그대로 넘겨 본다, 첫 장이 대표다.
  * 한 장뿐이면 넘길 것이 없으므로 화살표와 점을 그리지 않는다.
  */
-const CarPhotos = memo(function CarPhotos({
+export const CarPhotos = memo(function CarPhotos({
   model,
   imageUrls,
+  aspectClassName = 'aspect-[16/10]',
+  className,
 }: {
   model: string
   imageUrls: string[]
+  /** 사진 비율, 대기방은 한 화면에 담으려고 더 납작하게 쓴다 */
+  aspectClassName?: string
+  className?: string
 }) {
   const [api, setApi] = useState<CarouselApi>()
   const [current, setCurrent] = useState(0)
@@ -82,13 +87,13 @@ const CarPhotos = memo(function CarPhotos({
   const hasMany = imageUrls.length > 1
 
   return (
-    <div className="space-y-3">
+    <div className={cn('space-y-3', className)}>
       {/* 끝에서 처음으로 돌아온다, 장수가 적어 한 바퀴가 금방이다 */}
       <Carousel setApi={setApi} opts={{ loop: hasMany }} className="w-full">
         <CarouselContent>
           {imageUrls.map((url, index) => (
             <CarouselItem key={url}>
-              <div className="bg-muted aspect-[16/10] overflow-hidden rounded-xl border">
+              <div className={cn('bg-muted overflow-hidden rounded-xl border', aspectClassName)}>
                 <CarThumb src={url} alt={`${model} 사진 ${index + 1}`} loading="eager" />
               </div>
             </CarouselItem>
