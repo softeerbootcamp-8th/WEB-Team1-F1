@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 경매글 목록 화면에 필요한 경매 조회
@@ -88,6 +89,13 @@ public interface AuctionListRepository extends Repository<Auction, Long> {
                                        @Param("cursorSortAt") LocalDateTime cursorSortAt,
                                        @Param("cursorAuctionId") long cursorAuctionId,
                                        @Param("limit") int limit);
+
+    /**
+     * 방송할 경매 하나. 삭제된 경매글은 목록과 같은 이유로 빠진다.
+     */
+    // 방송이 들고 오는 것은 경매 id 하나뿐이라 커서로 페이지를 읽는 쿼리로는 지목할 수 없다
+    @Query(SELECT_CARD + " and a.id = :auctionId")
+    Optional<AuctionListRow> findRow(@Param("auctionId") long auctionId);
 
     /**
      * 나의 진행중. 소유 건수가 적을수록 판매자부터 출발하는 편이 빨라 힌트를 걸지 않는다.
