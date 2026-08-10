@@ -76,8 +76,10 @@ class AuctionListServiceTest {
 
     @BeforeEach
     void setUp() {
+        // 조립기는 실물을 쓴다, 대역으로 바꾸면 카드에 어떤 접속자 수와 키워드가 실리는지 볼 수 없다
         auctionListService = new AuctionListService(
-                vehicleKeywordService, auctionListRepository, roomChannel, FIXED_CLOCK);
+                vehicleKeywordService, auctionListRepository,
+                new AuctionCardAssembler(roomChannel), FIXED_CLOCK);
     }
 
     // ================= 그룹 순회 =================
