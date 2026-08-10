@@ -3,7 +3,7 @@ package com.softeer.race.auction.application;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_ENDED;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_FAILED;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_SOLD;
-import static com.softeer.race.notification.domain.NotificationType.AUCTION_WON_RESULT;
+import static com.softeer.race.notification.domain.NotificationType.AUCTION_WON;
 
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.bid.domain.BidRepository;
@@ -33,9 +33,11 @@ public class AuctionEndNotifier {
 
     /**
      * @param winnerId 낙찰자, 입찰이 없어 유찰로 끝났으면 null
+     * @param dealId   낙찰로 열린 거래, 유찰이면 null. 낙찰자만 경매가 아니라 거래로 보낸다 —
+     *                 결과 확인이 끝나면 경매방에는 볼 것이 없고 할 일은 거래 화면에 있다
      */
     @Transactional
-    public void notifyEnd(long auctionId, Long winnerId) {
+    public void notifyEnd(long auctionId, Long winnerId, Long dealId) {
         // 판매자가 없는 경매는 사용자가 고칠 수 있는 문제가 아니라 데이터가 깨진 것이다
         long sellerId = auctionRepository.findSellerIdById(auctionId)
                 .orElseThrow(() -> new IllegalStateException(
@@ -48,7 +50,7 @@ public class AuctionEndNotifier {
         }
 
         notificationPublisher.publish(sellerId, AUCTION_SOLD, auctionId);
-        notificationPublisher.publish(winnerId, AUCTION_WON_RESULT, auctionId);
+        notificationPublisher.publish(winnerId, AUCTION_WON, dealId);
 
         // 한 건씩 발행한다. 안 읽은 건수는 회원마다 달라서 묶어도 세는 횟수가 줄지 않는다.
         // 참여자가 열 명을 넘어가면 발행 횟수와 전송 시간을 #126 에서 함께 본다
