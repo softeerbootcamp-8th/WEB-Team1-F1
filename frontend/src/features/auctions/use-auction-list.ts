@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { fetchAuctionList, subscribeAuctionListStream } from '@/features/auctions/api'
+import { useDocumentVisible } from '@/hooks/use-document-visible'
 import { applyAudienceEvent, applyCardEvent, serverClockOffset } from '@/lib/auction'
 import type {
   AuctionListCard,
@@ -72,6 +73,8 @@ export function clearAuctionListCache() {
  * 돌아오면 이 훅이 새로 마운트되는데, 그때 캐시가 신선하면 조회 없이 보던 자리부터 잇는다.
  */
 export function useAuctionList({ scope, filter, enabled = true }: UseAuctionListOptions) {
+  const visible = useDocumentVisible()
+
   // 마운트하는 순간에 동기로 복원한다. 이펙트에서 하면 스켈레톤이 한 프레임 그려진 뒤
   // 목록으로 갈아끼워져 화면이 튀고, 스크롤을 되돌리려 해도 그 사이엔 되돌아갈 높이가 없다.
   const [restored] = useState(() =>
@@ -262,9 +265,26 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
   const offsetRef = useRef(offsetMs)
   offsetRef.current = offsetMs
 
+  // 가려진 사이에 온 것은 유실이다. 서버가 다시 보내지 않으므로 돌아올 때 목록을 다시 읽는다.
+  // onReconnect 는 같은 EventSource 가 스스로 붙을 때만 돌아서 이 경로를 대신하지 못한다
+  const wasHidden = useRef(false)
+  useEffect(() => {
+    if (!visible) {
+      wasHidden.current = true
+      return
+    }
+
+    // 첫 표시에서는 부르지 않는다, 그때는 방금 조회한 목록이 최신이다
+    if (wasHidden.current) {
+      wasHidden.current = false
+      reload()
+    }
+  }, [visible, reload])
+
   // filter 는 의존성이 아니다. 필터는 화면이 arrangeCards 로 거르는 것이라 구독을 다시 열 이유가 없다
   useEffect(() => {
-    if (!enabled) return
+    // 보지 않는 화면이 서버 연결을 물고 있을 이유가 없다
+    if (!enabled || !visible) return
 
     return subscribeAuctionListStream({
       onCard: (card) => {
@@ -276,7 +296,7 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
       // 끊긴 동안 온 것은 유실이고 서버가 다시 보내지 않는다, 복구는 재조회 몫이다
       onReconnect: reload,
     })
-  }, [scope, enabled, reload])
+  }, [scope, enabled, visible, reload])
 
   return {
     cards,
