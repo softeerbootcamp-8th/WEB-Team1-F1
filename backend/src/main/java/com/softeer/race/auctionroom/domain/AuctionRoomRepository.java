@@ -19,6 +19,7 @@ public interface AuctionRoomRepository extends Repository<Auction, Long> {
     @Query("""
             select new com.softeer.race.auctionroom.domain.AuctionRoomDetail(
                 a.id, a.status, a.startPrice, a.currentPrice, a.roomOpenAt, a.startTime, a.currentEndTime,
+                a.extensionCount,
                 v.manufacturer, v.model, v.modelYear, v.mileage, v.fuelType,
                 v.diagnosticReportUrl, w.id, w.realName)
             from Auction a

@@ -88,6 +88,7 @@ class AuctionRoomDetailTest {
                 START_AT.minusMinutes(30),
                 START_AT,
                 START_AT.plusMinutes(20),
+                0,
                 Manufacturer.HYUNDAI,
                 "아반떼 CN7",
                 2022,

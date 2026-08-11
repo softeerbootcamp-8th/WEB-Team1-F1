@@ -20,6 +20,7 @@ public record AuctionRoomDetail(
         LocalDateTime roomOpenAt,
         LocalDateTime startTime,
         LocalDateTime currentEndTime,
+        int extensionCount,
         Manufacturer manufacturer,
         String model,
         int modelYear,
@@ -39,6 +40,7 @@ public record AuctionRoomDetail(
                              LocalDateTime roomOpenAt,
                              LocalDateTime startTime,
                              LocalDateTime currentEndTime,
+                             int extensionCount,
                              Manufacturer manufacturer,
                              String model,
                              int modelYear,
@@ -55,6 +57,7 @@ public record AuctionRoomDetail(
                 roomOpenAt,
                 startTime,
                 currentEndTime,
+                extensionCount,
                 manufacturer,
                 model,
                 modelYear,
@@ -70,6 +73,13 @@ public record AuctionRoomDetail(
      */
     public RoomPhase phaseAt(LocalDateTime now) {
         return RoomPhase.at(now, roomOpenAt, startTime, currentEndTime);
+    }
+
+    /**
+     * 결과를 볼 수 있는 구간이 끝나는 시각, 연장된 마감을 기준으로 센다
+     */
+    public LocalDateTime resultViewingEndsAt() {
+        return RoomPhase.resultViewingEndsAt(currentEndTime);
     }
 
     /**

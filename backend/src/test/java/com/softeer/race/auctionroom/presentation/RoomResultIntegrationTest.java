@@ -32,7 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 셋 중 낙찰자 본인 여부만 조회자마다 다르고 나머지는 같다
  * <p>
  * 4. 실시간 값의 부재
- * 더 이상 바뀌지 않는 경매라 접속자 수도 서버 시각도 나가지 않는다
+ * 더 이상 바뀌지 않는 경매라 접속자 수도 호가창도 나가지 않는다
+ * 서버 시각은 결과값이 아니라 남은 열람 시간을 세는 기준이라 예외로 나간다
  */
 @DisplayName("경매 결과 요약 조회 통합 테스트")
 class RoomResultIntegrationTest extends IntegrationTestSupport {
@@ -68,7 +69,8 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
                 .bid(ENDED_START_AT.plusMinutes(5), loser, 21_000_000L)
                 .bid(ENDED_START_AT.plusMinutes(10), winner, 22_000_000L)
                 .bid(ENDED_START_AT.plusMinutes(15), loser, 23_000_000L)
-                .bid(ENDED_START_AT.plusMinutes(18), winner, 24_000_000L)
+                // 마감 20초 전 입찰이라 소프트클로즈가 걸린다, 연장 횟수가 0 이면 세는지 알 수 없다
+                .bid(ENDED_START_AT.plusMinutes(19).plusSeconds(40), winner, 24_000_000L)
                 .closed()
                 .create();
 
@@ -98,19 +100,33 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         response.andExpect(jsonPath("$.thumbnailUrl").doesNotHaveJsonPath());
 
         // then 4 : 네 건이 들어왔다, 최근 호가 목록과 달리 전체를 센다
-        response.andExpect(jsonPath("$.bidCount").value(4));
+        // 두 사람이 넣었으므로 건수와 사람 수가 다르다, 같은 값이면 어느 쪽을 세는지 알 수 없다
+        response.andExpectAll(
+                jsonPath("$.bidCount").value(4),
+                jsonPath("$.bidderCount").value(2));
+
+        // then 4-1 : 마감 임박 입찰이 마감을 20초 뒤로 밀었다, 그 사실이 횟수와 시각 둘 다에 남는다
+        response.andExpectAll(
+                jsonPath("$.extensionCount").value(1),
+                jsonPath("$.startAt").value("2026-08-03T18:30:00"),
+                jsonPath("$.endAt").value("2026-08-03T18:50:10"));
 
         // then 5 : 낙찰자는 호가와 같은 규칙으로 마스킹되고, 본인 여부는 이름 비교 없이 내려간다
         response.andExpectAll(
                 jsonPath("$.winner.name").value("이*호"),
                 jsonPath("$.winner.mine").value(true));
 
-        // then 6 : 더 이상 바뀌지 않는 경매라 실시간 값이 나갈 자리가 없다
+        // then 6 : 결과는 더 이상 바뀌지 않으므로 실시간 값이 나갈 자리가 없다
         // doesNotExist 는 값이 null 이어도 통과하므로, 스키마에 아예 없다는 것은 이쪽으로 단정한다
         response.andExpectAll(
                 jsonPath("$.connectedCount").doesNotHaveJsonPath(),
-                jsonPath("$.serverTime").doesNotHaveJsonPath(),
                 jsonPath("$.recentBids").doesNotHaveJsonPath());
+
+        // then 6-1 : 서버 시각은 결과값이 아니라 남은 열람 시간을 세는 기준이라 종료 시각과 짝으로 나간다
+        // 종료 시각은 연장된 마감에서 다시 계산된다, 원래 마감에 더하면 20초 어긋난다
+        response.andExpectAll(
+                jsonPath("$.resultEndAt").value("2026-08-03T18:55:10"),
+                jsonPath("$.serverTime").value("2026-08-03T20:45:12"));
 
         // then 7 : 탈락한 사람이 같은 결과를 보면 이름은 같고 본인 표시만 꺼진다
         getResult(endedAuctionId, loginAs(loser)).andExpectAll(

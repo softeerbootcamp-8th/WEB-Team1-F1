@@ -33,10 +33,18 @@ public enum RoomPhase {
         if (now.isBefore(currentEndTime)) {
             return LIVE;
         }
-        if (now.isBefore(currentEndTime.plus(RESULT_VIEWING))) {
+        if (now.isBefore(resultViewingEndsAt(currentEndTime))) {
             return RESULT;
         }
         return CLOSED;
+    }
+
+    /**
+     * 결과를 볼 수 있는 구간이 끝나는 시각
+     */
+    // 구간 길이를 열지 않고 계산을 연다, 화면이 같은 덧셈을 따로 하면 두 곳이 갈라진다
+    public static LocalDateTime resultViewingEndsAt(LocalDateTime currentEndTime) {
+        return currentEndTime.plus(RESULT_VIEWING);
     }
 
     /**

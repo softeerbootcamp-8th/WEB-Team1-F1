@@ -104,6 +104,19 @@ class RoomPhaseTest {
         );
     }
 
+    // 화면이 남은 열람 시간을 세려면 이 시각이 필요하다, 상수를 열어 화면이 다시 더하게 하지 않는다
+    @Test
+    @DisplayName("결과 열람이 끝나는 시각이 곧 방이 완전히 닫히는 경계다")
+    void resultViewingEndIsTheClosedBoundary() {
+        LocalDateTime viewingEnd = RoomPhase.resultViewingEndsAt(END_TIME);
+
+        // 5분을 여기 적지 않는 것이 이 테스트의 핵심이다, 구간을 바꾸면 둘이 함께 움직여야 통과한다
+        assertThat(RoomPhase.at(viewingEnd.minusSeconds(1), ROOM_OPEN_AT, START_TIME, END_TIME))
+                .isEqualTo(RESULT);
+        assertThat(RoomPhase.at(viewingEnd, ROOM_OPEN_AT, START_TIME, END_TIME))
+                .isEqualTo(CLOSED);
+    }
+
     @Test
     @DisplayName("소프트클로즈로 마감이 밀리면 원래 마감을 넘겨도 진행 상태다")
     void extendedDeadlineKeepsRoomLive() {

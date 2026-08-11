@@ -55,10 +55,9 @@ class AuctionRoomReader {
                 .map(detail -> detail.phaseAt(LocalDateTime.now(clock)));
     }
 
-    // 결과에는 건수만 나가지만 집계 쿼리 하나로 둘 다 나오므로 그대로 쓴다
     @Transactional(readOnly = true)
-    public long countBids(long auctionId) {
-        return roomBidRepository.findStats(auctionId).bidCount();
+    public BidStats findStats(long auctionId) {
+        return roomBidRepository.findStats(auctionId);
     }
 
     private RoomQueryResult readWith(AuctionRoomDetail detail) {

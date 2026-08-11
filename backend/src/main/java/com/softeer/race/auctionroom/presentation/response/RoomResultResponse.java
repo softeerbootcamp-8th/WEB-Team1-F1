@@ -4,6 +4,8 @@ import com.softeer.race.auctionroom.application.RoomResultView;
 import com.softeer.race.auctionroom.domain.AuctionOutcome;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.time.LocalDateTime;
+
 @Schema(description = "끝난 경매의 결과 요약, 더 이상 바뀌지 않는다")
 public record RoomResultResponse(
         @Schema(description = "경매 식별자", example = "1")
@@ -27,7 +29,27 @@ public record RoomResultResponse(
         WinnerResponse winner,
 
         @Schema(description = "끝날 때까지 들어온 입찰 건수", example = "4")
-        long bidCount
+        long bidCount,
+
+        @Schema(description = "끝날 때까지 입찰한 사람 수, 한 사람이 여러 번 넣으면 건수만 늘어난다", example = "2")
+        long bidderCount,
+
+        @Schema(description = "마감 임박 입찰로 마감이 밀린 횟수", example = "1")
+        int extensionCount,
+
+        @Schema(description = "입찰이 시작된 시각", example = "2026-08-03T18:30:00")
+        LocalDateTime startAt,
+
+        @Schema(description = "최종 마감 시각, 연장된 만큼 뒤로 밀려 있다", example = "2026-08-03T18:50:10")
+        LocalDateTime endAt,
+
+        @Schema(description = "결과를 볼 수 있는 구간이 끝나는 시각, 마감 뒤 5분이다",
+                example = "2026-08-03T18:55:10")
+        LocalDateTime resultEndAt,
+
+        @Schema(description = "응답을 만든 서버 시각(KST), 남은 열람 시간을 세는 기준이다",
+                example = "2026-08-03T18:51:00")
+        LocalDateTime serverTime
 ) {
 
     public static RoomResultResponse from(RoomResultView view) {
@@ -38,6 +60,13 @@ public record RoomResultResponse(
                 view.startPrice(),
                 view.winningPrice(),
                 WinnerResponse.from(view),
-                view.bidCount());
+                view.stats().bidCount(),
+                view.stats().bidderCount(),
+                view.extensionCount(),
+                view.startAt(),
+                view.endAt(),
+                view.resultViewingEndsAt(),
+                view.serverTime()
+        );
     }
 }

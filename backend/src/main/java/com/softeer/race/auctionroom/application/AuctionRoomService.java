@@ -7,6 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
+
 import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.*;
 
 @Service
@@ -15,6 +18,7 @@ public class AuctionRoomService {
 
     private final AuctionRoomReader auctionRoomReader;
     private final RoomChannel roomChannel;
+    private final Clock clock;
 
     /**
      * 경매방 현황, 조회한 사람의 입찰과 낙찰 여부까지 판정된 상태
@@ -63,7 +67,7 @@ public class AuctionRoomService {
         AuctionOutcome outcome = detail.outcome()
                 .orElseThrow(() -> new BusinessException(AUCTION_NOT_ENDED));
 
-        return RoomResultView.of(detail, outcome, auctionRoomReader.countBids(auctionId), viewerId,
-                auctionRoomReader.findPhotoUrls(auctionId));
+        return RoomResultView.of(detail, outcome, auctionRoomReader.findStats(auctionId), viewerId,
+                auctionRoomReader.findPhotoUrls(auctionId), LocalDateTime.now(clock));
     }
 }
