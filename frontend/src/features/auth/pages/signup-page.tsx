@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { FileCheck2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,11 @@ import {
 } from '@/components/ui/select'
 import { getErrorMessage } from '@/lib/axios'
 import { markJustSignedUp } from '@/lib/signup-welcome'
+import {
+  prepareDealerLicenseFile,
+  uploadDealerLicense,
+  type PreparedDealerLicenseFile,
+} from '@/lib/upload'
 import { AuthShell } from '../components/auth-shell'
 import { RoleSelect } from '../components/role-select'
 import { useAuth } from '../auth-context'
@@ -68,7 +74,10 @@ export function SignupPage() {
   const [emailDomain, setEmailDomain] = useState('')
   const [emailDomainPreset, setEmailDomainPreset] = useState('direct')
   const phoneInputRef = useRef<HTMLInputElement>(null)
+  const licenseInputRef = useRef<HTMLInputElement>(null)
   const [role, setRole] = useState<SelfSignUpRole>('GENERAL')
+  const [dealerLicense, setDealerLicense] = useState<PreparedDealerLicenseFile | null>(null)
+  const [dealerLicenseKey, setDealerLicenseKey] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -81,7 +90,23 @@ export function SignupPage() {
     try {
       const email = `${emailLocal.trim()}@${emailDomain.trim()}`
       const phone = phoneInputRef.current?.value ?? ''
-      const signedUpUser = await signUpRequest({ ...form, email, phone, role })
+      let licenseKey: string | undefined
+      if (role === 'DEALER') {
+        if (!dealerLicense) {
+          toast.error('자동차매매사원증을 등록해 주세요')
+          return
+        }
+        licenseKey = dealerLicenseKey ?? (await uploadDealerLicense(dealerLicense))
+        setDealerLicenseKey(licenseKey)
+      }
+
+      const signedUpUser = await signUpRequest({
+        ...form,
+        email,
+        phone,
+        role,
+        ...(licenseKey ? { dealerLicenseKey: licenseKey } : {}),
+      })
 
       // 환영 알림은 발행 시점에 구독이 없어 실시간으로 도착하지 못한다.
       // 표시를 남겨 두면 알림 쪽이 이번 한 번만 대신 안내한다.
@@ -127,8 +152,73 @@ export function SignupPage() {
       <form onSubmit={submit} className="space-y-5">
         <div className="space-y-2">
           <Label>가입 유형</Label>
-          <RoleSelect value={role} onChange={setRole} />
+          <RoleSelect
+            value={role}
+            onChange={(nextRole) => {
+              setRole(nextRole)
+              if (nextRole === 'GENERAL') {
+                setDealerLicense(null)
+                setDealerLicenseKey(null)
+                if (licenseInputRef.current) licenseInputRef.current.value = ''
+              }
+            }}
+          />
         </div>
+        {role === 'DEALER' && (
+          <div className="space-y-2">
+            <Label htmlFor="dealer-license">자동차매매사원증</Label>
+            <label
+              htmlFor="dealer-license"
+              className="hover:bg-accent/50 focus-within:border-ring focus-within:ring-ring/40 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed p-4 transition-colors focus-within:ring-[3px]"
+            >
+              <span className="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full">
+                {dealerLicense ? (
+                  <FileCheck2 className="text-success size-5" aria-hidden />
+                ) : (
+                  <Upload className="text-muted-foreground size-5" aria-hidden />
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">
+                  {dealerLicense?.file.name ?? '사원증 파일을 선택해 주세요'}
+                </span>
+                <span className="text-muted-foreground block text-xs">
+                  {dealerLicense
+                    ? `${(dealerLicense.file.size / 1024 / 1024).toFixed(1)}MB · 클릭하여 변경`
+                    : 'JPG, PNG, PDF · 최대 10MB'}
+                </span>
+              </span>
+              <input
+                ref={licenseInputRef}
+                id="dealer-license"
+                className="sr-only"
+                type="file"
+                accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
+                required
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (!file) return
+                  try {
+                    setDealerLicense(prepareDealerLicenseFile(file))
+                    setDealerLicenseKey(null)
+                  } catch (error) {
+                    setDealerLicense(null)
+                    setDealerLicenseKey(null)
+                    event.target.value = ''
+                    toast.error(
+                      error instanceof Error
+                        ? error.message
+                        : '자동차매매사원증 파일을 확인해 주세요.',
+                    )
+                  }
+                }}
+              />
+            </label>
+            <p className="text-muted-foreground text-xs">
+              제출한 사원증은 딜러 자격 확인 용도로만 안전하게 보관됩니다.
+            </p>
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label htmlFor="username">아이디</Label>
           <Input
@@ -260,7 +350,7 @@ export function SignupPage() {
           </p>
         </div>
         <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
-          회원가입
+          {isSubmitting ? '회원가입 처리 중...' : '회원가입'}
         </Button>
       </form>
     </AuthShell>
