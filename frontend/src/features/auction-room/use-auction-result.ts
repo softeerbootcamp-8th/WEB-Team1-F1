@@ -63,9 +63,12 @@ export function useAuctionResult(auctionId: number) {
               return
             }
 
+            // 첫 물음이 빗나갔다고 바로 안내를 띄우지 않는다. 확정은 0.5초 주기라 대개 다음
+            // 물음에서 답이 오고, 그 사이에 안내를 스쳐 보이면 화면이 새로고침한 것처럼 깜빡인다
+            if (attempts >= 1) setEntry('PENDING')
+
             retryTimer = window.setTimeout(load, backoffMs(attempts))
             attempts += 1
-            setEntry('PENDING')
             return
           }
 

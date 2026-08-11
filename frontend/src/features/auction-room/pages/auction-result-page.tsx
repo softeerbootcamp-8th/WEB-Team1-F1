@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { CircleAlert, Clock, Gavel, Trophy } from 'lucide-react'
 
@@ -93,7 +94,12 @@ function ResultContent({ auctionId }: { auctionId: number }) {
 
 /** 결과를 얼마나 더 볼 수 있는지. 지나도 화면은 남으므로 문구만 바뀐다 */
 function ViewingBadge({ result }: { result: RoomResultView }) {
-  const offset = new Date(result.serverTime).getTime() - Date.now()
+  // 한 번만 잰다. 렌더마다 다시 재면 값이 미세하게 달라지고, 그것이 카운트다운의 의존성이라
+  // 1초 간격이 채워지기 전에 타이머가 껐다 켜지기를 되풀이해 숫자가 제자리에 멈춘다
+  const offset = useMemo(
+    () => new Date(result.serverTime).getTime() - Date.now(),
+    [result.serverTime],
+  )
   const { remaining } = useCountdown(result.resultEndAt, 1000, offset)
 
   // 1초가 안 남으면 "00:00 남음"이 찍힌다, 그 표기가 나오기 전에 끝난 것으로 본다
