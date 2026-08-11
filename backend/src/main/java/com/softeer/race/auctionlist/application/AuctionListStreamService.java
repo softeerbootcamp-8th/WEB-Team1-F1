@@ -22,8 +22,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AuctionListStreamService {
 
-    // 이슈가 요구하는 상한이 1초다, 사람이 드나든 것을 그 안에 목록이 알아야 한다
-    private static final long AUDIENCE_INTERVAL_MILLIS = 1_000L;
+    // 요구되는 상한이 1초라 그 절반으로 잡는다, 주기를 상한과 같게 두면 직후에 바뀐 값이 상한을 넘긴다
+    private static final long AUDIENCE_INTERVAL_MILLIS = 500L;
 
     // 방송이 한 번 나가면 죽은 구독은 그때 드러난다, 이 주기가 실제로 일하는 것은 조용한 시간뿐이라
     // 값이 급하지 않다. 앞단에 프록시가 생기면 그 유휴 타임아웃보다 짧은지 그때 확인한다
