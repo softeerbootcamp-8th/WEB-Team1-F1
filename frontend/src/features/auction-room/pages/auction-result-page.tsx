@@ -11,6 +11,7 @@ import { useCountdown } from '@/hooks/use-countdown'
 import type { RoomResultView } from '@/features/auction-room/types'
 
 import { BackLink } from '../components/back-link'
+import { CarDetail } from '../components/car-detail'
 import { PriceCurve } from '../components/price-curve'
 import { NextAuctions } from '../components/next-auctions'
 import { curveShapeOf, viewerStandingOf } from '../result'
@@ -76,9 +77,26 @@ function ResultContent({ auctionId }: { auctionId: number }) {
         <ViewingBadge result={result} />
       </div>
 
+      {result.outcome === 'UNSOLD' ? <UnsoldBody result={result} /> : <SoldBody result={result} />}
+
+      {/* 파는 사람에게 이어서 볼 경매를 권하지 않는다, 버튼과 같은 이유다 */}
+      {viewerStandingOf(result) !== 'SELLER' && (
+        <NextAuctions exceptAuctionId={result.auctionId} />
+      )}
+    </main>
+  )
+}
+
+/**
+ * 낙찰된 경매. 값이 오른 과정과 최종가, 그리고 그 과정을 센 숫자들이 볼 것의 전부다.
+ */
+function SoldBody({ result }: { result: RoomResultView }) {
+  return (
+    <>
       <Headline result={result} />
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+      {/* 오른쪽 열이 곡선 높이까지 늘어난다, 아래끝이 어긋나면 요약이 곡선에 딸린 각주처럼 보인다 */}
+      <div className="mt-6 grid items-stretch gap-6 lg:grid-cols-[1.75fr_1fr]">
         <CurveCard result={result} />
 
         <div className="flex flex-col gap-4">
@@ -86,9 +104,38 @@ function ResultContent({ auctionId }: { auctionId: number }) {
           <FactGrid result={result} />
         </div>
       </div>
+    </>
+  )
+}
 
-      <NextAuctions exceptAuctionId={result.auctionId} />
-    </main>
+/**
+ * 유찰된 경매. 낙찰 화면의 틀을 그대로 쓰지 않는다.
+ *
+ * 입찰이 한 건도 없으므로 곡선은 빈 상자가 되고 건수·참여자·연장은 모두 0이다. 아무것도 없었다는
+ * 사실을 네 칸에 나눠 적을 이유가 없다. 대신 어떤 차가 왜 안 팔렸는지와 다음에 할 일을 둔다.
+ */
+function UnsoldBody({ result }: { result: RoomResultView }) {
+  return (
+    <>
+      <Headline result={result} />
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1.75fr_1fr]">
+        <CarDetail vehicle={result.vehicle} />
+
+        <dl className="bg-border grid auto-rows-fr grid-cols-1 gap-px self-start overflow-hidden rounded-xl border">
+          <div className="bg-card px-5 py-4">
+            <dt className="text-muted-foreground text-sm">시작가</dt>
+            <dd className="tabular mt-1 text-2xl font-semibold">
+              {formatKRW(result.startPrice)}
+            </dd>
+          </div>
+          <div className="bg-card px-5 py-4">
+            <dt className="text-muted-foreground text-sm">마감</dt>
+            <dd className="tabular mt-1 text-2xl font-semibold">{formatClock(result.endAt)}</dd>
+          </div>
+        </dl>
+      </div>
+    </>
   )
 }
 
@@ -142,20 +189,30 @@ function Headline({ result }: { result: RoomResultView }) {
         ONLOOKER: '경매가 끝났어요',
       }[standing]
 
-  const good = standing === 'WON' || (standing === 'SELLER' && !unsold)
+  // 구경꾼에게는 좋은 소식도 나쁜 소식도 아니다, 축하도 경고도 아닌 중립으로 둔다
+  const tone: 'GOOD' | 'BAD' | 'NEUTRAL' =
+    standing === 'ONLOOKER'
+      ? 'NEUTRAL'
+      : standing === 'WON' || (standing === 'SELLER' && !unsold)
+        ? 'GOOD'
+        : 'BAD'
+
+  const TONE_STYLE = {
+    GOOD: { icon: Trophy, className: 'bg-price-up/12 text-price-up' },
+    BAD: { icon: CircleAlert, className: 'bg-destructive/10 text-destructive' },
+    NEUTRAL: { icon: Gavel, className: 'bg-muted text-muted-foreground' },
+  }[tone]
+
+  const ToneIcon = TONE_STYLE.icon
 
   return (
     <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border p-6">
       <div className="flex items-center gap-4">
         <span
-          className={
-            good
-              ? 'bg-price-up/12 text-price-up flex size-12 shrink-0 items-center justify-center rounded-full'
-              : 'bg-destructive/10 text-destructive flex size-12 shrink-0 items-center justify-center rounded-full'
-          }
+          className={`flex size-12 shrink-0 items-center justify-center rounded-full ${TONE_STYLE.className}`}
           aria-hidden
         >
-          {good ? <Trophy className="size-6" /> : <CircleAlert className="size-6" />}
+          <ToneIcon className="size-6" />
         </span>
 
         <div>
@@ -184,18 +241,36 @@ function Headline({ result }: { result: RoomResultView }) {
         </div>
       </div>
 
-      {/* 두 추천의 목적지는 아직 서버가 주지 않는다(#256), 그때까지는 목록으로 보낸다 */}
+      {/*
+        차를 내놓은 사람에게는 추천이 앞뒤가 안 맞는다. "이 판매자 다른 차" 는 자기 차이고
+        "비슷한 경매" 는 남의 차라, 팔렸으면 거래로 가고 안 팔렸으면 다시 올릴 길만 있으면 된다.
+        추천 두 곳의 목적지는 아직 서버가 주지 않는다(#256), 그때까지는 목록으로 보낸다
+      */}
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" asChild>
-          <Link to="/auctions">이 판매자 다른 차</Link>
-        </Button>
-        <Button variant={result.winner?.mine ? 'outline' : 'default'} asChild>
-          <Link to="/auctions">비슷한 경매 보기</Link>
-        </Button>
-        {result.winner?.mine && (
-          <Button asChild>
-            <Link to="/mypage/deals">거래 진행하기</Link>
-          </Button>
+        {standing === 'SELLER' ? (
+          unsold ? (
+            <Button asChild>
+              <Link to="/sell">다시 등록하기</Link>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link to="/mypage/deals">거래 진행하기</Link>
+            </Button>
+          )
+        ) : (
+          <>
+            <Button variant="outline" asChild>
+              <Link to="/auctions">이 판매자 다른 차</Link>
+            </Button>
+            <Button variant={standing === 'WON' ? 'outline' : 'default'} asChild>
+              <Link to="/auctions">비슷한 경매 보기</Link>
+            </Button>
+            {standing === 'WON' && (
+              <Button asChild>
+                <Link to="/mypage/deals">거래 진행하기</Link>
+              </Button>
+            )}
+          </>
         )}
       </div>
     </section>
@@ -241,7 +316,7 @@ function WinningCard({ result }: { result: RoomResultView }) {
     return (
       <section className="rounded-xl border p-6 text-center">
         <p className="text-muted-foreground text-sm">최종 결과</p>
-        <p className="mt-1 text-2xl font-bold">유찰</p>
+        <p className="mt-1 text-4xl font-bold tracking-tight">유찰</p>
         <p className="text-muted-foreground mt-2 text-sm">
           시작가 {formatKRW(result.startPrice)}
         </p>
@@ -257,7 +332,7 @@ function WinningCard({ result }: { result: RoomResultView }) {
   return (
     <section className="rounded-xl border p-6 text-center">
       <p className="text-muted-foreground text-sm">최종 낙찰가</p>
-      <p className="tabular text-price-up mt-1 text-3xl font-bold">
+      <p className="tabular text-price-up mt-1 text-4xl font-bold tracking-tight">
         {formatKRW(result.winningPrice)}
       </p>
       <p className="text-muted-foreground mt-2 text-sm">
@@ -278,11 +353,12 @@ function FactGrid({ result }: { result: RoomResultView }) {
   ]
 
   return (
-    <dl className="bg-border grid grid-cols-2 gap-px overflow-hidden rounded-xl border">
+    // 남는 높이를 이 표가 가져간다, 네 칸이 같은 키로 늘어야 2×2 로 읽힌다
+    <dl className="bg-border grid flex-1 auto-rows-fr grid-cols-2 gap-px overflow-hidden rounded-xl border">
       {facts.map((fact) => (
-        <div key={fact.label} className="bg-card p-4">
-          <dt className="text-muted-foreground text-xs">{fact.label}</dt>
-          <dd className="tabular mt-1 text-xl font-semibold">{fact.value}</dd>
+        <div key={fact.label} className="bg-card flex flex-col justify-center px-5 py-4">
+          <dt className="text-muted-foreground text-sm">{fact.label}</dt>
+          <dd className="tabular mt-1 text-2xl font-semibold">{fact.value}</dd>
         </div>
       ))}
     </dl>

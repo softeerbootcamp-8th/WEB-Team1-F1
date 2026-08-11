@@ -4,7 +4,10 @@ import { formatManwon } from '@/lib/format'
 // viewBox 좌표. 실제 크기는 부모가 정하고 이 안은 비율로만 그린다
 const WIDTH = 640
 const HEIGHT = 260
-const PAD_X = 56
+
+// 좌우가 다른 이유는 왼쪽만 금액 라벨 자리를 비워야 해서다, 같은 값을 주면 오른쪽이 그만큼 빈다
+const PAD_LEFT = 56
+const PAD_RIGHT = 16
 const PAD_TOP = 28
 const PAD_BOTTOM = 32
 
@@ -23,7 +26,7 @@ interface PriceCurveProps {
  * 자리로 옮기는 것뿐이라, 눈금이 어떻게 정해졌는지는 이 파일이 몰라도 된다.
  */
 export function PriceCurve({ shape, startAt, endAt, myAmount }: PriceCurveProps) {
-  const x = (value: number) => PAD_X + value * (WIDTH - PAD_X * 2)
+  const x = (value: number) => PAD_LEFT + value * (WIDTH - PAD_LEFT - PAD_RIGHT)
   // y 는 0이 바닥이라 위아래를 뒤집어 화면 좌표로 옮긴다
   const y = (value: number) => HEIGHT - PAD_BOTTOM - value * (HEIGHT - PAD_TOP - PAD_BOTTOM)
 
@@ -44,15 +47,15 @@ export function PriceCurve({ shape, startAt, endAt, myAmount }: PriceCurveProps)
       ].map((tick) => (
         <g key={tick.value}>
           <line
-            x1={PAD_X}
-            x2={WIDTH - PAD_X}
+            x1={PAD_LEFT}
+            x2={WIDTH - PAD_RIGHT}
             y1={y(tick.value)}
             y2={y(tick.value)}
             className="stroke-border"
             strokeWidth={1}
           />
           <text
-            x={PAD_X - 8}
+            x={PAD_LEFT - 8}
             y={y(tick.value) + 4}
             textAnchor="end"
             className="fill-muted-foreground text-[11px]"
@@ -66,8 +69,8 @@ export function PriceCurve({ shape, startAt, endAt, myAmount }: PriceCurveProps)
       {shape.myLineY !== null && myAmount !== null && (
         <g>
           <line
-            x1={PAD_X}
-            x2={WIDTH - PAD_X}
+            x1={PAD_LEFT}
+            x2={WIDTH - PAD_RIGHT}
             y1={y(shape.myLineY)}
             y2={y(shape.myLineY)}
             className="stroke-destructive"
@@ -75,7 +78,7 @@ export function PriceCurve({ shape, startAt, endAt, myAmount }: PriceCurveProps)
             strokeDasharray="6 4"
           />
           <text
-            x={WIDTH - PAD_X}
+            x={WIDTH - PAD_RIGHT}
             y={y(shape.myLineY) - 6}
             textAnchor="end"
             className="fill-destructive text-[11px] font-medium"
