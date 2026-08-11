@@ -104,7 +104,24 @@ export interface RoomOpeningView {
   serverTime: string
 }
 
-/** 백엔드 RoomResultResponse와 동일한 필드 — 더 이상 바뀌지 않는 경매라 접속자 수와 서버 시각이 없다 */
+/** 결과 곡선의 점 하나. 이름은 실리지 않는다 — 누가 불렀는지는 호가창이 답할 일이다 */
+export interface PricePoint {
+  at: string
+  amount: number
+  mine: boolean
+}
+
+/** 조회한 사람의 성적. 입찰한 적이 없으면 이 객체 자체가 null 이다 */
+export interface MyBid {
+  amount: number
+  /** 입찰한 사람 중 내 순위, 1이면 내가 가장 높았다 */
+  rank: number
+}
+
+/**
+ * 백엔드 RoomResultResponse와 동일한 필드 — 더 이상 바뀌지 않는 경매라 접속자 수도 호가창도 없다.
+ * serverTime 은 결과값이 아니라 남은 열람 시간을 세는 기준이라 resultEndAt 과 짝으로 온다.
+ */
 export interface RoomResultView {
   auctionId: number
   outcome: 'SOLD' | 'UNSOLD'
@@ -114,7 +131,21 @@ export interface RoomResultView {
   winningPrice: number | null
   /** 유찰이면 null */
   winner: RoomWinner | null
+  /** 조회한 사람이 이 차를 내놓은 사람인지 */
+  sellerIsMine: boolean
+  /** 입찰한 적이 없으면 null */
+  myBid: MyBid | null
   bidCount: number
+  bidderCount: number
+  /** 마감 임박 입찰로 마감이 밀린 횟수 */
+  extensionCount: number
+  startAt: string
+  /** 연장된 만큼 밀린 최종 마감 시각 */
+  endAt: string
+  resultEndAt: string
+  serverTime: string
+  /** 시간순 전체. 유찰이면 빈 배열이고 시작가는 담기지 않는다 */
+  priceCurve: PricePoint[]
 }
 
 export interface BidPlaceResult {
