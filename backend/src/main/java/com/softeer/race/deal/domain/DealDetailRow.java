@@ -22,6 +22,11 @@ public record DealDetailRow(
         Integer modelYear,
         Integer mileage,
         String thumbnailUrl,
+        String documentUrl,
+        LocalDateTime transportAt,
+        String transportLocation,
+        LocalDateTime deliveryAt,
+        String deliveryLocation,
         Long sellerId,
         MaskedName counterpartName
 ) {
@@ -32,9 +37,13 @@ public record DealDetailRow(
                          LocalDateTime statusChangedAt, LocalDateTime openedAt,
                          CancellationReason cancellationReason,
                          Long auctionId, String model, Integer modelYear, Integer mileage,
-                         String thumbnailUrl, Long sellerId, String counterpartRealName) {
+                         String thumbnailUrl,
+                         String documentUrl, LocalDateTime transportAt, String transportLocation,
+                         LocalDateTime deliveryAt, String deliveryLocation,
+                         Long sellerId, String counterpartRealName) {
         this(dealId, status, finalPrice, statusChangedAt, openedAt, cancellationReason,
                 auctionId, model, modelYear, mileage, thumbnailUrl,
+                documentUrl, transportAt, transportLocation, deliveryAt, deliveryLocation,
                 sellerId, MaskedName.mask(counterpartRealName));
     }
 
@@ -48,5 +57,15 @@ public record DealDetailRow(
     // 화면이 사유에서 귀책을 다시 계산하지 않게 서버가 풀어 준다, 보증금 향방은 서버 정책이다
     public FaultParty faultParty() {
         return cancellationReason != null ? cancellationReason.faultParty() : null;
+    }
+
+    /**
+     * 조회한 사람이 지금 움직일 차례인지, 화면이 액션 버튼을 켜는 기준이다
+     * <p>
+     * 상태에서 곧바로 뽑는다. 화면이 단계 표를 따로 들고 판정하면 서버와 어긋나는 순간
+     * 버튼은 있는데 눌리지 않는 상태가 된다
+     */
+    public boolean actionRequiredFor(long viewerId) {
+        return status.waitingFor() == sideOf(viewerId);
     }
 }

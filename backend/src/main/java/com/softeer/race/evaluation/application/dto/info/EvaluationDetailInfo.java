@@ -32,6 +32,13 @@ import java.util.List;
  * 요청자가 판매자일 때 비우지 않는다. 자기가 적은 번호라 되돌려줘도 새는 것이 아니고, 요청자에
  * 따라 채우고 비우면 같은 엔드포인트의 응답 형태가 사람마다 갈린다. 판매자 화면은 그냥 쓰지 않으면 된다.
  * <p>
+ * <b>반려 사유를 담는다.</b> 판매자가 왜 신청이 끝났는지 확인할 유일한 창구다. 반려되지 않은
+ * 신청에서는 null이고, 그 null은 status가 REJECTED가 아니라는 것과 같은 말이다.
+ * <p>
+ * 목록({@link EvaluationSummaryInfo})에는 담지 않는다. 평가 행에 이미 있는 컬럼이라 쿼리가 늘지는
+ * 않지만, 목록에서 할 판단은 "이 신청이 어디까지 왔는가"뿐이고 그것은 status가 답한다. 사유를
+ * 읽는 것은 상세에서 할 일이고, 반려 알림도 상세로 보낸다.
+ * <p>
  * <b>이미 출품했는지는 알려주지 않는다.</b> 그러려면 경매를 봐야 하는데, 무엇을 "출품됨"으로 볼지의
  * 기준({@code AuctionService.ACTIVE_STATUSES})이 그쪽에 private으로 있어 이 패키지에서 다시 정의하면
  * 같은 규칙이 두 곳에 생긴다. 한쪽에만 상태를 더하면 같은 차량이 화면마다 다르게 보인다.
@@ -60,7 +67,9 @@ public record EvaluationDetailInfo(
         List<String> imageUrls,
         String diagnosticReportUrl,
         LocalDateTime submittedAt,
-        List<VehicleKeyword> keywords
+        List<VehicleKeyword> keywords,
+
+        String rejectReason
 ) {
 
     public static EvaluationDetailInfo of(Evaluation evaluation,
@@ -96,6 +105,8 @@ public record EvaluationDetailInfo(
                 // "결과가 올라온 때"를 가리키지 못한다
                 vehicle.isDiagnosed() ? vehicle.getUpdatedAt() : null,
                 // 진단 전에는 비어 있다. submittedAt이 null인 것과 같은 뜻이다
-                keywords);
+                keywords,
+
+                evaluation.getRejectReason());
     }
 }

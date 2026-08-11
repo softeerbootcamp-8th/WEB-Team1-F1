@@ -17,6 +17,9 @@ import java.util.List;
  * status와 함께 읽으면 "아직 평가사가 다녀가지 않았다"를 뜻한다. imageUrls에는 그 시점에도
  * 카탈로그 이미지가 들어 있어 비어 있지 않을 수 있다.
  * <p>
+ * <b>status가 REJECTED면 rejectReason이 채워진다.</b> 판매자는 이 값으로 왜 신청이 끝났는지
+ * 확인한다. 그 외의 상태에서는 null이다.
+ * <p>
  * 연락처를 담는다. 배정 응답이 한 번 주고 끝이라 평가사가 그 화면을 닫으면 방문 전에 연락할 번호를
  * 다시 찾을 데가 없다. 이 API는 판매자와 배정 평가사로 열람이 좁혀져 있어 제3자에게 새지 않는다.
  */
@@ -89,7 +92,11 @@ public record EvaluationDetailResponse(
 
         @Schema(description = "평가사가 매긴 키워드. 진단 전이거나 매긴 것이 없으면 빈 배열입니다",
                 example = "[\"ACCIDENT_FREE\", \"NO_LEAK\", \"GOOD_TIRE\"]")
-        List<VehicleKeyword> keywords
+        List<VehicleKeyword> keywords,
+
+        @Schema(description = "반려 사유. status가 REJECTED일 때만 채워집니다",
+                example = "번호판이 등록된 차량과 일치하지 않아 매물로 등록할 수 없습니다.")
+        String rejectReason
 ) {
 
     public static EvaluationDetailResponse from(EvaluationDetailInfo info) {
@@ -102,6 +109,7 @@ public record EvaluationDetailResponse(
                 info.model(), info.modelYear(), info.fuelType(), info.transmission(),
 
                 info.mileage(), info.estimatedPrice(), info.imageUrls(),
-                info.diagnosticReportUrl(), info.submittedAt(), info.keywords());
+                info.diagnosticReportUrl(), info.submittedAt(), info.keywords(),
+                info.rejectReason());
     }
 }

@@ -1,5 +1,6 @@
 package com.softeer.race.evaluation.presentation;
 
+import com.jayway.jsonpath.JsonPath;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
 import jakarta.servlet.http.Cookie;
@@ -37,7 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 다른 회원이 같은 번호판으로 신청해도 막히는지. 중복 기준에 신청자를 넣지 않은 결정을 고정한다
  * <p>
  * 5. 반려 후 재신청
- * REJECTED는 종료 상태라 같은 차를 다시 신청할 수 있는지
+ * REJECTED는 종료 상태라 같은 차를 다시 신청할 수 있는지. 접수 · 배정 · 반려를 전부 실제 API로
+ * 밟는다 — 상태를 SQL로 심으면 반려 경로가 바뀌어도 이 테스트가 눈치채지 못한다
  * <p>
  * 6. 인증
  * 핸들러의 @LoginUser 선언으로 인증이 실제로 요구되는지
@@ -65,6 +67,7 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
     private static final long SELLER_ID = 400L;
     private static final String RAW_TOKEN = "visit-quote-raw-token";
     private static final String OTHER_RAW_TOKEN = "visit-quote-other-raw-token";
+    private static final String EVALUATOR_RAW_TOKEN = "visit-quote-eval-raw-token";
 
     private static final String PLATE_NUMBER = "12가3456";
     private static final String OWNER_NAME = "김민수";
@@ -180,13 +183,29 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
         assertThat(countOf("evaluation")).isEqualTo(1);
     }
 
+    /**
+     * 접수 → 배정 → 반려 → 재신청을 전부 실제 API로 밟는다. 상태를 SQL로 심어 반려를 흉내 내면
+     * 반려 경로가 무엇을 바꾸는지와 무관하게 통과해, 정작 반려가 차량이나 상태를 다르게 건드리게
+     * 되는 날 이 테스트는 조용히 지나간다.
+     */
     @Test
     @DisplayName("시나리오 5 : 반려된 신청은 진행 중이 아니므로 같은 차를 다시 신청할 수 있다")
     void scenario5_RejectedAllowsReapply() throws Exception {
-        // given : 첫 신청이 반려됐다
-        request(PLATE_NUMBER, today().plusDays(16)).andExpect(status().isCreated());
-        jdbcTemplate.update("update evaluation set status = 'REJECTED', reject_reason = ?",
-                "차량 상태가 기준에 맞지 않습니다.");
+        // given : 첫 신청이 접수되고, 평가사가 수락한 뒤 반려로 끝낸다
+        long evaluationId = evaluationIdOf(
+                request(PLATE_NUMBER, today().plusDays(16)).andExpect(status().isCreated()));
+
+        mockMvc.perform(post("/api/evaluations/{id}/assignment", evaluationId)
+                        .cookie(evaluatorCookie()))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/evaluations/{id}/rejection", evaluationId)
+                        .cookie(evaluatorCookie())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"reason": "차량 상태가 기준에 맞지 않습니다."}
+                                """))
+                .andExpect(status().isOk());
 
         // when
         request(PLATE_NUMBER, today().plusDays(20)).andExpect(status().isCreated());
@@ -196,6 +215,18 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
         assertThat(jdbcTemplate.queryForObject(
                 "select count(*) from evaluation where status = 'REQUESTED'", Integer.class))
                 .isEqualTo(1);
+
+        // 차량 행도 새로 생긴다. 중복 판정이 vehicle_id가 아니라 번호판 문자열을 보는 이유다
+        assertThat(countOf("vehicle")).isEqualTo(2);
+    }
+
+    private static Cookie evaluatorCookie() {
+        return new Cookie(SessionCookieFactory.COOKIE_NAME, EVALUATOR_RAW_TOKEN);
+    }
+
+    private long evaluationIdOf(ResultActions result) throws Exception {
+        return JsonPath.parse(result.andReturn().getResponse().getContentAsString())
+                .read("$.evaluationId", Long.class);
     }
 
     // 핸들러의 @LoginUser 를 떼면 이 테스트만 깨지고 시나리오 1~5는 그대로 통과한다.

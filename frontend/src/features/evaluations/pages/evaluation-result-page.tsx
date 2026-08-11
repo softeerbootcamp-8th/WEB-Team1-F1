@@ -35,7 +35,7 @@ import {
   prepareDocumentFile,
   prepareImageFile,
   uploadPreparedFiles,
-} from '../upload'
+} from '@/lib/upload'
 import { formatPhone, formatVisitDate, getEvaluationErrorCode } from '../utils'
 
 interface SelectedImage {

@@ -3,29 +3,40 @@ package com.softeer.race.deal.domain;
 /**
  * 거래 단계
  * <p>
- * 단계마다 기한과 귀책이 달라서, 뭉쳐 두면 어떤 기한을 넘겼는지 상태에서 읽히지 않는다.
- * 화면도 같은 목록을 쓴다.
+ * 서비스가 하는 일은 만날 약속을 잡아 주는 데까지다. 대금을 보관하지 않고 명의이전을 확인할
+ * 수단도 없어서, 실제 인도 이후는 상태로 두지 않는다.
+ * <p>
+ * 단계마다 움직일 수 있는 사람이 정확히 한 명이다. 그래서 상태 하나가 "지금 누구를 기다리는가"를
+ * 그대로 답할 수 있고, 권한 검사와 화면의 "내 차례" 표시가 같은 판정을 쓴다.
  */
 public enum DealStatus {
 
-    // 구매자를 기다리는 상태. 거래 첫 시작 신호
-    DEPOSIT_PENDING,
-    // 판매자 기다리는 상태. 서류 대기
-    DOCUMENT_PENDING,
+    // 구매자가 거래 의사를 확인하는 자리. 실제 결제는 하지 않는다
+    BUYER_CONFIRM_PENDING,
 
-    // 잔금보다 먼저 받는다, 언제 차가 오는지 모른 채 큰 돈을 보내는 순서가 되지 않게
-    TRANSPORT_PENDING,
+    // 판매자가 서류와 탁송 일정을 낸다. 같은 사람이 하는 일이라 나누지 않는다
+    SELLER_SUBMIT_PENDING,
 
-    // 구매자 기다리며 되돌릴 수 있는 마지막 단계
-    BALANCE_PENDING,
-    // 구매자 기다린다. 잔금 받았으니 취소가 아니라 반품의 영역
-    HANDOVER_PENDING,
+    // 구매자가 판매자 일정에 동의하고 자기 인도 일정을 잡는다. 동의만 한 상태를 따로 두지 않는 이유는
+    // 그 상태에서도 기다리는 사람이 여전히 구매자라, 아무도 움직이지 않는 통과 상태가 되기 때문이다
+    BUYER_SCHEDULE_PENDING,
 
-    // 사람이 아니라 시스템을 기다린다, 돈이 실제로 나가는 유일한 실패 지점이라 단계로 남긴다
-    SETTLING,
+    // 약속이 정해졌다. 여기서부터 차량과 대금은 당사자끼리 만나서 주고받는다.
+    // COMPLETED 라 하지 않은 이유 — 인도가 아직 미래인데 완료라고 쓰면 화면이 거짓말을 한다
+    CONFIRMED,
 
-    COMPLETED,
     CANCELLED;
+
+    /**
+     * 지금 이 거래가 기다리는 쪽, 끝난 거래는 기다릴 사람이 없어 비어 있다
+     */
+    public DealSide waitingFor() {
+        return switch (this) {
+            case BUYER_CONFIRM_PENDING, BUYER_SCHEDULE_PENDING -> DealSide.BUYER;
+            case SELLER_SUBMIT_PENDING -> DealSide.SELLER;
+            case CONFIRMED, CANCELLED -> null;
+        };
+    }
 
     /**
      * 정상 진행으로 갈 수 있는지
@@ -36,25 +47,22 @@ public enum DealStatus {
     public boolean canTransitionTo(DealStatus target) {
         // 목적지를 받아야 어긋난 순서와 재요청이 걸린다, "다음으로"만으로는 그냥 밀린다
         return switch (this) {
-            case DEPOSIT_PENDING -> target == DOCUMENT_PENDING;
-            case DOCUMENT_PENDING -> target == TRANSPORT_PENDING;
-            case TRANSPORT_PENDING -> target == BALANCE_PENDING;
-            case BALANCE_PENDING -> target == HANDOVER_PENDING;
-            case HANDOVER_PENDING -> target == SETTLING;
-            case SETTLING -> target == COMPLETED;
-            case COMPLETED, CANCELLED -> false;
+            case BUYER_CONFIRM_PENDING -> target == SELLER_SUBMIT_PENDING;
+            case SELLER_SUBMIT_PENDING -> target == BUYER_SCHEDULE_PENDING;
+            case BUYER_SCHEDULE_PENDING -> target == CONFIRMED;
+            case CONFIRMED, CANCELLED -> false;
         };
     }
 
     /**
      * 취소할 수 있는지
      * <p>
-     * 잔금이 확인된 뒤로는 닫는다. 되돌리려면 환불·재탁송·명의 원복이 따라와서 취소와 다른 흐름이다.
+     * 약속이 잡힌 뒤로는 닫는다. 그때부터는 서비스가 아니라 서로 연락해서 정할 일이다.
      */
     public boolean isCancellable() {
         return switch (this) {
-            case DEPOSIT_PENDING, DOCUMENT_PENDING, TRANSPORT_PENDING, BALANCE_PENDING -> true;
-            case HANDOVER_PENDING, SETTLING, COMPLETED, CANCELLED -> false;
+            case BUYER_CONFIRM_PENDING, SELLER_SUBMIT_PENDING, BUYER_SCHEDULE_PENDING -> true;
+            case CONFIRMED, CANCELLED -> false;
         };
     }
 }

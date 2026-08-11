@@ -1,3 +1,5 @@
+import type { Manufacturer, VehicleKeyword } from '@/features/quote/types'
+
 /** 백엔드 AuctionCardResponse의 phase — 경매방 진행 단계 */
 export type RoomPhase = 'NOT_OPEN' | 'WAITING' | 'LIVE' | 'RESULT' | 'CLOSED'
 
@@ -6,9 +8,12 @@ export interface AuctionListCard {
   auctionId: number
   phase: RoomPhase
   thumbnailUrl: string | null
+  manufacturer: Manufacturer
   model: string
   modelYear: number
   mileage: number
+  // 평가사가 매긴 키워드. 진단을 거치지 않은 차량은 빈 배열이다
+  keywords: VehicleKeyword[]
   startPrice: number
   currentPrice: number
   openAt: string

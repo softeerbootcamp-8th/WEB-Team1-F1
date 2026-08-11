@@ -1,7 +1,6 @@
 package com.softeer.race.deal.application;
 
 import com.softeer.race.deal.domain.DealRepository;
-import com.softeer.race.deal.domain.DealStatus;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
@@ -27,7 +26,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 /**
- * 판매자와 구매자가 같은 거래를 동시에 옮기려 할 때
+ * 같은 사람이 같은 요청을 동시에 두 번 보낼 때
+ * <p>
+ * 단계마다 움직일 수 있는 사람이 한 명뿐이라 두 주체가 겹칠 경로는 없다. 남는 경합은 중복 클릭이고,
+ * 순서대로 들어오면 전이 검사가 두 번째를 거른다. <b>이 테스트가 증명하는 것은 그 검사가 통과한
+ * 두 요청이 겹쳤을 때다</b> — 비관적 락 없이 낙관적 락만으로 막힌다는 근거가 여기 있다.
  * <p>
  * <b>트랜잭션을 실제로 갈라야 한다.</b> 한 트랜잭션 안에서 같은 거래를 두 번 읽으면 1차 캐시가 같은
  * 인스턴스를 돌려주므로 버전 충돌이 일어나지 않는다. 그래서 스레드마다 트랜잭션을 연다.
@@ -65,7 +68,7 @@ class DealConcurrentTransitionIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("두 주체가 같은 거래를 동시에 옮기면 한쪽만 성공한다")
+    @DisplayName("같은 구매 확정 요청이 동시에 두 번 와도 한 번만 반영된다")
     void onlyOneConcurrentTransitionSucceeds() throws Exception {
         // given : 낙찰로 열린 거래 하나
         long dealId = createdDealId();
@@ -80,7 +83,8 @@ class DealConcurrentTransitionIntegrationTest extends IntegrationTestSupport {
                     bothRead.countDown();
                     awaitQuietly(bothRead);
 
-                    deal.transitionTo(DealStatus.DOCUMENT_PENDING, NOW.plusHours(1));
+                    // 둘 다 같은 스냅샷을 읽어서 전이 검사를 통과한다, 여기서는 아무도 걸리지 않는다
+                    deal.confirmPurchase(NOW.plusHours(1));
                 }));
 
         // when
@@ -103,7 +107,7 @@ class DealConcurrentTransitionIntegrationTest extends IntegrationTestSupport {
                 .isInstanceOf(ObjectOptimisticLockingFailureException.class);
 
         // then 2 : 반영은 한 번뿐이다, 버전이 두 번 올랐다면 나중 쓰기가 앞의 것을 덮은 것이다
-        assertThat(statusOf(dealId)).isEqualTo("DOCUMENT_PENDING");
+        assertThat(statusOf(dealId)).isEqualTo("SELLER_SUBMIT_PENDING");
         assertThat(versionOf(dealId)).isEqualTo(1L);
     }
 

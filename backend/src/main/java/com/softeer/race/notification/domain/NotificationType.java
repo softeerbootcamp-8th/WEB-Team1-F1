@@ -19,12 +19,14 @@ public enum NotificationType {
     // 참조가 차량이 아니라 신청 건인 이유는 #144 참고 — 신청 상세 하나로 시세까지 채워진다
     EVAL_APPROVED("차량 평가가 승인되었습니다. 경매글을 등록해 주세요.", "/sell/auction-post?evaluationId=%d"),
 
-    // 반려로 끝내는 경로가 아직 없어 발행되지 않는다, 목적지도 그때 정한다
-    EVAL_REJECTED("차량 평가가 반려되었습니다. 사유를 확인해 주세요.", "/sell/result"),
+    // 반려 사유를 담아 내려보내는 화면이 신청 상세 하나뿐이라 그리로 보낸다. EVAL_APPROVED가
+    // 결과 화면이 아니라 등록 화면으로 가는 것과 같은 결이다 — 알림을 누른 사람이 다음에 할 일이
+    // 있는 곳으로 보낸다. 반려 뒤 할 일은 사유를 읽고 다시 신청할지 정하는 것이고, 둘 다 상세에서 한다
+    EVAL_REJECTED("차량 평가가 반려되었습니다. 사유를 확인해 주세요.", "/mypage/evaluations/%d"),
 
     // 낙찰과 동시에 거래가 만들어지므로 경매방이 아니라 거래로 보낸다. 경매방은 결과 확인 5분이
     // 지나면 볼 것이 없지만, 낙찰자가 실제로 해야 할 일은 거래 화면에 있다
-    AUCTION_WON("낙찰되었습니다. 거래를 진행해 주세요.", "/deals/%d"),
+    AUCTION_WON("낙찰되었습니다. 거래를 진행해 주세요.", "/mypage/deals/%d"),
 
     // 거래가 아직 만들어지지 않아 임시로 둔다. #125 에서 발행을 AUCTION_WON 으로 옮긴다.
     // 그때도 이 상수는 지우지 못한다 — 저장된 알림이 자기 종류를 이름으로 들고 있어서,
@@ -42,7 +44,16 @@ public enum NotificationType {
     AUCTION_SOLD("등록하신 차량이 낙찰되었습니다.", "/auctions/%d"),
     AUCTION_FAILED("등록하신 경매가 입찰 없이 종료되었습니다.", "/auctions/%d"),
 
-    DEAL_STATUS_CHANGED("거래가 다음 단계로 넘어갔습니다.", "/deals/%d");
+    // 단계별로 쪼갠다. 하나로 두면 "서류를 올려 주세요"와 "일정을 확인해 주세요"가 같은 문구로 떠서,
+    // 눌러 보기 전에는 무엇을 해야 하는지 알 수 없다
+    DEAL_SELLER_SUBMIT_REQUIRED("구매자가 구매를 확정했습니다. 서류와 탁송 일정을 등록해 주세요.", "/mypage/deals/%d"),
+    DEAL_BUYER_SCHEDULE_REQUIRED("판매자가 탁송 일정을 등록했습니다. 인도 일정을 정해 주세요.", "/mypage/deals/%d"),
+    DEAL_CONFIRMED("거래가 확정되었습니다. 인도 일정을 확인해 주세요.", "/mypage/deals/%d"),
+    DEAL_CANCELLED("거래가 취소되었습니다.", "/mypage/deals/%d"),
+
+    // 단계별 종류로 대체돼 더는 발행되지 않는다. 저장된 알림이 자기 종류를 이름으로 들고 있어서,
+    // 지우면 그 행을 읽는 순간 터진다
+    DEAL_STATUS_CHANGED("거래가 다음 단계로 넘어갔습니다.", "/mypage/deals/%d");
 
     private static final String REFERENCE = "%d";
 
