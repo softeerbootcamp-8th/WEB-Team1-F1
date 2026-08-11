@@ -95,17 +95,26 @@ class AuctionEndNotificationIntegrationTest extends IntegrationTestSupport {
         // then 1 : 판매자는 차가 팔렸다는 것을 안다
         assertThat(notificationsOf(seller)).singleElement().satisfies(row -> {
             assertThat(row.type()).isEqualTo(AUCTION_SOLD);
-            assertThat(row.message()).isEqualTo(AUCTION_SOLD.defaultMessage());
+            assertThat(row.message())
+                    .isEqualTo("아반떼 CN7 차량이 31,000,000원에 낙찰되었습니다.");
             assertThat(row.read()).isFalse();
         });
 
-        // then 2 : 낙찰자는 낙찰 사실을 안다
+        // then 2 : 낙찰자는 어떤 차량을 얼마에 샀는지 목록에서 안다
         assertThat(notificationsOf(bob)).singleElement()
-                .satisfies(row -> assertThat(row.type()).isEqualTo(AUCTION_WON));
+                .satisfies(row -> {
+                    assertThat(row.type()).isEqualTo(AUCTION_WON);
+                    assertThat(row.message())
+                            .isEqualTo("아반떼 CN7 차량을 31,000,000원에 낙찰받았습니다.");
+                });
 
-        // then 3 : 밀린 입찰자는 종료를 안다
+        // then 3 : 밀린 입찰자는 어떤 경매가 얼마에 끝났는지 안다
         assertThat(notificationsOf(alice)).singleElement()
-                .satisfies(row -> assertThat(row.type()).isEqualTo(AUCTION_ENDED));
+                .satisfies(row -> {
+                    assertThat(row.type()).isEqualTo(AUCTION_ENDED);
+                    assertThat(row.message())
+                            .isEqualTo("아반떼 CN7 경매가 31,000,000원에 종료되었습니다.");
+                });
 
         // then 4 : 셋이 서로 다른 문구다, 한 문구로 묶으면 무슨 일이 났는지 알림만 보고 알 수 없다
         assertThat(messagesOf(seller, bob, alice)).doesNotHaveDuplicates();
@@ -165,7 +174,8 @@ class AuctionEndNotificationIntegrationTest extends IntegrationTestSupport {
         // then 1 : 판매자는 낙찰과 다른 문구로 유찰을 받는다, 유찰이면 다시 등록해야 한다
         assertThat(notificationsOf(seller)).singleElement().satisfies(row -> {
             assertThat(row.type()).isEqualTo(AUCTION_FAILED);
-            assertThat(row.message()).isEqualTo(AUCTION_FAILED.defaultMessage());
+            assertThat(row.message())
+                    .isEqualTo("아반떼 CN7 경매가 입찰 없이 종료되었습니다.");
         });
 
         // then 2 : 유찰은 입찰이 없었다는 뜻이라 받을 사람이 판매자뿐이다

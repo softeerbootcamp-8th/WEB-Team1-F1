@@ -2,11 +2,15 @@ package com.softeer.race.bid.presentation;
 
 import com.jayway.jsonpath.JsonPath;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
+import com.softeer.race.notification.domain.NotificationRepository;
+import com.softeer.race.notification.domain.NotificationRow;
 import com.softeer.race.support.IntegrationTestSupport;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Limit;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.ResultActions;
@@ -20,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static com.softeer.race.notification.domain.NotificationType.OUTBID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -54,6 +59,8 @@ class BidIntegrationTest extends IntegrationTestSupport {
     private static final long MISSING_AUCTION = 9999L;
 
     private static final long SELLER_ID = 51L;
+    private static final long ALICE_ID = 52L;
+    private static final long BOB_ID = 53L;
 
     private static final String SELLER_TOKEN = "token-seller";
     private static final String ALICE_TOKEN = "token-alice";
@@ -64,6 +71,9 @@ class BidIntegrationTest extends IntegrationTestSupport {
     // 픽스처의 시작가와 그 가격대 구간의 상승가
     private static final long START_PRICE = 24_800_000L;
     private static final long INCREMENT = 50_000L;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     @BeforeEach
     void fixClock() {
@@ -282,6 +292,55 @@ class BidIntegrationTest extends IntegrationTestSupport {
         assertThat(currentPriceOf(LIVE_AUCTION)).isEqualTo(START_PRICE);
     }
 
+    @Test
+    @DisplayName("시나리오 12 : 새 최고 입찰이 성립하면 직전 최고 입찰자만 차량·이름·금액 알림을 받는다")
+    void notifiesOnlyPreviousTopBidder() throws Exception {
+        // 첫 입찰에는 밀려난 사람이 없다
+        bid(LIVE_AUCTION, ALICE_TOKEN, START_PRICE).andExpect(status().isCreated());
+        assertThat(notificationsOf(ALICE_ID)).isEmpty();
+
+        // 실패한 입찰은 최고가를 바꾸지 않았으므로 알림도 남기지 않는다
+        bid(LIVE_AUCTION, BOB_TOKEN, START_PRICE)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("BID_AMOUNT_TOO_LOW"));
+        assertThat(notificationsOf(ALICE_ID)).isEmpty();
+
+        // 밥의 입찰이 실제로 성립한 뒤에만 직전 최고 입찰자 앨리스가 받는다
+        bid(LIVE_AUCTION, BOB_TOKEN, START_PRICE + INCREMENT)
+                .andExpect(status().isCreated());
+
+        assertThat(notificationsOf(ALICE_ID)).singleElement().satisfies(row -> {
+            assertThat(row.type()).isEqualTo(OUTBID);
+            assertThat(row.message())
+                    .isEqualTo("그랜저 IG 경매에서 이*님이 24,850,000원에 입찰했습니다.");
+            assertThat(row.link()).isEqualTo("/auctions/" + LIVE_AUCTION);
+        });
+        assertThat(notificationsOf(BOB_ID)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("시나리오 13 : 최고가를 되찾았다가 다시 밀리면 매 전환의 직전 최고 입찰자만 받는다")
+    void notifiesTheTopBidderWhoLosesEachTransition() throws Exception {
+        bid(LIVE_AUCTION, ALICE_TOKEN, START_PRICE).andExpect(status().isCreated());
+        bid(LIVE_AUCTION, BOB_TOKEN, START_PRICE + INCREMENT)
+                .andExpect(status().isCreated());
+        bid(LIVE_AUCTION, ALICE_TOKEN, START_PRICE + 2 * INCREMENT)
+                .andExpect(status().isCreated());
+        bid(LIVE_AUCTION, BOB_TOKEN, START_PRICE + 3 * INCREMENT)
+                .andExpect(status().isCreated());
+
+        // 앨리스는 두 번 밀렸으므로 두 건, 밥은 한 번 밀렸으므로 한 건이다
+        assertThat(notificationsOf(ALICE_ID))
+                .extracting(NotificationRow::message)
+                .containsExactly(
+                        "그랜저 IG 경매에서 이*님이 24,950,000원에 입찰했습니다.",
+                        "그랜저 IG 경매에서 이*님이 24,850,000원에 입찰했습니다.");
+        assertThat(notificationsOf(BOB_ID))
+                .extracting(NotificationRow::message)
+                .containsExactly(
+                        "그랜저 IG 경매에서 김**스님이 24,900,000원에 입찰했습니다.");
+    }
+
     private ResultActions bid(long auctionId, String rawToken, long amount) throws Exception {
         return mockMvc.perform(post("/api/auctions/{auctionId}/bids", auctionId)
                 .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, rawToken))
@@ -317,5 +376,9 @@ class BidIntegrationTest extends IntegrationTestSupport {
     private Long currentPriceOf(long auctionId) {
         return jdbcTemplate.queryForObject(
                 "select current_price from auction where id = ?", Long.class, auctionId);
+    }
+
+    private List<NotificationRow> notificationsOf(long userId) {
+        return notificationRepository.findPage(userId, Long.MAX_VALUE, Limit.of(10));
     }
 }
