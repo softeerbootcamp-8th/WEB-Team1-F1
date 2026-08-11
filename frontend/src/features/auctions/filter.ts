@@ -90,6 +90,34 @@ export function toFilterParams(filter: AuctionVehicleFilter): URLSearchParams {
 }
 
 /**
+ * 비슷한 값으로 볼 범위. 위아래 20%다.
+ *
+ * 좁히면 매물이 얇아 거의 항상 0건이 되고, 넓히면 "비슷하다"가 뜻을 잃는다.
+ */
+const SIMILAR_PRICE_BAND = 0.2
+
+/** 값 범위를 끊는 단위. 화면이 값을 만원으로 읽고 쓰므로 조건도 같은 단위로 둔다. */
+const PRICE_UNIT = 10_000
+
+/**
+ * 방금 본 차와 비슷한 조건. 제조사가 같고 값이 밴드 안에 드는 것까지만 건다.
+ *
+ * 연료·변속기·연식·주행거리는 걸지 않는다. 조건을 더 얹으면 매물 풀이 얇아 0건이 된다.
+ * 기준 값은 호출자가 정한다. 팔린 경매는 낙찰가고 유찰은 시작가다.
+ */
+export function similarFilter(manufacturer: Manufacturer, price: number): AuctionVehicleFilter {
+  const band = price * SIMILAR_PRICE_BAND
+
+  // 끊는 방향을 바깥으로 둔다. 반올림하면 밴드가 단위만큼 좁아질 수 있다.
+  return {
+    ...EMPTY_FILTER,
+    manufacturer,
+    priceMin: Math.floor((price - band) / PRICE_UNIT) * PRICE_UNIT,
+    priceMax: Math.ceil((price + band) / PRICE_UNIT) * PRICE_UNIT,
+  }
+}
+
+/**
  * 값이 같으면 같은 문자열. 목록 캐시 키와 재조회 판단에 쓴다 —
  * 객체 동일성으로 보면 렌더마다 다른 목록으로 읽혀 매번 첫 페이지부터 다시 읽는다.
  */
