@@ -34,8 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 지금 {@code AuctionRoomView.of} 주석에만 있고 아무도 실행하지 않는다. 여기서 실행한다.
  * <p>
  * 필드 이름을 하나씩 적지 않는 것이 이 테스트의 핵심이다. 양쪽에 필드가 늘어도 계속 유효하고
- * 한쪽에만 늘면 깨진다. 다를 수 있는 것은 보는 사람 기준의 판정 둘뿐이고, 방송은 보는 사람이
- * 정해지지 않으므로 그 둘은 값이 아니라 키 자체가 없어야 한다.
+ * 한쪽에만 늘면 깨진다. 다를 수 있는 것은 보는 사람 기준의 판정뿐이고, 방송은 보는 사람이
+ * 정해지지 않으므로 그것들은 값이 아니라 키 자체가 없어야 한다.
  * <p>
  * 열다섯 인자를 위치로 채우는 방송 직렬화의 그물도 여기 걸린다. 조회는 그대로인데 방송만
  * 어긋나면 대조가 깨진다.
@@ -95,6 +95,11 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         assertThat(broadcast.at("/winner/mine").isMissingNode()).isTrue();
         assertThat(broadcast.at("/recentBids/0/mine").isMissingNode()).isTrue();
 
+        // then 2-0 : 판매자 여부도 보는 사람 기준이라 방송에는 키가 없다
+        // 위 둘과 달리 조회에서 참인 것을 여기서 보일 수 없다, 판매자는 입찰할 수 없어 낙찰자일 수 없다
+        // 참인 경우는 AuctionRoomIntegrationTest 시나리오 6이 지킨다
+        assertThat(broadcast.at("/sellerIsMine").isMissingNode()).isTrue();
+
         // then 2-1 : 차량은 방 안에서 바뀌지 않으므로 방송에 실리지 않는다, 조회가 한 번 준다
         assertThat(broadcast.at("/vehicle").isMissingNode()).isTrue();
         assertThat(query.at("/vehicle").isMissingNode()).isFalse();
@@ -140,12 +145,13 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         return keys;
     }
 
-    // 방송에 없는 것은 보는 사람 기준의 판정 둘과 방 안에서 바뀌지 않는 차량이다
+    // 방송에 없는 것은 보는 사람 기준의 판정 셋과 방 안에서 바뀌지 않는 차량이다
     private JsonNode withoutPersonalization(JsonNode query) {
         ObjectNode copy = (ObjectNode) query.deepCopy();
 
         ((ObjectNode) copy.get("winner")).remove("mine");
         copy.get("recentBids").forEach(bid -> ((ObjectNode) bid).remove("mine"));
+        copy.remove("sellerIsMine");
         copy.remove("vehicle");
 
         return copy;

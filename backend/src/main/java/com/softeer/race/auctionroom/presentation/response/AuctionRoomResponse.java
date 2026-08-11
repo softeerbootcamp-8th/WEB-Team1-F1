@@ -50,6 +50,9 @@ public record AuctionRoomResponse(
         @Schema(description = "낙찰자, 낙찰 확정 전에는 없다")
         WinnerResponse winner,
 
+        @Schema(description = "조회한 사람이 이 차를 내놓은 사람인지")
+        boolean sellerIsMine,
+
         @Schema(description = "최근 호가, 최신순 최대 20건")
         List<RecentBidResponse> recentBids
 ) {
@@ -71,6 +74,7 @@ public record AuctionRoomResponse(
                 state.stats().bidderCount(),
                 state.stats().bidCount(),
                 WinnerResponse.from(view),
+                view.sellerIsMine(),
                 view.recentBids().stream().map(RecentBidResponse::from).toList());
     }
 }
