@@ -1,5 +1,7 @@
 package com.softeer.race.auctionlist.application;
 
+import com.softeer.race.auction.domain.AuctionClosed;
+import com.softeer.race.auction.domain.AuctionStarted;
 import com.softeer.race.bid.domain.BidAccepted;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,12 +19,26 @@ class AuctionListRefreshListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onBidAccepted(BidAccepted event) {
+        refresh(event.auctionId(), "입찰");
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAuctionStarted(AuctionStarted event) {
+        refresh(event.auctionId(), "경매 시작");
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onAuctionClosed(AuctionClosed event) {
+        refresh(event.auctionId(), "경매 마감");
+    }
+
+    private void refresh(long auctionId, String cause) {
         try {
-            auctionListStreamService.broadcastCard(event.auctionId());
+            auctionListStreamService.broadcastCard(auctionId);
         } catch (Exception e) {
             // 안 잡아도 커밋한 쪽은 멀쩡하다, 이 리스너는 afterCompletion 훅으로 배달돼 스프링이 삼킨다
             // 잡는 이유는 무엇이 왜 실패했는지 여기서만 남길 수 있어서다
-            log.warn("입찰 뒤 목록 카드 방송 실패, 경매 {}", event.auctionId(), e);
+            log.warn("{} 뒤 목록 카드 방송 실패, 경매 {}", cause, auctionId, e);
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.softeer.race.auctionlist.presentation;
 
+import com.softeer.race.auction.application.AuctionProgressScheduler;
 import com.softeer.race.auctionlist.application.AuctionListChannel;
 import com.softeer.race.auctionlist.application.AuctionListStreamService;
 import com.softeer.race.auth.application.SessionService;
@@ -7,7 +8,6 @@ import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.bid.domain.BidAccepted;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.user.domain.Role;
-import com.softeer.race.user.domain.User;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,10 +27,7 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * 목록 변화 구독을 컨트롤러에서 채널까지
@@ -62,6 +59,9 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    private AuctionProgressScheduler scheduler;
 
     private TransactionTemplate transactionTemplate;
 
@@ -166,6 +166,44 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
         assertThat(body(opened)).doesNotContain("data:");
     }
 
+    @Test
+    @DisplayName("시나리오 6 : 경매가 시작 -> 그 카드가 진행중으로 흘러온다")
+    void startedAuctionStreamsCard() throws Exception {
+        // given : 시작 시각이 막 지났고 아직 예약 상태인 경매
+        long auctionId = auctionStartingNow();
+        MvcResult opened = subscribe().andExpect(request().asyncStarted()).andReturn();
+
+        // when : 이벤트를 손으로 발행하지 않는다, 그 상황에서 실제로 발행되는지까지 봐야 한다
+        scheduler.advanceAuctions();
+
+        // then : 목록에 없던 카드가 진행중 무리로 들어온다
+        assertThat(body(opened))
+                .contains("event:card")
+                .contains("\"auctionId\":" + auctionId)
+                .contains("\"phase\":\"LIVE\"");
+    }
+
+    @Test
+    @DisplayName("시나리오 7 : 경매가 마감 -> 그 카드가 종료로 흘러온다")
+    void closedAuctionStreamsCard() throws Exception {
+        // given : 시작 전이를 먼저 소모한다. 시작과 마감이 한 틱에 겹치면 시작이 낸 카드만으로
+        // 단정이 통과해 마감 리스너를 지워도 드러나지 않는다
+        long auctionId = auctionStartingNow();
+        scheduler.advanceAuctions();
+
+        MvcResult opened = subscribe().andExpect(request().asyncStarted()).andReturn();
+
+        // when : 마감(시작 + 20분)이 지나도록 시계를 민다. 입찰이 없어 유찰로 끝난다
+        fixClockAt(NOW.plusMinutes(30));
+        scheduler.advanceAuctions();
+
+        // then : 마감 후 5분이 지나 복기 구간도 끝났다
+        assertThat(body(opened))
+                .contains("event:card")
+                .contains("\"auctionId\":" + auctionId)
+                .contains("\"phase\":\"CLOSED\"");
+    }
+
     private ResultActions subscribe() throws Exception {
         return mockMvc.perform(get("/api/auctions/stream"));
     }
@@ -181,9 +219,20 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
 
     // 시작 15분 전에 시작해 마감이 아직 남은 방이다, 마감은 시작 + 20분이다
     private long liveAuction() {
-        User seller = users.user("박판매", Role.GENERAL);
+        return room(NOW.minusMinutes(15));
+    }
 
-        return rooms.room(seller, NOW.minusMinutes(15)).startPrice(START_PRICE).create();
+    private long auctionStartingNow() {
+        return room(NOW.minusMinutes(1));
+    }
+
+    private long auctionEndedLongAgo() {
+        return room(NOW.minusHours(1));
+    }
+
+    // 시더는 전부 예약 상태로 세운다, 진행중으로 올리는 것은 advanceAuctions 가 할 일이다
+    private long room(LocalDateTime startAt) {
+        return rooms.room(users.user("박판매", Role.GENERAL), startAt).startPrice(START_PRICE).create();
     }
 
     // 시더에 키워드 입구가 없다, 평가 결과 제출 경로를 전부 밟게 하는 값보다 한 줄이 싸다
