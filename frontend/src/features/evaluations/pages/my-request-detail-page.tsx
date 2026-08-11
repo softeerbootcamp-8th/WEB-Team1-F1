@@ -75,8 +75,7 @@ export function MyRequestDetailPage() {
 
       <header className="mt-6 flex flex-wrap items-start justify-between gap-5">
         <div>
-          <p className="text-muted-foreground text-sm">방문견적 #{detail.evaluationId}</p>
-          <h1 className="mt-2 text-3xl font-semibold md:text-4xl">
+          <h1 className="text-3xl font-semibold md:text-4xl">
             {MANUFACTURER_LABEL[detail.manufacturer]} {detail.model}
           </h1>
           <p className="text-muted-foreground mt-2">{detail.modelYear}년식 · {detail.plateNumber}</p>
