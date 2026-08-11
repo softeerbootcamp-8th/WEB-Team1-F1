@@ -1,9 +1,8 @@
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
-import { ArrowLeft, Eye, Gavel, Trophy } from 'lucide-react'
+import { Eye, Gavel } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/empty-state'
-import { formatClock, formatKRW } from '@/lib/format'
 import { MANUFACTURER_LABEL } from '@/features/quote/types'
 import { useAuth } from '@/features/auth/auth-context'
 
@@ -13,9 +12,10 @@ import { BidPanel } from '../components/bid-panel'
 import { BidLedger } from '../components/bid-ledger'
 import { WaitingRoom } from '../components/waiting-room'
 import { CarDetail } from '../components/car-detail'
+import { BackLink } from '../components/back-link'
 import { RoomStateBanner, RoomStateBar } from '../components/room-state-banner'
 import type { RoomStateMode } from '../components/room-state-banner'
-import type { AuctionRoomView, RoomVehicle, RoomWinner } from '../types'
+import type { AuctionRoomView, RoomVehicle } from '../types'
 
 export function AuctionRoomPage() {
   const { id } = useParams()
@@ -56,31 +56,6 @@ function RoomHeading({ vehicle, mode }: { vehicle: RoomVehicle; mode: RoomStateM
         <RoomStateBanner mode={mode} />
       </div>
     </>
-  )
-}
-
-/**
- * 왔던 목록으로 돌아가는 버튼. 목록 카드가 state.from에 자기 주소(탭 포함)를 실어 보내고,
- * 여기는 그 주소로 가는 평범한 Link다. 목록 캐시가 데이터와 스크롤을 되살리므로 앞으로
- * 가는 이동이어도 화면은 뒤로가기와 똑같이 보던 자리로 돌아간다.
- *
- * navigate(-1)을 쓰지 않는 이유: 공유 링크로 방에 바로 들어와 로그인을 마친 경우,
- * 로그인 왕복이 replace로 이뤄져 location.key가 default가 아닌데도 히스토리 아래에
- * 앱 화면이 없다. 이때 -1은 앱 밖으로 나간다. from이 없으면 목록 첫 화면으로 보낸다.
- */
-function BackLink() {
-  const location = useLocation()
-  const from = (location.state as { from?: string } | null)?.from
-  // 다른 곳으로 새는 값 방어. 로그인 페이지의 returnTo 검증과 같은 기준이다.
-  const target = from?.startsWith('/') && !from.startsWith('//') ? from : '/auctions'
-
-  return (
-    <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
-      <Link to={target}>
-        <ArrowLeft className="size-4" />
-        뒤로
-      </Link>
-    </Button>
   )
 }
 
@@ -150,8 +125,10 @@ function RoomContent({ auctionId }: { auctionId: number }) {
     return <Navigate to={`/auctions?open=${auctionId}`} replace />
   }
 
+  // 마감된 경매는 방이 아니라 결과 화면의 일이다. 방 안에서 결과를 그리면 5분이 지나면 사라지고,
+  // 목록 미리보기로 보내면 끝난 뒤에도 남는 결과를 지나쳐 버린다
   if (entry === 'CLOSED') {
-    return <Navigate to={`/auctions?open=${auctionId}&as=closed`} replace />
+    return <Navigate to={`/auctions/${auctionId}/result`} replace />
   }
 
   if (entry === 'SIGNED_OUT') {
@@ -192,8 +169,6 @@ function RoomContent({ auctionId }: { auctionId: number }) {
           placeBid={placeBid}
         />
       )}
-
-      {room.phase === 'RESULT' && <EndedResult summary={endedFromRoom(room)} />}
     </main>
   )
 }
@@ -276,88 +251,3 @@ function LiveRoom({
  * 마감 직후에는 아직 열려 있는 방의 현황에서, 방이 닫힌 뒤에는 결과 요약에서 온다.
  * 결과 요약에는 접속자 수와 서버 시각이 없어 뒤의 둘은 있을 때만 채운다.
  */
-interface EndedSummary {
-  vehicle: RoomVehicle
-  startPrice: number
-  /** 유찰이면 없다 */
-  winningPrice: number | null
-  winner: RoomWinner | null
-  bidCount: number
-  bidderCount?: number
-  endAt?: string
-}
-
-function endedFromRoom(room: AuctionRoomView): EndedSummary {
-  return {
-    vehicle: room.vehicle,
-    startPrice: room.startPrice,
-    // 마지막으로 성립한 입찰이 곧 낙찰가다
-    winningPrice: room.winner ? room.currentPrice : null,
-    winner: room.winner,
-    bidCount: room.bidCount,
-    bidderCount: room.bidderCount,
-    endAt: room.endAt,
-  }
-}
-
-
-/** 종료(결과 보기/마감) 화면 */
-function EndedResult({ summary }: { summary: EndedSummary }) {
-  const { user } = useAuth()
-
-  // 서버는 낙찰자 이름을 누구에게나 마스킹해서 내려준다. 본인에게만은 실명이 자연스러운데,
-  // 그 이름은 서버에 다시 물을 것 없이 내 세션이 이미 들고 있다
-  const winnerName = summary.winner?.mine && user ? user.realName : summary.winner?.name
-
-  // 시작가와 입찰 건수는 어느 출처로 오든 있다, 뒤의 둘은 방이 아직 열려 있을 때만 온다
-  const facts: { label: string; value: string }[] = [
-    { label: '시작가', value: formatKRW(summary.startPrice) },
-    { label: '입찰', value: `${summary.bidCount}건` },
-    ...(summary.bidderCount === undefined
-      ? []
-      : [{ label: '입찰 참여자', value: `${summary.bidderCount}명` }]),
-    ...(summary.endAt === undefined ? [] : [{ label: '마감', value: formatClock(summary.endAt) }]),
-  ]
-
-  return (
-    <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-      <CarDetail vehicle={summary.vehicle} />
-      <div className="flex flex-col gap-4">
-        <div className="rounded-xl border p-6 text-center">
-          {summary.winner && summary.winningPrice !== null ? (
-            <>
-              <div className="bg-price-up/12 text-price-up mx-auto mb-4 flex size-12 items-center justify-center rounded-full">
-                <Trophy className="size-6" />
-              </div>
-              <p className="text-muted-foreground text-sm">최종 낙찰가</p>
-              <p className="tabular text-price-up mt-1 text-3xl font-bold">
-                {formatKRW(summary.winningPrice)}
-              </p>
-              <p className="text-muted-foreground mt-2 text-sm">
-                낙찰자 {winnerName}
-                {summary.winner.mine && <span className="text-foreground font-medium"> (나)</span>}{' '}
-                · 입찰 {summary.bidCount}건
-              </p>
-              {summary.winner.mine && (
-                <Button asChild className="mt-5 w-full">
-                  <Link to="/mypage">거래 진행하기</Link>
-                </Button>
-              )}
-            </>
-          ) : (
-            <p className="text-muted-foreground">입찰 없이 유찰됐어요.</p>
-          )}
-        </div>
-
-        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border">
-          {facts.map((fact) => (
-            <div key={fact.label} className="bg-card p-4">
-              <dt className="text-muted-foreground text-xs">{fact.label}</dt>
-              <dd className="tabular mt-1 font-semibold">{fact.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </div>
-  )
-}

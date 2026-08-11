@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { HomePage } from '@/features/auctions/pages/home-page'
 import { AuctionsPage } from '@/features/auctions/pages/auctions-page'
 import { AuctionRoomPage } from '@/features/auction-room/pages/auction-room-page'
+import { AuctionResultPage } from '@/features/auction-room/pages/auction-result-page'
 import { SellPage } from '@/features/sell/pages/sell-page'
 import { EvaluatorConnectionPage } from '@/features/sell/pages/evaluator-connection-page'
 import { AuctionPostPage } from '@/features/sell/pages/auction-post-page'
@@ -35,6 +36,8 @@ export function AppRouter() {
         <Route path="/quote/result" element={<QuoteResultPage />} />
         <Route path="/auctions" element={<AuctionsPage />} />
         <Route path="/auctions/:id" element={<AuctionRoomPage />} />
+        {/* 결과는 방과 다른 액자다. 단계를 보지 않으므로 방이 닫힌 뒤에도 이 주소로 남는다 */}
+        <Route path="/auctions/:id/result" element={<AuctionResultPage />} />
         <Route path="/sell" element={<SellPage />} />
         <Route path="/sell/evaluator" element={<EvaluatorConnectionPage />} />
         <Route path="/sell/auction-post" element={<AuctionPostPage />} />
