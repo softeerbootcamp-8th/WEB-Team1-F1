@@ -88,7 +88,9 @@ describe('curveShapeOf', () => {
     point(0, 8_500_000),
     point(10, 9_300_000, true),
     point(15, 9_800_000),
-    point(20, 10_100_000),
+    // 마감 정각에는 입찰이 성립하지 않고, 임박 입찰은 소프트클로즈가 마감을 밀어낸다
+    // 그래서 마지막 입찰은 늘 마감보다 앞선다
+    point(19, 10_100_000),
   ]
 
   it('서버가 주지 않는 시작가 점을 앞에 붙인다', () => {
@@ -100,11 +102,13 @@ describe('curveShapeOf', () => {
     expect(shape?.points).toHaveLength(curve.length + 1)
   })
 
-  it('가로는 첫 점에서 끝 점까지 꽉 채운다', () => {
+  // 가로축 라벨이 시작과 마감이므로 점도 그 사이에 놓여야 한다, 마지막 입찰을 끝에 붙이면 라벨이 거짓이 된다
+  it('가로는 시작에서 마감까지이고 마지막 입찰은 그 안쪽이다', () => {
     const shape = curveShapeOf(result({ priceCurve: curve }))
 
     expect(shape?.points.at(0)?.x).toBe(0)
-    expect(shape?.points.at(-1)?.x).toBe(1)
+    expect(shape?.points.at(-1)?.x).toBeLessThan(1)
+    expect(shape?.points.at(-1)?.x).toBeGreaterThan(0.9)
   })
 
   it('세로는 시작가가 바닥이고 낙찰가가 꼭대기다', () => {
@@ -140,11 +144,10 @@ describe('curveShapeOf', () => {
     expect(curveShapeOf(result({ outcome: 'UNSOLD', winner: null, priceCurve: [] }))).toBeNull()
   })
 
-  // 시각 폭이 0이면 나눗셈이 NaN 이 되어 선이 통째로 사라진다
-  it('입찰이 한 건이면 시각 폭이 없어도 좌표가 무너지지 않는다', () => {
+  it('시작 직후에 한 건만 들어와도 좌표가 무너지지 않는다', () => {
     const shape = curveShapeOf(result({ priceCurve: [point(0, 10_100_000)] }))
 
     expect(shape?.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true)
-    expect(shape?.points.at(-1)?.x).toBe(1)
+    expect(shape?.points.at(-1)?.x).toBe(0)
   })
 })

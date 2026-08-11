@@ -54,20 +54,20 @@ export function curveShapeOf(result: RoomResultView): CurveShape | null {
 
   const minAmount = Math.min(...amounts)
   const maxAmount = Math.max(...amounts)
-  const minTime = Math.min(...times)
-  const maxTime = Math.max(...times)
 
-  // 폭이 0이면 나눗셈이 무한대가 되어 선이 통째로 사라진다. 그때는 자리 순서로 고르게 편다
+  // 가로는 마지막 입찰이 아니라 마감까지다. 축 라벨이 시작과 마감이라 여기를 마지막 입찰로 잡으면
+  // 라벨과 선 끝이 다른 시각을 가리킨다. 남는 오른쪽 여백이 곧 아무도 부르지 않은 시간이다
+  const startTime = new Date(result.startAt).getTime()
+  const spanX = new Date(result.endAt).getTime() - startTime
+
   // 세로 폭이 0인 경매도 있다. 첫 입찰의 하한이 시작가라(BidIncrementTable.ruleFor)
   // 시작가와 같은 금액 한 건으로 끝날 수 있고, 그때는 모든 점이 같은 높이에 놓인다
-  const spanX = maxTime - minTime
   const spanY = maxAmount - minAmount
-  const lastIndex = amounts.length - 1
 
   const heightOf = (amount: number) => (spanY === 0 ? 0 : (amount - minAmount) / spanY)
 
   const points = amounts.map((amount, index) => ({
-    x: spanX === 0 ? (lastIndex === 0 ? 1 : index / lastIndex) : (times[index] - minTime) / spanX,
+    x: (times[index] - startTime) / spanX,
     y: heightOf(amount),
     amount,
     mine: index === 0 ? false : result.priceCurve[index - 1].mine,
