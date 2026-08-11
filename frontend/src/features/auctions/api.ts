@@ -34,20 +34,37 @@ export async function fetchAuctionList({
   return data
 }
 
+/** event: audience 의 본문. 시청자 수는 1초마다 보므로 카드 전체가 아니라 이 둘만 온다 */
+interface AudiencePayload {
+  auctionId: number
+  connectedCount: number
+}
+
+export interface AuctionListStreamHandlers {
+  onCard: (card: AuctionListCard) => void
+  onAudience: (payload: AudiencePayload) => void
+}
+
 /**
  * GET /api/auctions/stream 구독(SSE). 목록 조회가 비로그인이라 이 통로도 세션이 필요 없다.
  * 구독 직후에는 아무 이벤트도 오지 않는다 — 서버가 보고 있는 페이지를 모르므로 첫 목록은
  * 조회 API가 주고, 여기서는 그 뒤의 변화만 온다(백엔드 문서).
  * card 는 목록 조회의 카드 한 장과 같은 모양이고 변경분이 아니라 전체라 하나를 놓쳐도 다음이 덮는다.
+ * audience 는 사람이 있는 모든 방에서 오므로 내 페이지에 없는 경매의 것도 들어온다.
  */
-export function subscribeAuctionListStream(
-  onCard: (card: AuctionListCard) => void,
-): () => void {
+export function subscribeAuctionListStream({
+  onCard,
+  onAudience,
+}: AuctionListStreamHandlers): () => void {
   const baseURL = axiosInstance.defaults.baseURL ?? ''
   const source = new EventSource(`${baseURL}/api/auctions/stream`)
 
   source.addEventListener('card', (event) => {
     onCard(JSON.parse(event.data) as AuctionListCard)
+  })
+
+  source.addEventListener('audience', (event) => {
+    onAudience(JSON.parse(event.data) as AudiencePayload)
   })
 
   return () => source.close()

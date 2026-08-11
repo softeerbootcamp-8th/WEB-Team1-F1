@@ -132,6 +132,25 @@ export function applyCardEvent(
 }
 
 /**
+ * 스트림으로 온 시청자 수를 반영한 새 배열. 그 경매가 목록에 없으면 받은 배열을 그대로 돌려준다.
+ *
+ * 서버는 사람이 있는 모든 방의 수를 보내므로 내 페이지에 없는 경매의 이벤트가 계속 들어온다.
+ * 그때마다 새 배열을 만들면 화면이 헛돈다.
+ */
+export function applyAudienceEvent(
+  cards: AuctionListCard[],
+  auctionId: number,
+  connectedCount: number,
+): AuctionListCard[] {
+  const index = cards.findIndex((it) => it.auctionId === auctionId)
+  if (index < 0) return cards
+
+  const next = [...cards]
+  next[index] = { ...next[index], connectedCount }
+  return next
+}
+
+/**
  * 수정 가능 여부. 서버는 경매방이 열리기 전(now < roomOpenAt)만 허용하고,
  * 그 구간이 곧 입장 전 단계다. 방이 열린 뒤 요청은 서버가 거부한다.
  */

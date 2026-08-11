@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { fetchAuctionList, subscribeAuctionListStream } from '@/features/auctions/api'
-import { applyCardEvent, serverClockOffset } from '@/lib/auction'
+import { applyAudienceEvent, applyCardEvent, serverClockOffset } from '@/lib/auction'
 import type {
   AuctionListCard,
   AuctionListCursor,
@@ -208,8 +208,13 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
   useEffect(() => {
     if (!enabled) return
 
-    return subscribeAuctionListStream((card) => {
-      setCards((current) => applyCardEvent(current, card, scope, Date.now() + offsetRef.current))
+    return subscribeAuctionListStream({
+      onCard: (card) => {
+        setCards((current) => applyCardEvent(current, card, scope, Date.now() + offsetRef.current))
+      },
+      onAudience: ({ auctionId, connectedCount }) => {
+        setCards((current) => applyAudienceEvent(current, auctionId, connectedCount))
+      },
     })
   }, [scope, enabled])
 

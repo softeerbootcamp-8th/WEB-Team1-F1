@@ -5,6 +5,7 @@ import type { AuctionListCard } from '@/features/auctions/types'
 import type { AuctionBadgeStatus } from '@/types/domain'
 
 import {
+  applyAudienceEvent,
   applyCardEvent,
   arrangeCards,
   badgeStatusAt,
@@ -210,5 +211,26 @@ describe('applyCardEvent', () => {
 
     // 스트림은 전체 경매를 흘린다, 남의 경매가 내 목록에 들어오면 안 된다
     expect(applyCardEvent(page, started, 'MINE', NOW)).toBe(page)
+  })
+})
+
+describe('applyAudienceEvent', () => {
+  it('그 경매의 시청자 수만 바뀐다', () => {
+    const next = applyAudienceEvent(page, 2, 5)
+
+    expect(next[1].connectedCount).toBe(5)
+    expect(next[0]).toBe(page[0])
+  })
+
+  it('다른 필드는 건드리지 않는다', () => {
+    const next = applyAudienceEvent(page, 2, 5)
+
+    // 시청자 수는 카드 전체가 아니라 숫자 하나만 오는 이벤트다
+    expect(next[1]).toEqual({ ...page[1], connectedCount: 5 })
+  })
+
+  it('목록에 없는 경매면 아무 일도 없다', () => {
+    // 서버는 사람이 있는 모든 방의 수를 보낸다, 내 페이지에 없는 경매의 이벤트가 계속 들어온다
+    expect(applyAudienceEvent(page, 999, 5)).toBe(page)
   })
 })
