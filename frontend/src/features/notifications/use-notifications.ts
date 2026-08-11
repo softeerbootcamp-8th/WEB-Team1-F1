@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/features/auth/auth-context'
-import { consumeJustSignedUp } from '@/lib/signup-welcome'
 import type { AppNotification } from '@/types/domain'
 import {
   fetchNotifications,
@@ -12,9 +11,6 @@ import {
   subscribeNotifications,
 } from './api'
 import { showNotificationToast } from './notification-toast'
-
-// 가입 성공 안내가 먼저 뜨고 사라진 뒤에 환영 알림을 보여 준다. 둘이 겹치면 어느 것도 읽히지 않는다
-const WELCOME_TOAST_DELAY_MILLIS = 3_000
 
 /**
  * 서버가 준 목록과 화면이 들고 있던 목록을 합친다.
@@ -147,7 +143,6 @@ export function useNotifications() {
     if (!isAuthenticated || userId == null) return
 
     let cancelled = false
-    let welcomeTimer: number | undefined
     setIsLoading(true)
 
     const firstLoad = Promise.all([fetchNotifications(), fetchUnreadCount()])
@@ -163,22 +158,6 @@ export function useNotifications() {
         // 실시간 연결이 살아 있으면 연결 직후 건수가 이미 도착해 있다. 그쪽이 더 나중 값이라
         // 여기서 덮지 않는다. 연결이 막힌 환경에서는 아무도 건수를 주지 않으므로 이 값이 쓰인다
         if (!countChangedSinceLoad.current) setUnreadCount(count)
-
-        // 가입 직후 딱 한 번, 화면이 환영 알림을 대신 안내한다.
-        // 이 알림은 발행 시점에 구독이 없어 실시간으로 올 수 없어서 배지에만 잡히기 때문이다.
-        // 문구는 서버가 보관한 것을 그대로 쓰고, 눌렀을 때 동작도 목록에서 누른 것과 같다.
-        // 표시는 한 번 읽으면 사라지므로 다음 로그인에는 뜨지 않는다
-        if (consumeJustSignedUp(userId)) {
-          const welcome = page.content.find(
-            (notification) => notification.type === 'WELCOME' && !notification.read,
-          )
-
-          if (welcome) {
-            welcomeTimer = window.setTimeout(() => {
-              showNotificationToast(welcome, () => openRef.current(welcome))
-            }, WELCOME_TOAST_DELAY_MILLIS)
-          }
-        }
       })
 
     // 첫 연결의 건수는 이 적재가 대신 목록을 맞춰 준다
@@ -193,7 +172,6 @@ export function useNotifications() {
 
     return () => {
       cancelled = true
-      window.clearTimeout(welcomeTimer)
     }
   }, [isAuthenticated, userId])
 
