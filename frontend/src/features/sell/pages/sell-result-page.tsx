@@ -45,7 +45,8 @@ export function SellResultPage() {
       <section className="bg-foreground text-background mt-12 rounded-2xl p-8">
         <div className="flex items-center justify-between">
           <p className="text-background/55 text-sm">경매 시작가</p>
-          <StatusBadge status={result.status} />
+          {/* 등록 직후는 시작이 최소 1시간 뒤라 방이 아직 열리지 않았다(result.status는 항상 SCHEDULED) */}
+          <StatusBadge status="NOT_OPEN" />
         </div>
         <p className="tabular mt-3 text-4xl font-semibold">
           {formatKRW(result.startPrice)}

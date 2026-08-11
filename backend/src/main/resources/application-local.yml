@@ -1,0 +1,27 @@
+# 로컬 개발 전용 설정. docker-compose.local.yml 의 MinIO 와 짝이다.
+#
+# 배포된 버킷은 EC2 인스턴스 역할에만 쓰기를 열어 준다. 개발자 노트북에서 발급한 주소는
+# 서명까지는 성공하고(서명 계산에 권한 확인이 없다) 실제 PUT 에서 403 이 되므로,
+# 로컬에서는 평가서 작성처럼 업로드를 거치는 흐름을 끝까지 볼 수 없다.
+# S3 API 호환 서버를 대신 세우고 엔드포인트만 갈아 끼워, 같은 코드로 같은 흐름을 돌린다.
+#
+# 실행: docker compose -f docker-compose.local.yml up -d
+#       SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
+aws:
+  s3:
+    # 이 값이 있을 때만 S3Config 가 로컬 분기를 탄다. 배포 설정에는 없어야 한다
+    endpoint: http://localhost:9000
+    # compose 의 MINIO_ROOT_USER / MINIO_ROOT_PASSWORD 와 같아야 한다
+    # 로컬 컨테이너에만 통하는 값이라 비밀이 아니고, 그래서 여기 그대로 적는다
+    access-key: race
+    secret-key: racelocal
+    bucket: race-local
+    # compose 의 MINIO_REGION_NAME 과 어긋나면 MinIO 가 서명 검증에서 떨어뜨린다
+    region: ap-northeast-2
+    # 배포에서는 CloudFront 도메인이 오는 자리다. 로컬에는 CDN 이 없어 MinIO 를 그대로 가리킨다
+    #
+    # 뒤에 버킷 이름이 붙는 것이 중요하다. path-style 로 발급되는 주소가
+    # http://localhost:9000/race-local/images/... 이고, S3FileStorage#isManagedUrl 이
+    # "cdn-base-url + / + 키" 와 정확히 같은지로 판정하기 때문이다. 버킷 이름을 빼면
+    # 방금 발급한 주소가 차량 사진·진단서 등록 단계에서 남의 주소로 몰려 거부된다
+    cdn-base-url: http://localhost:9000/race-local

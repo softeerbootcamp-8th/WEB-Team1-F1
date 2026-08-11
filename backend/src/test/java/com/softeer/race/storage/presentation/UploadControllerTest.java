@@ -7,6 +7,7 @@ import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.presentation.GlobalExceptionHandler;
 import com.softeer.race.storage.application.UploadService;
+import com.softeer.race.storage.application.DealerLicenseUploadService;
 import com.softeer.race.storage.application.dto.command.UploadCommand;
 import com.softeer.race.storage.application.dto.info.UploadInfo;
 import com.softeer.race.storage.domain.PresignedUpload;
@@ -67,6 +68,9 @@ class UploadControllerTest {
 
     @MockitoBean
     private UploadService uploadService;
+
+    @MockitoBean
+    private DealerLicenseUploadService dealerLicenseUploadService;
 
     /**
      * 발급 경로는 인터셉터가 걸려 있어 이 목이 실제로 호출된다. 인증을 통과시켜야 컨트롤러까지

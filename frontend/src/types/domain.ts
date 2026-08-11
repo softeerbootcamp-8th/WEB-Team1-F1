@@ -22,6 +22,13 @@ export interface User {
 /** 경매 진행 상태 (스케줄러 자동 전이: SCHEDULED → LIVE → ENDED) */
 export type AuctionStatus = 'SCHEDULED' | 'LIVE' | 'ENDED'
 
+/**
+ * 카드 뱃지가 보여주는 단계. 서버의 3단계 AuctionStatus와 달리 시작 전을 둘로 가른다 —
+ * 대기실이 열렸는지(= 지금 들어갈 수 있는지)는 목록에서 알려줄 값이지 상태 필터의 단위가 아니다.
+ * 값 이름은 경매방의 RoomPhase·RoomStateMode와 맞춰 같은 단계를 같은 말로 부른다.
+ */
+export type AuctionBadgeStatus = 'NOT_OPEN' | 'WAITING' | 'LIVE' | 'ENDED'
+
 export interface CarSummary {
   name: string // 차종/모델 (ex. 더 뉴 K5)
   year: number
@@ -52,29 +59,7 @@ export interface AuctionCard {
   endAt: string // ISO — 종료 예정 시각
 }
 
-/** 거래(Deal) 상태 파이프라인 */
-export type DealStatus =
-  | 'PENDING_SELLER'
-  | 'CONFIRMED'
-  | 'IN_TRANSIT'
-  | 'COMPLETED'
-  | 'CANCELLED'
-
-/** 이 거래에서 내가 어느 쪽인지 (개인·딜러 모두 양쪽 다 될 수 있다) */
-export type DealSide = 'SELLER' | 'BUYER'
-
-export interface Deal {
-  id: number
-  auctionId: number
-  carName: string
-  thumbnailUrl: string
-  finalPrice: number
-  status: DealStatus
-  /** 이 거래에서 내 역할(판매자/구매자) — 액션 분기 기준 */
-  myRole: DealSide
-  counterpartNickname: string
-  updatedAt: string
-}
+// 거래 계약은 `features/deals/types.ts` 에 있다. 서버 응답과 1:1이라 feature 안에 둔다.
 
 /**
  * 알림 종류 — 백엔드 NotificationType과 1:1로 맞춘다.
@@ -86,9 +71,15 @@ export type NotificationType =
   | 'EVAL_REJECTED'
   | 'AUCTION_WON'
   | 'AUCTION_WON_RESULT'
+  | 'OUTBID'
   | 'AUCTION_ENDED'
   | 'AUCTION_SOLD'
   | 'AUCTION_FAILED'
+  | 'DEAL_SELLER_SUBMIT_REQUIRED'
+  | 'DEAL_BUYER_SCHEDULE_REQUIRED'
+  | 'DEAL_CONFIRMED'
+  | 'DEAL_CANCELLED'
+  /** 단계별 종류로 대체돼 더는 발행되지 않는다. 이미 쌓인 알림이 이 이름을 들고 있어 지우지 못한다 */
   | 'DEAL_STATUS_CHANGED'
 
 export interface AppNotification {

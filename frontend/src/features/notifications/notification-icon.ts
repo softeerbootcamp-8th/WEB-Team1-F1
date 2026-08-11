@@ -1,11 +1,16 @@
 import {
+  Ban,
+  CalendarClock,
   CheckCheck,
   CircleOff,
   CircleX,
+  FileUp,
   Gavel,
   HandCoins,
+  Handshake,
   PackageCheck,
   PartyPopper,
+  TrendingUp,
   Trophy,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -24,8 +29,13 @@ export const NOTIFICATION_ICON: Record<NotificationType, LucideIcon> = {
   EVAL_REJECTED: CircleX,
   AUCTION_WON: Trophy,
   AUCTION_WON_RESULT: Trophy,
+  OUTBID: TrendingUp,
   AUCTION_ENDED: Gavel,
   AUCTION_SOLD: HandCoins,
   AUCTION_FAILED: CircleOff,
+  DEAL_SELLER_SUBMIT_REQUIRED: FileUp,
+  DEAL_BUYER_SCHEDULE_REQUIRED: CalendarClock,
+  DEAL_CONFIRMED: Handshake,
+  DEAL_CANCELLED: Ban,
   DEAL_STATUS_CHANGED: PackageCheck,
 }

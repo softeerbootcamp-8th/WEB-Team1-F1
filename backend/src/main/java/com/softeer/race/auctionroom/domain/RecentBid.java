@@ -1,5 +1,6 @@
 package com.softeer.race.auctionroom.domain;
 
+import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.user.domain.Role;
 
 import java.time.LocalDateTime;

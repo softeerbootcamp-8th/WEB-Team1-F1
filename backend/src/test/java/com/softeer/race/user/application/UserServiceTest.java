@@ -1,24 +1,23 @@
 package com.softeer.race.user.application;
 
-import static com.softeer.race.notification.domain.NotificationType.WELCOME;
 import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_EMAIL;
 import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_USERNAME;
 import static com.softeer.race.user.exception.UserErrorCode.UNSUPPORTED_SIGNUP_ROLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.security.PasswordEncoder;
-import com.softeer.race.notification.application.NotificationPublisher;
+import com.softeer.race.storage.domain.DealerLicenseStorage;
 import com.softeer.race.user.application.dto.command.SignUpCommand;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
+import com.softeer.race.user.exception.UserErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,13 +42,13 @@ class UserServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private NotificationPublisher notificationPublisher;
+    private DealerLicenseStorage dealerLicenseStorage;
 
     private UserService userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, passwordEncoder, notificationPublisher);
+        userService = new UserService(userRepository, passwordEncoder, dealerLicenseStorage);
     }
 
     @Test
@@ -113,42 +112,61 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("회원가입이 완료되면 저장된 회원에게 환영 알림을 발행한다")
-    void signUpPublishesWelcomeNotification() {
-        SignUpCommand command = signUpCommand(Role.GENERAL);
+    @DisplayName("딜러 회원가입에 사원증 키가 없으면 거부한다")
+    void signUpRejectsDealerWithoutLicense() {
+        SignUpCommand command = signUpCommand(Role.DEALER, null);
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode())
+                                .isEqualTo(UserErrorCode.DEALER_LICENSE_REQUIRED));
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("일반 회원가입에 사원증 키가 오면 거부한다")
+    void signUpRejectsGeneralWithLicense() {
+        SignUpCommand command = signUpCommand(Role.GENERAL, dealerLicenseKey());
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode())
+                                .isEqualTo(UserErrorCode.DEALER_LICENSE_NOT_ALLOWED));
+
+        verify(dealerLicenseStorage, never()).isValidUploadedDealerLicense(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("업로드가 확인되지 않은 사원증 키면 딜러 가입을 거부한다")
+    void signUpRejectsInvalidDealerLicense() {
+        SignUpCommand command = signUpCommand(Role.DEALER, dealerLicenseKey());
+        when(dealerLicenseStorage.isValidUploadedDealerLicense(command.dealerLicenseKey()))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode())
+                                .isEqualTo(UserErrorCode.INVALID_DEALER_LICENSE));
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("업로드가 확인된 사원증 키를 딜러 계정에 저장한다")
+    void signUpStoresDealerLicenseKey() {
+        SignUpCommand command = signUpCommand(Role.DEALER, dealerLicenseKey());
+        when(dealerLicenseStorage.isValidUploadedDealerLicense(command.dealerLicenseKey()))
+                .thenReturn(true);
         when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
         savesWithId();
 
         userService.signUp(command);
 
-        // 환영 알림은 가리킬 대상이 없어서 참조를 싣지 않는다, 이동할 곳은 종류가 고정으로 들고 있다
-        verify(notificationPublisher).publish(USER_ID, WELCOME, null);
-    }
-
-    @Test
-    @DisplayName("가입이 거부되면 환영 알림을 발행하지 않는다")
-    void signUpDoesNotPublishWhenRejected() {
-        SignUpCommand command = signUpCommand(Role.EVALUATOR);
-
-        assertThatThrownBy(() -> userService.signUp(command))
-                .isInstanceOf(BusinessException.class);
-
-        verify(notificationPublisher, never()).publish(anyLong(), any(), any());
-    }
-
-    @Test
-    @DisplayName("저장이 제약 위반으로 실패하면 환영 알림을 발행하지 않는다")
-    void signUpDoesNotPublishWhenSaveFails() {
-        SignUpCommand command = signUpCommand(Role.GENERAL);
-        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
-        when(userRepository.save(any(User.class)))
-                .thenThrow(new DataIntegrityViolationException(
-                        "could not execute statement [Unique index or primary key violation: uk_users_email]"));
-
-        assertThatThrownBy(() -> userService.signUp(command))
-                .isInstanceOf(BusinessException.class);
-
-        verify(notificationPublisher, never()).publish(anyLong(), any(), any());
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getDealerLicenseKey()).isEqualTo(dealerLicenseKey());
     }
 
     @Test
@@ -179,6 +197,23 @@ class UserServiceTest {
                         exception -> assertThat(exception.errorCode()).isEqualTo(DUPLICATE_USERNAME));
     }
 
+    @Test
+    @DisplayName("동일 사원증 키의 DB 제약 위반은 중복 사원증 예외로 변환한다")
+    void signUpConvertsDealerLicenseDataIntegrityViolation() {
+        SignUpCommand command = signUpCommand(Role.DEALER, dealerLicenseKey());
+        when(dealerLicenseStorage.isValidUploadedDealerLicense(command.dealerLicenseKey()))
+                .thenReturn(true);
+        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        when(userRepository.save(any(User.class)))
+                .thenThrow(new DataIntegrityViolationException(
+                        "Duplicate entry for key 'uk_users_dealer_license_key'"));
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode())
+                                .isEqualTo(UserErrorCode.DUPLICATE_DEALER_LICENSE));
+    }
+
     // 실제 저장은 IDENTITY 라 save 시점에 식별자가 붙는다, 발행이 그 값을 쓰므로 대역도 붙여서 돌려준다
     private void savesWithId() {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
@@ -190,12 +225,21 @@ class UserServiceTest {
     }
 
     private static SignUpCommand signUpCommand(Role role) {
+        return signUpCommand(role, null);
+    }
+
+    private static SignUpCommand signUpCommand(Role role, String dealerLicenseKey) {
         return new SignUpCommand(
                 "race_kim",
                 "race@race.kr",
                 RAW_PASSWORD,
                 "김레이스",
                 "010-1234-5678",
-                role);
+                role,
+                dealerLicenseKey);
+    }
+
+    private static String dealerLicenseKey() {
+        return "dealer-licenses/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg";
     }
 }

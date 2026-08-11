@@ -2,9 +2,8 @@ package com.softeer.race.auctionroom.application;
 
 import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
 import com.softeer.race.auctionroom.domain.BidStats;
-import com.softeer.race.auctionroom.domain.MaskedName;
+import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.auctionroom.domain.RoomPhase;
-import com.softeer.race.auctionroom.domain.VehicleSummary;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,7 +14,6 @@ import java.util.List;
 public record RoomState(
         long auctionId,
         RoomPhase phase,
-        VehicleSummary vehicle,
         long startPrice,
         long currentPrice,
         LocalDateTime openAt,
@@ -29,22 +27,22 @@ public record RoomState(
 ) {
 
     /**
-     * 한 번 읽어 온 값과 접속자 수로 방 현황을 조립한다
+     * 한 번 읽어 온 값과 방에 열려 있는 구독 수로 방 현황을 조립한다
      */
-    static RoomState of(RoomQueryResult result, int connectedCount) {
+    // 구독 수를 접속자 수로 볼지는 단계가 정한다, 조회와 방송이 여기를 함께 지나므로 판정이 하나로 남는다
+    static RoomState of(RoomQueryResult result, int openSubscriptions) {
         AuctionRoomDetail detail = result.detail();
 
         return new RoomState(
                 detail.auctionId(),
                 result.phase(),
-                detail.vehicle(),
                 detail.startPrice(),
                 detail.currentPrice(),
                 detail.roomOpenAt(),
                 detail.startTime(),
                 detail.currentEndTime(),
                 result.serverTime(),
-                connectedCount,
+                result.phase().allowsConnection() ? openSubscriptions : 0,
                 result.stats(),
                 detail.winnerName().orElse(null),
                 result.recentBids().stream().map(RoomStateBid::from).toList());

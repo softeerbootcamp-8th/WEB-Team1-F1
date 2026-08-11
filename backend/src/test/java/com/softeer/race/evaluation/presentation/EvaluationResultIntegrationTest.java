@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -43,9 +42,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 5. 종료된 평가
  * 반려된 신청에는 못 붙이는지. 배정은 되어 있는 건이라 담당자가 아니라 상태에서 걸려야 한다
- * <p>
- * 6. 조회 연결
- * 제출한 진단서가 진단서 조회 API로 읽히는지
  * <p>
  * <b>Clock을 고정하지 않는다.</b> 픽스처의 세션 만료가 DB의 실제 시각(NOW(6))으로 심기므로
  * 앱 Clock만 옮기면 전 시나리오가 401이 된다.
@@ -99,6 +95,8 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
         Map<String, Object> vehicle = vehicleRow();
         assertThat(vehicle.get("mileage")).isEqualTo(MILEAGE);
         assertThat(vehicle.get("estimated_price")).isEqualTo(ESTIMATED_PRICE);
+        assertThat(vehicle.get("main_photo_url")).isEqualTo(IMAGE_1);
+        assertThat(vehicle.get("diagnostic_report_url")).isEqualTo(DOCUMENT_URL);
 
         assertThat(imageUrls()).containsExactly(IMAGE_1, IMAGE_2);
         assertThat(reportFileUrl()).isEqualTo(DOCUMENT_URL);
@@ -119,7 +117,7 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
         submit(EVALUATION_ID, EVALUATOR_TOKEN, NEW_DOCUMENT_URL, IMAGE_2)
                 .andExpect(status().isOk());
 
-        // then : evaluation_id가 unique라 진단서 행을 새로 만들면 여기서 깨진다
+        // then : 사진은 늘지 않고 갈리며 진단서는 새 주소로 덮인다
         assertThat(imageUrls()).containsExactly(IMAGE_2);
         assertThat(reportCount()).isEqualTo(1);
         assertThat(reportFileUrl()).isEqualTo(NEW_DOCUMENT_URL);
@@ -214,25 +212,69 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("제출한 진단서는 진단서 조회로 읽힌다")
-    void submittedReportIsReadable() throws Exception {
+    @DisplayName("매긴 키워드가 저장되고 응답에도 정해진 순서로 실려 나간다")
+    void submitStoresKeywords() throws Exception {
+        // given : 선언 순서와 어긋나게, 중복까지 섞어 보낸다
+        List<String> sent = List.of("GOOD_TIRE", "NO_LEAK", "ACCIDENT_FREE", "NO_LEAK");
+
+        // when
+        submitWithKeywords(EVALUATION_ID, EVALUATOR_TOKEN, DOCUMENT_URL, sent, IMAGE_1)
+                .andExpect(status().isOk())
+                // 중복이 사라지고 VehicleKeyword 선언 순서로 정렬돼 나간다
+                .andExpect(jsonPath("$.keywords.length()").value(3))
+                .andExpect(jsonPath("$.keywords[0]").value("ACCIDENT_FREE"))
+                .andExpect(jsonPath("$.keywords[1]").value("NO_LEAK"))
+                .andExpect(jsonPath("$.keywords[2]").value("GOOD_TIRE"));
+
+        // then : 중복을 보냈어도 행은 세 개다. 유니크 제약이 있어 걸러지지 않으면 500이 된다
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "GOOD_TIRE", "NO_LEAK");
+    }
+
+    /**
+     * 키워드 교체가 지우기 전에 넣지 않는지. 식별자 전략이 IDENTITY 라 저장은 INSERT 를 즉시 내지만
+     * 삭제는 커밋까지 미뤄지므로, 사이에 flush 가 없으면 <b>같은 키워드를 그대로 다시 제출하는
+     * 정상 흐름이 유니크 제약 위반으로 500</b>이 된다. 사진 교체에는 그 제약이 없어 이 순서 문제가
+     * 드러나지 않는다.
+     */
+    @Test
+    @DisplayName("다시 제출하면 키워드도 갈아 끼워진다")
+    void submitReplacesKeywords() throws Exception {
         // given
-        submit(EVALUATION_ID, EVALUATOR_TOKEN, DOCUMENT_URL, IMAGE_1)
+        submitWithKeywords(EVALUATION_ID, EVALUATOR_TOKEN, DOCUMENT_URL,
+                List.of("ACCIDENT_FREE", "NO_LEAK"), IMAGE_1)
                 .andExpect(status().isOk());
 
-        // when & then : 붙이는 입구는 하나뿐이고, 조회는 별도 API가 맡는다
-        mockMvc.perform(get("/api/evaluations/" + EVALUATION_ID + "/diagnostic-report")
-                        .cookie(cookie(EVALUATOR_TOKEN)))
+        // when : 겹치는 것 하나를 그대로 두고 하나를 바꿔 다시 낸다
+        submitWithKeywords(EVALUATION_ID, EVALUATOR_TOKEN, NEW_DOCUMENT_URL,
+                List.of("ACCIDENT_FREE", "GOOD_TIRE"), IMAGE_1)
+                .andExpect(status().isOk());
+
+        // then : 뺀 키워드는 남지 않는다. 남으면 평가사가 뺀 것이 그대로 붙어 있게 된다
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "GOOD_TIRE");
+    }
+
+    @Test
+    @DisplayName("키워드를 하나도 매기지 않아도 제출된다")
+    void submitAcceptsNoKeyword() throws Exception {
+        // when : 매길 것이 없는 차량이 있으므로 0개는 정상이다
+        submitWithKeywords(EVALUATION_ID, EVALUATOR_TOKEN, DOCUMENT_URL, List.of(), IMAGE_1)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.fileUrl").value(DOCUMENT_URL));
+                .andExpect(jsonPath("$.keywords").isEmpty());
+
+        // then : 나머지 결과는 그대로 반영된다
+        assertThat(keywords()).isEmpty();
+        assertThat(statusOf(EVALUATION_ID)).isEqualTo("APPROVED");
     }
 
     private ResultActions submit(long evaluationId, String rawToken,
                                  String documentUrl, String... imageUrls) throws Exception {
-        String images = String.join(",", List.of(imageUrls).stream()
-                .map(url -> "\"" + url + "\"")
-                .toList());
+        return submitWithKeywords(evaluationId, rawToken, documentUrl,
+                List.of("ACCIDENT_FREE", "NO_LEAK"), imageUrls);
+    }
 
+    private ResultActions submitWithKeywords(long evaluationId, String rawToken, String documentUrl,
+                                             List<String> keywords, String... imageUrls)
+            throws Exception {
         return mockMvc.perform(put("/api/evaluations/" + evaluationId + "/result")
                 .cookie(cookie(rawToken))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -241,18 +283,35 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
                           "mileage": %d,
                           "estimatedPrice": %d,
                           "imageUrls": [%s],
-                          "diagnosticReportUrl": "%s"
+                          "diagnosticReportUrl": "%s",
+                          "keywords": [%s]
                         }
-                        """.formatted(MILEAGE, ESTIMATED_PRICE, images, documentUrl)));
+                        """.formatted(MILEAGE, ESTIMATED_PRICE,
+                        quoted(List.of(imageUrls)), documentUrl, quoted(keywords))));
+    }
+
+    private static String quoted(List<String> values) {
+        return String.join(",", values.stream().map(value -> "\"" + value + "\"").toList());
     }
 
     private static Cookie cookie(String rawToken) {
         return new Cookie(SessionCookieFactory.COOKIE_NAME, rawToken);
     }
 
+    // 대표 사진과 진단서를 함께 뽑는다. 사진은 vehicle_image 로도 확인하지만 그쪽은 다른 쓰기 경로라,
+    // 차량에 값을 채울 때 둘이 뒤바뀌는 것은 이 두 컬럼을 나란히 봐야 잡힌다
     private Map<String, Object> vehicleRow() {
         return jdbcTemplate.queryForMap(
-                "select mileage, estimated_price from vehicle where id = ?", VEHICLE_ID);
+                "select mileage, estimated_price, main_photo_url, diagnostic_report_url"
+                        + " from vehicle where id = ?", VEHICLE_ID);
+    }
+
+    // 선언 순서로 정렬돼 저장되는 것이 아니라 읽을 때 정렬되므로, 여기서는 이름순으로 뽑아
+    // 어떤 행이 남았는지만 본다. 응답 순서는 위 시나리오가 jsonPath 로 확인한다
+    private List<String> keywords() {
+        return jdbcTemplate.queryForList(
+                "select keyword from vehicle_keyword_tag where vehicle_id = ? order by keyword",
+                String.class, VEHICLE_ID);
     }
 
     private List<String> imageUrls() {
@@ -263,14 +322,14 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
 
     private String reportFileUrl() {
         return jdbcTemplate.queryForObject(
-                "select file_url from diagnostic_report where evaluation_id = ?",
-                String.class, EVALUATION_ID);
+                "select diagnostic_report_url from vehicle where id = ?",
+                String.class, VEHICLE_ID);
     }
 
     private int reportCount() {
         return jdbcTemplate.queryForObject(
-                "select count(*) from diagnostic_report where evaluation_id = ?",
-                Integer.class, EVALUATION_ID);
+                "select count(*) from vehicle where id = ? and diagnostic_report_url is not null",
+                Integer.class, VEHICLE_ID);
     }
 
     private String statusOf(long evaluationId) {

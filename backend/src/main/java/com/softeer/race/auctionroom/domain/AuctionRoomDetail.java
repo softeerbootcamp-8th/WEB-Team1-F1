@@ -1,10 +1,12 @@
 package com.softeer.race.auctionroom.domain;
 
 import com.softeer.race.auction.domain.AuctionStatus;
+import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -18,12 +20,14 @@ public record AuctionRoomDetail(
         LocalDateTime roomOpenAt,
         LocalDateTime startTime,
         LocalDateTime currentEndTime,
+        int extensionCount,
         Manufacturer manufacturer,
         String model,
         int modelYear,
         int mileage,
         FuelType fuelType,
-        String thumbnailUrl,
+        String diagnosticReportUrl,
+        long sellerId,
         Long winnerId,
         MaskedName winner
 ) {
@@ -37,12 +41,14 @@ public record AuctionRoomDetail(
                              LocalDateTime roomOpenAt,
                              LocalDateTime startTime,
                              LocalDateTime currentEndTime,
+                             int extensionCount,
                              Manufacturer manufacturer,
                              String model,
                              int modelYear,
                              int mileage,
                              FuelType fuelType,
-                             String thumbnailUrl,
+                             String diagnosticReportUrl,
+                             long sellerId,
                              Long winnerId,
                              String winnerRealName) {
 
@@ -53,12 +59,14 @@ public record AuctionRoomDetail(
                 roomOpenAt,
                 startTime,
                 currentEndTime,
+                extensionCount,
                 manufacturer,
                 model,
                 modelYear,
                 mileage,
                 fuelType,
-                thumbnailUrl,
+                diagnosticReportUrl,
+                sellerId,
                 winnerId,
                 winnerRealName != null ? MaskedName.mask(winnerRealName) : null);
     }
@@ -71,10 +79,18 @@ public record AuctionRoomDetail(
     }
 
     /**
+     * 결과를 볼 수 있는 구간이 끝나는 시각, 연장된 마감을 기준으로 센다
+     */
+    public LocalDateTime resultViewingEndsAt() {
+        return RoomPhase.resultViewingEndsAt(currentEndTime);
+    }
+
+    /**
      * 화면에 보일 차량 요약
      */
-    public VehicleSummary vehicle() {
-        return new VehicleSummary(manufacturer, model, modelYear, mileage, fuelType, thumbnailUrl);
+    public VehicleSummary vehicle(List<String> imageUrls) {
+        return new VehicleSummary(manufacturer, model, modelYear, mileage, fuelType,
+                imageUrls, diagnosticReportUrl);
     }
 
     /**
@@ -89,6 +105,13 @@ public record AuctionRoomDetail(
      */
     public boolean isWonBy(long viewerId) {
         return Optional.ofNullable(winnerId).filter(id -> id == viewerId).isPresent();
+    }
+
+    /**
+     * 조회한 사람이 차를 내놓은 사람인지
+     */
+    public boolean isSoldBy(long viewerId) {
+        return sellerId == viewerId;
     }
 
     /**

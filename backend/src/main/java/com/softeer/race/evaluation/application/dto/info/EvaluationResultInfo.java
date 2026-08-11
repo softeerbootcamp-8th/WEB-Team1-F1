@@ -1,5 +1,6 @@
 package com.softeer.race.evaluation.application.dto.info;
 
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -19,6 +20,7 @@ public record EvaluationResultInfo(
         long estimatedPrice,
         List<String> imageUrls,
         String diagnosticReportUrl,
-        LocalDateTime submittedAt
+        LocalDateTime submittedAt,
+        List<VehicleKeyword> keywords
 ) {
 }

@@ -51,7 +51,8 @@ class RoomOpeningIntegrationTest extends IntegrationTestSupport {
 
         long notOpenAuctionId = rooms.room(users.user("박판매", Role.GENERAL), NOT_OPEN_START_AT)
                 .model("더 뉴 셀토스")
-                .mainPhotoUrl("https://cdn.race.dev/seltos-1.jpg")
+                .photos("https://cdn.race.dev/seltos-1.jpg", "https://cdn.race.dev/seltos-2.jpg")
+                .diagnosticReportUrl("https://cdn.race.dev/seltos-report.pdf")
                 .startPrice(18_000_000L)
                 .create();
 
@@ -72,7 +73,10 @@ class RoomOpeningIntegrationTest extends IntegrationTestSupport {
         response.andExpectAll(
                 jsonPath("$.vehicle.manufacturer").value("HYUNDAI"),
                 jsonPath("$.vehicle.model").value("더 뉴 셀토스"),
-                jsonPath("$.vehicle.thumbnailUrl").value("https://cdn.race.dev/seltos-1.jpg"),
+                jsonPath("$.vehicle.imageUrls.length()").value(2),
+                jsonPath("$.vehicle.imageUrls[0]").value("https://cdn.race.dev/seltos-1.jpg"),
+                jsonPath("$.vehicle.diagnosticReportUrl")
+                        .value("https://cdn.race.dev/seltos-report.pdf"),
                 jsonPath("$.startPrice").value(18000000));
 
         // then 4 : 아직 아무 일도 일어나지 않은 방이라 실시간 값이 나갈 자리가 없다

@@ -15,7 +15,9 @@ package com.softeer.race.storage.domain;
 public enum FileCategory {
 
     IMAGE("images"),
-    DOCUMENT("documents");
+    DOCUMENT("documents"),
+    // 회원가입 전에 올리는 민감 문서다. CloudFront 공개 경로와 분리해 객체 키만 저장한다.
+    DEALER_LICENSE("dealer-licenses");
 
     private final String keyPrefix;
 

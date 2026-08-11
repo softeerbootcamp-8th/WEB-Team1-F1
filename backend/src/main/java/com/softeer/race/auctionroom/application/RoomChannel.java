@@ -1,5 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -20,9 +21,16 @@ public interface RoomChannel {
     boolean unsubscribe(long auctionId, RoomSubscriber subscriber);
 
     /**
-     * 방에 등록된 구독 수, 접속자로 셀지는 단계가 정한다
+     * 방을 보고 있는 사람 수, 한 사람이 창을 여럿 열어도 하나로 센다
      */
-    int countSubscribers(long auctionId);
+    // 접속자로 셀지는 단계가 정한다
+    int countViewers(long auctionId);
+
+    /**
+     * 구독이 있는 방마다의 사람 수, 아무도 없는 방은 담기지 않는다
+     */
+    // 목록이 subscribedAuctions 로 훑고 방마다 세면 경매방의 정리용 순회 수단을 밖에서 쓰게 된다
+    Map<Long, Integer> viewerCounts();
 
     /**
      * 방의 모든 구독에 현황 전송, 닫힌 구독은 순회가 끝난 뒤 걷어낸다

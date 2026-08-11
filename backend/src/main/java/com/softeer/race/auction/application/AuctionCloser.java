@@ -3,9 +3,9 @@ package com.softeer.race.auction.application;
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionClosed;
 import com.softeer.race.auction.domain.AuctionRepository;
-import com.softeer.race.bid.domain.Bid;
-import com.softeer.race.bid.domain.BidRepository;
 import com.softeer.race.user.domain.User;
+import com.softeer.race.deal.application.DealCreator;
+import com.softeer.race.deal.domain.Deal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -19,10 +19,10 @@ import java.time.LocalDateTime;
 public class AuctionCloser {
 
     private final AuctionRepository auctionRepository;
-    private final BidRepository bidRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
     private final AuctionEndNotifier auctionEndNotifier;
+    private final DealCreator dealCreator;
 
     /**
      * 경매 한 건을 종료한다. 경매 하나가 한 트랜잭션이다.
@@ -41,28 +41,23 @@ public class AuctionCloser {
             return;
         }
 
-        User topBidder = topBidderOf(auctionId);
-        auction.close(topBidder, now);
+        // 낙찰자를 여기서 고르지 않는다. 경매가 현재가를 만든 사람을 그대로 낙찰자로 확정하므로
+        // 낙찰가와 낙찰자가 서로 다른 입찰에서 나올 수 없다.
+        auction.close(now);
+
+        // 입찰이 한 건도 없었으면 비어 있고, 그때가 유찰이다
+        User winner = auction.getWinner();
+
+        // 확정 뒤, 알림 앞이어야 한다. 낙찰 알림이 거래 화면을 가리키려면 이 시점에 거래가 있어야 한다.
+        Deal deal = winner == null ? null : dealCreator.create(auction, winner, now);
 
         // 확정이 실제로 일어났을 때만 알린다, 유찰도 화면이 알아야 하는 결과라 같은 사건으로 낸다
         eventPublisher.publishEvent(new AuctionClosed(auctionId));
 
         // 종료와 한 트랜잭션에 둔다. 알림만 남거나, 알림 없이 종료되는 경우를 만들지 않는다.
-        // 엔티티가 아니라 식별자를 넘긴다 — 발행이 쓰는 것은 식별자뿐이고, 프록시의 getId 는
-        // 초기화를 일으키지 않아 낙찰자 조회가 추가로 나가지 않는다
-        auctionEndNotifier.notifyEnd(auctionId, topBidder == null ? null : topBidder.getId());
-    }
-
-    /**
-     * 이 경매의 최고 입찰자, 입찰이 없으면 null 이고 유찰로 끝난다
-     * <p>
-     * 가장 최근 입찰을 최고가 입찰로 쓴다. 쿼리의 계약은 "가장 최근"이지 "최고가"가 아니고,
-     * 둘이 같은 근거는 BidRule 이 현재가 + 상승가 이상만 통과시켜 금액이 단조 증가한다는 데 있다.
-     * 입찰 취소나 대리입찰이 들어오면 그 전제가 깨지고, 깨지는 것은 쿼리가 아니라 낙찰 결과다.
-     */
-    private User topBidderOf(long auctionId) {
-        return bidRepository.findFirstByAuctionIdOrderByIdDesc(auctionId)
-                .map(Bid::getBidder)
-                .orElse(null);
+        // 낙찰자 알림만 경매가 아니라 거래를 가리키므로 거래 식별자를 함께 넘긴다
+        auctionEndNotifier.notifyEnd(auctionId,
+                winner == null ? null : winner.getId(),
+                deal == null ? null : deal.getId());
     }
 }

@@ -10,8 +10,9 @@ import { useAuth } from '@/features/auth/auth-context'
 
 interface BidPanelProps {
   currentPrice: number
-  increment: number
-  nextMin: number
+  // 구간표를 받기 전에는 상승가와 최소 입찰가를 정할 수 없다
+  increment: number | null
+  nextMin: number | null
   disabled?: boolean
   onBid: (amount: number) => Promise<void>
 }
@@ -28,14 +29,6 @@ export function BidPanel({
   onBid,
 }: BidPanelProps) {
   const { isAuthenticated } = useAuth()
-  const [amount, setAmount] = useState(nextMin)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // 현재가·호가 단위가 바뀌면(다른 입찰이 성립하거나 구간이 넘어가면) 쌓아둔 +/- 조정값은
-  // 새 단위에 안 맞을 수 있어 그대로 두지 않고 최소 입찰가로 되돌린다.
-  useEffect(() => {
-    setAmount(nextMin)
-  }, [nextMin, increment])
 
   if (!isAuthenticated) {
     return (
@@ -49,6 +42,52 @@ export function BidPanel({
       </div>
     )
   }
+
+  // 호가 단위를 모르면 얼마를 낼 수 있는지 안내할 수 없다. 0으로 대체하면
+  // 올리지 않아도 되는 입찰을 안내하게 되고 그 입찰은 서버가 거부한다.
+  if (increment === null || nextMin === null) {
+    return (
+      <div className="rounded-xl border p-5 text-center">
+        <p className="text-muted-foreground text-sm">
+          호가 단위를 불러오는 중입니다.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <BidForm
+      currentPrice={currentPrice}
+      increment={increment}
+      nextMin={nextMin}
+      disabled={disabled}
+      onBid={onBid}
+    />
+  )
+}
+
+// 값이 확정된 뒤에만 마운트된다, 덕분에 훅이 nullable 을 다루지 않는다
+function BidForm({
+  currentPrice,
+  increment,
+  nextMin,
+  disabled,
+  onBid,
+}: {
+  currentPrice: number
+  increment: number
+  nextMin: number
+  disabled?: boolean
+  onBid: (amount: number) => Promise<void>
+}) {
+  const [amount, setAmount] = useState(nextMin)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // 현재가·호가 단위가 바뀌면(다른 입찰이 성립하거나 구간이 넘어가면) 쌓아둔 +/- 조정값은
+  // 새 단위에 안 맞을 수 있어 그대로 두지 않고 최소 입찰가로 되돌린다.
+  useEffect(() => {
+    setAmount(nextMin)
+  }, [nextMin, increment])
 
   const submit = async () => {
     setIsSubmitting(true)

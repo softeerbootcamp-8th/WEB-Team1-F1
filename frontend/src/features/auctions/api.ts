@@ -1,5 +1,8 @@
 import { axiosInstance } from '@/lib/axios'
+import type { AuctionVehicleFilter } from '@/features/auctions/filter'
+import { toFilterParams } from '@/features/auctions/filter'
 import type {
+  AuctionListCard,
   AuctionListCursor,
   AuctionListGroup,
   AuctionListPage,
@@ -10,6 +13,8 @@ export interface AuctionListParams {
   scope: AuctionListScope
   /** null이면 전체 상태를 진행중 → 예정 → 종료 순으로 받는다 */
   filter: AuctionListGroup | null
+  /** 차량·가격 조건. 없으면 조건 없이 전부 */
+  vehicle?: AuctionVehicleFilter
   cursor?: AuctionListCursor | null
 }
 
@@ -24,13 +29,69 @@ export interface AuctionListParams {
 export async function fetchAuctionList({
   scope,
   filter,
+  vehicle,
   cursor,
 }: AuctionListParams): Promise<AuctionListPage> {
+  // 연료는 여러 개라 같은 이름이 반복돼야 서버의 List 에 붙는다. 객체로 넘기면 axios 가
+  // fuelTypes[] 로 바꿔 이름이 어긋난다.
+  const params = vehicle ? toFilterParams(vehicle) : new URLSearchParams()
+  if (filter) params.set('filter', filter)
+  if (cursor) {
+    for (const [key, value] of Object.entries(cursor)) params.set(key, String(value))
+  }
+
   const { data } = await axiosInstance.get<AuctionListPage>(
     scope === 'MINE' ? '/api/auctions/me' : '/api/auctions',
-    { params: { ...cursor, ...(filter ? { filter } : {}) } },
+    { params },
   )
   return data
+}
+
+/** event: audience 의 본문. 시청자 수는 1초마다 보므로 카드 전체가 아니라 이 둘만 온다 */
+interface AudiencePayload {
+  auctionId: number
+  connectedCount: number
+}
+
+export interface AuctionListStreamHandlers {
+  onCard: (card: AuctionListCard) => void
+  onAudience: (payload: AudiencePayload) => void
+  /** 다시 붙었을 때. 첫 연결에서는 불리지 않는다 */
+  onReconnect: () => void
+}
+
+/**
+ * GET /api/auctions/stream 구독(SSE). 목록 조회가 비로그인이라 이 통로도 세션이 필요 없다.
+ * 구독 직후에는 아무 이벤트도 오지 않는다 — 서버가 보고 있는 페이지를 모르므로 첫 목록은
+ * 조회 API가 주고, 여기서는 그 뒤의 변화만 온다(백엔드 문서).
+ * card 는 목록 조회의 카드 한 장과 같은 모양이고 변경분이 아니라 전체라 하나를 놓쳐도 다음이 덮는다.
+ * audience 는 사람이 있는 모든 방에서 오므로 내 페이지에 없는 경매의 것도 들어온다.
+ */
+export function subscribeAuctionListStream({
+  onCard,
+  onAudience,
+  onReconnect,
+}: AuctionListStreamHandlers): () => void {
+  const baseURL = axiosInstance.defaults.baseURL ?? ''
+  const source = new EventSource(`${baseURL}/api/auctions/stream`)
+
+  source.addEventListener('card', (event) => {
+    onCard(JSON.parse(event.data) as AuctionListCard)
+  })
+
+  source.addEventListener('audience', (event) => {
+    onAudience(JSON.parse(event.data) as AudiencePayload)
+  })
+
+  // 끊기면 EventSource 가 스스로 다시 붙고 그 사이의 이벤트는 유실이다. 서버가 다시 보내지
+  // 않으므로 복구는 재조회뿐이다. 첫 연결은 방금 조회한 목록이 최신이라 알리지 않는다
+  let opened = false
+  source.onopen = () => {
+    if (opened) onReconnect()
+    opened = true
+  }
+
+  return () => source.close()
 }
 
 export interface AuctionUpdatePayload {

@@ -25,4 +25,10 @@ public interface RoomSubscriber {
      * 아직 살아 있는지, 채널이 닫힌 구독을 걷어낼 때 묻는다
      */
     boolean isOpen();
+
+    /**
+     * 이 구독을 연 사람, 같은 사람이 연 창들을 하나로 묶는 데만 쓴다
+     */
+    // 방송에 싣지 않는다, 그것을 지키는 것은 이 주석이 아니라 AuctionRoomStreamIntegrationTest 의 누출 단정이다
+    long viewerId();
 }

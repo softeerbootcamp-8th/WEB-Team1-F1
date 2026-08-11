@@ -19,6 +19,7 @@ export interface SignUpPayload {
   realName: string
   phone: string
   role: SelfSignUpRole
+  dealerLicenseKey?: string
 }
 
 export async function loginRequest(payload: LoginPayload): Promise<User> {

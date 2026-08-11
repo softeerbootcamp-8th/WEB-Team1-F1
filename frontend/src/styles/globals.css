@@ -58,8 +58,9 @@
   --success: oklch(0.6 0.15 150);
   --warning: oklch(0.72 0.17 65);
 
-  /* 경매 상태 뱃지: 예정 / 진행 / 종료 */
-  --status-scheduled: oklch(0.55 0 0); /* 예정 — 중립 실버 */
+  /* 경매 상태 뱃지: 입장 전 / 입장 가능 / 진행 / 종료 */
+  --status-scheduled: oklch(0.55 0 0); /* 입장 전 — 중립 실버, 예정 카드 대부분이 이 상태다 */
+  --status-waiting: oklch(0.6 0.14 68); /* 입장 가능 — 앰버, 대기실 배너(warning)와 같은 계열 */
   --status-live: oklch(0.58 0.21 25); /* 진행 — 레드 */
   --status-ended: oklch(0.75 0 0); /* 종료 — 흐린 실버 */
 
@@ -119,6 +120,7 @@
   --warning: oklch(0.78 0.16 65);
 
   --status-scheduled: oklch(0.7 0 0);
+  --status-waiting: oklch(0.8 0.15 68);
   --status-live: oklch(0.68 0.21 25);
   --status-ended: oklch(0.5 0 0);
 
@@ -175,6 +177,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-status-scheduled: var(--status-scheduled);
+  --color-status-waiting: var(--status-waiting);
   --color-status-live: var(--status-live);
   --color-status-ended: var(--status-ended);
   --color-deal-pending: var(--deal-pending);
@@ -274,5 +277,165 @@
   }
   100% {
     background-color: transparent;
+  }
+}
+
+/* ================================================================== *
+ *  HOME MOTION — cinematic entrance, scroll reveal, interactions
+ * ================================================================== */
+.home-page {
+  --hero-shift: 0px;
+}
+
+.home-hero-media {
+  inset: -6% 0;
+  transform: translate3d(0, var(--hero-shift), 0);
+  will-change: transform;
+}
+
+.home-hero-image {
+  animation: home-hero-image-in 1.8s cubic-bezier(0.2, 0.75, 0.25, 1) both;
+  will-change: transform;
+}
+
+.hero-enter {
+  animation: home-fade-up 0.85s cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.hero-enter-1 {
+  animation-delay: 0.12s;
+}
+
+.hero-enter-2 {
+  animation-delay: 0.24s;
+}
+
+.hero-enter-4 {
+  animation-delay: 0.48s;
+}
+
+.hero-enter-5 {
+  animation-delay: 0.6s;
+}
+
+.home-page[data-motion-ready='true'] [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+  transition:
+    opacity 0.75s cubic-bezier(0.2, 0.75, 0.25, 1),
+    transform 0.75s cubic-bezier(0.2, 0.75, 0.25, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.home-page[data-motion-ready='true'] [data-reveal].is-revealed {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.home-page[data-motion-ready='true']
+  [data-reveal].is-revealed.home-feature-card:hover {
+  transform: translateY(-7px);
+}
+
+.home-cta-fill {
+  background-image: linear-gradient(#171717, #171717);
+  background-repeat: no-repeat;
+  background-position: left;
+  background-size: 0 100%;
+  transition:
+    color 0.4s ease,
+    background-color 0.4s ease,
+    background-size 0.45s cubic-bezier(0.2, 0.75, 0.25, 1),
+    transform 0.3s ease;
+}
+
+.home-cta-fill:hover {
+  color: white;
+  background-size: 100% 100%;
+  transform: translateY(-2px);
+}
+
+.home-value-card {
+  position: relative;
+  min-height: 13.5rem;
+  transition:
+    color 0.5s cubic-bezier(0.2, 0.75, 0.25, 1),
+    background-color 0.5s cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.home-value-card:hover {
+  color: white;
+  background: #171717;
+}
+
+.home-feature-card {
+  transition:
+    border-color 0.5s ease,
+    box-shadow 0.5s ease,
+    transform 0.5s cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.home-feature-card:hover {
+  border-color: rgb(0 0 0 / 22%);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 10%);
+  transform: translateY(-7px);
+}
+
+.home-feature-edge {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--foreground);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.55s cubic-bezier(0.2, 0.75, 0.25, 1);
+}
+
+.home-feature-card:hover .home-feature-edge {
+  transform: scaleX(1);
+}
+
+@keyframes home-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes home-hero-image-in {
+  from {
+    filter: saturate(0.72) contrast(1.08);
+    transform: scale(1.08);
+  }
+  to {
+    filter: saturate(1) contrast(1);
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .home-hero-media,
+  .home-feature-card:hover,
+  .home-page[data-motion-ready='true'] [data-reveal] {
+    transform: none;
   }
 }

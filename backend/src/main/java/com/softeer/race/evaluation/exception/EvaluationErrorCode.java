@@ -76,6 +76,20 @@ public enum EvaluationErrorCode implements ErrorCode {
     NOT_DIAGNOSABLE(HttpStatus.CONFLICT, "이미 종료된 평가에는 진단서를 등록할 수 없습니다."),
 
     /**
+     * 아직 결과가 한 번도 제출되지 않은 평가에 항목별 수정을 시도했다.
+     * <p>
+     * <b>이 코드가 부분 수정의 존재 근거다.</b> 결과 제출을 조각내지 않은 이유가 "주행거리가 빈 차가
+     * 경매로 넘어가지 않게"인데({@code EvaluationResultService}), 항목별 수정은 바로 그 조각난
+     * 입구다. 이미 완전하게 제출된 결과에서만 출발하게 막아야 한 칸을 바꿔도 반쪽짜리 차량이
+     * 나오지 않는다 — 즉 이 관문이 없으면 부분 수정 자체가 그 불변식을 깬다.
+     * <p>
+     * NOT_DIAGNOSABLE과 갈라 둔다. 저쪽은 "끝나 버린 평가"이고 이쪽은 "아직 시작하지 않은 평가"라
+     * 화면이 안내할 말이 정반대다 — 이쪽은 결과를 먼저 제출하면 풀린다.
+     */
+    RESULT_NOT_SUBMITTED(HttpStatus.CONFLICT,
+            "아직 제출된 평가 결과가 없습니다. 결과를 먼저 제출해야 항목별로 수정할 수 있습니다."),
+
+    /**
      * 아직 아무도 수락하지 않은 신청이다. 403이 아니라 409인 이유는 <b>요청자가 누구든 같은 답</b>이기
      * 때문이다 — 권한이 모자란 것이 아니라 담당자를 정하는 단계를 아직 지나지 않았다.
      * <p>
@@ -85,15 +99,25 @@ public enum EvaluationErrorCode implements ErrorCode {
     EVALUATOR_NOT_ASSIGNED(HttpStatus.CONFLICT, "아직 담당 평가사가 정해지지 않은 신청입니다."),
 
     /**
-     * 다른 평가사가 담당인 신청에 진단서를 붙이려 했다.
+     * 다른 평가사가 담당인 신청에 방문 결과를 내려 했다. 승인 제출과 반려가 함께 쓴다.
      * <p>
      * 배정을 자격의 증명으로 쓰므로 이 검사 하나가 "평가사인가"와 "이 건의 담당인가"를 함께
      * 대신한다 — 배정은 대기 목록에서 수락해야 받는다.
      */
-    NOT_ASSIGNED_EVALUATOR(HttpStatus.FORBIDDEN,
-            "이 신청에 배정된 평가사만 진단서를 등록할 수 있습니다."),
+    NOT_ASSIGNED_EVALUATOR(HttpStatus.FORBIDDEN, "이 신청에 배정된 평가사만 방문 결과를 등록할 수 있습니다."),
 
-    DIAGNOSTIC_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "등록된 진단서가 없습니다.");
+    /**
+     * 승인 또는 반려로 이미 끝난 신청을 반려하려 했다. 400이 아니라 409인 이유는 DUPLICATE_REQUEST와
+     * 같다 — 요청 자체는 올바르고, 거부되는 이유는 서버가 들고 있는 현재 상태뿐이다.
+     * <p>
+     * NOT_DIAGNOSABLE과 갈라 둔다. 보는 상태 집합이 다르다 — 진단서는 재제출 때문에 APPROVED에도
+     * 붙지만, 반려는 REQUESTED만 받는다. 합치면 승인된 신청을 반려로 뒤집을 수 있게 된다.
+     * <p>
+     * APPROVED와 REJECTED를 한 코드로 묶는다. NOT_ASSIGNABLE과 ALREADY_ASSIGNED를 갈라 둔 것과
+     * 기준이 같다 — 거기서는 한쪽만 목록에서 다시 볼 수 있어 화면이 할 말이 달랐지만, 여기서는
+     * 두 경우 모두 평가사의 담당 목록에서 이미 끝난 건이라 안내가 같다.
+     */
+    NOT_REJECTABLE(HttpStatus.CONFLICT, "반려할 수 있는 상태의 신청이 아닙니다.");
 
     private final HttpStatus status;
     private final String message;

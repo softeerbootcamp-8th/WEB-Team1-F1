@@ -16,21 +16,19 @@ public record AuthProperties(
          * 허용할 오리진 목록. 정확한 값이 아니라 <b>패턴</b>이며 {@code *} 와일드카드를 쓸 수 있다.
          * 쿠키 인증이라 allowCredentials가 켜져 있는데, Spring은 그 조합에서 allowedOrigins에
          * {@code *}를 넣으면 기동을 실패시키므로 AuthWebMvcConfig가 allowedOriginPatterns로 넘긴다.
+         * <p>
+         * 비어 있어도 여기서는 통과시키고, 실제로 쓰는 AuthWebMvcConfig가 기동을 실패시킨다.
+         * 이 값을 읽지 않는 테스트까지 오리진을 적게 만들지 않으려는 것이다.
          */
         List<String> allowedOrigins
 ) {
 
-    // TODO 오리진을 확정할 수 있게 되면 이 기본값을 List.of()로 바꿔 미설정이 전면 개방이 되지 않게 한다
-    private static final List<String> DEFAULT_ALLOWED_ORIGINS = List.of("*");
-
     public AuthProperties {
         session = session != null ? session : new Session(null, null);
         cookie = cookie != null ? cookie : new Cookie(false, null);
-        // 빈 목록을 그대로 넘기면 CorsRegistration의 기본값(allowedOrigins = *)이 살아남아
-        // 설정을 지운 쪽이 오히려 전면 개방되는 역전이 생긴다, 그래서 기본값을 명시한다
-        allowedOrigins = allowedOrigins == null || allowedOrigins.isEmpty()
-                ? DEFAULT_ALLOWED_ORIGINS
-                : List.copyOf(allowedOrigins);
+        // 기본값으로 메우지 않는다, 무엇을 넣어도 틀린다 — 넓게 잡으면 설정을 지운 쪽이 개방되고
+        // 좁게 잡으면 운영에서 조용히 막힌다. 비면 빈 목록으로 두고 AuthWebMvcConfig가 기동을 세운다
+        allowedOrigins = allowedOrigins == null ? List.of() : List.copyOf(allowedOrigins);
     }
 
     /**

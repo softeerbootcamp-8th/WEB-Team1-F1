@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 class SseRoomSubscriber implements RoomSubscriber {
 
     private final long auctionId;
+    private final long viewerId;
     private final SseEmitter emitter;
 
     // 보내는 스레드와 살아 있는지 묻는 스레드가 다르다
@@ -23,9 +24,15 @@ class SseRoomSubscriber implements RoomSubscriber {
     // 전송 실패로 내려간 것과 이 연결을 끝낸 것은 다르다, 전자만 보고 끝내면 응답이 만료까지 남는다
     private final AtomicBoolean ended = new AtomicBoolean();
 
-    SseRoomSubscriber(long auctionId, SseEmitter emitter) {
+    SseRoomSubscriber(long auctionId, long viewerId, SseEmitter emitter) {
         this.auctionId = auctionId;
+        this.viewerId = viewerId;
         this.emitter = emitter;
+    }
+
+    @Override
+    public long viewerId() {
+        return viewerId;
     }
 
     @Override

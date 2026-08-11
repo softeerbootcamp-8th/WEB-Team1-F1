@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { useDocumentVisible } from '@/hooks/use-document-visible'
 import { incrementForPrice } from '@/lib/auction'
 import { getErrorCode, getErrorStatus } from '@/lib/axios'
 import {
   fetchAuctionRoom,
   fetchBidIncrementBands,
   fetchRoomOpening,
-  fetchRoomResult,
   placeBid,
   subscribeRoomStream,
 } from '@/features/auction-room/api'
@@ -15,13 +15,14 @@ import type {
   BidIncrementBand,
   RoomEntry,
   RoomOpeningView,
-  RoomResultView,
   RoomStreamState,
 } from '@/features/auction-room/types'
 
 const EXTENDED_FLAG_MS = 4000
 const HTTP_UNAUTHORIZED = 401
-const CONNECTABLE_PHASES = new Set(['WAITING', 'LIVE', 'RESULT'])
+// 마감되면 서버가 마지막 현황을 보낸 뒤 연결을 끊고 재구독을 거절한다. 여기에 RESULT 를 두면
+// 그 거절을 연결 사고로 읽고 다시 붙기를 되풀이하다 UNSTABLE 로 떨어진다
+const CONNECTABLE_PHASES = new Set(['WAITING', 'LIVE'])
 
 // 개장 시각을 우리가 먼저 지나쳤다고 판단해도 서버는 아직 아닐 수 있다, 조금 늦게 두드린다
 const REENTRY_BUFFER_MS = 500
@@ -48,12 +49,16 @@ const ENTRY_BY_ERROR_CODE: Record<string, RoomEntry> = {
  * 내 입찰 표시가 없으므로, 최초 조회에서 알아낸 내 입찰 금액을 기억해뒀다가 직접 표시한다.
  */
 export function useAuctionRoom(auctionId: number) {
+  const visible = useDocumentVisible()
+
+  // 방이 바뀌었는지 가리는 표식. 탭이 돌아와 이펙트가 다시 도는 것과 구분해야 화면이 깜빡이지 않는다
+  const lastAuctionId = useRef<number | null>(null)
+
   const [room, setRoom] = useState<AuctionRoomView | null>(null)
   const [bands, setBands] = useState<BidIncrementBand[]>([])
   // 진입 결과, 들어갈 수 없으면 사유까지 들고 있어야 화면이 개장 안내나 결과로 옮겨갈 수 있다
   const [entry, setEntry] = useState<RoomEntry>('LOADING')
   const [opening, setOpening] = useState<RoomOpeningView | null>(null)
-  const [result, setResult] = useState<RoomResultView | null>(null)
   const [flashKey, setFlashKey] = useState(0)
   const [extended, setExtended] = useState(false)
   // 서버 시각 - 이 브라우저 시계. 마감 시각은 서버가 정하는데 남은 시간을 브라우저 시계로 세면
@@ -100,44 +105,55 @@ export function useAuctionRoom(auctionId: number) {
     prevEndAt.current = state.endAt
     setClockOffset(new Date(state.serverTime).getTime() - Date.now())
 
-    setRoom({
-      auctionId: state.auctionId,
-      phase: state.phase,
-      vehicle: state.vehicle,
-      startPrice: state.startPrice,
-      currentPrice: state.currentPrice,
-      openAt: state.openAt,
-      startAt: state.startAt,
-      endAt: state.endAt,
-      serverTime: state.serverTime,
-      connectedCount: state.connectedCount,
-      bidderCount: state.bidderCount,
-      bidCount: state.bidCount,
-      winner:
-        state.winner == null
-          ? null
-          : { name: state.winner.name, mine: myBidAmounts.current.has(state.currentPrice) },
-      recentBids: state.recentBids.map((b) => ({
-        ...b,
-        mine: myBidAmounts.current.has(b.amount),
-      })),
-    })
+    // 차량은 방송이 보내지 않으므로 최초 조회로 받은 것을 이어받는다.
+    // 구독은 조회에 성공한 뒤에만 시작하므로 prev 가 비어 있을 수 없다
+    setRoom((prev) =>
+      prev == null
+        ? prev
+        : {
+            ...prev,
+            phase: state.phase,
+            startPrice: state.startPrice,
+            currentPrice: state.currentPrice,
+            openAt: state.openAt,
+            startAt: state.startAt,
+            endAt: state.endAt,
+            serverTime: state.serverTime,
+            connectedCount: state.connectedCount,
+            bidderCount: state.bidderCount,
+            bidCount: state.bidCount,
+            // 방송은 보는 사람을 가리지 않아 본인 여부를 알려주지 않는다. 금액으로 맞혀 보면
+            // 같은 금액을 부른 남을 나로 만든다. 낙찰자가 실린 방송은 마감 현황뿐이고 그때 화면은
+            // 결과로 넘어가므로, 여기서는 맞히지 않고 결과 화면이 서버 판정을 받아 쓴다
+            winner: state.winner == null ? null : { name: state.winner.name, mine: false },
+            recentBids: state.recentBids.map((b) => ({
+              ...b,
+              mine: myBidAmounts.current.has(b.amount),
+            })),
+          })
   }, [markExtended])
 
   useEffect(() => {
-    // ref 는 컴포넌트 인스턴스에 붙어 있어 다른 방으로 옮겨도 살아남는다. 비우지 않으면 이전 방에서
-    // 부른 금액이 새 방의 같은 금액을 내 것으로 만들어, 남이 낙찰받은 방에 내 이름이 뜬다
-    myBidAmounts.current.clear()
-    prevPrice.current = null
-    prevEndAt.current = null
-    // 이전 방의 차량과 가격이 새 응답이 올 때까지 그려지는 것도 같은 이유다
-    setRoom(null)
-    setExtended(false)
+    // 방이 바뀐 경우에만 지운다. 탭이 돌아와 이펙트가 다시 도는 것뿐이면 보던 화면을 그대로 둔다
+    if (lastAuctionId.current !== auctionId) {
+      lastAuctionId.current = auctionId
+      // ref 는 컴포넌트 인스턴스에 붙어 있어 다른 방으로 옮겨도 살아남는다. 비우지 않으면 이전 방에서
+      // 부른 금액이 새 방의 같은 금액을 내 것으로 만들어, 남이 낙찰받은 방에 내 이름이 뜬다
+      myBidAmounts.current.clear()
+      prevPrice.current = null
+      prevEndAt.current = null
+      // 이전 방의 차량과 가격이 새 응답이 올 때까지 그려지는 것도 같은 이유다
+      setRoom(null)
+      setExtended(false)
+    }
+
+    // 보지 않는 사람은 접속자가 아니다. 정리 함수가 구독을 닫고, 돌아오면 connect 가 조회부터 다시 한다
+    if (!visible) return
 
     let cancelled = false
     let unsubscribe: (() => void) | null = null
     let reentryTimer: number | null = null
-    let resultAttempts = 0
+    let deadlineTimer: number | null = null
     let reconnectAttempts = 0
 
     // 아직 열리지 않은 방은 안내를 받아 두고, 열리는 시각에 스스로 다시 들어간다
@@ -173,45 +189,17 @@ export function useAuctionRoom(auctionId: number) {
         })
     }
 
-    // 끝난 방은 더 이상 바뀌지 않는 요약을 받는다
-    const enterResult = () => {
-      fetchRoomResult(auctionId)
-        .then((view) => {
-          if (cancelled) return
-
-          setResult(view)
-          setEntry('CLOSED')
-        })
-        .catch((error: unknown) => {
-          if (cancelled) return
-
-          // 인증 실패는 HTTP 가 이미 뜻을 정해 둔 실패다, 어떤 도메인 코드가 붙어 오든 할 일은 같다
-          if (getErrorStatus(error) === HTTP_UNAUTHORIZED) {
-            setEntry('SIGNED_OUT')
-            return
-          }
-
-          // 마감과 낙찰 확정 사이의 짧은 틈이다, 확정되면 결과가 나온다
-          // 확정이 계속 실패한 채로 남으면 이 물음도 끝나지 않으므로 몇 번만 묻고 그만둔다
-          if (getErrorCode(error) === 'AUCTION_NOT_ENDED') {
-            if (resultAttempts >= MAX_REENTRY_ATTEMPTS) {
-              setEntry('UNSTABLE')
-              return
-            }
-
-            reentryTimer = window.setTimeout(enterResult, backoffMs(resultAttempts))
-            resultAttempts += 1
-            return
-          }
-
-          setEntry('BROKEN')
-        })
+    // 끝난 방은 방이 답할 것이 없다. 결과는 다른 화면이 다른 API 로 받으므로 여기서는 넘겨만 준다
+    const leaveForResult = () => {
+      unsubscribe?.()
+      unsubscribe = null
+      setEntry('CLOSED')
     }
 
-    // 연결이 끊기는 이유는 결과 구간이 끝나 서버가 끊는 것이 대부분이다, 오류로 덮지 않고 다시 들어가 본다
-    // 정말 끝난 방이면 서버가 종료로 거절하고 화면은 결과 요약으로 이어진다
+    // 마감으로 끊기는 것은 여기 오지 않는다, 그쪽은 마감 타이머가 결과로 넘긴다
+    // 여기 오는 것은 프록시나 네트워크가 끊은 경우라 오류로 덮지 않고 다시 들어가 본다
     //
-    // 방 조회는 되는데 구독만 계속 거절당하는 상태도 있다. 그때 곧바로 다시 붙으면 지연이 없는 루프가
+    // 조회는 되는데 구독만 계속 거절당하는 상태도 있다. 그때 곧바로 다시 붙으면 지연이 없는 루프가
     // 되므로 시도할수록 간격을 늘리고 몇 번 뒤에는 그만둔다
     const reconnect = () => {
       unsubscribe?.()
@@ -234,13 +222,26 @@ export function useAuctionRoom(auctionId: number) {
           view.recentBids.forEach((b) => {
             if (b.mine) myBidAmounts.current.add(b.amount)
           })
-          if (view.winner?.mine) myBidAmounts.current.add(view.currentPrice)
-
           prevPrice.current = view.currentPrice
           prevEndAt.current = view.endAt
           setClockOffset(new Date(view.serverTime).getTime() - Date.now())
+
+          // 마감 뒤에도 방 조회는 답하지만 볼 것이 없다, 그대로 결과로 보낸다
+          if (view.phase === 'RESULT') {
+            leaveForResult()
+            return
+          }
+
           setRoom(view)
           setEntry('OPEN')
+
+          // 마감을 서버가 알려주기를 기다리지 않는다. 서버의 주기 정리는 최대 5초 늦고, 그 사이
+          // 화면은 끝난 경매의 호가창을 보여준다. 마감 시각과 시계 보정값이 이미 있으니 스스로 센다
+          if (view.phase === 'LIVE') {
+            const offsetMs = new Date(view.serverTime).getTime() - Date.now()
+            const until = new Date(view.endAt).getTime() - (Date.now() + offsetMs)
+            deadlineTimer = window.setTimeout(leaveForResult, Math.max(0, until))
+          }
 
           // 열린 방만 응답하므로 여기 도달했으면 구독도 받아 준다
           if (CONNECTABLE_PHASES.has(view.phase)) {
@@ -272,7 +273,7 @@ export function useAuctionRoom(auctionId: number) {
           }
 
           if (reason === 'CLOSED') {
-            enterResult()
+            leaveForResult()
             return
           }
 
@@ -286,12 +287,19 @@ export function useAuctionRoom(auctionId: number) {
       cancelled = true
       unsubscribe?.()
       if (reentryTimer !== null) window.clearTimeout(reentryTimer)
+      if (deadlineTimer !== null) window.clearTimeout(deadlineTimer)
     }
-  }, [auctionId, mergeStreamState])
+  }, [auctionId, mergeStreamState, visible])
 
-  const increment = room ? incrementForPrice(room.currentPrice, bands) : 0
+  const increment = room ? incrementForPrice(room.currentPrice, bands) : null
   // 첫 입찰은 시작가 그대로가 최소금액이다 — bidCount가 0이면 currentPrice가 곧 startPrice.
-  const nextMin = room ? (room.bidCount === 0 ? room.currentPrice : room.currentPrice + increment) : 0
+  // 상승가를 모르면 최소금액도 정하지 않는다, 서버도 그때 입찰을 거부한다
+  const nextMin =
+    room && increment !== null
+      ? room.bidCount === 0
+        ? room.currentPrice
+        : room.currentPrice + increment
+      : null
 
   const bid = useCallback(
     async (amount: number) => {
@@ -325,7 +333,6 @@ export function useAuctionRoom(auctionId: number) {
     room,
     entry,
     opening,
-    result,
     increment,
     nextMin,
     flashKey,

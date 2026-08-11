@@ -44,10 +44,13 @@ auth:
     # 5173과 8080은 같은 site(scheme + eTLD+1, 포트 무관)라 Lax로 충분하고
     # 타 사이트발 POST에는 쿠키가 실리지 않아 CSRF 주 경로가 막힌다
     same-site: Lax
-  # 정확한 오리진이 아니라 패턴이다, allowedOriginPatterns로 넘어가므로 * 를 쓸 수 있다
-  # 지금은 프론트가 어느 호스트에서 뜰지 확정되지 않아 전면 개방한다
-  # TODO 오리진이 확정되면 아래처럼 좁힌다, 패턴 자리에 정확한 문자열을 그대로 써도 된다
-  #   - http://localhost:5173
-  #   - http://127.0.0.1:5173
+  # 정확한 오리진이 아니라 패턴이다, allowedOriginPatterns 로 넘어가므로 * 를 쓸 수 있다
+  # 로컬은 포트를 열어 둔다, 호스트는 루프백으로 묶여 있고 운영 값은 application-prod.yml 이 덮어쓴다
+  # vite 는 PORT 로 포트가 바뀌고, 백엔드 자신인 8080 도 목록에 있어야 한다 — Spring 은 Origin 헤더의
+  # 존재만으로 CORS 로 판정하고 브라우저는 GET/HEAD 가 아니면 same-origin 에도 Origin 을 붙여서,
+  # 빠지면 8080 의 Swagger UI 에서 GET 은 되고 POST 만 403 이 된다
+  # 포트 와일드카드는 :* 가 아니라 :[*] 다, OriginPattern 이 이 형태만 (:\d+)? 로 바꾼다
+  # 목록을 비우면 기동이 실패한다, 빈 값이 전면 개방으로 뒤집히지 않게 하려는 것이다
   allowed-origins:
-    - "*"
+    - http://localhost:[*]
+    - http://127.0.0.1:[*]

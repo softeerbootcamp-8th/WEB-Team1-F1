@@ -1,18 +1,33 @@
 package com.softeer.race.storage.infrastructure;
 
+import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.storage.domain.FileCategory;
+import com.softeer.race.storage.domain.PresignedDealerLicense;
+import com.softeer.race.storage.exception.StorageErrorCode;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
+import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * {@code isManagedUrl}은 클라이언트가 돌려준 주소를 저장하기 전 마지막 관문이라, 여기가 느슨하면
@@ -32,10 +47,18 @@ class S3FileStorageTest {
     private static final String UUID_NAME = "123e4567-e89b-12d3-a456-426614174000";
     private static final String IMAGE_URL = CDN_BASE_URL + "/images/2026/08/" + UUID_NAME;
     private static final String DOCUMENT_URL = CDN_BASE_URL + "/documents/2026/08/" + UUID_NAME;
+    private static final String DEALER_LICENSE_KEY =
+            "dealer-licenses/2026/08/" + UUID_NAME + ".jpg";
+
+    private final S3Presigner s3Presigner = mock(S3Presigner.class);
+    private final S3Client s3Client = mock(S3Client.class);
 
     private final S3FileStorage s3FileStorage = new S3FileStorage(
-            mock(S3Presigner.class),
-            new S3Properties("bucket", "ap-northeast-2", CDN_BASE_URL, Duration.ofMinutes(15)),
+            s3Presigner,
+            s3Client,
+            // 뒤의 셋(endpoint, accessKey, secretKey)은 로컬 개발용이라 비운다, 그 상태가 배포 설정이다
+            new S3Properties("bucket", "ap-northeast-2", CDN_BASE_URL, Duration.ofMinutes(15),
+                    null, null, null),
             Clock.systemDefaultZone());
 
     @DisplayName("이미지로 발급한 키 형태의 주소는 이미지 판정을 통과한다")
@@ -115,5 +138,91 @@ class S3FileStorageTest {
     })
     void rejectUnissuedDocumentUrl(String fileUrl) {
         assertThat(s3FileStorage.isManagedUrl(fileUrl, FileCategory.DOCUMENT)).isFalse();
+    }
+
+    @Test
+    @DisplayName("사원증은 형태가 맞아도 공개 조회 URL로 인정하지 않는다")
+    void rejectDealerLicensePublicUrl() {
+        assertThat(s3FileStorage.isManagedUrl(
+                CDN_BASE_URL + "/" + DEALER_LICENSE_KEY, FileCategory.DEALER_LICENSE)).isFalse();
+    }
+
+    @Test
+    @DisplayName("사원증은 전용 경로에 발급하고 외부 조회 URL을 만들지 않는다")
+    void presignDealerLicense() throws Exception {
+        PresignedPutObjectRequest presigned = mock(PresignedPutObjectRequest.class);
+        when(presigned.url()).thenReturn(URI.create("https://s3.example.com/upload").toURL());
+        when(presigned.expiration()).thenReturn(Instant.parse("2026-08-11T03:00:00Z"));
+        when(s3Presigner.presignPutObject(any(PutObjectPresignRequest.class))).thenReturn(presigned);
+
+        PresignedDealerLicense result = s3FileStorage.presignDealerLicense(
+                com.softeer.race.storage.domain.UploadContentType.JPEG, 1024L);
+
+        assertThat(result.key()).startsWith("dealer-licenses/").endsWith(".jpg");
+        assertThat(result.uploadUrl()).isEqualTo("https://s3.example.com/upload");
+    }
+
+    @Test
+    @DisplayName("실제로 업로드된 사원증의 형식과 크기가 맞으면 유효하다")
+    void validateUploadedDealerLicense() {
+        when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(
+                HeadObjectResponse.builder()
+                        .contentType("image/jpeg")
+                        .contentLength(1024L)
+                        .build());
+
+        assertThat(s3FileStorage.isValidUploadedDealerLicense(DEALER_LICENSE_KEY)).isTrue();
+    }
+
+    @Test
+    @DisplayName("전용 키가 아니면 S3를 조회하지 않고 거부한다")
+    void rejectInvalidDealerLicenseKey() {
+        assertThat(s3FileStorage.isValidUploadedDealerLicense(
+                "documents/2026/08/" + UUID_NAME + ".pdf")).isFalse();
+    }
+
+    @Test
+    @DisplayName("키 확장자와 실제 Content-Type이 다르면 거부한다")
+    void rejectMismatchedDealerLicenseMetadata() {
+        when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(
+                HeadObjectResponse.builder()
+                        .contentType("image/png")
+                        .contentLength(1024L)
+                        .build());
+
+        assertThat(s3FileStorage.isValidUploadedDealerLicense(DEALER_LICENSE_KEY)).isFalse();
+    }
+
+    @Test
+    @DisplayName("실제 객체가 10MB를 넘으면 거부한다")
+    void rejectOversizedDealerLicenseObject() {
+        when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(
+                HeadObjectResponse.builder()
+                        .contentType("image/jpeg")
+                        .contentLength(10L * 1024 * 1024 + 1)
+                        .build());
+
+        assertThat(s3FileStorage.isValidUploadedDealerLicense(DEALER_LICENSE_KEY)).isFalse();
+    }
+
+    @Test
+    @DisplayName("S3에 객체가 없으면 유효하지 않은 업로드로 처리한다")
+    void rejectMissingDealerLicense() {
+        when(s3Client.headObject(any(HeadObjectRequest.class))).thenThrow(
+                S3Exception.builder().statusCode(404).message("not found").build());
+
+        assertThat(s3FileStorage.isValidUploadedDealerLicense(DEALER_LICENSE_KEY)).isFalse();
+    }
+
+    @Test
+    @DisplayName("S3 장애는 저장소 사용 불가 예외로 구분한다")
+    void translateStorageFailure() {
+        when(s3Client.headObject(any(HeadObjectRequest.class))).thenThrow(
+                S3Exception.builder().statusCode(503).message("unavailable").build());
+
+        assertThatThrownBy(() -> s3FileStorage.isValidUploadedDealerLicense(DEALER_LICENSE_KEY))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode())
+                                .isEqualTo(StorageErrorCode.STORAGE_UNAVAILABLE));
     }
 }

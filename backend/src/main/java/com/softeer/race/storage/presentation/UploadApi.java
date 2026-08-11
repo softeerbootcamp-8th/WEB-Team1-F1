@@ -2,7 +2,9 @@ package com.softeer.race.storage.presentation;
 
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.storage.presentation.request.UploadRequest;
+import com.softeer.race.storage.presentation.request.DealerLicenseUploadRequest;
 import com.softeer.race.storage.presentation.response.UploadResponse;
+import com.softeer.race.storage.presentation.response.DealerLicenseUploadResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,4 +40,16 @@ public interface UploadApi {
     @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
     ResponseEntity<UploadResponse> issue(
             AuthenticatedUser authenticatedUser, UploadRequest request);
+
+    @Operation(summary = "자동차매매사원증 업로드 주소 발급",
+            description = """
+                    딜러 회원가입 전에 사원증 한 건을 비공개 경로에 올릴 PUT 주소를 발급합니다.
+                    jpeg, png, pdf 형식을 10MB까지 허용하며 세션 쿠키는 필요하지 않습니다.
+                    응답의 key를 업로드 완료 후 회원가입 요청의 dealerLicenseKey로 보내야 합니다.
+                    외부 조회 주소는 제공하지 않습니다.
+                    """)
+    @ApiResponse(responseCode = "200", description = "비공개 객체 키와 업로드 주소를 발급합니다.")
+    @ApiResponse(responseCode = "400", description = "형식이나 크기가 허용 범위를 벗어난 경우입니다.")
+    ResponseEntity<DealerLicenseUploadResponse> issueDealerLicense(
+            DealerLicenseUploadRequest request);
 }

@@ -165,10 +165,12 @@ class AuctionControllerTest extends IntegrationTestSupport {
 
     // 상태를 직접 세팅하지 않고 도메인 전이를 그대로 태운다
     // 종료는 진행 중인 경매만 대상이라 시작 전이를 먼저 거친다
+    // 낙찰자는 종료가 인자로 받는 값이 아니라 현재가를 만든 사람이라, 입찰을 먼저 세워야 ENDED 로 끝난다
     private void 종료된_경매_남기기(User winner) {
         Auction auction = 지난_경매();
         auction.start(auction.getStartTime());
-        auction.close(winner, auction.getCurrentEndTime());
+        auction.acceptBid(winner, 10_000_000L, auction.getStartTime().plusMinutes(1));
+        auction.close(auction.getCurrentEndTime());
         auctionRepository.save(auction);
     }
 
@@ -317,11 +319,11 @@ class AuctionControllerTest extends IntegrationTestSupport {
         return auctionRepository.save(Auction.schedule(post, 10_000_000L, startAt));
     }
 
-    // 유찰(FAILED)로 종료한다, ENDED와 마찬가지로 삭제 허용 대상이다
+    // 입찰을 넣지 않아 유찰(FAILED)로 끝난다, ENDED와 마찬가지로 삭제 허용 대상이다
     private Auction 종료된_경매() {
         Auction auction = 지난_경매();
         auction.start(auction.getStartTime());
-        auction.close(null, auction.getCurrentEndTime());
+        auction.close(auction.getCurrentEndTime());
 
         return auctionRepository.save(auction);
     }

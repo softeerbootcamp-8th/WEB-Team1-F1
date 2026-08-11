@@ -13,6 +13,7 @@ import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
 import com.softeer.race.vehicle.domain.Transmission;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -64,6 +65,7 @@ class EvaluationLookupControllerTest {
     private static final String DOCUMENT_URL = "https://cdn.race.dev/documents/2026/08/c.pdf";
     private static final String IMAGE_URL = "https://cdn.race.dev/images/2026/08/a.jpg";
     private static final String CONTACT_PHONE = "01012345678";
+    private static final String REJECT_REASON = "번호판이 등록된 차량과 일치하지 않습니다.";
     private static final String EVALUATOR_NAME = "박평가";
 
     @Autowired
@@ -161,7 +163,27 @@ class EvaluationLookupControllerTest {
                 .andExpect(jsonPath("$.mileage").doesNotExist())
                 .andExpect(jsonPath("$.estimatedPrice").doesNotExist())
                 .andExpect(jsonPath("$.diagnosticReportUrl").doesNotExist())
-                .andExpect(jsonPath("$.submittedAt").doesNotExist());
+                .andExpect(jsonPath("$.submittedAt").doesNotExist())
+                // 반려되지 않았으므로 사유 칸도 없다. 빈 문자열로 나가면 화면이
+                // "사유 없이 반려됨"과 "반려되지 않음"을 구분하지 못한다
+                .andExpect(jsonPath("$.rejectReason").doesNotExist());
+    }
+
+    // 판매자가 반려 사유를 읽는 유일한 경로다. Info에서 Response로 옮기다 빠뜨리면
+    // 사유가 저장은 되는데 화면에는 끝내 나타나지 않는다
+    @Test
+    @DisplayName("반려된 상세는 사유를 내려주고 결과 칸은 비어 있다")
+    void findDetailWhenRejected() throws Exception {
+        // given
+        given(evaluationLookupService.findDetail(EVALUATION_ID, USER_ID)).willReturn(
+                detail("REJECTED", null, null, List.of(), null, null, REJECT_REASON));
+
+        // when & then
+        mockMvc.perform(get("/api/evaluations/" + EVALUATION_ID).cookie(sessionCookie()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJECTED"))
+                .andExpect(jsonPath("$.rejectReason").value(REJECT_REASON))
+                .andExpect(jsonPath("$.mileage").doesNotExist());
     }
 
     @Test
@@ -202,12 +224,20 @@ class EvaluationLookupControllerTest {
     private static EvaluationDetailInfo detail(Integer mileage, Long estimatedPrice,
                                                List<String> imageUrls, String diagnosticReportUrl,
                                                LocalDateTime submittedAt) {
+        return detail("APPROVED", mileage, estimatedPrice, imageUrls, diagnosticReportUrl,
+                submittedAt, null);
+    }
+
+    private static EvaluationDetailInfo detail(String status, Integer mileage, Long estimatedPrice,
+                                               List<String> imageUrls, String diagnosticReportUrl,
+                                               LocalDateTime submittedAt, String rejectReason) {
         return new EvaluationDetailInfo(
-                EVALUATION_ID, "APPROVED", VISIT_DATE, "서울 성동구 왕십리로 83",
+                EVALUATION_ID, status, VISIT_DATE, "서울 성동구 왕십리로 83",
                 CONTACT_PHONE, REQUESTED_AT, EVALUATOR_NAME,
                 VEHICLE_ID, "12가3456", Manufacturer.HYUNDAI, "그랜저 IG", 2021,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
-                mileage, estimatedPrice, imageUrls, diagnosticReportUrl, submittedAt);
+                mileage, estimatedPrice, imageUrls, diagnosticReportUrl, submittedAt,
+                List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK), rejectReason);
     }
 
     private static Cookie sessionCookie() {

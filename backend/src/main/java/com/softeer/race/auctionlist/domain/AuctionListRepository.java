@@ -1,32 +1,25 @@
 package com.softeer.race.auctionlist.domain;
 
-import com.softeer.race.auction.domain.Auction;
-import org.springframework.data.domain.Limit;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.Repository;
-import org.springframework.data.repository.query.Param;
+import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
- * 경매글 목록 화면에 필요한 경매 조회
- * <p>
- * 그룹마다 쿼리를 나눠야 정렬 키가 저장 컬럼 하나가 되어 인덱스가 필터와 정렬을 함께 해결한다.
- * 공개 목록만 조인 순서 힌트를 걸어야 해서 네이티브고, 나의 경매는 JPQL 그대로다.
+ * 경매글 목록 조회. 그룹마다 정렬 키가 달라 쿼리를 나누고, 차량 조건은 값이 있는 것만 SQL 에 붙인다.
  */
-public interface AuctionListRepository extends Repository<Auction, Long> {
+@Repository
+@RequiredArgsConstructor
+public class AuctionListRepository {
 
-    /**
-     * 조인 순서를 경매부터로 고정한다. 옵티마이저가 조인 순서를 고를 때 limit 을 비용에 넣지 않아,
-     * 정렬 인덱스로 필요한 만큼만 읽고 끝낼 수 있다는 이 계획의 장점을 보지 못하기 때문이다.
-     * <p>
-     * 힌트가 별칭으로 테이블을 지목하고 결과는 아래 순서대로 레코드에 들어가므로,
-     * 별칭과 컬럼 순서는 AuctionListRow 와 함께 고쳐야 한다.
-     */
-    String SELECT_CARD_SQL = """
-            select /*+ JOIN_ORDER(a, p, v) */
-                a.id, v.main_photo_url, v.model, v.model_year, v.mileage,
+    // 컬럼 순서는 CARD_ROW 가 위치로 매핑하므로 함께 고쳐야 한다.
+    private static final String CARD_COLUMNS = """
+                a.id, v.id, v.main_photo_url, v.manufacturer, v.model, v.model_year, v.mileage,
                 a.start_price, a.current_price, a.room_open_at, a.start_time, a.current_end_time
             from auction a
             join auction_post p on p.id = a.post_id
@@ -34,106 +27,145 @@ public interface AuctionListRepository extends Repository<Auction, Long> {
             where p.deleted_at is null
             """;
 
-    String SELECT_CARD = """
-            select new com.softeer.race.auctionlist.domain.AuctionListRow(
-                a.id, v.mainPhotoUrl, v.model, v.modelYear, v.mileage,
-                a.startPrice, a.currentPrice, a.roomOpenAt, a.startTime, a.currentEndTime)
-            from Auction a
-            join a.post p
-            join p.vehicle v
-            where p.deletedAt is null
-            """;
+    // 옵티마이저가 limit 조기 종료를 비용에 못 넣어 조인 순서를 경매부터로 고정한다(10만 건 실측 11ms vs 254ms).
+    private static final String SELECT_HINTED = "select /*+ JOIN_ORDER(a, p, v) */" + CARD_COLUMNS;
 
-    /**
-     * 진행중, 마감이 임박한 것부터
-     */
-    @Query(value = SELECT_CARD_SQL + """
+    // 나의 목록은 소유 건수가 적을수록 판매자부터 출발하는 편이 빨라 힌트를 걸지 않는다.
+    private static final String SELECT_PLAIN = "select" + CARD_COLUMNS;
+
+    // 진행중, 마감이 임박한 것부터
+    private static final String LIVE_CONDITION = """
             and a.start_time <= :snapshotAt and :snapshotAt < a.current_end_time
             and (a.current_end_time > :cursorSortAt
                  or (a.current_end_time = :cursorSortAt and a.id > :cursorAuctionId))
-            order by a.current_end_time, a.id
-            limit :limit
-            """, nativeQuery = true)
-    List<AuctionListRow> findLivePage(@Param("snapshotAt") LocalDateTime snapshotAt,
-                                      @Param("cursorSortAt") LocalDateTime cursorSortAt,
-                                      @Param("cursorAuctionId") long cursorAuctionId,
-                                      @Param("limit") int limit);
+            """;
+    private static final String LIVE_ORDER = "order by a.current_end_time, a.id\n";
 
-    /**
-     * 예정, 시작이 임박한 것부터. 아직 입찰이 없어 마감이 연장될 일도 없다.
-     */
-    @Query(value = SELECT_CARD_SQL + """
+    // 예정, 시작이 임박한 것부터
+    private static final String PENDING_CONDITION = """
             and :snapshotAt < a.start_time
             and (a.start_time > :cursorSortAt
                  or (a.start_time = :cursorSortAt and a.id > :cursorAuctionId))
-            order by a.start_time, a.id
-            limit :limit
-            """, nativeQuery = true)
-    List<AuctionListRow> findPendingPage(@Param("snapshotAt") LocalDateTime snapshotAt,
-                                         @Param("cursorSortAt") LocalDateTime cursorSortAt,
-                                         @Param("cursorAuctionId") long cursorAuctionId,
-                                         @Param("limit") int limit);
+            """;
+    private static final String PENDING_ORDER = "order by a.start_time, a.id\n";
 
-    /**
-     * 종료, 최근에 끝난 것부터
-     */
-    @Query(value = SELECT_CARD_SQL + """
+    // 종료, 최근에 끝난 것부터
+    private static final String ENDED_CONDITION = """
             and a.current_end_time <= :snapshotAt
             and (a.current_end_time < :cursorSortAt
                  or (a.current_end_time = :cursorSortAt and a.id < :cursorAuctionId))
-            order by a.current_end_time desc, a.id desc
-            limit :limit
-            """, nativeQuery = true)
-    List<AuctionListRow> findEndedPage(@Param("snapshotAt") LocalDateTime snapshotAt,
-                                       @Param("cursorSortAt") LocalDateTime cursorSortAt,
-                                       @Param("cursorAuctionId") long cursorAuctionId,
-                                       @Param("limit") int limit);
+            """;
+    private static final String ENDED_ORDER = "order by a.current_end_time desc, a.id desc\n";
+
+    // 가격과 주행거리는 null 이 올 수 있어 getObject 로 읽는다.
+    private static final RowMapper<AuctionListRow> CARD_ROW = (rs, rowNum) -> new AuctionListRow(
+            rs.getLong(1),
+            rs.getLong(2),
+            rs.getString(3),
+            rs.getString(4),
+            rs.getString(5),
+            rs.getObject(6, Integer.class),
+            rs.getObject(7, Integer.class),
+            rs.getObject(8, Long.class),
+            rs.getObject(9, Long.class),
+            rs.getObject(10, LocalDateTime.class),
+            rs.getObject(11, LocalDateTime.class),
+            rs.getObject(12, LocalDateTime.class));
+
+    private final NamedParameterJdbcTemplate jdbcTemplate;
+
+    public List<AuctionListRow> findPage(AuctionListGroup group, AuctionListFilter filter, Long sellerId,
+                                         LocalDateTime snapshotAt, LocalDateTime cursorSortAt,
+                                         long cursorAuctionId, int limit) {
+        // null 인 조건은 없는 것으로 친다.
+        AuctionListFilter vehicleFilter = (filter != null) ? filter : AuctionListFilter.none();
+
+        StringBuilder sql = new StringBuilder(sellerId != null ? SELECT_PLAIN : SELECT_HINTED);
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("snapshotAt", snapshotAt)
+                .addValue("cursorSortAt", cursorSortAt)
+                .addValue("cursorAuctionId", cursorAuctionId)
+                .addValue("limit", limit);
+
+        sql.append(condition(group));
+
+        if (sellerId != null) {
+            sql.append("and v.seller_id = :sellerId\n");
+            params.addValue("sellerId", sellerId);
+        }
+
+        appendFilter(sql, params, vehicleFilter);
+
+        sql.append(order(group)).append("limit :limit");
+
+        return jdbcTemplate.query(sql.toString(), params, CARD_ROW);
+    }
 
     /**
-     * 나의 진행중. 소유 건수가 적을수록 판매자부터 출발하는 편이 빨라 힌트를 걸지 않는다.
+     * 방송할 경매 하나. 삭제된 경매글은 목록과 같은 이유로 빠진다.
      */
-    @Query(SELECT_CARD + """
-            and v.seller.id = :sellerId
-            and a.startTime <= :snapshotAt and :snapshotAt < a.currentEndTime
-            and (a.currentEndTime > :cursorSortAt
-                 or (a.currentEndTime = :cursorSortAt and a.id > :cursorAuctionId))
-            order by a.currentEndTime, a.id
-            """)
-    List<AuctionListRow> findMyLivePage(@Param("sellerId") long sellerId,
-                                        @Param("snapshotAt") LocalDateTime snapshotAt,
-                                        @Param("cursorSortAt") LocalDateTime cursorSortAt,
-                                        @Param("cursorAuctionId") long cursorAuctionId,
-                                        Limit limit);
+    public Optional<AuctionListRow> findRow(long auctionId) {
+        // 방송이 들고 오는 것은 경매 id 하나뿐이라 커서로 페이지를 읽는 쿼리로는 지목할 수 없다.
+        List<AuctionListRow> rows = jdbcTemplate.query(
+                SELECT_PLAIN + "and a.id = :auctionId",
+                new MapSqlParameterSource("auctionId", auctionId),
+                CARD_ROW);
+        return rows.stream().findFirst();
+    }
 
-    /**
-     * 나의 예정
-     */
-    @Query(SELECT_CARD + """
-            and v.seller.id = :sellerId
-            and :snapshotAt < a.startTime
-            and (a.startTime > :cursorSortAt
-                 or (a.startTime = :cursorSortAt and a.id > :cursorAuctionId))
-            order by a.startTime, a.id
-            """)
-    List<AuctionListRow> findMyPendingPage(@Param("sellerId") long sellerId,
-                                           @Param("snapshotAt") LocalDateTime snapshotAt,
-                                           @Param("cursorSortAt") LocalDateTime cursorSortAt,
-                                           @Param("cursorAuctionId") long cursorAuctionId,
-                                           Limit limit);
+    private void appendFilter(StringBuilder sql, MapSqlParameterSource params, AuctionListFilter filter) {
+        if (filter.manufacturer() != null) {
+            sql.append("and v.manufacturer = :manufacturer\n");
+            params.addValue("manufacturer", filter.manufacturer().name());
+        }
+        if (filter.fuelTypes() != null && !filter.fuelTypes().isEmpty()) {
+            sql.append("and v.fuel_type in (:fuelTypes)\n");
+            params.addValue("fuelTypes", filter.fuelTypes().stream().map(Enum::name).toList());
+        }
+        if (filter.transmission() != null) {
+            sql.append("and v.transmission = :transmission\n");
+            params.addValue("transmission", filter.transmission().name());
+        }
+        if (filter.mileageMin() != null) {
+            sql.append("and v.mileage >= :mileageMin\n");
+            params.addValue("mileageMin", filter.mileageMin());
+        }
+        if (filter.mileageMax() != null) {
+            sql.append("and v.mileage <= :mileageMax\n");
+            params.addValue("mileageMax", filter.mileageMax());
+        }
+        if (filter.modelYearMin() != null) {
+            sql.append("and v.model_year >= :modelYearMin\n");
+            params.addValue("modelYearMin", filter.modelYearMin());
+        }
+        if (filter.modelYearMax() != null) {
+            sql.append("and v.model_year <= :modelYearMax\n");
+            params.addValue("modelYearMax", filter.modelYearMax());
+        }
+        // 가격은 화면 표시 규칙(현재가, 없으면 시작가)과 같은 값으로 거른다.
+        if (filter.priceMin() != null) {
+            sql.append("and coalesce(a.current_price, a.start_price) >= :priceMin\n");
+            params.addValue("priceMin", filter.priceMin());
+        }
+        if (filter.priceMax() != null) {
+            sql.append("and coalesce(a.current_price, a.start_price) <= :priceMax\n");
+            params.addValue("priceMax", filter.priceMax());
+        }
+    }
 
-    /**
-     * 나의 종료
-     */
-    @Query(SELECT_CARD + """
-            and v.seller.id = :sellerId
-            and a.currentEndTime <= :snapshotAt
-            and (a.currentEndTime < :cursorSortAt
-                 or (a.currentEndTime = :cursorSortAt and a.id < :cursorAuctionId))
-            order by a.currentEndTime desc, a.id desc
-            """)
-    List<AuctionListRow> findMyEndedPage(@Param("sellerId") long sellerId,
-                                         @Param("snapshotAt") LocalDateTime snapshotAt,
-                                         @Param("cursorSortAt") LocalDateTime cursorSortAt,
-                                         @Param("cursorAuctionId") long cursorAuctionId,
-                                         Limit limit);
+    private String condition(AuctionListGroup group) {
+        return switch (group) {
+            case LIVE -> LIVE_CONDITION;
+            case PENDING -> PENDING_CONDITION;
+            case ENDED -> ENDED_CONDITION;
+        };
+    }
+
+    private String order(AuctionListGroup group) {
+        return switch (group) {
+            case LIVE -> LIVE_ORDER;
+            case PENDING -> PENDING_ORDER;
+            case ENDED -> ENDED_ORDER;
+        };
+    }
 }

@@ -26,9 +26,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * 담당자 한 명만 호출하는 흐름이라 경합이 없어 보이지만, <b>상대가 남이 아니라 자기 자신</b>이다.
  * 같은 평가사가 버튼을 두 번 누르거나 탭 두 개에서 보내면 두 요청이 겹친다.
  * <p>
- * 잠금이 없으면 둘 다 "진단서 없음"을 읽고 둘 다 insert 해서, {@code evaluation_id}의 unique
- * 제약에 걸린 쪽이 500으로 나간다. {@code EvaluationRepository.findByIdForUpdate}의
- * {@code @Lock}을 떼면 이 테스트가 깨진다 — 잠금이 필요하다는 근거가 여기 있다.
  * <p>
  * <b>{@code @Transactional}을 붙이지 않는다.</b> 별 스레드가 보내는 요청은 테스트 트랜잭션을
  * 물려받지 않아, 롤백 방식으로 두면 심어 둔 데이터를 보지 못한다. 정리는
@@ -38,8 +35,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Sql("/sql/diagnostic-report-fixture.sql")
 class EvaluationResultConcurrencyIntegrationTest extends IntegrationTestSupport {
 
-    /** 601에게 배정된 진행 중 신청 */
+    /**
+     * 601에게 배정된 진행 중 신청
+     */
     private static final long EVALUATION_ID = 600L;
+    private static final long VEHICLE_ID = 600L;
     private static final String EVALUATOR_TOKEN = "report-eval-token";
 
     private static final String CDN_BASE_URL = "https://cdn.test.local";
@@ -122,20 +122,21 @@ class EvaluationResultConcurrencyIntegrationTest extends IntegrationTestSupport 
                           "mileage": 45000,
                           "estimatedPrice": 21500000,
                           "imageUrls": ["%s"],
-                          "diagnosticReportUrl": "%s"
+                          "diagnosticReportUrl": "%s",
+                          "keywords": ["ACCIDENT_FREE", "NO_LEAK"]
                         }
                         """.formatted(IMAGE_URL, documentUrl)));
     }
 
     private int reportCount() {
         return jdbcTemplate.queryForObject(
-                "select count(*) from diagnostic_report where evaluation_id = ?",
-                Integer.class, EVALUATION_ID);
+                "select count(*) from vehicle where id = ? and diagnostic_report_url is not null",
+                Integer.class, VEHICLE_ID);
     }
 
     private String fileUrl() {
         return jdbcTemplate.queryForObject(
-                "select file_url from diagnostic_report where evaluation_id = ?",
-                String.class, EVALUATION_ID);
+                "select diagnostic_report_url from vehicle where id = ?",
+                String.class, VEHICLE_ID);
     }
 }

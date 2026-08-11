@@ -1,5 +1,6 @@
 package com.softeer.race.auction.application;
 
+import com.softeer.race.deal.domain.DealRepository;
 import com.softeer.race.notification.domain.NotificationRepository;
 import com.softeer.race.notification.domain.NotificationRow;
 import com.softeer.race.support.IntegrationTestSupport;
@@ -22,7 +23,7 @@ import java.util.stream.Stream;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_ENDED;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_FAILED;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_SOLD;
-import static com.softeer.race.notification.domain.NotificationType.AUCTION_WON_RESULT;
+import static com.softeer.race.notification.domain.NotificationType.AUCTION_WON;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
@@ -56,6 +57,9 @@ class AuctionEndNotificationIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private DealRepository dealRepository;
 
     private TransactionTemplate transactionTemplate;
 
@@ -91,23 +95,37 @@ class AuctionEndNotificationIntegrationTest extends IntegrationTestSupport {
         // then 1 : 판매자는 차가 팔렸다는 것을 안다
         assertThat(notificationsOf(seller)).singleElement().satisfies(row -> {
             assertThat(row.type()).isEqualTo(AUCTION_SOLD);
-            assertThat(row.message()).isEqualTo(AUCTION_SOLD.defaultMessage());
+            assertThat(row.message())
+                    .isEqualTo("아반떼 CN7 차량이 31,000,000원에 낙찰되었습니다.");
             assertThat(row.read()).isFalse();
         });
 
-        // then 2 : 낙찰자는 낙찰 사실을 안다
+        // then 2 : 낙찰자는 어떤 차량을 얼마에 샀는지 목록에서 안다
         assertThat(notificationsOf(bob)).singleElement()
-                .satisfies(row -> assertThat(row.type()).isEqualTo(AUCTION_WON_RESULT));
+                .satisfies(row -> {
+                    assertThat(row.type()).isEqualTo(AUCTION_WON);
+                    assertThat(row.message())
+                            .isEqualTo("아반떼 CN7 차량을 31,000,000원에 낙찰받았습니다.");
+                });
 
-        // then 3 : 밀린 입찰자는 종료를 안다
+        // then 3 : 밀린 입찰자는 어떤 경매가 얼마에 끝났는지 안다
         assertThat(notificationsOf(alice)).singleElement()
-                .satisfies(row -> assertThat(row.type()).isEqualTo(AUCTION_ENDED));
+                .satisfies(row -> {
+                    assertThat(row.type()).isEqualTo(AUCTION_ENDED);
+                    assertThat(row.message())
+                            .isEqualTo("아반떼 CN7 경매가 31,000,000원에 종료되었습니다.");
+                });
 
         // then 4 : 셋이 서로 다른 문구다, 한 문구로 묶으면 무슨 일이 났는지 알림만 보고 알 수 없다
         assertThat(messagesOf(seller, bob, alice)).doesNotHaveDuplicates();
 
-        // then 5 : 셋 다 그 경매 화면을 가리킨다, 거래가 없어도 눌러서 결과를 확인할 수 있다
-        assertThat(linksOf(seller, bob, alice)).containsOnly("/auctions/" + auctionId);
+        // then 5 : 판매자와 밀린 입찰자는 경매 화면을 가리킨다, 거기서 할 일이 결과 확인뿐이다
+        assertThat(linksOf(seller, alice)).containsOnly("/auctions/" + auctionId);
+
+        // then 6 : 낙찰자만 거래 화면을 가리킨다, 결과 확인이 끝나면 경매방에는 볼 것이 없고
+        // 실제로 해야 할 일(구매 확정)은 거래 화면에 있다
+        long dealId = dealRepository.findAll().getFirst().getId();
+        assertThat(linksOf(bob)).containsOnly("/mypage/deals/" + dealId);
     }
 
     @Test
@@ -124,7 +142,7 @@ class AuctionEndNotificationIntegrationTest extends IntegrationTestSupport {
         // then : 미낙찰 조회에서 낙찰자를 빼지 않으면 낙찰과 종료를 두 건 받는다
         assertThat(notificationsOf(bob))
                 .extracting(NotificationRow::type)
-                .containsExactly(AUCTION_WON_RESULT);
+                .containsExactly(AUCTION_WON);
     }
 
     @Test
@@ -156,7 +174,8 @@ class AuctionEndNotificationIntegrationTest extends IntegrationTestSupport {
         // then 1 : 판매자는 낙찰과 다른 문구로 유찰을 받는다, 유찰이면 다시 등록해야 한다
         assertThat(notificationsOf(seller)).singleElement().satisfies(row -> {
             assertThat(row.type()).isEqualTo(AUCTION_FAILED);
-            assertThat(row.message()).isEqualTo(AUCTION_FAILED.defaultMessage());
+            assertThat(row.message())
+                    .isEqualTo("아반떼 CN7 경매가 입찰 없이 종료되었습니다.");
         });
 
         // then 2 : 유찰은 입찰이 없었다는 뜻이라 받을 사람이 판매자뿐이다

@@ -1,21 +1,30 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { SearchX, TriangleAlert } from 'lucide-react'
 
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common/empty-state'
 import { AuctionCard } from '@/features/auctions/components/auction-card'
+import { AuctionPreviewDialog } from '@/features/auctions/components/auction-preview-dialog'
+import type { PreviewStatus } from '@/features/auctions/components/auction-preview-dialog'
 import { AuctionDeleteDialog } from '@/features/auctions/components/auction-delete-dialog'
 import { AuctionEditDialog } from '@/features/auctions/components/auction-edit-dialog'
+import { AuctionFilterPanel } from '@/features/auctions/components/auction-filter-panel'
 import { MyAuctionActions } from '@/features/auctions/components/my-auction-actions'
 import { ScopeTabs } from '@/features/auctions/components/scope-tabs'
+import {
+  EMPTY_FILTER,
+  hasActiveFilter,
+  readFilterParams,
+  writeFilterParams,
+} from '@/features/auctions/filter'
 import { useAuctionList } from '@/features/auctions/use-auction-list'
 import type { AuctionListCard, AuctionListScope } from '@/features/auctions/types'
 import { useAuth } from '@/features/auth/auth-context'
 import { useInfiniteScroll } from '@/hooks/use-infinite-scroll'
-import { statusToListGroup } from '@/lib/auction'
+import { useServerClock } from '@/hooks/use-server-clock'
+import { arrangeCards, badgeStatusAt, statusToListGroup } from '@/lib/auction'
 import { getErrorMessage } from '@/lib/axios'
 import type { AuctionStatus } from '@/types/domain'
 
@@ -27,6 +36,30 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'SCHEDULED', label: '예정' },
   { value: 'ENDED', label: '종료' },
 ]
+
+/**
+ * 어느 탭을 보고 있었는지는 주소에 남긴다. 화면 상태로만 들고 있으면 경매방에 들어갔다
+ * 돌아올 때 목록이 새로 마운트되면서 항상 첫 탭으로 풀린다.
+ * 기본값(전체·모든 경매)은 아예 빼서 /auctions 주소를 깨끗하게 둔다.
+ */
+const STATUS_PARAM = 'status'
+const SCOPE_PARAM = 'scope'
+
+/**
+ * 한 줄에 두 장. 네 장씩 놓으면 카드 하나에 담긴 사진·차종·가격이 모두 작아져
+ * 무엇을 보고 고르는 화면인지가 흐려진다. 스켈레톤도 같은 격자를 써야 목록이
+ * 들어올 때 자리가 그대로 유지된다.
+ */
+const GRID_CLASS = 'grid grid-cols-1 gap-5 md:grid-cols-2'
+
+function readFilter(params: URLSearchParams): Filter {
+  const raw = params.get(STATUS_PARAM)?.toUpperCase()
+  return FILTERS.some((item) => item.value === raw) ? (raw as Filter) : 'ALL'
+}
+
+function readScope(params: URLSearchParams): AuctionListScope {
+  return params.get(SCOPE_PARAM)?.toUpperCase() === 'MINE' ? 'MINE' : 'ALL'
+}
 
 /**
  * 빈 목록 문구. 범위만 보고 고르면 "나의 경매 + 진행중"에 결과가 없을 때
@@ -48,10 +81,66 @@ function emptyMessage(scope: AuctionListScope, filter: Filter) {
 
 export function AuctionsPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
-  const [scope, setScope] = useState<AuctionListScope>('ALL')
-  const [filter, setFilter] = useState<Filter>('ALL')
+
+  const [searchParams, setSearchParams] = useSearchParams()
+  const scope = readScope(searchParams)
+  const filter = readFilter(searchParams)
+
+  // 탭 전환은 히스토리에 쌓지 않는다. 쌓으면 탭을 옮긴 횟수만큼 뒤로가기를 눌러야 목록을 벗어난다.
+  const selectTab = (key: string, value: string, isDefault: boolean) => {
+    const next = new URLSearchParams(searchParams)
+    if (isDefault) next.delete(key)
+    else next.set(key, value.toLowerCase())
+    setSearchParams(next, { replace: true })
+  }
+
+  // 차량 조건도 탭처럼 주소가 원본이다. 경매방을 다녀와도, 주소를 공유해도 같은 조건이 복원된다.
+  const vehicleFilter = useMemo(() => readFilterParams(searchParams), [searchParams])
+
+  const changeVehicleFilter = (next: typeof vehicleFilter) => {
+    const params = new URLSearchParams(searchParams)
+    writeFilterParams(next, params)
+    setSearchParams(params, { replace: true })
+  }
+
+  // 조건과 상태를 한 번에 지운다. 나눠서 두 번 쓰면 둘 다 지금 주소에서 출발하므로
+  // 나중 것이 앞에서 지운 것을 되살린다.
+  const resetFilters = () => {
+    const params = new URLSearchParams(searchParams)
+    writeFilterParams(EMPTY_FILTER, params)
+    params.delete(STATUS_PARAM)
+    setSearchParams(params, { replace: true })
+  }
+
   const [editing, setEditing] = useState<AuctionListCard | null>(null)
   const [deleting, setDeleting] = useState<AuctionListCard | null>(null)
+
+  // 입장할 수 없는 카드는 방으로 보내지 않고 여기서 연다. 단계는 열 때 판정한 값을 그대로 들고 있는다.
+  const [preview, setPreview] = useState<{
+    auctionId: number
+    status: PreviewStatus
+    card: AuctionListCard | null
+  } | null>(null)
+
+  /**
+   * 알림이나 방에서 되돌아온 딥링크(`?open=3&as=closed`). 목록에 카드가 아직 없어도 열린다.
+   * 방이 되돌릴 때 단계를 함께 실어 주므로 화면이 마감 + 5분을 다시 재지 않는다.
+   */
+  const deepLink = useMemo(() => {
+    const id = Number(searchParams.get('open'))
+    if (!Number.isInteger(id) || id <= 0) return null
+    return { id, status: (searchParams.get('as') === 'closed' ? 'ENDED' : 'NOT_OPEN') as PreviewStatus }
+  }, [searchParams])
+
+  const closePreview = () => {
+    setPreview(null)
+    if (searchParams.has('open')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('open')
+      next.delete('as')
+      setSearchParams(next, { replace: true })
+    }
+  }
 
   // 상태 필터는 서버가 건다. 받아온 카드만 걸러내면 다음 페이지를 읽을수록 화면이 실제와 어긋난다.
   const listGroup = useMemo(
@@ -66,6 +155,7 @@ export function AuctionsPage() {
 
   const {
     cards,
+    offsetMs,
     isLoading,
     isLoadingMore,
     hasNext,
@@ -76,10 +166,22 @@ export function AuctionsPage() {
   } = useAuctionList({
     scope,
     filter: listGroup,
+    vehicle: vehicleFilter,
     enabled: scope === 'ALL' || (!isAuthLoading && isAuthenticated),
   })
 
+  // 시계 하나로 화면 전체를 굴린다. 카드마다 두면 같은 순간에 카드끼리 다른 시각을 본다.
+  const nowMs = useServerClock(offsetMs)
+
+  // 서버가 준 순서를 지금 시각으로 다시 배치한다. 마감된 카드는 종료 무리로 내려가고,
+  // 상태 탭이 켜져 있으면 그 그룹에서 벗어난 카드는 목록에서 빠진다.
+  const arranged = useMemo(
+    () => arrangeCards(cards, nowMs, listGroup),
+    [cards, nowMs, listGroup],
+  )
+
   // 실패한 뒤에는 관찰을 끊는다. 화면이 그대로라 계속 관찰하면 같은 요청을 무한히 반복한다.
+  // 재배치가 아니라 불러온 개수로 관찰을 다시 건다. 자리만 바뀐 것은 다음 페이지와 무관하다.
   const sentinelRef = useInfiniteScroll({
     enabled: hasNext && !loadMoreError,
     onLoadMore: loadMore,
@@ -87,29 +189,40 @@ export function AuctionsPage() {
   })
 
   return (
-    <main aria-label="경매 목록" className="mx-auto max-w-7xl px-6 py-12">
+    // 조건 패널과 목록이 나란히 서는 화면이라 다른 페이지보다 넓게 쓴다. 상단 바·푸터와 같은 폭이다.
+    <main aria-label="경매 목록" className="mx-auto max-w-[100rem] px-6 py-12">
       <header className="mb-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <p className="text-muted-foreground text-sm">LIVE AUCTIONS</p>
-            <h1 className="mt-2 text-3xl font-semibold md:text-4xl">경매 목록</h1>
-            <p className="text-muted-foreground mt-2">
-              평가가 완료된 차량의 실시간 가격 형성 과정을 확인하세요.
-            </p>
-          </div>
-          <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
-            <TabsList aria-label="경매 상태 필터">
-              {FILTERS.map((item) => (
-                <TabsTrigger key={item.value} value={item.value}>
-                  {item.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-
-        <ScopeTabs value={scope} onChange={setScope} />
+        <p className="text-muted-foreground text-sm">LIVE AUCTIONS</p>
+        <h1 className="mt-2 text-3xl font-semibold md:text-4xl">경매 목록</h1>
+        <p className="text-muted-foreground mt-2">
+          평가가 완료된 차량의 실시간 가격 형성 과정을 확인하세요.
+        </p>
       </header>
+
+      {/* 조건은 목록 옆에 세워 둔다. 좁은 화면에서는 붙일 자리가 없어 목록 위로 접힌다. */}
+      <div className="lg:grid lg:grid-cols-[23rem_1fr] lg:items-start lg:gap-8">
+        {/* 상단 바(65px)가 sticky 라 그 아래에 세운다. 패널이 화면보다 길어 스스로 스크롤해야
+            아래쪽 조건에 손이 닿는다. */}
+        <aside className="mb-6 lg:sticky lg:top-20 lg:mb-0 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+          <AuctionFilterPanel
+            value={vehicleFilter}
+            onChange={changeVehicleFilter}
+            status={filter === 'ALL' ? null : filter}
+            onStatusChange={(next) =>
+              selectTab(STATUS_PARAM, next ?? 'ALL', next === null)
+            }
+            onReset={resetFilters}
+          />
+        </aside>
+
+        <div>
+          {/* 범위는 목록의 것이라 목록 열 머리에 둔다. 조건 패널과 나란히 서면 둘 다 필터로 읽힌다. */}
+          <div className="mb-6">
+            <ScopeTabs
+              value={scope}
+              onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
+            />
+          </div>
 
       {needsLogin ? (
         <EmptyState
@@ -133,26 +246,47 @@ export function AuctionsPage() {
           }
         />
       ) : isLoading || isSessionPending ? (
-        <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Array.from({ length: 8 }, (_, index) => (
+        <ul className={GRID_CLASS}>
+          {Array.from({ length: 4 }, (_, index) => (
+            // 카드 높이는 열 너비를 따라간다. 고정 높이로 두면 2열로 넓어진 카드와 어긋나
+            // 목록이 들어올 때 화면이 튄다.
             <li key={index}>
-              <Skeleton className="h-80 w-full rounded-xl" />
+              <Skeleton className="aspect-[4/3] w-full rounded-xl md:aspect-[5/4]" />
             </li>
           ))}
         </ul>
-      ) : cards.length === 0 ? (
-        <EmptyState icon={SearchX} {...emptyMessage(scope, filter)} />
+      ) : arranged.length === 0 ? (
+        // 조건 때문에 빈 것이면 상태 탭을 바꾸라는 안내가 틀린다. 되돌릴 길을 바로 준다.
+        hasActiveFilter(vehicleFilter) ? (
+          <EmptyState
+            icon={SearchX}
+            title="조건에 맞는 경매가 없습니다"
+            description="조건을 줄이면 더 많은 차량을 볼 수 있어요."
+            action={
+              <Button variant="outline" onClick={resetFilters}>
+                조건 초기화
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState icon={SearchX} {...emptyMessage(scope, filter)} />
+        )
       ) : (
         <>
-          <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {cards.map((auction) => (
+          <ul className={GRID_CLASS}>
+            {arranged.map((auction) => (
               <li key={auction.auctionId}>
                 <AuctionCard
                   auction={auction}
+                  nowMs={nowMs}
+                  offsetMs={offsetMs}
+                  onPreview={(card, status) =>
+                    setPreview({ auctionId: card.auctionId, status, card })
+                  }
                   actions={
                     scope === 'MINE' ? (
                       <MyAuctionActions
-                        auction={auction}
+                        status={badgeStatusAt(auction, nowMs)}
                         onEdit={() => setEditing(auction)}
                         onDelete={() => setDeleting(auction)}
                       />
@@ -186,7 +320,17 @@ export function AuctionsPage() {
           </div>
         </>
       )}
+        </div>
+      </div>
 
+      {/* 카드를 눌러 연 것이 우선이다, 없으면 딥링크가 연다 */}
+      <AuctionPreviewDialog
+        auctionId={preview?.auctionId ?? deepLink?.id ?? null}
+        status={preview?.status ?? deepLink?.status ?? 'NOT_OPEN'}
+        card={preview?.card ?? cards.find((c) => c.auctionId === deepLink?.id) ?? null}
+        offsetMs={offsetMs}
+        onOpenChange={(open) => !open && closePreview()}
+      />
       <AuctionEditDialog
         auction={editing}
         onOpenChange={(open) => !open && setEditing(null)}

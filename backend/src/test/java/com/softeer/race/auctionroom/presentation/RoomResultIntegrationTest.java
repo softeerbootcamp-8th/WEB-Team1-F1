@@ -29,10 +29,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 아무도 입찰하지 않은 경매는 낙찰가도 낙찰자도 없이 유찰로 나간다
  * <p>
  * 3. 개인화
- * 셋 중 낙찰자 본인 여부만 조회자마다 다르고 나머지는 같다
+ * 낙찰자·탈락자·판매자·구경꾼 넷이 응답만 보고 갈린다, 나머지 값은 누가 봐도 같다
  * <p>
  * 4. 실시간 값의 부재
- * 더 이상 바뀌지 않는 경매라 접속자 수도 서버 시각도 나가지 않는다
+ * 더 이상 바뀌지 않는 경매라 접속자 수도 호가창도 나가지 않는다
+ * 서버 시각은 결과값이 아니라 남은 열람 시간을 세는 기준이라 예외로 나간다
  */
 @DisplayName("경매 결과 요약 조회 통합 테스트")
 class RoomResultIntegrationTest extends IntegrationTestSupport {
@@ -62,12 +63,14 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
 
         long endedAuctionId = rooms.room(users.user("최판매", Role.GENERAL), ENDED_START_AT)
                 .model("더 뉴 셀토스")
-                .mainPhotoUrl("https://cdn.race.dev/seltos-1.jpg")
+                .photos("https://cdn.race.dev/seltos-1.jpg", "https://cdn.race.dev/seltos-2.jpg")
+                .diagnosticReportUrl("https://cdn.race.dev/seltos-report.pdf")
                 .startPrice(20_000_000L)
                 .bid(ENDED_START_AT.plusMinutes(5), loser, 21_000_000L)
                 .bid(ENDED_START_AT.plusMinutes(10), winner, 22_000_000L)
                 .bid(ENDED_START_AT.plusMinutes(15), loser, 23_000_000L)
-                .bid(ENDED_START_AT.plusMinutes(18), winner, 24_000_000L)
+                // 마감 20초 전 입찰이라 소프트클로즈가 걸린다, 연장 횟수가 0 이면 세는지 알 수 없다
+                .bid(ENDED_START_AT.plusMinutes(19).plusSeconds(40), winner, 24_000_000L)
                 .closed()
                 .create();
 
@@ -88,31 +91,138 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         // then 3 : 목록을 거치지 않고 들어와도 어떤 차였는지 보인다
         response.andExpectAll(
                 jsonPath("$.vehicle.model").value("더 뉴 셀토스"),
-                jsonPath("$.vehicle.thumbnailUrl").value("https://cdn.race.dev/seltos-1.jpg"));
+                jsonPath("$.vehicle.imageUrls.length()").value(2),
+                jsonPath("$.vehicle.imageUrls[0]").value("https://cdn.race.dev/seltos-1.jpg"),
+                jsonPath("$.vehicle.diagnosticReportUrl")
+                        .value("https://cdn.race.dev/seltos-report.pdf"));
 
         // then 3-1 : 차량 정보는 한 덩어리로 온다, 사진이 최상위에 남으면 화면이 두 군데서 조립한다
         response.andExpect(jsonPath("$.thumbnailUrl").doesNotHaveJsonPath());
 
         // then 4 : 네 건이 들어왔다, 최근 호가 목록과 달리 전체를 센다
-        response.andExpect(jsonPath("$.bidCount").value(4));
+        // 두 사람이 넣었으므로 건수와 사람 수가 다르다, 같은 값이면 어느 쪽을 세는지 알 수 없다
+        response.andExpectAll(
+                jsonPath("$.bidCount").value(4),
+                jsonPath("$.bidderCount").value(2));
+
+        // then 4-1 : 마감 임박 입찰이 마감을 20초 뒤로 밀었다, 그 사실이 횟수와 시각 둘 다에 남는다
+        response.andExpectAll(
+                jsonPath("$.extensionCount").value(1),
+                jsonPath("$.startAt").value("2026-08-03T18:30:00"),
+                jsonPath("$.endAt").value("2026-08-03T18:50:10"));
 
         // then 5 : 낙찰자는 호가와 같은 규칙으로 마스킹되고, 본인 여부는 이름 비교 없이 내려간다
         response.andExpectAll(
                 jsonPath("$.winner.name").value("이*호"),
                 jsonPath("$.winner.mine").value(true));
 
-        // then 6 : 더 이상 바뀌지 않는 경매라 실시간 값이 나갈 자리가 없다
+        // then 6 : 결과는 더 이상 바뀌지 않으므로 실시간 값이 나갈 자리가 없다
         // doesNotExist 는 값이 null 이어도 통과하므로, 스키마에 아예 없다는 것은 이쪽으로 단정한다
         response.andExpectAll(
                 jsonPath("$.connectedCount").doesNotHaveJsonPath(),
-                jsonPath("$.serverTime").doesNotHaveJsonPath(),
                 jsonPath("$.recentBids").doesNotHaveJsonPath());
+
+        // then 6-1 : 서버 시각은 결과값이 아니라 남은 열람 시간을 세는 기준이라 종료 시각과 짝으로 나간다
+        // 종료 시각은 연장된 마감에서 다시 계산된다, 원래 마감에 더하면 20초 어긋난다
+        response.andExpectAll(
+                jsonPath("$.resultEndAt").value("2026-08-03T18:55:10"),
+                jsonPath("$.serverTime").value("2026-08-03T20:45:12"));
 
         // then 7 : 탈락한 사람이 같은 결과를 보면 이름은 같고 본인 표시만 꺼진다
         getResult(endedAuctionId, loginAs(loser)).andExpectAll(
                 jsonPath("$.winner.name").value("이*호"),
                 jsonPath("$.winner.mine").value(false),
                 jsonPath("$.winningPrice").value(24000000));
+    }
+
+    // 낙찰자, 탈락자, 판매자, 구경꾼이 같은 경매를 서로 다르게 읽는다
+    // 화면의 첫 문장이 이 넷으로 갈리므로 응답만 보고 갈릴 수 있어야 한다
+    @Test
+    @DisplayName("시나리오 1-1 : 같은 결과를 네 사람이 보면 -> 자기 자리만 다르게 온다")
+    void scenario1_1_StandingDiffersByViewer() throws Exception {
+        // given : 두 사람이 넣었고 남궁민수가 더 높이 부른 이준호에게 밀렸다
+        User seller = users.user("최판매", Role.GENERAL);
+        User winner = users.user("이준호", Role.DEALER);
+        User loser = users.user("남궁민수", Role.DEALER);
+        User onlooker = users.user("한구경", Role.DEALER);
+
+        long endedAuctionId = rooms.room(seller, ENDED_START_AT)
+                .startPrice(20_000_000L)
+                .bid(ENDED_START_AT.plusMinutes(5), loser, 21_000_000L)
+                .bid(ENDED_START_AT.plusMinutes(10), winner, 22_000_000L)
+                .bid(ENDED_START_AT.plusMinutes(15), loser, 23_000_000L)
+                .bid(ENDED_START_AT.plusMinutes(18), winner, 24_000_000L)
+                .closed()
+                .create();
+
+        // then 1 : 낙찰자는 자기가 가장 높았으므로 1등이고, 자기가 넣은 것 중 최고가가 온다
+        getResult(endedAuctionId, loginAs(winner)).andExpectAll(
+                jsonPath("$.winner.mine").value(true),
+                jsonPath("$.sellerIsMine").value(false),
+                jsonPath("$.myBid.amount").value(24000000),
+                jsonPath("$.myBid.rank").value(1));
+
+        // then 2 : 탈락자는 두 번 넣었으므로 높은 쪽이 오고, 위에 한 사람이 있어 2등이다
+        // 입찰자 수와 짝지어 "2명 중 2번째" 가 된다
+        getResult(endedAuctionId, loginAs(loser)).andExpectAll(
+                jsonPath("$.winner.mine").value(false),
+                jsonPath("$.myBid.amount").value(23000000),
+                jsonPath("$.myBid.rank").value(2),
+                jsonPath("$.bidderCount").value(2));
+
+        // then 3 : 판매자는 입찰한 적이 없어 성적이 없고, 대신 파는 사람으로 판정된다
+        getResult(endedAuctionId, loginAs(seller)).andExpectAll(
+                jsonPath("$.sellerIsMine").value(true),
+                jsonPath("$.winner.mine").value(false),
+                jsonPath("$.myBid").value(nullValue()));
+
+        // then 4 : 구경꾼은 어느 쪽도 아니다, 성적 자리가 필드마다 null 이 아니라 통째로 비어 있다
+        getResult(endedAuctionId, loginAs(onlooker)).andExpectAll(
+                jsonPath("$.sellerIsMine").value(false),
+                jsonPath("$.winner.mine").value(false),
+                jsonPath("$.myBid").value(nullValue()));
+    }
+
+    // 화면은 시작가에서 낙찰가까지 오른 과정을 선으로 그리고 내 입찰만 다른 색으로 찍는다
+    @Test
+    @DisplayName("시나리오 1-2 : 가격이 오른 과정 -> 넣은 순서대로 오고 내 입찰만 표시된다")
+    void scenario1_2_PriceCurve() throws Exception {
+        // given : 두 사람이 번갈아 네 번 넣어 값이 올랐다
+        User winner = users.user("이준호", Role.DEALER);
+        User loser = users.user("남궁민수", Role.DEALER);
+
+        long endedAuctionId = rooms.room(users.user("최판매", Role.GENERAL), ENDED_START_AT)
+                .startPrice(20_000_000L)
+                .bid(ENDED_START_AT.plusMinutes(5), loser, 21_000_000L)
+                .bid(ENDED_START_AT.plusMinutes(10), winner, 22_000_000L)
+                .bid(ENDED_START_AT.plusMinutes(15), loser, 23_000_000L)
+                .bid(ENDED_START_AT.plusMinutes(18), winner, 24_000_000L)
+                .closed()
+                .create();
+
+        ResultActions response = getResult(endedAuctionId, loginAs(loser));
+
+        // then 1 : 호가창의 스무 건 제한과 달리 전부 오고, 최신순이 아니라 시간순이라 선이 왼쪽부터 그려진다
+        response.andExpectAll(
+                jsonPath("$.priceCurve.length()").value(4),
+                jsonPath("$.priceCurve[0].amount").value(21000000),
+                jsonPath("$.priceCurve[0].at").value("2026-08-03T18:35:00"));
+
+        // then 2 : 마지막 점이 곧 낙찰가다, 어긋나면 곡선의 끝과 요약 숫자가 다르게 보인다
+        response.andExpect(jsonPath("$.priceCurve[3].amount").value(24000000))
+                .andExpect(jsonPath("$.winningPrice").value(24000000));
+
+        // then 3 : 내가 넣은 두 점만 표시된다, 보는 사람이 바뀌면 표시도 옮겨간다
+        response.andExpectAll(
+                jsonPath("$.priceCurve[0].mine").value(true),
+                jsonPath("$.priceCurve[1].mine").value(false),
+                jsonPath("$.priceCurve[2].mine").value(true),
+                jsonPath("$.priceCurve[3].mine").value(false));
+
+        // then 4 : 곡선은 이름을 싣지 않는다, 누가 얼마를 불렀는지는 호가창이 답할 일이다
+        response.andExpectAll(
+                jsonPath("$.priceCurve[0].name").doesNotHaveJsonPath(),
+                jsonPath("$.priceCurve[0].bidderId").doesNotHaveJsonPath());
     }
 
     @Test
@@ -140,6 +250,12 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         response.andExpectAll(
                 jsonPath("$.winningPrice").value(nullValue()),
                 jsonPath("$.winner").value(nullValue()));
+
+        // 오른 적이 없으니 곡선은 빈 배열이다, 여기만 null 로 내리면 화면이 배열 하나를 두 가지로 다뤄야 한다
+        response.andExpectAll(
+                jsonPath("$.priceCurve").isArray(),
+                jsonPath("$.priceCurve.length()").value(0),
+                jsonPath("$.bidderCount").value(0));
     }
 
     @Test

@@ -7,7 +7,7 @@ export function Footer() {
         <div className="space-y-1">
           <BrandLogo className="h-8" />
           <p className="text-xs">
-            Real Time Auction Car Exchange · 중고차 실시간 경매 플랫폼
+            평가 기반 중고차 실시간 경매 플랫폼
           </p>
         </div>
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-xs" aria-label="푸터 메뉴">

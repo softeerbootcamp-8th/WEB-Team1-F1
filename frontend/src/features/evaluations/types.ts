@@ -2,6 +2,7 @@ import type {
   FuelType,
   Manufacturer,
   Transmission,
+  VehicleKeyword,
 } from '@/features/quote/types'
 
 export type EvaluationStatus =
@@ -72,6 +73,8 @@ export interface EvaluationDetail {
   imageUrls: string[]
   diagnosticReportUrl: string | null
   submittedAt: string | null
+  keywords: VehicleKeyword[]
+  rejectReason: string | null
 }
 
 export interface EvaluationResultRequest {
@@ -79,6 +82,15 @@ export interface EvaluationResultRequest {
   estimatedPrice: number
   imageUrls: string[]
   diagnosticReportUrl: string
+  keywords: VehicleKeyword[]
+}
+
+export interface EvaluationResultPatchRequest {
+  mileage?: number
+  estimatedPrice?: number
+  imageUrls?: string[]
+  diagnosticReportUrl?: string
+  keywords?: VehicleKeyword[]
 }
 
 export interface EvaluationResult extends EvaluationResultRequest {
@@ -88,23 +100,11 @@ export interface EvaluationResult extends EvaluationResultRequest {
   submittedAt: string
 }
 
-export type UploadContentType =
-  | 'image/jpeg'
-  | 'image/png'
-  | 'image/webp'
-  | 'application/pdf'
-
-export interface PresignedUploadRequest {
-  files: { contentType: UploadContentType; contentLength: number }[]
+export interface EvaluationRejection {
+  evaluationId: number
+  status: 'REJECTED'
+  rejectReason: string
+  rejectedAt: string
 }
 
-export interface PresignedUpload {
-  key: string
-  uploadUrl: string
-  fileUrl: string
-  expiresAt: string
-}
-
-export interface PresignedUploadResponse {
-  uploads: PresignedUpload[]
-}
+// 업로드 형식과 발급 계약은 `@/lib/upload` 로 옮겼다. 진단서와 거래 서류가 같은 경로를 쓴다.

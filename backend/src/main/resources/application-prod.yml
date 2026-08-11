@@ -12,7 +12,23 @@ logging:
   level:
     root: info
 
-# 아직 http 라 auth.cookie.secure 를 켜지 않는다, 켜면 브라우저가 쿠키를 저장하지 않아 로그인이 막힌다
-# HTTPS 를 붙일 때 아래 셋을 함께 바꾼다, same-site 만 완화하면 CORS 가 열린 채로 남는다
-#   auth.cookie.secure: true / auth.cookie.same-site: None / auth.allowed-origins 를 실제 도메인으로
-# 프록시나 ALB 뒤에 두면 server.forward-headers-strategy: framework 도 필요하다
+auth:
+  cookie:
+    secure: true
+    # None 이 아니라 Lax 다. SameSite 의 site 는 scheme + eTLD+1 이라 서브도메인이 달라도
+    # www.f1race.site 와 api.f1race.site 는 같은 site 이고, 이 요청들은 cross-site 가 아니다
+    # None 으로 풀면 무관한 사이트에서 온 요청에도 세션이 실려 CSRF 방어만 잃는다
+    same-site: Lax
+  # 오리진은 다르므로(호스트가 다르다) CORS 는 여전히 필요하다
+  # 프론트는 credentials: 'include' 로 보내야 쿠키가 실린다
+  allowed-origins:
+    - https://www.f1race.site
+
+# 문서 경로는 AuthInterceptor 가 거는 /api/** 밖이라 인증을 타지 않는다
+# 켜 두면 전체 엔드포인트와 스키마가 무인증으로 공개된다, 같은 문서는 로컬에서 그대로 나온다
+# 되살릴 때는 auth.allowed-origins 에 https://api.f1race.site 도 넣어야 POST 가 동작한다
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false

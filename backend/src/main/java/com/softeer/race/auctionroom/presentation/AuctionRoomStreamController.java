@@ -33,12 +33,12 @@ public class AuctionRoomStreamController implements AuctionRoomStreamApi {
     public ResponseEntity<SseEmitter> stream(
             @PathVariable("auctionId") long auctionId,
 
-            // 값을 쓰지 않는다. 방송 내용이 보는 사람과 무관해 신원이 필요 없고 로그인 여부만 확인하면
-            // 되는데, AuthInterceptor 가 인증 요구를 이 파라미터의 유무로만 판정하므로 이것이 유일한
-            // 선언 수단이다. 안 쓴다고 지우면 구독이 조용히 비로그인에 열린다
+            // AuthInterceptor 가 인증 요구를 이 파라미터의 유무로만 판정하므로 로그인을 요구하는
+            // 유일한 선언 수단이다, 값을 안 쓰게 바뀌더라도 지우면 구독이 조용히 비로그인에 열린다
             @LoginUser AuthenticatedUser authenticatedUser) {
         SseEmitter emitter = new SseEmitter(STREAM_TIMEOUT_MILLIS);
-        RoomSubscriber subscriber = new SseRoomSubscriber(auctionId, emitter);
+        RoomSubscriber subscriber =
+                new SseRoomSubscriber(auctionId, authenticatedUser.id(), emitter);
 
         // 타임아웃 뒤에 완료 콜백이 잇달아 와서 해제가 두 번 불린다
         AtomicBoolean released = new AtomicBoolean();

@@ -40,10 +40,10 @@ export function PriceBoard({
   }, [flashKey, currentPrice])
 
   return (
-    <div className="dark bg-background text-foreground overflow-hidden rounded-xl border">
+    <div className="overflow-hidden rounded-xl border">
       <div className="grid md:grid-cols-[1fr_auto]">
         <div className="border-border border-b p-6 md:border-r md:border-b-0">
-          <span className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
+          <span className="text-muted-foreground text-base font-medium tracking-widest">
             현재가
           </span>
           <div
@@ -54,10 +54,10 @@ export function PriceBoard({
               <span className="tabular text-price-up text-5xl font-bold tracking-tight tabular-nums md:text-6xl">
                 {currentPrice.toLocaleString('ko-KR')}
               </span>
-              <span className="text-muted-foreground text-xl">원</span>
+              <span className="text-muted-foreground text-3xl">원</span>
             </div>
           </div>
-          <p className="text-muted-foreground mt-3 text-sm">
+          <p className="text-muted-foreground mt-3 text-lg">
             시작가{' '}
             <span className="tabular text-foreground font-medium">
               {formatKRW(startPrice)}
@@ -65,19 +65,19 @@ export function PriceBoard({
           </p>
         </div>
 
-        <div className="flex min-w-52 flex-col justify-center p-6 md:text-right">
-          <span className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
+        <div className="flex min-w-64 flex-col justify-center p-6 md:text-right">
+          <span className="text-muted-foreground text-base font-medium tracking-widest">
             남은 시간
           </span>
           <Countdown
             targetIso={endAt}
             offsetMs={clockOffset}
-            className="tabular mt-2 text-3xl font-semibold"
+            className="tabular mt-2 text-4xl font-semibold md:text-5xl"
           />
-          <p className="text-muted-foreground mt-2 text-xs">
+          <p className="text-muted-foreground mt-2 text-base">
             {formatClock(startAt)} 시작 · {formatClock(endAt)} 마감
           </p>
-          <p className="text-muted-foreground mt-1 min-h-5 text-xs">
+          <p className="text-muted-foreground mt-1 min-h-6 text-base">
             {extended ? '새 입찰이 반영되어 마감 시간이 연장됐습니다.' : '서버 마감 시각 기준'}
           </p>
         </div>

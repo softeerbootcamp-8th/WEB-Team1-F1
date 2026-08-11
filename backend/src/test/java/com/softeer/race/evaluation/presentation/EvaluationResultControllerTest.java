@@ -7,6 +7,7 @@ import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.presentation.GlobalExceptionHandler;
 import com.softeer.race.evaluation.application.EvaluationResultService;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import com.softeer.race.evaluation.application.dto.command.EvaluationResultSubmitCommand;
 import com.softeer.race.evaluation.application.dto.info.EvaluationResultInfo;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
@@ -66,7 +67,8 @@ class EvaluationResultControllerTest {
               "mileage": 45000,
               "estimatedPrice": 21500000,
               "imageUrls": ["%s"],
-              "diagnosticReportUrl": "%s"
+              "diagnosticReportUrl": "%s",
+              "keywords": ["ACCIDENT_FREE", "NO_LEAK"]
             }
             """.formatted(IMAGE_URL, DOCUMENT_URL);
 
@@ -132,11 +134,51 @@ class EvaluationResultControllerTest {
                   "mileage": 0,
                   "estimatedPrice": 21500000,
                   "imageUrls": ["%s"],
-                  "diagnosticReportUrl": "%s"
+                  "diagnosticReportUrl": "%s",
+                  "keywords": []
                 }
                 """.formatted(IMAGE_URL, DOCUMENT_URL))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("mileage"));
+
+        then(evaluationResultService).shouldHaveNoInteractions();
+    }
+
+    /**
+     * 빈 배열은 허용하지만 필드를 빼는 것은 막는다. 0개를 정상으로 받으면서 필드 없는 요청까지
+     * 통과시키면, 이름을 잘못 적어 보낸 요청이 키워드 없이 조용히 승인된다.
+     */
+    @Test
+    @DisplayName("키워드 필드를 빼면 400")
+    void submitRejectsMissingKeywords() throws Exception {
+        request("""
+                {
+                  "mileage": 45000,
+                  "estimatedPrice": 21500000,
+                  "imageUrls": ["%s"],
+                  "diagnosticReportUrl": "%s"
+                }
+                """.formatted(IMAGE_URL, DOCUMENT_URL))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("keywords"));
+
+        then(evaluationResultService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("모르는 키워드를 보내면 400")
+    void submitRejectsUnknownKeyword() throws Exception {
+        // given : enum 이라 역직렬화에서 걸린다. 자유 문자열이면 오타가 그대로 저장됐을 것이다
+        request("""
+                {
+                  "mileage": 45000,
+                  "estimatedPrice": 21500000,
+                  "imageUrls": ["%s"],
+                  "diagnosticReportUrl": "%s",
+                  "keywords": ["NO_ACCIDENT"]
+                }
+                """.formatted(IMAGE_URL, DOCUMENT_URL))
+                .andExpect(status().isBadRequest());
 
         then(evaluationResultService).shouldHaveNoInteractions();
     }
@@ -150,7 +192,8 @@ class EvaluationResultControllerTest {
                   "mileage": 45000,
                   "estimatedPrice": 21500000,
                   "imageUrls": [],
-                  "diagnosticReportUrl": "%s"
+                  "diagnosticReportUrl": "%s",
+                  "keywords": []
                 }
                 """.formatted(DOCUMENT_URL))
                 .andExpect(status().isBadRequest())
@@ -203,7 +246,8 @@ class EvaluationResultControllerTest {
         given(evaluationResultService.submit(any(EvaluationResultSubmitCommand.class)))
                 .willReturn(new EvaluationResultInfo(
                         EVALUATION_ID, VEHICLE_ID, "APPROVED", 45_000, 21_500_000L,
-                        List.of(IMAGE_URL), DOCUMENT_URL, SUBMITTED_AT));
+                        List.of(IMAGE_URL), DOCUMENT_URL, SUBMITTED_AT,
+                        List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK)));
     }
 
     private EvaluationResultSubmitCommand captureCommand() {

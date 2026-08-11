@@ -55,6 +55,9 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
     // 마감(시작 + 20분)에 결과 확인 5분까지 지난 시각이 되도록 뒤로 물린다
     private static final LocalDateTime CLOSED_START_AT = LocalDateTime.of(2026, 8, 3, 18, 30);
 
+    // 마감은 지났고 결과 확인 5분은 아직 남은 시각
+    private static final LocalDateTime RESULT_START_AT = LocalDateTime.of(2026, 8, 3, 20, 23);
+
     private static final long MISSING_AUCTION_ID = 999L;
 
     @BeforeEach
@@ -64,7 +67,7 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
 
     @Test
     @DisplayName("시나리오 1 : 진행 중 경매방 구독 -> 연결이 열린 채 첫 현황이 오고, 다음 사람이 들어오면 이미 열린 연결로도 흘러 들어간다")
-    void scenario1_Subscribe_ReceivesStateAndLaterBroadcast() throws Exception {
+    void subscribingReceivesStateAndLaterBroadcast() throws Exception {
         // given
         long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
 
@@ -96,6 +99,7 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
                 .contains("\"name\":\"김*현\"")
                 .doesNotContain("\"mine\"")
                 .doesNotContain("bidderId")
+                .doesNotContain("viewerId")
                 .doesNotContain("김민현");
 
         // when : 두 번째 사람이 같은 방에 들어온다
@@ -109,7 +113,7 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
 
     @Test
     @DisplayName("시나리오 2 : 완전히 닫힌 방 구독 -> 열어 둘 이유가 없으므로 거절한다")
-    void scenario2_ClosedRoom_Rejected() throws Exception {
+    void closedRoomIsRejected() throws Exception {
         // given : 마감 후 5분이 지난 방, 낙찰자는 이 판정과 무관하다
         long closedAuctionId = rooms.room(users.user("최판매", Role.GENERAL), CLOSED_START_AT).create();
 
@@ -124,8 +128,23 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("시나리오 2-1 : 마감 직후 결과 구간 방 구독 -> 방은 열려 있지만 보낼 현황이 없어 거절한다")
+    void resultRoomIsRejected() throws Exception {
+        // given : 마감은 지났고 결과 확인 5분은 남은 방
+        long resultAuctionId = rooms.room(users.user("최판매", Role.GENERAL), RESULT_START_AT).create();
+
+        // when : 구독을 건다
+        ResultActions response = subscribe(resultAuctionId);
+
+        // then : 조회는 열려 있는 단계라 닫힌 방과 사유가 다르다, 화면은 이 코드로 결과를 받으러 간다
+        response.andExpectAll(
+                status().isConflict(),
+                jsonPath("$.code").value("ROOM_STREAM_ENDED"));
+    }
+
+    @Test
     @DisplayName("시나리오 3 : 없는 경매 구독 -> 구독을 만들지 않고 404 다")
-    void scenario3_MissingAuction_NotFound() throws Exception {
+    void missingAuctionIsNotFound() throws Exception {
         // when : 존재하지 않는 경매를 구독
         ResultActions response = subscribe(MISSING_AUCTION_ID);
 
@@ -137,7 +156,7 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
 
     @Test
     @DisplayName("시나리오 4 : 세션 없이 구독 -> 연결을 열지 않고 401")
-    void scenario4_WithoutSession_Unauthorized() throws Exception {
+    void sessionlessSubscribeIsUnauthorized() throws Exception {
         // given : 쿠키만 있으면 열렸을 진행 중인 방이다, 401 이 방 단계 때문이 아님을 분명히 한다
         long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
 
@@ -150,7 +169,7 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
 
     @Test
     @DisplayName("시나리오 5 : 서버가 방을 끊음 -> 열려 있던 연결이 실제로 끝난다")
-    void scenario5_ServerClosesRoom_ConnectionEnds() throws Exception {
+    void serverClosingRoomEndsConnection() throws Exception {
         // given : 진행 중인 방에 한 사람이 붙어 있다
         long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
         MvcResult opened = subscribe(liveAuctionId).andExpect(request().asyncStarted()).andReturn();
@@ -165,7 +184,7 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
 
     @Test
     @DisplayName("시나리오 6 : 구독 중 세션 만료 -> 다 내려간 응답이 인증 때문에 뒤집히지 않는다")
-    void scenario6_SessionExpiredWhileSubscribed_ResponseStands() throws Exception {
+    void expiredSessionDoesNotOverturnSentResponse() throws Exception {
         // given : 붙어 있는 사이 세션 유효기간이 지난다
         long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
         MvcResult opened = subscribe(liveAuctionId).andExpect(request().asyncStarted()).andReturn();
@@ -188,7 +207,7 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
     // 순서를 관찰할 수 없고, 그것은 채널 단위테스트가 콜백을 흉내 내어 잡는다
     @Test
     @DisplayName("시나리오 7 : 여럿이 있는 방을 끊음 -> 모두의 연결이 끝나고 아무에게도 현황이 더 가지 않는다")
-    void scenario7_ClosingRoom_EndsEveryConnection() throws Exception {
+    void closingRoomEndsEveryConnection() throws Exception {
         // given : 같은 방에 둘이 붙어 있다, 두 번째가 들어오며 첫 번째는 갱신을 한 번 더 받았다
         long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
         MvcResult first = subscribe(liveAuctionId).andExpect(request().asyncStarted()).andReturn();
@@ -210,6 +229,25 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
         assertThat(stateCount(second)).isEqualTo(sentToSecond);
     }
 
+    @Test
+    @DisplayName("시나리오 8 : 한 사람이 창을 둘 열어 구독 -> 접속자는 한 명으로 센다")
+    void sameSessionTwiceCountsOneViewer() throws Exception {
+        // given : 같은 사람이 창을 두 개 여는 것이라 쿠키가 같다
+        long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
+        String sessionToken = loginAs(users.user("한구경", Role.DEALER));
+
+        // when : 같은 세션으로 두 번 구독한다
+        MvcResult first = subscribeAs(liveAuctionId, sessionToken)
+                .andExpect(request().asyncStarted())
+                .andReturn();
+        subscribeAs(liveAuctionId, sessionToken).andExpect(status().isOk());
+
+        // then : 연결은 둘인데 사람은 하나다, 두 번째 창이 열려도 접속자 수가 늘지 않는다
+        assertThat(body(first))
+                .contains("\"connectedCount\":1")
+                .doesNotContain("\"connectedCount\":2");
+    }
+
     // ================= 준비 ====================
     // 그 사람이 그 금액을 부른 진행 중인 방, 판매자와 시작 시각은 이 테스트가 보지 않는다
     // 한 사람이 두 번 넣는다, 건수와 사람 수가 달라야 두 값이 바꿔 실린 것을 단정이 잡는다
@@ -224,10 +262,13 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
     }
 
     // ================= 요청 ====================
-    // 구독은 신원이 아니라 로그인 여부만 본다, 호출마다 다른 사람이 붙어도 결과가 같아야 한다
+    // 부를 때마다 다른 사람이 붙는다, UserSeeder 가 호출마다 새 회원을 만들기 때문이다
     private ResultActions subscribe(long auctionId) throws Exception {
-        String sessionToken = loginAs(users.user("한구경", Role.DEALER));
+        return subscribeAs(auctionId, loginAs(users.user("한구경", Role.DEALER)));
+    }
 
+    // 한 사람이 창을 여럿 여는 것을 흉내내려면 세션을 밖에서 정할 수 있어야 한다
+    private ResultActions subscribeAs(long auctionId, String sessionToken) throws Exception {
         return mockMvc.perform(get("/api/auctions/{auctionId}/room/stream", auctionId)
                 .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, sessionToken)));
     }

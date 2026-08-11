@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -18,8 +19,9 @@ public interface AuctionRoomRepository extends Repository<Auction, Long> {
     @Query("""
             select new com.softeer.race.auctionroom.domain.AuctionRoomDetail(
                 a.id, a.status, a.startPrice, a.currentPrice, a.roomOpenAt, a.startTime, a.currentEndTime,
+                a.extensionCount,
                 v.manufacturer, v.model, v.modelYear, v.mileage, v.fuelType,
-                v.mainPhotoUrl, w.id, w.realName)
+                v.diagnosticReportUrl, v.seller.id, w.id, w.realName)
             from Auction a
             join a.post p
             join p.vehicle v
@@ -28,4 +30,18 @@ public interface AuctionRoomRepository extends Repository<Auction, Long> {
               and p.deletedAt is null
             """)
     Optional<AuctionRoomDetail> findDetailById(@Param("auctionId") long auctionId);
+
+    /**
+     * 화면에 보일 차량 사진 주소, 등록 순서 그대로다
+     */
+    @Query("""
+            select i.imageUrl
+            from Auction a
+            join a.post p
+            join p.vehicle v
+            join VehicleImage i on i.vehicle = v
+            where a.id = :auctionId
+            order by i.sortOrder
+            """)
+    List<String> findPhotoUrls(@Param("auctionId") long auctionId);
 }

@@ -2,10 +2,15 @@ import { Pencil, Trash2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { canDeleteAuction, canEditAuction } from '@/lib/auction'
-import type { AuctionListCard } from '@/features/auctions/types'
+import type { AuctionBadgeStatus } from '@/types/domain'
 
 interface MyAuctionActionsProps {
-  auction: AuctionListCard
+  /**
+   * 지금 시각으로 판정한 뱃지 단계(badgeStatusAt). 서버가 준 phase 를 쓰지 않는 이유는
+   * 카드가 뱃지를 시각으로 그리기 때문이다. 두 판정이 갈리면 한 카드 안에서
+   * "입장 가능" 뱃지 옆에 수정 버튼이 남고, 눌러도 서버가 거절한다.
+   */
+  status: AuctionBadgeStatus
   onEdit: () => void
   onDelete: () => void
 }
@@ -14,15 +19,15 @@ interface MyAuctionActionsProps {
  * 나의 경매 카드에 붙는 수정·삭제.
  * 지금 할 수 없는 동작은 버튼 자체를 내리고, 이유를 한 줄로 남긴다.
  */
-export function MyAuctionActions({ auction, onEdit, onDelete }: MyAuctionActionsProps) {
-  const editable = canEditAuction(auction.phase)
-  const deletable = canDeleteAuction(auction.phase)
+export function MyAuctionActions({ status, onEdit, onDelete }: MyAuctionActionsProps) {
+  const editable = canEditAuction(status)
+  const deletable = canDeleteAuction(status)
 
   if (!editable && !deletable) {
-    // 방이 열렸는데 아직 시작 전이면 뱃지는 그대로 "예정"이다. 옆의 예정 카드에는 수정 버튼이
-    // 있는데 이 카드만 없는 상태라, 사라진 이유를 밝히지 않으면 같은 상태로 보인다.
+    // 방이 열린 카드는 뱃지가 "입장 가능"으로 갈리지만, 그 뱃지는 입장 여부를 말할 뿐
+    // 수정이 막힌 이유까지 설명하지는 않는다. 버튼이 사라진 까닭은 따로 밝힌다.
     const message =
-      auction.phase === 'WAITING'
+      status === 'WAITING'
         ? '경매방이 열려 수정할 수 없습니다.'
         : '경매가 끝나면 삭제할 수 있습니다.'
 

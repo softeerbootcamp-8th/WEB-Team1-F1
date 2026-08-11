@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -55,7 +56,7 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("입찰이 성립하면 보고 있던 사람의 현황이 갱신된다")
+    @DisplayName("시나리오 1 : 입찰이 성립하면 보고 있던 사람의 현황이 갱신된다")
     void bidReachesWatchers() {
         // given : 진행 중인 방을 한 사람이 보고 있다, 들어올 때 받은 첫 현황은 아직 시작가다
         auctionId = liveRoom();
@@ -75,7 +76,7 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("마감 직전 입찰로 연장되면 밀린 마감도 함께 나간다")
+    @DisplayName("시나리오 2 : 마감 직전 입찰로 연장되면 밀린 마감도 함께 나간다")
     void extendedDeadlineReachesWatchers() {
         // given : 마감이 10초 남은 방을 한 사람이 보고 있다
         auctionId = closingRoom();
@@ -92,7 +93,7 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
 
     @Test
     @Transactional
-    @DisplayName("입찰이 롤백되면 방송도 나가지 않는다")
+    @DisplayName("시나리오 3 : 입찰이 롤백되면 방송도 나가지 않는다")
     void rolledBackBidIsNotBroadcast() {
         // given : 진행 중인 방을 한 사람이 보고 있다
         auctionId = liveRoom();
@@ -122,7 +123,16 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     // 받은 현황만 기록하면 되는 구독, 끊김은 이 테스트가 보지 않는다
     private static final class RecordingSubscriber implements RoomSubscriber {
 
+        // 이 테스트는 사람이 몇인지 보지 않는다, 서로 다른 사람이기만 하면 된다
+        private static final AtomicLong VIEWER_SERIAL = new AtomicLong();
+
         private final List<RoomState> received = new ArrayList<>();
+        private final long viewerId = VIEWER_SERIAL.incrementAndGet();
+
+        @Override
+        public long viewerId() {
+            return viewerId;
+        }
 
         List<RoomState> received() {
             return received;

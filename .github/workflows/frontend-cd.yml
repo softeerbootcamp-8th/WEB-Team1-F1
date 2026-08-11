@@ -1,0 +1,82 @@
+name: Frontend CD
+
+# main push 에 대한 Frontend CI 가 끝난 뒤, 그 실행에서 검증한 산출물만 배포한다
+on:
+  workflow_run:
+    workflows: [Frontend CI]
+    types: [completed]
+
+# 같은 배포가 겹치면 S3 에 서로 다른 버전의 파일이 섞일 수 있어 순서대로 처리한다
+concurrency:
+  group: frontend-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  deploy:
+    name: Deploy via EC2
+    # PR/dev 실행과 실패한 CI 는 배포하지 않는다
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # CI 실행이 올린 커밋별 dist 를 그대로 받아 로컬 재빌드 차이를 없앤다
+      - name: Download build output
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-dist-${{ github.event.workflow_run.head_sha }}
+          path: dist
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 커밋별 디렉터리를 사용해 이전 배포에서 삭제된 파일이 섞이지 않게 한다
+      - name: Copy build output to EC2
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: dist
+          target: /home/ec2-user/race-frontend/releases/${{ github.event.workflow_run.head_sha }}
+
+      # AWS 키를 전달하지 않고 EC2 instance role 의 임시 자격 증명을 사용한다
+      - name: Deploy to S3 and invalidate CloudFront
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: RELEASE_SHA
+          script: |
+            set -euo pipefail
+
+            # 삭제 경로에 외부 입력을 쓰므로 커밋 SHA 형식을 먼저 제한한다
+            if [[ ! "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "올바르지 않은 커밋 SHA: $RELEASE_SHA"
+              exit 1
+            fi
+
+            RELEASE_ROOT="/home/ec2-user/race-frontend/releases/${RELEASE_SHA}"
+            RELEASE_DIR="${RELEASE_ROOT}/dist"
+            trap 'rm -rf "$RELEASE_ROOT"' EXIT
+
+            test -f "${RELEASE_DIR}/index.html"
+
+            aws s3 sync \
+              "${RELEASE_DIR}/" \
+              s3://race-s3-819363426327-ap-northeast-2-an/ \
+              --delete
+
+            aws cloudfront create-invalidation \
+              --distribution-id E1FW7NAZPBWSR4 \
+              --paths "/*"
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+

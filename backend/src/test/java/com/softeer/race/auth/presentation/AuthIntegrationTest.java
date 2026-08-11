@@ -149,15 +149,33 @@ class AuthIntegrationTest extends IntegrationTestSupport {
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
 
-    // 오리진이 확정되지 않아 전면 개방한 상태를 고정한다
-    // 응답이 * 가 아니라 요청 Origin 을 되돌려주는 것이 자격 증명과 공존하는 조건이다
+    // 목록에 없는 오리진은 preflight 단계에서 끊긴다, 브라우저는 실제 요청을 보내지 않는다
+    // allowedOrigins 가 비어 CorsRegistration 의 기본값 * 가 되살아나면 이 테스트가 먼저 깨진다
     @Test
-    @DisplayName("시나리오 7 : 목록에 없던 오리진도 허용되고 응답에는 그 오리진이 그대로 돌아온다")
-    void scenario7_AnyOriginIsAllowedForNow() throws Exception {
+    @DisplayName("시나리오 7 : 목록에 없는 오리진의 preflight는 거부되고 허용 헤더가 나가지 않는다")
+    void scenario7_UnknownOriginIsRejected() throws Exception {
         preflight("http://192.168.0.10:5173")
-                .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "http://192.168.0.10:5173"))
-                .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+    }
+
+    // 백엔드 자신의 오리진(8080)을 목록에서 빼면 이 테스트가 403 으로 깨진다
+    // Spring 5.3 부터 CorsUtils.isCorsRequest 는 Origin 헤더의 존재만 보고 요청 URL 과 비교하지 않는데,
+    // 브라우저는 same-origin 이라도 GET/HEAD 가 아니면 Origin 을 붙인다
+    // 그래서 8080 에 뜬 Swagger UI 에서 GET 은 되고 POST 만 403 이 되는 형태로 나타난다
+    @Test
+    @DisplayName("시나리오 8 : 백엔드 자신의 오리진에서 온 POST도 CORS 검사를 타므로 목록에 있어야 통과한다")
+    void scenario8_SameOriginPostStillNeedsAllowedOrigin() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .header("Origin", "http://localhost:8080")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "%s",
+                                  "password": "%s"
+                                }
+                                """.formatted(USERNAME, PASSWORD)))
+                .andExpect(status().isOk());
     }
 
     // ================= 요청 ====================
