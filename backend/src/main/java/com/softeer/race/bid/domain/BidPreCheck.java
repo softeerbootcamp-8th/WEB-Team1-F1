@@ -9,7 +9,9 @@ import java.time.LocalDateTime;
  */
 public record BidPreCheck(
         Role role,
+        String bidderRealName,
         Long sellerId,
+        String vehicleModel,
         Long startPrice,
         Long currentPrice,
         LocalDateTime startTime,

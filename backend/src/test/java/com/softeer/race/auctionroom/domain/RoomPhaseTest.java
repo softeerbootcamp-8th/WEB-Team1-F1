@@ -16,6 +16,7 @@ import java.util.stream.Stream;
 import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_ALREADY_CLOSED;
 import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_ALREADY_OPEN;
 import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_NOT_OPEN_YET;
+import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_STREAM_ENDED;
 import static com.softeer.race.auctionroom.domain.RoomPhase.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -51,10 +52,24 @@ class RoomPhaseTest {
     }
 
     @Test
-    @DisplayName("거절 사유가 없는 단계가 곧 접속자로 세는 단계다")
-    void connectionFollowsRejection() {
+    @DisplayName("연결을 열어 두는 단계는 대기와 진행뿐이다, 결과 구간은 들어올 수는 있어도 연결은 받지 않는다")
+    void connectionEndsAtDeadline() {
         assertThat(Arrays.stream(RoomPhase.values()).filter(RoomPhase::allowsConnection))
-                .containsExactly(RoomPhase.WAITING, RoomPhase.LIVE, RoomPhase.RESULT);
+                .containsExactly(RoomPhase.WAITING, RoomPhase.LIVE);
+
+        // 두 문이 갈라지는 유일한 지점이다, 입장 거절 사유가 없는데도 연결은 거절된다
+        assertThat(RoomPhase.RESULT.entryRejection()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("구독 거절 사유는 아직 열리지 않음과 마감됨과 이미 끝남으로 갈린다")
+    void streamRejectionSplitsByReason() {
+        assertThat(RoomPhase.NOT_OPEN.streamRejection()).contains(ROOM_NOT_OPEN_YET);
+        assertThat(RoomPhase.RESULT.streamRejection()).contains(ROOM_STREAM_ENDED);
+        assertThat(RoomPhase.CLOSED.streamRejection()).contains(ROOM_ALREADY_CLOSED);
+
+        assertThat(RoomPhase.WAITING.streamRejection()).isEmpty();
+        assertThat(RoomPhase.LIVE.streamRejection()).isEmpty();
     }
 
     @Test

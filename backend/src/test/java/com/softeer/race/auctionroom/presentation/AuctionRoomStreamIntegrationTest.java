@@ -55,6 +55,9 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
     // 마감(시작 + 20분)에 결과 확인 5분까지 지난 시각이 되도록 뒤로 물린다
     private static final LocalDateTime CLOSED_START_AT = LocalDateTime.of(2026, 8, 3, 18, 30);
 
+    // 마감은 지났고 결과 확인 5분은 아직 남은 시각
+    private static final LocalDateTime RESULT_START_AT = LocalDateTime.of(2026, 8, 3, 20, 23);
+
     private static final long MISSING_AUCTION_ID = 999L;
 
     @BeforeEach
@@ -122,6 +125,21 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
         response.andExpectAll(
                 status().isConflict(),
                 jsonPath("$.code").value("ROOM_ALREADY_CLOSED"));
+    }
+
+    @Test
+    @DisplayName("시나리오 2-1 : 마감 직후 결과 구간 방 구독 -> 방은 열려 있지만 보낼 현황이 없어 거절한다")
+    void resultRoomIsRejected() throws Exception {
+        // given : 마감은 지났고 결과 확인 5분은 남은 방
+        long resultAuctionId = rooms.room(users.user("최판매", Role.GENERAL), RESULT_START_AT).create();
+
+        // when : 구독을 건다
+        ResultActions response = subscribe(resultAuctionId);
+
+        // then : 조회는 열려 있는 단계라 닫힌 방과 사유가 다르다, 화면은 이 코드로 결과를 받으러 간다
+        response.andExpectAll(
+                status().isConflict(),
+                jsonPath("$.code").value("ROOM_STREAM_ENDED"));
     }
 
     @Test

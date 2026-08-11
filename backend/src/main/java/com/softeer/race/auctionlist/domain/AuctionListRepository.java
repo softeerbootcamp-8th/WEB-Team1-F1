@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 경매글 목록 조회. 그룹마다 정렬 키가 달라 쿼리를 나누고, 차량 조건은 값이 있는 것만 SQL 에 붙인다.
@@ -98,6 +99,18 @@ public class AuctionListRepository {
         sql.append(order(group)).append("limit :limit");
 
         return jdbcTemplate.query(sql.toString(), params, CARD_ROW);
+    }
+
+    /**
+     * 방송할 경매 하나. 삭제된 경매글은 목록과 같은 이유로 빠진다.
+     */
+    public Optional<AuctionListRow> findRow(long auctionId) {
+        // 방송이 들고 오는 것은 경매 id 하나뿐이라 커서로 페이지를 읽는 쿼리로는 지목할 수 없다.
+        List<AuctionListRow> rows = jdbcTemplate.query(
+                SELECT_PLAIN + "and a.id = :auctionId",
+                new MapSqlParameterSource("auctionId", auctionId),
+                CARD_ROW);
+        return rows.stream().findFirst();
     }
 
     private void appendFilter(StringBuilder sql, MapSqlParameterSource params, AuctionListFilter filter) {

@@ -5,48 +5,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/common/empty-state'
-import { AuctionCard } from '@/features/auctions/components/auction-card'
-import { MOCK_AUCTIONS } from '@/features/auctions/mock'
-import type { AuctionListCard, RoomPhase } from '@/features/auctions/types'
 import { ROLE_LABEL, useAuth } from '@/features/auth/auth-context'
 import { MyRequestsPanel } from '@/features/evaluations/components/my-requests-panel'
 import { DealListPanel } from '../components/deal-list-panel'
-import type { AuctionCard as MockAuctionCard } from '@/types/domain'
-
-// 마이페이지는 아직 실제 Deal/참여 경매 API가 없어 mock을 쓴다.
-// AuctionCard 컴포넌트는 실제 목록 API 계약을 따르므로 여기서만 변환해 맞춘다.
-const STATUS_TO_PHASE: Record<MockAuctionCard['status'], RoomPhase> = {
-  SCHEDULED: 'WAITING',
-  LIVE: 'LIVE',
-  ENDED: 'CLOSED',
-}
-
-function toListCard(auction: MockAuctionCard): AuctionListCard {
-  return {
-    auctionId: auction.id,
-    phase: STATUS_TO_PHASE[auction.status],
-    thumbnailUrl: auction.thumbnailUrl || null,
-    // mock 에는 제조사가 없다. 담긴 여섯 대가 모두 기아 차종이라 그대로 고정한다
-    manufacturer: 'KIA',
-    model: auction.car.name,
-    modelYear: auction.car.year,
-    mileage: auction.car.mileageKm,
-    // mock 의 evaluationKeywords 는 '무사고' 같은 자유 문자열이라 VehicleKeyword 코드로 옮길 수 없다
-    keywords: [],
-    startPrice: auction.startPrice,
-    currentPrice: auction.currentPrice,
-    openAt: auction.startAt,
-    startAt: auction.startAt,
-    endAt: auction.endAt,
-    connectedCount: auction.participantCount,
-  }
-}
 
 /**
  * 탭이 곧 주소다. `/mypage/deals` 처럼 경로에 실어야 상세에서 돌아왔을 때 보던 탭이 유지되고,
  * 방문견적 상세(`/mypage/evaluations/:id`)와 규칙이 같아진다.
  */
-const TABS = ['evaluations', 'deals', 'auctions'] as const
+const TABS = ['evaluations', 'deals'] as const
 
 type Tab = (typeof TABS)[number]
 
@@ -84,8 +51,6 @@ export function MyPage() {
     )
   }
 
-  const participated = MOCK_AUCTIONS.filter((a) => a.status !== 'SCHEDULED').slice(0, 4)
-
   return (
     <main aria-label="마이페이지" className="mx-auto max-w-5xl px-6 py-10">
       <header className="mb-8 flex items-center gap-3">
@@ -102,7 +67,6 @@ export function MyPage() {
         <TabsList>
           <TabsTrigger value="evaluations">방문견적</TabsTrigger>
           <TabsTrigger value="deals">내 거래</TabsTrigger>
-          <TabsTrigger value="auctions">참여 경매</TabsTrigger>
         </TabsList>
 
         <TabsContent value="evaluations" className="mt-6">
@@ -111,17 +75,6 @@ export function MyPage() {
 
         <TabsContent value="deals" className="mt-6">
           <DealListPanel />
-        </TabsContent>
-
-        <TabsContent value="auctions" className="mt-6">
-          <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {participated.map((a) => (
-              <li key={a.id}>
-                {/* 목업 데이터라 서버 시각이 없다. 뱃지는 이 브라우저 시계로 판정된다 */}
-                <AuctionCard auction={toListCard(a)} nowMs={Date.now()} />
-              </li>
-            ))}
-          </ul>
         </TabsContent>
       </Tabs>
     </main>

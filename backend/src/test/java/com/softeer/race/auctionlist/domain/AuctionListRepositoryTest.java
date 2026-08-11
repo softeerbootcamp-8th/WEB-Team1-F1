@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -382,6 +383,34 @@ class AuctionListRepositoryTest extends IntegrationTestSupport {
         assertThat(row.auctionId()).isEqualTo(102L);
         assertThat(row.currentPrice()).isNull();
         assertThat(row.startPrice()).isEqualTo(38000000L);
+    }
+
+    // ================= 방송용 한 건 =================
+    // 방송은 경매 id 하나만 들고 온다, 커서로 페이지를 읽는 쿼리로는 지목할 수 없다
+
+    @Test
+    @DisplayName("경매 하나를 지목해 카드 값을 읽는다")
+    void findsRowByAuctionId() {
+        // when
+        Optional<AuctionListRow> row = auctionListRepository.findRow(101L);
+
+        // then
+        assertThat(row).isPresent();
+        assertThat(row.get().model()).isEqualTo("아반떼 CN7");
+        assertThat(row.get().currentPrice()).isEqualTo(11000000L);
+    }
+
+    @Test
+    @DisplayName("삭제된 경매글은 지목해도 나오지 않는다")
+    void doesNotFindDeletedPost() {
+        // 목록에서 빠진 경매가 방송으로 나가면 조회에는 없던 카드가 화면에 들어온다
+        assertThat(auctionListRepository.findRow(108L)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("없는 경매는 빈 값이다")
+    void findsNothingForMissingAuction() {
+        assertThat(auctionListRepository.findRow(999L)).isEmpty();
     }
 
     // ================= 호출 =================

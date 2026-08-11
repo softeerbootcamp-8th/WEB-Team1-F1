@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
-import { fetchAuctionList } from '@/features/auctions/api'
-import { serverClockOffset } from '@/lib/auction'
+import { fetchAuctionList, subscribeAuctionListStream } from '@/features/auctions/api'
+import { useDocumentVisible } from '@/hooks/use-document-visible'
+import { applyAudienceEvent, applyCardEvent, serverClockOffset } from '@/lib/auction'
 import type {
   AuctionListCard,
   AuctionListCursor,
@@ -72,6 +73,8 @@ export function clearAuctionListCache() {
  * 돌아오면 이 훅이 새로 마운트되는데, 그때 캐시가 신선하면 조회 없이 보던 자리부터 잇는다.
  */
 export function useAuctionList({ scope, filter, enabled = true }: UseAuctionListOptions) {
+  const visible = useDocumentVisible()
+
   // 마운트하는 순간에 동기로 복원한다. 이펙트에서 하면 스켈레톤이 한 프레임 그려진 뒤
   // 목록으로 갈아끼워져 화면이 튀고, 스크롤을 되돌리려 해도 그 사이엔 되돌아갈 높이가 없다.
   const [restored] = useState(() =>
@@ -199,6 +202,13 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
     }
   }, [scope, filter, enabled, reloadToken])
 
+  // 스트림으로 바뀐 값이 캐시에도 닿아야 한다, 안 그러면 경매방을 다녀오는 순간 값이 되돌아간다
+  // 업데이터 안에서 쓰지 않는다, StrictMode 가 업데이터를 두 번 불러 부수효과를 넣을 자리가 아니다
+  useEffect(() => {
+    const entry = listCache.get(cacheKeyOf(scope, filter))
+    if (entry) entry.cards = cards
+  }, [cards, scope, filter])
+
   const loadMore = useCallback(async () => {
     // 첫 페이지를 다시 읽는 중이면 지금 커서는 비어 있거나 이전 목록의 것이다.
     if (!cursor || isLoading || isLoadingMore) return
@@ -214,7 +224,9 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
       const page = await fetchAuctionList({ scope, filter, cursor })
       // 이전 목록의 페이지다. 그대로 붙이면 카드가 섞이고 커서까지 그 목록 것으로 덮인다.
       if (isStale()) return
-      const merged = [...cards, ...page.content]
+      // 스트림이 끼워 넣은 카드가 이 페이지에 다시 올 수 있다
+      const seen = new Set(cards.map((it) => it.auctionId))
+      const merged = [...cards, ...page.content.filter((it) => !seen.has(it.auctionId))]
       setCards(merged)
       setCursor(page.nextCursor)
       setHasNext(page.hasNext)
@@ -247,6 +259,44 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
     listCache.clear()
     setReloadToken((token) => token + 1)
   }, [])
+
+  // 이벤트가 도착한 그 순간의 서버 시각으로 판정해야 한다. 의존성에 넣으면 보정값이 바뀔 때마다
+  // 구독을 다시 연다
+  const offsetRef = useRef(offsetMs)
+  offsetRef.current = offsetMs
+
+  // 가려진 사이에 온 것은 유실이다. 서버가 다시 보내지 않으므로 돌아올 때 목록을 다시 읽는다.
+  // onReconnect 는 같은 EventSource 가 스스로 붙을 때만 돌아서 이 경로를 대신하지 못한다
+  const wasHidden = useRef(false)
+  useEffect(() => {
+    if (!visible) {
+      wasHidden.current = true
+      return
+    }
+
+    // 첫 표시에서는 부르지 않는다, 그때는 방금 조회한 목록이 최신이다
+    if (wasHidden.current) {
+      wasHidden.current = false
+      reload()
+    }
+  }, [visible, reload])
+
+  // filter 는 의존성이 아니다. 필터는 화면이 arrangeCards 로 거르는 것이라 구독을 다시 열 이유가 없다
+  useEffect(() => {
+    // 보지 않는 화면이 서버 연결을 물고 있을 이유가 없다
+    if (!enabled || !visible) return
+
+    return subscribeAuctionListStream({
+      onCard: (card) => {
+        setCards((current) => applyCardEvent(current, card, scope, Date.now() + offsetRef.current))
+      },
+      onAudience: ({ auctionId, connectedCount }) => {
+        setCards((current) => applyAudienceEvent(current, auctionId, connectedCount))
+      },
+      // 끊긴 동안 온 것은 유실이고 서버가 다시 보내지 않는다, 복구는 재조회 몫이다
+      onReconnect: reload,
+    })
+  }, [scope, enabled, visible, reload])
 
   return {
     cards,

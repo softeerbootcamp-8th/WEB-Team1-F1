@@ -7,8 +7,6 @@ import com.softeer.race.auctionlist.domain.AuctionListFilter;
 import com.softeer.race.auctionlist.domain.AuctionListGroup;
 import com.softeer.race.auctionlist.domain.AuctionListRepository;
 import com.softeer.race.auctionlist.domain.AuctionListRow;
-import com.softeer.race.auctionroom.application.RoomChannel;
-import com.softeer.race.auctionroom.domain.RoomPhase;
 import com.softeer.race.vehicle.application.VehicleKeywordService;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +29,7 @@ public class AuctionListService {
 
     private final VehicleKeywordService vehicleKeywordService;
     private final AuctionListRepository auctionListRepository;
-    private final RoomChannel roomChannel;
+    private final AuctionCardAssembler cardAssembler;
     private final Clock clock;
 
     public AuctionListInfo list(AuctionListCursor cursor, AuctionListGroup filter, AuctionListFilter vehicleFilter) {
@@ -60,8 +58,9 @@ public class AuctionListService {
         Map<Long, List<VehicleKeyword>> keywords = vehicleKeywordService.findByVehicleIds(
                 page.stream().map(positioned -> positioned.row().vehicleId()).toList());
 
+        // 정렬은 snapshotAt 기준이지만 카드는 지금 시각으로 조립한다. 깊은 페이지에서도 배지는 맞아야 한다.
         List<AuctionCardInfo> content = page.stream()
-                .map(positioned -> toCard(positioned.row(), now, keywords))
+                .map(positioned -> cardAssembler.assemble(positioned.row(), now, keywords))
                 .toList();
 
         AuctionListCursor next = hasNext ? nextCursor(snapshotAt, page.getLast()) : null;
@@ -100,32 +99,6 @@ public class AuctionListService {
         }
 
         return found;
-    }
-
-    private AuctionCardInfo toCard(AuctionListRow row, LocalDateTime now, Map<Long, List<VehicleKeyword>> keywords) {
-        // 단계 판정은 경매방과 한 벌을 쓴다. 복제하면 같은 경매가 두 화면에서 다른 단계로 보일 수 있다.
-        // 정렬은 snapshotAt 기준이지만 단계는 지금 시각으로 잰다. 깊은 페이지에서도 배지는 맞아야 한다.
-        RoomPhase phase = RoomPhase.at(now, row.roomOpenAt(), row.startTime(), row.currentEndTime());
-
-        // 닫힌 단계는 경매방도 접속자를 세지 않는다. 목록만 다른 수를 보이면 안 된다.
-        int connectedCount = phase.allowsConnection()
-                ? roomChannel.countViewers(row.auctionId()) : 0;
-
-        return new AuctionCardInfo(
-                row.auctionId(),
-                phase,
-                row.thumbnailUrl(),
-                row.manufacturerType(),
-                row.model(),
-                row.modelYear(),
-                row.mileage(),
-                keywords.getOrDefault(row.vehicleId(), List.of()),
-                row.startPrice(),
-                row.displayPrice(),
-                row.roomOpenAt(),
-                row.startTime(),
-                row.currentEndTime(),
-                connectedCount);
     }
 
     private AuctionListCursor nextCursor(LocalDateTime snapshotAt, Positioned last) {

@@ -1,6 +1,7 @@
 package com.softeer.race.notification.application;
 
 import com.softeer.race.notification.domain.Notification;
+import com.softeer.race.notification.domain.NotificationContent;
 import com.softeer.race.notification.domain.NotificationRepository;
 import com.softeer.race.notification.domain.NotificationRow;
 import com.softeer.race.notification.domain.NotificationType;
@@ -41,13 +42,31 @@ public class NotificationPublisher {
      */
     @Transactional
     public void publish(long userId, NotificationType type, Long referenceId) {
+        publishInternal(userId, NotificationContent.defaultOf(type), referenceId);
+    }
+
+    /**
+     * 발행 시점 값이 박힌 문구로 알림 한 건 발행 — 트랜잭션·참조규칙은 {@link #publish} 와 같다.
+     * 문구를 조회할 때 조립하지 않는 이유는 {@link NotificationContent} 참고.
+     */
+    @Transactional
+    public void publishContent(
+            long userId, NotificationContent content, Long referenceId) {
+        publishInternal(userId, content, referenceId);
+    }
+
+    private void publishInternal(
+            long userId, NotificationContent content, Long referenceId) {
         Notification notification = notificationRepository.save(
-                Notification.create(userRepository.getReferenceById(userId), type, referenceId));
+                Notification.create(
+                        userRepository.getReferenceById(userId),
+                        content,
+                        referenceId));
 
         NotificationPush push = new NotificationPush(
-                NotificationRow.from(notification), notificationRepository.countUnread(userId));
-
-        // 저장이 확정되기 전에는 내보내지 않는다, 그 시점 판단은 NotificationPusher 가 맡는다
+                NotificationRow.from(notification),
+                notificationRepository.countUnread(userId));
+        // 저장이 확정되기 전에는 내보내지 않는다, 커밋 여부와 전달 시점 판단은 NotificationPusher가 맡는다
         eventPublisher.publishEvent(new NotificationPublished(userId, push));
     }
 }

@@ -1,5 +1,7 @@
 package com.softeer.race.auctionroom.presentation;
 
+import com.softeer.race.auction.application.AuctionCloser;
+import com.softeer.race.auction.application.AuctionStarter;
 import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
@@ -50,9 +52,16 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
 
-    // 마감(시작 + 20분)은 지났고 결과 확인 5분은 안 지난 시각이 되도록 잡는다
-    // RESULT 단계라야 조회와 구독이 둘 다 열려 한 시나리오로 두 경로를 다 탄다
-    private static final LocalDateTime RESULT_START_AT = LocalDateTime.of(2026, 8, 3, 20, 23);
+    // 구독은 진행 중에만 열리고 낙찰자는 마감돼야 확정된다, 한 시각으로는 두 경로를 다 탈 수 없다
+    // 진행 중에 구독을 열어 두고 시계를 마감 뒤로 옮겨, 보는 사람이 실제로 겪는 순서를 그대로 밟는다
+    private static final LocalDateTime LIVE_START_AT = LocalDateTime.of(2026, 8, 3, 20, 30);
+    private static final LocalDateTime END_AT = LIVE_START_AT.plusMinutes(20);
+
+    @Autowired
+    private AuctionStarter auctionStarter;
+
+    @Autowired
+    private AuctionCloser auctionCloser;
 
     @BeforeEach
     void fixClock() {
@@ -66,13 +75,16 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         User winner = users.user("이준호", Role.DEALER);
         User loser = users.user("남궁민수", Role.DEALER);
 
-        long auctionId = resultRoomWonBy(winner, loser);
+        long auctionId = liveRoomBidBy(winner, loser);
         String session = sessionService.issue(winner);
 
-        // when : 같은 사람이 구독으로 첫 현황을 받고 같은 고정 시각에 조회한다
-        // 구독이 먼저다, 그래야 접속자 수가 양쪽 모두 1로 같다
+        // when : 진행 중에 구독을 열어 둔 채 마감을 맞고, 끊기기 직전 마지막 현황과 같은 시각의 조회를 견준다
         MvcResult subscribed = subscribe(auctionId, session);
-        JsonNode broadcast = firstBroadcast(subscribed);
+
+        fixClockAt(END_AT);
+        auctionCloser.close(auctionId);
+
+        JsonNode broadcast = lastBroadcast(subscribed);
         JsonNode query = queryRoom(auctionId, session);
 
         // then 1 : 개인화 둘이 조회에서 실제로 참이다, 이 단정이 없으면 아래 대조가 공허해진다
@@ -141,16 +153,20 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
 
     // ================= 준비 ====================
     // 마감 30초 안쪽에 넣으면 연장이 걸려 단계가 달라진다, 마지막 입찰을 그 밖에 둔다
-    private long resultRoomWonBy(User winner, User loser) {
-        return rooms.room(users.user("최판매", Role.GENERAL), RESULT_START_AT)
+    // 확정은 진행중인 경매만 받는다, 스케줄러가 밟는 순서를 그대로 밟아 상태를 올려 둔다
+    private long liveRoomBidBy(User winner, User loser) {
+        long auctionId = rooms.room(users.user("최판매", Role.GENERAL), LIVE_START_AT)
                 .photos("https://cdn.race.dev/seltos-1.jpg", "https://cdn.race.dev/seltos-2.jpg")
                 .startPrice(20_000_000L)
-                .bid(RESULT_START_AT.plusMinutes(5), loser, 21_000_000L)
-                .bid(RESULT_START_AT.plusMinutes(10), winner, 22_000_000L)
-                .bid(RESULT_START_AT.plusMinutes(15), loser, 23_000_000L)
-                .bid(RESULT_START_AT.plusMinutes(18), winner, 24_000_000L)
-                .closed()
+                .bid(LIVE_START_AT.plusMinutes(5), loser, 21_000_000L)
+                .bid(LIVE_START_AT.plusMinutes(10), winner, 22_000_000L)
+                .bid(LIVE_START_AT.plusMinutes(12), loser, 23_000_000L)
+                .bid(LIVE_START_AT.plusMinutes(14), winner, 24_000_000L)
                 .create();
+
+        auctionStarter.start(auctionId);
+
+        return auctionId;
     }
 
     // ================= 요청 ====================
@@ -172,15 +188,16 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         return jsonMapper.readTree(body);
     }
 
-    // SSE 는 현황 하나가 data 한 줄이다, 첫 줄만 떼어 읽는다
+    // SSE 는 현황 하나가 data 한 줄이다, 마지막 줄만 떼어 읽는다
+    // 구독 직후의 진행중 현황이 첫 줄이고 마감 현황이 그 뒤에 온다, 조회와 견줄 것은 뒤엣것이다
     // text/event-stream 에는 charset 이 안 붙어 getContentAsString() 이 ISO-8859-1 로 떨어진다
-    private JsonNode firstBroadcast(MvcResult subscribed) throws Exception {
+    private JsonNode lastBroadcast(MvcResult subscribed) throws Exception {
         String body = new String(subscribed.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
 
         String json = body.lines()
                 .filter(line -> line.startsWith("data:"))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("구독 직후 첫 현황이 오지 않았다"))
+                .reduce((first, second) -> second)
+                .orElseThrow(() -> new AssertionError("현황이 한 번도 오지 않았다"))
                 .substring("data:".length());
 
         return jsonMapper.readTree(json);

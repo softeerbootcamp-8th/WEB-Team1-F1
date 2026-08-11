@@ -71,6 +71,7 @@ export type NotificationType =
   | 'EVAL_REJECTED'
   | 'AUCTION_WON'
   | 'AUCTION_WON_RESULT'
+  | 'OUTBID'
   | 'AUCTION_ENDED'
   | 'AUCTION_SOLD'
   | 'AUCTION_FAILED'
