@@ -43,9 +43,10 @@ export async function fetchRoomResult(auctionId: number): Promise<RoomResultView
 }
 
 /**
- * GET /api/auctions/{id}/room/stream 구독(SSE). 방이 열려 있는 단계(WAITING·LIVE·RESULT)에서만
- * 연결이 되고, 그 외(NOT_OPEN·CLOSED)엔 서버가 409로 거절한다. 보는 사람을 가리지 않아
- * 내 입찰(mine) 표시는 안 실려 온다 — 그건 최초 조회 결과로만 안다.
+ * GET /api/auctions/{id}/room/stream 구독(SSE). 입찰이 진행되는 동안(WAITING·LIVE)에만 연결되고
+ * 그 외에는 서버가 409로 거절한다. 마감되면 마지막 현황을 한 번 보내고 서버가 끊으므로 다시
+ * 구독하지 말고 결과 요약으로 가야 한다(RESULT 는 ROOM_STREAM_ENDED, 그 뒤는 ROOM_ALREADY_CLOSED).
+ * 보는 사람을 가리지 않아 내 입찰(mine) 표시도 낙찰자 본인 여부도 안 실려 온다.
  * 매 전송이 변경분이 아니라 전체 현황이라 하나를 놓쳐도 다음 전송이 덮는다.
  */
 export function subscribeRoomStream(
