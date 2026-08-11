@@ -91,6 +91,11 @@ class AuctionCardAssemblerTest {
         }
 
         @Override
+        public Map<Long, Integer> viewerCounts() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public void subscribe(long auctionId, RoomSubscriber subscriber) {
             throw new UnsupportedOperationException();
         }
