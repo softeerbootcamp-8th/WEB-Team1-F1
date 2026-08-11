@@ -150,6 +150,26 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         assertThat(watcher.received()).hasSize(receivedAfterClose);
     }
 
+    @Test
+    @DisplayName("시나리오 6 : 마감되면 결과 현황을 보내고 나서 연결을 끝낸다")
+    void closingEndsConnectionAfterLastState() {
+        // given : 입찰이 한 건 들어온 진행중 방을 한 사람이 보고 있다
+        auctionId = liveRoomWithBid();
+        auctionInProgress();
+        auctionRoomStreamService.subscribe(auctionId, watcher);
+
+        // when : 마감 시각이 지나 낙찰자가 확정된다
+        fixClockAt(END_AT);
+        auctionCloser.close(auctionId);
+
+        // then 1 : 순서가 뒤집히면 화면은 결과를 못 받은 채 끊긴다, 마지막 현황이 먼저 닿아야 한다
+        assertThat(watcher.receivedWhenClosed()).isEqualTo(watcher.received().size());
+        assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.RESULT);
+
+        // then 2 : 더 바뀔 값이 없는 구간이라 연결을 붙잡지 않는다, 주기 정리를 기다리지 않는다
+        assertThat(roomChannel.countViewers(auctionId)).isZero();
+    }
+
     private long waitingRoom() {
         return rooms.room(users.user("박판매", Role.GENERAL), START_AT)
                 .create();
@@ -171,7 +191,6 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         auctionStarter.start(auctionId);
     }
 
-    // 받은 현황만 기록하면 되는 구독, 끊김은 이 테스트가 보지 않는다
     private static final class RecordingSubscriber implements RoomSubscriber {
 
         // 이 테스트는 사람이 몇인지 보지 않는다, 서로 다른 사람이기만 하면 된다
@@ -179,6 +198,9 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
 
         private final List<RoomState> received = new ArrayList<>();
         private final long viewerId = VIEWER_SERIAL.incrementAndGet();
+
+        // 끊김만 기록하면 마지막 현황보다 먼저 끊겼는지 알 수 없다, 끊긴 시점까지 받은 개수를 남긴다
+        private int receivedWhenClosed = -1;
 
         @Override
         public long viewerId() {
@@ -204,11 +226,16 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
 
         @Override
         public void close() {
+            receivedWhenClosed = received.size();
         }
 
         @Override
         public boolean isOpen() {
-            return true;
+            return receivedWhenClosed < 0;
+        }
+
+        int receivedWhenClosed() {
+            return receivedWhenClosed;
         }
     }
 }
