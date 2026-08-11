@@ -74,6 +74,20 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
     Optional<Long> findSellerIdById(@Param("auctionId") long auctionId);
 
     /**
+     * 잠긴 Auction의 지연 연관을 차례로 열지 않고 알림에 필요한 값만 한 번에 읽는다.
+     */
+    @Query("""
+            select new com.softeer.race.auction.domain.AuctionEndNotificationContext(
+                v.seller.id, v.model, a.currentPrice)
+            from Auction a
+            join a.post p
+            join p.vehicle v
+            where a.id = :auctionId
+            """)
+    Optional<AuctionEndNotificationContext> findEndNotificationContext(
+            @Param("auctionId") long auctionId);
+
+    /**
      * 시작 시각이 지났는데 아직 예약 상태인 경매의 id
      */
     @Query("""

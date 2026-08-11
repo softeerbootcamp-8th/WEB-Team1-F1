@@ -28,6 +28,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 4. 직렬화
  * 남은 시간을 내리지 않고 절대 시각과 서버 시각을 오프셋 없는 KST 문자열로 준다
+ * <p>
+ * 5. 차량 조건 필터
+ * 쿼리 파라미터가 조건으로 걸리는지, 잘못된 값은 400 인지
  */
 @DisplayName("경매글 목록 조회 통합 테스트")
 @Transactional
@@ -263,5 +266,83 @@ class AuctionListIntegrationTest extends IntegrationTestSupport {
 
         // then
         response.andExpect(status().isOk());
+    }
+
+    // ================= 차량 조건 필터 =================
+
+    @Test
+    @DisplayName("제조사 필터는 해당 제조사의 경매만 준다")
+    void filtersByManufacturer() throws Exception {
+        // when : 기아는 진행중 102(쏘렌토)·103(EV6)뿐이다
+        ResultActions response = mockMvc.perform(get("/api/auctions")
+                .param("manufacturer", "KIA"));
+
+        // then : 그룹 순서와 정렬은 필터와 무관하게 유지된다
+        response.andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].auctionId")
+                        .value(org.hamcrest.Matchers.contains(102, 103)));
+    }
+
+    @Test
+    @DisplayName("연료 필터는 반복 파라미터로 여러 개 받고 그룹 경계를 넘어도 걸린다")
+    void filtersByRepeatedFuelParamsAcrossGroups() throws Exception {
+        // when : 하이브리드·전기는 진행중 102·103 과 종료 107·106 에 걸쳐 있다
+        ResultActions response = mockMvc.perform(get("/api/auctions")
+                .param("fuelTypes", "HYBRID")
+                .param("fuelTypes", "ELECTRIC"));
+
+        // then : 예정(가솔린뿐)은 건너뛰고 종료는 최근에 끝난 순서다
+        response.andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].auctionId")
+                        .value(org.hamcrest.Matchers.contains(102, 103, 107, 106)));
+    }
+
+    @Test
+    @DisplayName("주행거리 상한을 걸면 그 이하의 차량만 준다")
+    void filtersByMileageMax() throws Exception {
+        // when : 30000km 이하는 902(18450)·903(27800)이다
+        ResultActions response = mockMvc.perform(get("/api/auctions")
+                .param("mileageMax", "30000"));
+
+        // then
+        response.andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].auctionId")
+                        .value(org.hamcrest.Matchers.contains(102, 103)));
+    }
+
+    @Test
+    @DisplayName("가격 상한은 그룹마다 화면에 보이는 가격 기준으로 걸린다")
+    void filtersByPriceMaxAcrossGroups() throws Exception {
+        // when : 3400만 이하는 진행중 101(1100만)·103(3400만), 예정 105(2900만), 종료 107(2200만)이다
+        ResultActions response = mockMvc.perform(get("/api/auctions")
+                .param("priceMax", "34000000"));
+
+        // then
+        response.andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].auctionId")
+                        .value(org.hamcrest.Matchers.contains(101, 103, 105, 107)));
+    }
+
+    @Test
+    @DisplayName("알 수 없는 제조사 값이면 400 이다")
+    void rejectsUnknownManufacturer() throws Exception {
+        // when : 조용히 무시하면 전체 목록이 내려가 필터가 안 걸린 줄 모른다
+        ResultActions response = mockMvc.perform(get("/api/auctions")
+                .param("manufacturer", "HYUNDAY"));
+
+        // then
+        response.andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("주행거리 범위가 뒤집혀 있으면 400 이다")
+    void rejectsInvertedMileageRange() throws Exception {
+        // when : 뒤집힌 범위는 항상 빈 결과라 실수일 수밖에 없다
+        ResultActions response = mockMvc.perform(get("/api/auctions")
+                .param("mileageMin", "50000")
+                .param("mileageMax", "10000"));
+
+        // then
+        response.andExpect(status().isBadRequest());
     }
 }

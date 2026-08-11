@@ -1,6 +1,5 @@
 package com.softeer.race.bid.application;
 
-
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.bid.application.dto.BidPlaceInfo;
@@ -10,7 +9,10 @@ import com.softeer.race.bid.domain.BidIncrementTable;
 import com.softeer.race.bid.domain.BidPreCheck;
 import com.softeer.race.bid.domain.BidPreCheckRepository;
 import com.softeer.race.bid.domain.BidRepository;
+import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.notification.application.NotificationPublisher;
+import com.softeer.race.notification.domain.NotificationContent;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +41,7 @@ public class BidService {
     private final UserRepository userRepository;
     private final BidPreCheckRepository bidPreCheckRepository;
     private final BidIncrementService bidIncrementService;
+    private final NotificationPublisher notificationPublisher;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
@@ -93,11 +96,28 @@ public class BidService {
 
         table.ruleFor(auction.getStartPrice(), auction.getCurrentPrice()).validate(amount);
 
+        // acceptBid가 최고 입찰자를 덮어쓰기 전에 알림 받을 사람을 보관한다
+        Long previousTopBidderId = auction.getTopBidder() == null
+                ? null
+                : auction.getTopBidder().getId();
+
         // 위 사전 질의가 회원 존재를 확인했으므로 프록시로 참조만 건다, 회원 조회가 추가로 나가지 않는다.
         User bidder = userRepository.getReferenceById(bidderId);
 
         Bid bid = bidRepository.save(Bid.place(auction, bidder, amount));
         auction.acceptBid(bidder, amount, acceptedAt);
+
+        // 입찰과 알림을 원자적으로 남기려고 같은 트랜잭션에 둔다. 그 대가로 알림 INSERT와
+        // 안 읽은 건수 COUNT가 경매 락 보유 시간에 포함된다. 락 대기가 관측되면 아웃박스로 다시 본다.
+        if (previousTopBidderId != null) {
+            notificationPublisher.publishContent(
+                    previousTopBidderId,
+                    NotificationContent.outbid(
+                            preCheck.vehicleModel(),
+                            MaskedName.mask(preCheck.bidderRealName()),
+                            amount),
+                    auctionId);
+        }
 
         // 커밋 뒤에 처리된다, 방송이 잠금 안에서 돌면 그 시간이 대기열 전체에 곱해진다
         eventPublisher.publishEvent(new BidAccepted(auctionId));

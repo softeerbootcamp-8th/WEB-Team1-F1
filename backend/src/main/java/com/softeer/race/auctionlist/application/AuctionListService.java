@@ -3,13 +3,13 @@ package com.softeer.race.auctionlist.application;
 import com.softeer.race.auctionlist.application.dto.AuctionCardInfo;
 import com.softeer.race.auctionlist.application.dto.AuctionListCursor;
 import com.softeer.race.auctionlist.application.dto.AuctionListInfo;
+import com.softeer.race.auctionlist.domain.AuctionListFilter;
 import com.softeer.race.auctionlist.domain.AuctionListGroup;
 import com.softeer.race.auctionlist.domain.AuctionListRepository;
 import com.softeer.race.auctionlist.domain.AuctionListRow;
 import com.softeer.race.vehicle.application.VehicleKeywordService;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,15 +32,17 @@ public class AuctionListService {
     private final AuctionCardAssembler cardAssembler;
     private final Clock clock;
 
-    public AuctionListInfo list(AuctionListCursor cursor, AuctionListGroup filter) {
-        return listInternal(cursor, filter, null);
+    public AuctionListInfo list(AuctionListCursor cursor, AuctionListGroup filter, AuctionListFilter vehicleFilter) {
+        return listInternal(cursor, filter, vehicleFilter, null);
     }
 
-    public AuctionListInfo listMine(AuctionListCursor cursor, AuctionListGroup filter, long sellerId) {
-        return listInternal(cursor, filter, sellerId);
+    public AuctionListInfo listMine(AuctionListCursor cursor, AuctionListGroup filter,
+                                    AuctionListFilter vehicleFilter, long sellerId) {
+        return listInternal(cursor, filter, vehicleFilter, sellerId);
     }
 
-    private AuctionListInfo listInternal(AuctionListCursor cursor, AuctionListGroup filter, Long sellerId) {
+    private AuctionListInfo listInternal(AuctionListCursor cursor, AuctionListGroup filter,
+                                         AuctionListFilter vehicleFilter, Long sellerId) {
         LocalDateTime now = LocalDateTime.now(clock);
         AuctionListCursor start = (cursor != null) ? cursor : AuctionListCursor.first(now, filter);
 
@@ -48,7 +50,7 @@ public class AuctionListService {
         LocalDateTime snapshotAt = start.snapshotAt().isAfter(now) ? now : start.snapshotAt();
 
         // 한 건 더 읽어 다음 페이지 유무를 판단한다. 전체를 세는 쿼리를 피하려는 것이다.
-        List<Positioned> found = collect(start, snapshotAt, filter, sellerId, PAGE_SIZE + 1);
+        List<Positioned> found = collect(start, snapshotAt, filter, vehicleFilter, sellerId, PAGE_SIZE + 1);
 
         boolean hasNext = found.size() > PAGE_SIZE;
         List<Positioned> page = hasNext ? found.subList(0, PAGE_SIZE) : found;
@@ -69,8 +71,8 @@ public class AuctionListService {
     /**
      * 커서가 가리키는 그룹부터 채우고, 모자란 만큼 다음 그룹에서 이어 읽는다.
      */
-    private List<Positioned> collect(AuctionListCursor cursor, LocalDateTime snapshotAt,
-                                     AuctionListGroup filter, Long sellerId, int need) {
+    private List<Positioned> collect(AuctionListCursor cursor, LocalDateTime snapshotAt, AuctionListGroup filter,
+                                     AuctionListFilter vehicleFilter, Long sellerId, int need) {
         List<Positioned> found = new ArrayList<>();
         int remaining = need;
 
@@ -84,7 +86,8 @@ public class AuctionListService {
             LocalDateTime from = resuming ? cursor.sortAt() : group.startSortAt();
             long fromId = resuming ? cursor.auctionId() : group.startAuctionId();
 
-            List<AuctionListRow> rows = query(group, snapshotAt, from, fromId, remaining, sellerId);
+            List<AuctionListRow> rows = auctionListRepository.findPage(
+                    group, vehicleFilter, sellerId, snapshotAt, from, fromId, remaining);
             for (AuctionListRow row : rows) {
                 found.add(new Positioned(group, row));
             }
@@ -96,33 +99,6 @@ public class AuctionListService {
         }
 
         return found;
-    }
-
-    private List<AuctionListRow> query(AuctionListGroup group, LocalDateTime snapshotAt, LocalDateTime cursorSortAt,
-                                       long cursorAuctionId, int need, Long sellerId) {
-        Limit limit = Limit.of(need);
-
-        // nullable 로 합치면 인덱스를 출발점으로 쓰지 못해 소유자 조건은 쿼리를 나눠 등치로 건다.
-        if (sellerId != null) {
-            return switch (group) {
-                case LIVE -> auctionListRepository.findMyLivePage(
-                        sellerId, snapshotAt, cursorSortAt, cursorAuctionId, limit);
-                case PENDING -> auctionListRepository.findMyPendingPage(
-                        sellerId, snapshotAt, cursorSortAt, cursorAuctionId, limit);
-                case ENDED -> auctionListRepository.findMyEndedPage(
-                        sellerId, snapshotAt, cursorSortAt, cursorAuctionId, limit);
-            };
-        }
-
-        // 공개 목록은 native query라 개수를 Limit이 아니라 정수로 넘긴다.
-        return switch (group) {
-            case LIVE -> auctionListRepository.findLivePage(
-                    snapshotAt, cursorSortAt, cursorAuctionId, need);
-            case PENDING -> auctionListRepository.findPendingPage(
-                    snapshotAt, cursorSortAt, cursorAuctionId, need);
-            case ENDED -> auctionListRepository.findEndedPage(
-                    snapshotAt, cursorSortAt, cursorAuctionId, need);
-        };
     }
 
     private AuctionListCursor nextCursor(LocalDateTime snapshotAt, Positioned last) {

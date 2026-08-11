@@ -231,6 +231,12 @@ class DealProgressIntegrationTest extends IntegrationTestSupport {
                 .containsExactly(AUCTION_WON, DEAL_BUYER_SCHEDULE_REQUIRED, DEAL_CONFIRMED);
         assertThat(typesOf(seller))
                 .containsExactly(AUCTION_SOLD, DEAL_SELLER_SUBMIT_REQUIRED, DEAL_CONFIRMED);
+
+        // 같은 확정이어도 실제 행동은 구매자가 인수, 판매자가 인도라 문구를 구분한다
+        assertThat(messageOf(buyer, DEAL_CONFIRMED)).isEqualTo(
+                "아반떼 CN7 차량을 2026년 8월 21일 10:00에 부산시 해운대구 센텀중앙로 55에서 인수합니다.");
+        assertThat(messageOf(seller, DEAL_CONFIRMED)).isEqualTo(
+                "아반떼 CN7 차량을 2026년 8월 21일 10:00에 부산시 해운대구 센텀중앙로 55에서 인도합니다.");
     }
 
     @Test
@@ -335,6 +341,14 @@ class DealProgressIntegrationTest extends IntegrationTestSupport {
 
     private List<NotificationType> typesOf(User user) {
         return notificationsOf(user).stream().map(NotificationRow::type).toList();
+    }
+
+    private String messageOf(User user, NotificationType type) {
+        return notificationsOf(user).stream()
+                .filter(row -> row.type() == type)
+                .map(NotificationRow::message)
+                .findFirst()
+                .orElseThrow();
     }
 
     // 로그인 경로 대신 세션을 직접 심는다, 이 테스트가 볼 것은 인증이 아니라 거래 진행이다

@@ -33,7 +33,7 @@ public class Notification extends BaseTimeEntity {
     @Column(nullable = false)
     private NotificationType type;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = NotificationContent.MAX_MESSAGE_LENGTH)
     private String message;
 
     @Column(nullable = false)
@@ -41,25 +41,32 @@ public class Notification extends BaseTimeEntity {
 
     private Long referenceId;
 
-    private Notification(User user, NotificationType type, Long referenceId) {
-        // 링크를 만들 수 있는 조합인지 저장 전에 확인한다. 결과는 쓰지 않고 버린다 — 조회에서 처음
-        // 걸리면 잘못 저장된 한 건이 목록 응답 전체를 500으로 만든다
-        type.linkTo(referenceId);
+    private Notification(User user, NotificationContent content, Long referenceId) {
+        // 잘못 저장된 한 건이 목록 전체를 깨뜨리지 않도록 저장 전에 링크 조합을 검사한다
+        content.type().linkTo(referenceId);
 
         this.user = user;
-        this.type = type;
-        this.message = type.defaultMessage();
+        this.type = content.type();
+        this.message = content.message();
         this.isRead = false;
         this.referenceId = referenceId;
     }
 
     /**
-     * 해당 종류의 기본 문구를 사용해 읽지 않은 알림을 만든다.
-     * <p>
-     * 문구는 발행 당시의 내용을 보존하기 위해 저장하고, 링크는 화면 주소 변경을 반영할 수 있도록
-     * 저장하지 않고 {@link NotificationType}과 참조값으로 조회 시점에 만든다.
+     * 종류의 기본 문구로 알림을 만든다.
+     * 문구는 발행 당시 내용을 보존하고, 링크는 주소 변경을 반영할 수 있도록
+     * 저장하지 않고 종류와 참조값으로 조회 시점에 만든다.
      */
-    public static Notification create(User user, NotificationType type, Long referenceId) {
-        return new Notification(user, type, referenceId);
+    public static Notification create(
+            User user, NotificationType type, Long referenceId) {
+        return create(user, NotificationContent.defaultOf(type), referenceId);
+    }
+
+    /**
+     * 발행 시점의 동적 값이 반영된 문구로 알림을 만든다.
+     */
+    public static Notification create(
+            User user, NotificationContent content, Long referenceId) {
+        return new Notification(user, content, referenceId);
     }
 }

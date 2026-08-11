@@ -74,6 +74,32 @@ class ViewerCountParityIntegrationTest extends IntegrationTestSupport {
                         jsonPath("$.content[0].connectedCount").value(1));
     }
 
+    @Test
+    @DisplayName("마감이 지났는데 구독이 아직 남아 있으면 -> 조회도 목록도 접속자로 세지 않는다")
+    void leftoverSubscriptionIsNotCountedAfterDeadline() throws Exception {
+        // given : 진행 중인 방을 한 사람이 보고 있다
+        String session = sessionService.issue(users.user("한구경", Role.DEALER));
+        long auctionId = liveRoom();
+
+        subscribe(auctionId, session);
+
+        // when : 마감 시각이 지난다, 확정도 정리도 아직 돌지 않아 구독은 그대로 남아 있다
+        fixClockAt(LIVE_START_AT.plusMinutes(21));
+
+        // then : 연결을 열어 두지 않는 단계의 구독은 접속자가 아니다, 곧 끊길 연결을 사람으로 세지 않는다
+        mockMvc.perform(get("/api/auctions/{auctionId}/room", auctionId)
+                        .cookie(sessionCookie(session)))
+                .andExpectAll(
+                        status().isOk(),
+                        jsonPath("$.phase").value("RESULT"),
+                        jsonPath("$.connectedCount").value(0));
+
+        mockMvc.perform(get("/api/auctions"))
+                .andExpectAll(
+                        status().isOk(),
+                        jsonPath("$.content[0].connectedCount").value(0));
+    }
+
     // ================= 준비 ====================
     // 입찰은 넣지 않는다, 이 테스트가 보는 것은 사람 수뿐이고 현재가는 시작가로 채워진다
     private long liveRoom() {

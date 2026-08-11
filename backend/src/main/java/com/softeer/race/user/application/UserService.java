@@ -7,9 +7,7 @@ import static com.softeer.race.user.exception.UserErrorCode.DEALER_LICENSE_NOT_A
 import static com.softeer.race.user.exception.UserErrorCode.DEALER_LICENSE_REQUIRED;
 import static com.softeer.race.user.exception.UserErrorCode.INVALID_DEALER_LICENSE;
 import static com.softeer.race.user.exception.UserErrorCode.UNSUPPORTED_SIGNUP_ROLE;
-import static com.softeer.race.notification.domain.NotificationType.WELCOME;
 
-import com.softeer.race.notification.application.NotificationPublisher;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.exception.ErrorCode;
 import com.softeer.race.common.security.PasswordEncoder;
@@ -30,7 +28,6 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final NotificationPublisher notificationPublisher;
     private final DealerLicenseStorage dealerLicenseStorage;
 
     @Transactional
@@ -57,12 +54,6 @@ public class UserService {
                 command.dealerLicenseKey());
 
         User savedUser = save(user);
-
-        // 가입과 한 트랜잭션에 둔다. 따로 떼면 가입은 실패했는데 환영 알림만 남는 경우가 생기고,
-        // 반대로 전달 실패는 가입을 흔들지 않는다 — 전달은 커밋 뒤 NotificationPusher 가 맡는다.
-        // 가입은 세션을 발급하지 않아 이 시점에 구독이 없다. 전달될 곳이 없어도 실패가 아니고,
-        // 다음 접속의 연결 직후 건수 한 번이 배지를 맞춘다
-        notificationPublisher.publish(savedUser.getId(), WELCOME, null);
 
         return SignUpInfo.from(savedUser);
     }

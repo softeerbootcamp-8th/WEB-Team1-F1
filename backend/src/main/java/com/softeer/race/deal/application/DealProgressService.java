@@ -1,10 +1,5 @@
 package com.softeer.race.deal.application;
 
-import static com.softeer.race.notification.domain.NotificationType.DEAL_BUYER_SCHEDULE_REQUIRED;
-import static com.softeer.race.notification.domain.NotificationType.DEAL_CANCELLED;
-import static com.softeer.race.notification.domain.NotificationType.DEAL_CONFIRMED;
-import static com.softeer.race.notification.domain.NotificationType.DEAL_SELLER_SUBMIT_REQUIRED;
-
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.deal.domain.CancellationReason;
 import com.softeer.race.deal.domain.Deal;
@@ -12,6 +7,7 @@ import com.softeer.race.deal.domain.DealRepository;
 import com.softeer.race.deal.domain.DealSide;
 import com.softeer.race.deal.exception.DealErrorCode;
 import com.softeer.race.notification.application.NotificationPublisher;
+import com.softeer.race.notification.domain.NotificationContent;
 import com.softeer.race.storage.domain.FileCategory;
 import com.softeer.race.storage.domain.FileStorage;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+
+import static com.softeer.race.notification.domain.NotificationType.DEAL_BUYER_SCHEDULE_REQUIRED;
+import static com.softeer.race.notification.domain.NotificationType.DEAL_CANCELLED;
+import static com.softeer.race.notification.domain.NotificationType.DEAL_SELLER_SUBMIT_REQUIRED;
 
 /**
  * 거래를 다음 단계로 옮긴다
@@ -73,14 +73,35 @@ public class DealProgressService {
      * 확정만 양쪽에 알린다. 앞 단계들은 다음에 움직일 한 사람에게만 가면 되지만, 확정은 둘 다
      * 그 날짜에 나가야 하는 결과다
      */
-    public void confirmDelivery(long userId, long dealId,
-                                LocalDateTime deliveryAt, String deliveryLocation) {
+    public void confirmDelivery(
+            long userId,
+            long dealId,
+            LocalDateTime deliveryAt,
+            String deliveryLocation) {
         Deal deal = myTurn(dealId, userId);
 
         deal.confirmDelivery(deliveryAt, deliveryLocation, now());
 
-        notificationPublisher.publish(deal.getBuyer().getId(), DEAL_CONFIRMED, dealId);
-        notificationPublisher.publish(deal.getSeller().getId(), DEAL_CONFIRMED, dealId);
+        String vehicleModel = dealRepository.findVehicleModelById(dealId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "확정한 거래의 차량을 찾을 수 없다, 거래 %d"
+                                .formatted(dealId)));
+
+        notificationPublisher.publishContent(
+                deal.getBuyer().getId(),
+                NotificationContent.dealConfirmedForBuyer(
+                        vehicleModel,
+                        deal.getDeliveryAt(),
+                        deal.getDeliveryLocation()),
+                dealId);
+
+        notificationPublisher.publishContent(
+                deal.getSeller().getId(),
+                NotificationContent.dealConfirmedForSeller(
+                        vehicleModel,
+                        deal.getDeliveryAt(),
+                        deal.getDeliveryLocation()),
+                dealId);
     }
 
     /**

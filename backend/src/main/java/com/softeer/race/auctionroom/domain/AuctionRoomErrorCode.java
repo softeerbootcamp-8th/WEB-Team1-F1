@@ -12,6 +12,7 @@ public enum AuctionRoomErrorCode implements ErrorCode {
     ROOM_NOT_OPEN_YET(HttpStatus.CONFLICT, "아직 열리지 않은 경매방입니다."),
     ROOM_ALREADY_OPEN(HttpStatus.CONFLICT, "이미 열린 경매방입니다."),
     ROOM_ALREADY_CLOSED(HttpStatus.CONFLICT, "이미 종료된 경매방입니다."),
+    ROOM_STREAM_ENDED(HttpStatus.CONFLICT, "현황 전송이 끝난 경매방입니다."),
     AUCTION_NOT_ENDED(HttpStatus.CONFLICT, "아직 끝나지 않은 경매입니다.");
 
     private final HttpStatus status;

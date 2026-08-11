@@ -11,6 +11,7 @@ import com.softeer.race.bid.domain.BidRepository;
 import com.softeer.race.bid.domain.BidRule;
 import com.softeer.race.bid.exception.BidErrorCode;
 import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.notification.application.NotificationPublisher;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
@@ -65,6 +66,8 @@ class BidServiceTest {
     private static final long SELLER_ID = 12L;
     private static final long START_PRICE = 24_800_000L;
     private static final long INCREMENT = 50_000L;
+    private static final String BIDDER_REAL_NAME = "김입찰";
+    private static final String VEHICLE_MODEL = "아반떼 CN7";
 
     @Mock
     private AuctionRepository auctionRepository;
@@ -76,6 +79,8 @@ class BidServiceTest {
     private BidPreCheckRepository bidPreCheckRepository;
     @Mock
     private BidIncrementService bidIncrementService;
+    @Mock
+    private NotificationPublisher notificationPublisher;
     @Mock
     private ApplicationEventPublisher eventPublisher;
     @Mock
@@ -143,7 +148,8 @@ class BidServiceTest {
         when(bidIncrementService.loadTable()).thenReturn(table);
         when(bidPreCheckRepository.find(AUCTION_ID, BIDDER_ID))
                 .thenReturn(Optional.of(new BidPreCheck(
-                        Role.DEALER, SELLER_ID, START_PRICE, START_PRICE, START_TIME, END_TIME)));
+                        Role.DEALER, BIDDER_REAL_NAME, SELLER_ID, VEHICLE_MODEL,
+                        START_PRICE, START_PRICE, START_TIME, END_TIME)));
         when(table.ruleFor(START_PRICE, START_PRICE))
                 .thenReturn(new BidRule(START_PRICE, INCREMENT, START_PRICE + INCREMENT));
 
@@ -164,7 +170,8 @@ class BidServiceTest {
 
         when(bidPreCheckRepository.find(AUCTION_ID, BIDDER_ID))
                 .thenReturn(Optional.of(new BidPreCheck(
-                        Role.DEALER, SELLER_ID, START_PRICE, START_PRICE, START_TIME, END_TIME)));
+                        Role.DEALER, BIDDER_REAL_NAME, SELLER_ID, VEHICLE_MODEL,
+                        START_PRICE, START_PRICE, START_TIME, END_TIME)));
         when(auctionRepository.findByIdForUpdate(AUCTION_ID)).thenReturn(Optional.of(auction));
 
         assertThatThrownBy(() -> bidService.place(AUCTION_ID, BIDDER_ID, START_PRICE))
@@ -191,12 +198,14 @@ class BidServiceTest {
     private BidService bidService(Clock clock) {
         return new BidService(
                 auctionRepository, bidRepository, userRepository, bidPreCheckRepository,
-                bidIncrementService, eventPublisher, clock);
+                bidIncrementService, notificationPublisher, eventPublisher, clock);
     }
 
     // 입찰이 없는 진행 중 경매, 입찰자는 판매자도 평가사도 아니다
     private BidPreCheck preCheck() {
-        return new BidPreCheck(Role.DEALER, SELLER_ID, START_PRICE, null, START_TIME, END_TIME);
+        return new BidPreCheck(
+                Role.DEALER, BIDDER_REAL_NAME, SELLER_ID, VEHICLE_MODEL,
+                START_PRICE, null, START_TIME, END_TIME);
     }
 
     private Auction scheduledAuction() {
