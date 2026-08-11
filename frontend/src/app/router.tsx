@@ -49,7 +49,7 @@ export function AppRouter() {
         <Route path="/mypage" element={<MyPage />} />
         <Route path="/mypage/evaluations" element={<MyPage />} />
         <Route path="/mypage/deals" element={<MyPage />} />
-        <Route path="/mypage/auctions" element={<MyPage />} />
+        <Route path="/mypage/auctions" element={<Navigate to="/mypage/evaluations" replace />} />
         <Route path="/mypage/evaluations/:evaluationId" element={<MyRequestDetailPage />} />
         {/* 알림 딥링크의 목적지. 서버 NotificationType 의 링크와 한 쌍이다 */}
         <Route path="/mypage/deals/:dealId" element={<DealDetailPage />} />
