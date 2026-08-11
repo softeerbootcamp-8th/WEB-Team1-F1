@@ -7,10 +7,9 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
-  # 캐시를 쓰는 쪽은 dev 트리거다
-  # main 은 배포 기준이라, 릴리즈 커밋에 대응하는 산출물을 남기려고 넣는다
+  # main 은 CD 가 자체적으로 다시 검증·빌드하므로 CI push 는 dev 만 실행한다
   push:
-    branches: [dev, main]
+    branches: [dev]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-ci.yml'
@@ -60,14 +59,3 @@ jobs:
 
       - name: Build
         run: pnpm run build
-
-      # 배포는 이 산출물을 받아 올린다, 각자 노트북에서 만든 것이 올라가지 않게 한다
-      # 이름에 커밋 sha 가 들어가 어떤 시점의 코드가 배포됐는지 남는다
-      # main 만 올린다, 배포 기준이 릴리즈 커밋이라 dev 산출물은 쓰이지 않는다
-      - name: Upload build output
-        if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v7
-        with:
-          name: frontend-dist-${{ github.sha }}
-          path: frontend/dist
-          retention-days: 30
