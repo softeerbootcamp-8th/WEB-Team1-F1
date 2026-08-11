@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { SearchX, TriangleAlert } from 'lucide-react'
 
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common/empty-state'
@@ -11,8 +10,15 @@ import { AuctionPreviewDialog } from '@/features/auctions/components/auction-pre
 import type { PreviewStatus } from '@/features/auctions/components/auction-preview-dialog'
 import { AuctionDeleteDialog } from '@/features/auctions/components/auction-delete-dialog'
 import { AuctionEditDialog } from '@/features/auctions/components/auction-edit-dialog'
+import { AuctionFilterPanel } from '@/features/auctions/components/auction-filter-panel'
 import { MyAuctionActions } from '@/features/auctions/components/my-auction-actions'
 import { ScopeTabs } from '@/features/auctions/components/scope-tabs'
+import {
+  EMPTY_FILTER,
+  hasActiveFilter,
+  readFilterParams,
+  writeFilterParams,
+} from '@/features/auctions/filter'
 import { useAuctionList } from '@/features/auctions/use-auction-list'
 import type { AuctionListCard, AuctionListScope } from '@/features/auctions/types'
 import { useAuth } from '@/features/auth/auth-context'
@@ -88,6 +94,24 @@ export function AuctionsPage() {
     setSearchParams(next, { replace: true })
   }
 
+  // 차량 조건도 탭처럼 주소가 원본이다. 경매방을 다녀와도, 주소를 공유해도 같은 조건이 복원된다.
+  const vehicleFilter = useMemo(() => readFilterParams(searchParams), [searchParams])
+
+  const changeVehicleFilter = (next: typeof vehicleFilter) => {
+    const params = new URLSearchParams(searchParams)
+    writeFilterParams(next, params)
+    setSearchParams(params, { replace: true })
+  }
+
+  // 조건과 상태를 한 번에 지운다. 나눠서 두 번 쓰면 둘 다 지금 주소에서 출발하므로
+  // 나중 것이 앞에서 지운 것을 되살린다.
+  const resetFilters = () => {
+    const params = new URLSearchParams(searchParams)
+    writeFilterParams(EMPTY_FILTER, params)
+    params.delete(STATUS_PARAM)
+    setSearchParams(params, { replace: true })
+  }
+
   const [editing, setEditing] = useState<AuctionListCard | null>(null)
   const [deleting, setDeleting] = useState<AuctionListCard | null>(null)
 
@@ -142,6 +166,7 @@ export function AuctionsPage() {
   } = useAuctionList({
     scope,
     filter: listGroup,
+    vehicle: vehicleFilter,
     enabled: scope === 'ALL' || (!isAuthLoading && isAuthenticated),
   })
 
@@ -164,35 +189,40 @@ export function AuctionsPage() {
   })
 
   return (
-    <main aria-label="경매 목록" className="mx-auto max-w-7xl px-6 py-12">
+    // 조건 패널과 목록이 나란히 서는 화면이라 다른 페이지보다 넓게 쓴다. 상단 바·푸터와 같은 폭이다.
+    <main aria-label="경매 목록" className="mx-auto max-w-[100rem] px-6 py-12">
       <header className="mb-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <p className="text-muted-foreground text-sm">LIVE AUCTIONS</p>
-            <h1 className="mt-2 text-3xl font-semibold md:text-4xl">경매 목록</h1>
-            <p className="text-muted-foreground mt-2">
-              평가가 완료된 차량의 실시간 가격 형성 과정을 확인하세요.
-            </p>
-          </div>
-          <Tabs
-            value={filter}
-            onValueChange={(value) => selectTab(STATUS_PARAM, value, value === 'ALL')}
-          >
-            <TabsList aria-label="경매 상태 필터">
-              {FILTERS.map((item) => (
-                <TabsTrigger key={item.value} value={item.value}>
-                  {item.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-
-        <ScopeTabs
-          value={scope}
-          onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
-        />
+        <p className="text-muted-foreground text-sm">LIVE AUCTIONS</p>
+        <h1 className="mt-2 text-3xl font-semibold md:text-4xl">경매 목록</h1>
+        <p className="text-muted-foreground mt-2">
+          평가가 완료된 차량의 실시간 가격 형성 과정을 확인하세요.
+        </p>
       </header>
+
+      {/* 조건은 목록 옆에 세워 둔다. 좁은 화면에서는 붙일 자리가 없어 목록 위로 접힌다. */}
+      <div className="lg:grid lg:grid-cols-[23rem_1fr] lg:items-start lg:gap-8">
+        {/* 상단 바(65px)가 sticky 라 그 아래에 세운다. 패널이 화면보다 길어 스스로 스크롤해야
+            아래쪽 조건에 손이 닿는다. */}
+        <aside className="mb-6 lg:sticky lg:top-20 lg:mb-0 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+          <AuctionFilterPanel
+            value={vehicleFilter}
+            onChange={changeVehicleFilter}
+            status={filter === 'ALL' ? null : filter}
+            onStatusChange={(next) =>
+              selectTab(STATUS_PARAM, next ?? 'ALL', next === null)
+            }
+            onReset={resetFilters}
+          />
+        </aside>
+
+        <div>
+          {/* 범위는 목록의 것이라 목록 열 머리에 둔다. 조건 패널과 나란히 서면 둘 다 필터로 읽힌다. */}
+          <div className="mb-6">
+            <ScopeTabs
+              value={scope}
+              onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
+            />
+          </div>
 
       {needsLogin ? (
         <EmptyState
@@ -226,7 +256,21 @@ export function AuctionsPage() {
           ))}
         </ul>
       ) : arranged.length === 0 ? (
-        <EmptyState icon={SearchX} {...emptyMessage(scope, filter)} />
+        // 조건 때문에 빈 것이면 상태 탭을 바꾸라는 안내가 틀린다. 되돌릴 길을 바로 준다.
+        hasActiveFilter(vehicleFilter) ? (
+          <EmptyState
+            icon={SearchX}
+            title="조건에 맞는 경매가 없습니다"
+            description="조건을 줄이면 더 많은 차량을 볼 수 있어요."
+            action={
+              <Button variant="outline" onClick={resetFilters}>
+                조건 초기화
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState icon={SearchX} {...emptyMessage(scope, filter)} />
+        )
       ) : (
         <>
           <ul className={GRID_CLASS}>
@@ -276,6 +320,8 @@ export function AuctionsPage() {
           </div>
         </>
       )}
+        </div>
+      </div>
 
       {/* 카드를 눌러 연 것이 우선이다, 없으면 딥링크가 연다 */}
       <AuctionPreviewDialog
