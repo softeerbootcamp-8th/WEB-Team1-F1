@@ -1,7 +1,10 @@
 package com.softeer.race.auctionlist.presentation;
 
 import com.softeer.race.auctionlist.application.AuctionListSubscriber;
+import com.softeer.race.auctionlist.application.dto.AuctionCardInfo;
+import com.softeer.race.auctionlist.presentation.response.AuctionCardResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -17,15 +20,14 @@ class SseAuctionListSubscriber implements AuctionListSubscriber {
     // 보내는 스레드와 살아 있는지 묻는 스레드가 다르다
     private volatile boolean open = true;
 
-    // 전송 실패로 내려간 것과 이 연결을 끝낸 것은 다르다, 전자만 보고 끝내면 응답이 만료까지 남는다
+    // 전송에 실패해 내려간 구독도 응답은 열려 있을 수 있다, open 만 보고 건너뛰면 그것을 못 끝낸다
     private final AtomicBoolean ended = new AtomicBoolean();
 
     SseAuctionListSubscriber(SseEmitter emitter) {
         this.emitter = emitter;
     }
 
-    // 톰캣이 첫 쓰기까지 응답 헤더를 붙잡으므로, 아무것도 안 보내면 EventSource 가 onopen 을 못 쏜다
-    // 주석 한 줄이라 데이터가 아니고, 첫 현황을 보내지 않는다는 결정과 어긋나지 않는다
+    // 톰캣이 첫 쓰기까지 응답 헤더를 붙잡아, 아무것도 안 보내면 EventSource 가 onopen 을 못 쏜다
     void flushHeaders() {
         try {
             emitter.send(SseEmitter.event().comment("open"));
@@ -36,12 +38,31 @@ class SseAuctionListSubscriber implements AuctionListSubscriber {
     }
 
     @Override
+    public void sendCard(AuctionCardInfo card) {
+        if (!open) {
+            return;
+        }
+
+        try {
+            // 미디어 타입을 명시한다, 생략하면 어떤 변환기가 잡히는지가 데이터 타입에 딸려간다
+            emitter.send(SseEmitter.event().name("card")
+                    .data(AuctionCardResponse.from(card), MediaType.APPLICATION_JSON));
+        } catch (IOException e) {
+            // 탭을 닫거나 화면을 옮기면 나는 정상 경로다
+            log.debug("목록 카드 전송 중 연결이 끊겼다", e);
+            open = false;
+        } catch (IllegalStateException e) {
+            // 스프링이 IOException 을 뺀 전부를 이 타입으로 감싼다, 직렬화 실패가 여기로 와서 warn 이다
+            log.warn("목록 카드 전송 실패", e);
+            open = false;
+        }
+    }
+
+    @Override
     public void close() {
         // 먼저 내린다, 끝내는 사이에 방송이 들어와도 완료된 응답에 쓰지 않는다
         open = false;
 
-        // 쓰기에 실패해 이미 내려간 구독도 응답은 열려 있을 수 있어, 열림 여부로 건너뛰면 그것을 못 끝낸다
-        // 두 번 끝내지 않기 위한 표시는 따로 둔다
         if (!ended.compareAndSet(false, true)) {
             return;
         }
@@ -49,8 +70,7 @@ class SseAuctionListSubscriber implements AuctionListSubscriber {
         try {
             emitter.complete();
         } catch (RuntimeException e) {
-            // 컨테이너가 회수한 응답에서 무엇이 나올지 규약이 없다
-            // 던지지 않는다고 계약에 적었으므로 여기서 막는다, 원하던 상태는 이미 되어 있다
+            // 컨테이너가 회수한 응답에서 무엇이 나올지 규약이 없다, 던지지 않는 것이 계약이라 여기서 막는다
             log.debug("목록 스트림 연결을 끝내는 중 이미 닫혀 있었다", e);
         }
     }

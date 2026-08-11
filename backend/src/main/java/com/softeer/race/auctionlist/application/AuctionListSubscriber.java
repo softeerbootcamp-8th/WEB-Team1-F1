@@ -1,14 +1,21 @@
 package com.softeer.race.auctionlist.application;
 
+import com.softeer.race.auctionlist.application.dto.AuctionCardInfo;
+
 /**
  * 목록 변화를 받아가는 열린 구독
  */
+// 어느 메서드도 던지지 않는 것이 계약이다, 순회 중에 하나가 터지면 남은 구독이 그 방송을 못 받는다
 public interface AuctionListSubscriber {
 
     /**
-     * 서버가 연결을 끝낸다, 이미 끝났으면 아무 일도 없고 던지지 않는다
+     * 카드 한 장 전송, 이미 닫혔으면 조용히 버린다
      */
-    // 던지지 않는 것이 계약이다, 그래야 채널이 방어 없이 걷어낼 수 있다
+    void sendCard(AuctionCardInfo card);
+
+    /**
+     * 서버가 연결을 끝낸다, 이미 끝났으면 아무 일도 없다
+     */
     void close();
 
     /**

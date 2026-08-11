@@ -1,5 +1,7 @@
 package com.softeer.race.auctionlist.application;
 
+import com.softeer.race.auctionlist.application.dto.AuctionCardInfo;
+
 /**
  * 목록을 보고 있는 구독을 모아 두고 변화를 흘려보내는 채널
  */
@@ -14,8 +16,12 @@ public interface AuctionListChannel {
     /**
      * 구독을 명부에서 뺀다, 없던 것을 빼도 아무 일 없다
      */
-    // 방과 달리 뺐는지를 돌려주지 않는다, 해제 때 남은 구독에 보낼 것이 없어 이중 갱신을 막을 이유가 없다
     void unsubscribe(AuctionListSubscriber subscriber);
+
+    /**
+     * 열려 있는 모든 구독에 카드 전송, 닫힌 구독은 순회가 끝난 뒤 걷어낸다
+     */
+    void broadcastCard(AuctionCardInfo card);
 
     /**
      * 목록을 보고 있는 구독이 하나라도 있는지
