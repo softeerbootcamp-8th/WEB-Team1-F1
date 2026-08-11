@@ -5,6 +5,7 @@ import com.softeer.race.auctionroom.application.RoomState;
 import com.softeer.race.auctionroom.application.RoomSubscriber;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -38,12 +39,22 @@ public class InMemoryRoomChannel implements RoomChannel {
     public int countViewers(long auctionId) {
         Set<RoomSubscriber> subscribers = subscribersByAuction.get(auctionId);
 
-        if (subscribers == null) {
-            return 0;
-        }
+        return subscribers == null ? 0 : countViewers(subscribers);
+    }
 
-        // 구독이 빠지면 그 사람도 같이 사라지므로 사람을 따로 명부에 들고 정리할 것이 없다
+    @Override
+    public Map<Long, Integer> viewerCounts() {
+        Map<Long, Integer> counts = new HashMap<>();
+
+        subscribersByAuction.forEach((auctionId, subscribers) -> counts.put(auctionId, countViewers(subscribers)));
+
+        return counts;
+    }
+
+    // 구독이 빠지면 그 사람도 같이 사라지므로 사람을 따로 명부에 들고 정리할 것이 없다
+    private static int countViewers(Set<RoomSubscriber> subscribers) {
         Set<Long> viewers = new HashSet<>();
+
         for (RoomSubscriber subscriber : subscribers) {
             viewers.add(subscriber.viewerId());
         }

@@ -62,6 +62,9 @@ class AuctionListServiceTest {
 
     private static final long SELLER_ID = 7L;
 
+    // 차량 id 를 경매 id 와 다른 대역에 둔다. 통합테스트 픽스처가 901번 차량과 101번 경매로 가른 것과 같은 이유다
+    private static final long VEHICLE_ID_BASE = 900L;
+
     @Mock
     private AuctionListRepository auctionListRepository;
 
@@ -76,8 +79,10 @@ class AuctionListServiceTest {
 
     @BeforeEach
     void setUp() {
+        // 조립기는 실물을 쓴다, 대역으로 바꾸면 카드에 어떤 접속자 수와 키워드가 실리는지 볼 수 없다
         auctionListService = new AuctionListService(
-                vehicleKeywordService, auctionListRepository, roomChannel, FIXED_CLOCK);
+                vehicleKeywordService, auctionListRepository,
+                new AuctionCardAssembler(roomChannel), FIXED_CLOCK);
     }
 
     // ================= 그룹 순회 =================
@@ -307,8 +312,8 @@ class AuctionListServiceTest {
     }
 
     @Test
-    @DisplayName("닫힌 단계는 접속자를 세지 않는다")
-    void closedPhase_hasNoViewerCount() {
+    @DisplayName("단계는 저장된 상태가 아니라 지금 시각으로 갈린다")
+    void phaseComesFromTheClock() {
         // given : 마감 후 5분이 지난 경매
         givenLive(List.of());
         givenPending(List.of());
@@ -317,9 +322,9 @@ class AuctionListServiceTest {
         // when
         AuctionCardInfo card = auctionListService.list(null, null).content().getFirst();
 
-        // then : 경매방도 세지 않는 구간이라 목록만 다른 수를 보이면 안 된다
+        // then : 접속자 수가 단계에 따라 갈리는지는 AuctionCardAssemblerTest 가 본다.
+        // 여기서 같이 보면 목이 스텁 없이 0을 돌려주어 판정을 지워도 통과하는 공허한 단정이 된다
         assertThat(card.phase()).isEqualTo(RoomPhase.CLOSED);
-        assertThat(card.connectedCount()).isZero();
     }
 
     @Test
@@ -343,12 +348,12 @@ class AuctionListServiceTest {
     @Test
     @DisplayName("키워드 맵의 값이 해당 카드에 붙고 없는 차량은 빈 목록이다")
     void attachesKeywordsToMatchingCard() {
-        // given : 1번 차량에만 키워드가 있다
+        // given : 1번 경매의 차량에만 키워드가 있다
         givenLive(List.of(liveRow(1, NOW.minusMinutes(10)), liveRow(2, NOW.minusMinutes(5))));
         givenPending(List.of());
         givenEnded(List.of());
         given(vehicleKeywordService.findByVehicleIds(any()))
-                .willReturn(Map.of(1L, List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK)));
+                .willReturn(Map.of(VEHICLE_ID_BASE + 1, List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK)));
 
         // when
         List<AuctionCardInfo> content = auctionListService.list(null, null).content();
@@ -383,13 +388,13 @@ class AuctionListServiceTest {
         // when
         auctionListService.list(null, null);
 
-        // then : 응답에서 빠지는 21번 차량의 키워드까지 가져올 이유가 없다
+        // then : 응답에서 빠지는 21번째 경매의 차량까지 키워드를 가져올 이유가 없다
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Collection<Long>> requested = ArgumentCaptor.forClass(Collection.class);
         verify(vehicleKeywordService).findByVehicleIds(requested.capture());
         assertThat(requested.getValue())
                 .hasSize(PAGE_SIZE)
-                .doesNotContain((long) FETCH_SIZE);
+                .doesNotContain(VEHICLE_ID_BASE + FETCH_SIZE);
     }
 
     // ================= 상태 필터 =================
@@ -543,7 +548,7 @@ class AuctionListServiceTest {
     private AuctionListRow row(long id, LocalDateTime start) {
         return new AuctionListRow(
                 id,
-                id,                          // 차량 id, 테스트에서는 경매 id 와 같게 둔다
+                VEHICLE_ID_BASE + id,        // 경매 id 와 다른 대역, 같게 두면 둘을 바꿔 껴도 통과한다
                 "https://cdn.race.dev/" + id + ".jpg",
                 "HYUNDAI",
                 "MODEL-" + id,

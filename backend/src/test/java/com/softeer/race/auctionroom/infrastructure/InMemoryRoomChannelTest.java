@@ -18,6 +18,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 // 구독은 창 하나에 하나지만 한 사람이 창을 여럿 연다, 세는 단위는 창이 아니라 사람이다
 // 채널은 현황 내용을 보지 않고 나르기만 한다
@@ -75,6 +76,37 @@ class InMemoryRoomChannelTest {
 
         assertThat(afterOneWindow).isEqualTo(1);
         assertThat(channel.countViewers(AUCTION)).isZero();
+    }
+
+    @Test
+    @DisplayName("방마다 사람 수가 담긴다")
+    void viewerCountsAreGroupedByRoom() {
+        channel.subscribe(AUCTION, new FakeSubscriber());
+        channel.subscribe(AUCTION, new FakeSubscriber());
+        channel.subscribe(OTHER_AUCTION, new FakeSubscriber());
+
+        assertThat(channel.viewerCounts()).containsOnly(entry(AUCTION, 2), entry(OTHER_AUCTION, 1));
+    }
+
+    @Test
+    @DisplayName("구독이 없는 방은 담기지 않는다")
+    void emptyRoomIsAbsentFromViewerCounts() {
+        FakeSubscriber leaving = new FakeSubscriber();
+        channel.subscribe(AUCTION, leaving);
+
+        channel.unsubscribe(AUCTION, leaving);
+
+        assertThat(channel.viewerCounts()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("한 사람이 창을 여럿 열어도 방별 집계에서 하나다")
+    void oneViewerWithTwoWindowsCountsOnceInViewerCounts() {
+        channel.subscribe(AUCTION, new FakeSubscriber(VIEWER));
+        channel.subscribe(AUCTION, new FakeSubscriber(VIEWER));
+
+        // 방별 집계를 구독 수로 짜면 여기서만 깨진다, 사람 단위 집계를 실제로 나눠 쓰는지 본다
+        assertThat(channel.viewerCounts()).containsExactly(entry(AUCTION, 1));
     }
 
     @Test

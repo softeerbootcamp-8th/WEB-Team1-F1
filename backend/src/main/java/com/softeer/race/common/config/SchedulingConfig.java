@@ -23,6 +23,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 public class SchedulingConfig {
     public static final String AUCTION_PROGRESS = "auctionProgressTaskScheduler";
     public static final String ROOM_STREAM = "roomStreamTaskScheduler";
+    public static final String LIST_STREAM = "listStreamTaskScheduler";
     public static final String NOTIFICATION_STREAM = "notificationStreamTaskScheduler";
 
     @Bean(AUCTION_PROGRESS)
@@ -48,6 +49,11 @@ public class SchedulingConfig {
         scheduler.setThreadNamePrefix(namePrefix);
 
         return scheduler;
+    }
+
+    @Bean(LIST_STREAM)
+    public ThreadPoolTaskScheduler listStreamTaskScheduler() {
+        return threadPool("list-stream-");
     }
 
     @Bean(NOTIFICATION_STREAM)
