@@ -1,5 +1,6 @@
 import { axiosInstance } from '@/lib/axios'
 import type {
+  AuctionListCard,
   AuctionListCursor,
   AuctionListGroup,
   AuctionListPage,
@@ -31,6 +32,25 @@ export async function fetchAuctionList({
     { params: { ...cursor, ...(filter ? { filter } : {}) } },
   )
   return data
+}
+
+/**
+ * GET /api/auctions/stream 구독(SSE). 목록 조회가 비로그인이라 이 통로도 세션이 필요 없다.
+ * 구독 직후에는 아무 이벤트도 오지 않는다 — 서버가 보고 있는 페이지를 모르므로 첫 목록은
+ * 조회 API가 주고, 여기서는 그 뒤의 변화만 온다(백엔드 문서).
+ * card 는 목록 조회의 카드 한 장과 같은 모양이고 변경분이 아니라 전체라 하나를 놓쳐도 다음이 덮는다.
+ */
+export function subscribeAuctionListStream(
+  onCard: (card: AuctionListCard) => void,
+): () => void {
+  const baseURL = axiosInstance.defaults.baseURL ?? ''
+  const source = new EventSource(`${baseURL}/api/auctions/stream`)
+
+  source.addEventListener('card', (event) => {
+    onCard(JSON.parse(event.data) as AuctionListCard)
+  })
+
+  return () => source.close()
 }
 
 export interface AuctionUpdatePayload {

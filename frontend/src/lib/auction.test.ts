@@ -5,6 +5,7 @@ import type { AuctionListCard } from '@/features/auctions/types'
 import type { AuctionBadgeStatus } from '@/types/domain'
 
 import {
+  applyCardEvent,
   arrangeCards,
   badgeStatusAt,
   canDeleteAuction,
@@ -164,5 +165,50 @@ describe('arrangeCards', () => {
     // 12:10 이면 1번은 마감됐고 3번은 이미 시작했다, 진행중에 둘이 남는다
     expect(ids(arrangeCards(page, at('12:10:00'), 'LIVE'))).toEqual([2, 3])
     expect(ids(arrangeCards(page, at('12:10:00'), 'ENDED'))).toEqual([1, 5, 6])
+  })
+})
+
+describe('applyCardEvent', () => {
+  const NOW = at('12:00:00')
+
+  it('같은 경매의 카드가 오면 그 자리에서 교체된다', () => {
+    const updated = { ...card(2, '11:55:00', '12:15:00'), currentPrice: 99_000_000 }
+
+    const next = applyCardEvent(page, updated, 'ALL', NOW)
+
+    // 자리를 옮기는 것은 arrangeCards 몫이라 여기서는 순서를 건드리지 않는다
+    expect(ids(next)).toEqual(ids(page))
+    expect(next[1].currentPrice).toBe(99_000_000)
+  })
+
+  it('다른 카드는 그대로다', () => {
+    const updated = { ...card(2, '11:55:00', '12:15:00'), currentPrice: 99_000_000 }
+
+    const next = applyCardEvent(page, updated, 'ALL', NOW)
+
+    expect(next[0]).toBe(page[0])
+  })
+
+  it('목록에 없는 경매가 진행중으로 오면 뒤에 붙는다', () => {
+    const started = card(7, '11:59:00', '12:19:00')
+
+    const next = applyCardEvent(page, started, 'ALL', NOW)
+
+    // arrangeCards 가 진행중 무리의 맨 뒤에 세운다, 방금 시작한 경매는 마감이 제일 늦다
+    expect(ids(next)).toEqual([...ids(page), 7])
+  })
+
+  it('목록에 없고 진행중이 아니면 버린다', () => {
+    const ended = card(8, '10:00:00', '10:20:00')
+
+    // 종료 무리는 커서로 끊어 읽는 창이라, 못 보던 카드를 끼우면 읽은 범위와 어긋난다
+    expect(applyCardEvent(page, ended, 'ALL', NOW)).toBe(page)
+  })
+
+  it('나의 경매에서는 목록에 없던 카드를 넣지 않는다', () => {
+    const started = card(7, '11:59:00', '12:19:00')
+
+    // 스트림은 전체 경매를 흘린다, 남의 경매가 내 목록에 들어오면 안 된다
+    expect(applyCardEvent(page, started, 'MINE', NOW)).toBe(page)
   })
 })
