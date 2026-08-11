@@ -38,6 +38,17 @@ class AuctionRoomDetailTest {
         assertThat(detail.winnerName()).isEmpty();
     }
 
+    // 판매자는 낙찰자도 탈락자도 아니라 결과 화면에서 세 번째 갈래가 된다
+    @Test
+    @DisplayName("파는 사람과 낙찰받은 사람은 따로 판정된다")
+    void sellerAndWinnerAreJudgedApart() {
+        AuctionRoomDetail detail = sold(21_000_000L);
+
+        assertThat(detail.isSoldBy(SELLER_ID)).isTrue();
+        assertThat(detail.isSoldBy(WINNER_ID)).isFalse();
+        assertThat(detail.isWonBy(SELLER_ID)).isFalse();
+    }
+
     @Test
     @DisplayName("아직 확정되지 않은 경매는 결과 자체가 없다")
     void unsettledAuctionHasNoOutcome() {
@@ -67,6 +78,7 @@ class AuctionRoomDetailTest {
     // ================= 픽스처 ====================
 
     private static final long WINNER_ID = 7L;
+    private static final long SELLER_ID = 3L;
     private static final long START_PRICE = 10_000_000L;
 
     private static AuctionRoomDetail sold(long winningPrice) {
@@ -88,12 +100,14 @@ class AuctionRoomDetailTest {
                 START_AT.minusMinutes(30),
                 START_AT,
                 START_AT.plusMinutes(20),
+                0,
                 Manufacturer.HYUNDAI,
                 "아반떼 CN7",
                 2022,
                 35_000,
                 FuelType.GASOLINE,
                 "https://cdn.race.dev/avante-report.pdf",
+                SELLER_ID,
                 winnerId,
                 winnerRealName);
     }
