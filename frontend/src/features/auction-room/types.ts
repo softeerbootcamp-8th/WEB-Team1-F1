@@ -60,6 +60,8 @@ export interface AuctionRoomView {
   bidderCount: number
   bidCount: number
   winner: RoomWinner | null
+  /** 조회한 사람이 이 차를 내놓은 사람인지, 판매자는 자기 차량에 입찰할 수 없다 */
+  sellerIsMine: boolean
   recentBids: RecentBid[]
 }
 

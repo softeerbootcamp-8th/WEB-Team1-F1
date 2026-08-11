@@ -8,29 +8,44 @@ import { formatKRW, formatManwon } from '@/lib/format'
 import { getErrorMessage } from '@/lib/axios'
 import { useAuth } from '@/features/auth/auth-context'
 
+import { bidBlockOf, type BidBlock } from '../bid-eligibility'
+
 interface BidPanelProps {
   currentPrice: number
   // 구간표를 받기 전에는 상승가와 최소 입찰가를 정할 수 없다
   increment: number | null
   nextMin: number | null
+  /** 조회한 사람이 이 차를 내놓은 사람인지, 서버가 판정해 준다 */
+  sellerIsMine: boolean
   disabled?: boolean
   onBid: (amount: number) => Promise<void>
 }
 
+// 문구는 서버 것을 그대로 쓴다, 눌러서 토스트로 보던 말을 같은 자리에서 먼저 본다
+const BLOCK_NOTICE: Record<BidBlock, { title: string; description: string }> = {
+  EVALUATOR: { title: '평가사 계정입니다', description: '평가사는 입찰할 수 없습니다.' },
+  SELLER: {
+    title: '내가 내놓은 차량입니다',
+    description: '판매자는 자기 차량에 입찰할 수 없습니다.',
+  },
+}
+
 /**
- * 입찰 패널. 로그인한 회원이면 누구나(개인·딜러 모두) 입찰 가능.
+ * 입찰 패널. 로그인한 개인·딜러 회원이 입찰한다.
+ * 판매자는 자기 차량에, 평가사는 어느 차량에도 입찰할 수 없어 폼 대신 안내를 본다.
  * 금액은 직접 입력하지 않고 호가 단위만큼 -/+로만 조정한다 — 단위에 안 맞는 금액을 낼 수 없다.
  */
 export function BidPanel({
   currentPrice,
   increment,
   nextMin,
+  sellerIsMine,
   disabled,
   onBid,
 }: BidPanelProps) {
-  const { isAuthenticated } = useAuth()
+  const { user, isAuthenticated } = useAuth()
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return (
       <div className="rounded-xl border p-5 text-center">
         <p className="text-muted-foreground mb-3 text-sm">
@@ -41,6 +56,13 @@ export function BidPanel({
         </Button>
       </div>
     )
+  }
+
+  // 이 둘은 기다린다고 열리지 않는다. 잠긴 폼을 남기면 절대 입찰하지 않을 사람에게
+  // 호가 단위와 최소 입찰가를 계속 안내하게 된다
+  const block = bidBlockOf(user.role, sellerIsMine)
+  if (block !== null) {
+    return <BidBlocked {...BLOCK_NOTICE[block]} />
   }
 
   // 호가 단위를 모르면 얼마를 낼 수 있는지 안내할 수 없다. 0으로 대체하면
@@ -63,6 +85,16 @@ export function BidPanel({
       disabled={disabled}
       onBid={onBid}
     />
+  )
+}
+
+// 입찰 폼과 같은 상자를 쓴다, 자리도 테두리도 그대로라 이 사람만 레이아웃이 달라지지 않는다
+function BidBlocked({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-xl border p-5 text-center">
+      <p className="text-sm font-semibold">{title}</p>
+      <p className="text-muted-foreground mt-1 text-sm">{description}</p>
+    </div>
   )
 }
 
