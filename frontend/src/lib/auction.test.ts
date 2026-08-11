@@ -5,6 +5,8 @@ import type { AuctionListCard } from '@/features/auctions/types'
 import type { AuctionBadgeStatus } from '@/types/domain'
 
 import {
+  applyAudienceEvent,
+  applyCardEvent,
   arrangeCards,
   badgeStatusAt,
   canDeleteAuction,
@@ -164,5 +166,91 @@ describe('arrangeCards', () => {
     // 12:10 이면 1번은 마감됐고 3번은 이미 시작했다, 진행중에 둘이 남는다
     expect(ids(arrangeCards(page, at('12:10:00'), 'LIVE'))).toEqual([2, 3])
     expect(ids(arrangeCards(page, at('12:10:00'), 'ENDED'))).toEqual([1, 5, 6])
+  })
+})
+
+describe('applyCardEvent', () => {
+  const NOW = at('12:00:00')
+
+  it('같은 경매의 카드가 오면 그 자리에서 교체된다', () => {
+    const updated = { ...card(2, '11:55:00', '12:15:00'), currentPrice: 99_000_000 }
+
+    const next = applyCardEvent(page, updated, 'ALL', NOW)
+
+    // 자리를 옮기는 것은 arrangeCards 몫이라 여기서는 순서를 건드리지 않는다
+    expect(ids(next)).toEqual(ids(page))
+    expect(next[1].currentPrice).toBe(99_000_000)
+  })
+
+  it('다른 카드는 그대로다', () => {
+    const updated = { ...card(2, '11:55:00', '12:15:00'), currentPrice: 99_000_000 }
+
+    const next = applyCardEvent(page, updated, 'ALL', NOW)
+
+    expect(next[0]).toBe(page[0])
+  })
+
+  it('목록에 없는 경매가 진행중으로 오면 뒤에 붙는다', () => {
+    const started = card(7, '11:59:00', '12:19:00')
+
+    const next = applyCardEvent(page, started, 'ALL', NOW)
+
+    // arrangeCards 가 진행중 무리의 맨 뒤에 세운다, 방금 시작한 경매는 마감이 제일 늦다
+    expect(ids(next)).toEqual([...ids(page), 7])
+  })
+
+  it('목록에 없고 진행중이 아니면 버린다', () => {
+    const ended = card(8, '10:00:00', '10:20:00')
+
+    // 종료 무리는 커서로 끊어 읽는 창이라, 못 보던 카드를 끼우면 읽은 범위와 어긋난다
+    expect(applyCardEvent(page, ended, 'ALL', NOW)).toBe(page)
+  })
+
+  it('나의 경매에서는 목록에 없던 카드를 넣지 않는다', () => {
+    const started = card(7, '11:59:00', '12:19:00')
+
+    // 스트림은 전체 경매를 흘린다, 남의 경매가 내 목록에 들어오면 안 된다
+    expect(applyCardEvent(page, started, 'MINE', NOW)).toBe(page)
+  })
+})
+
+describe('applyAudienceEvent', () => {
+  it('그 경매의 시청자 수만 바뀐다', () => {
+    const next = applyAudienceEvent(page, 2, 5)
+
+    expect(next[1].connectedCount).toBe(5)
+    expect(next[0]).toBe(page[0])
+  })
+
+  it('다른 필드는 건드리지 않는다', () => {
+    const next = applyAudienceEvent(page, 2, 5)
+
+    // 시청자 수는 카드 전체가 아니라 숫자 하나만 오는 이벤트다
+    expect(next[1]).toEqual({ ...page[1], connectedCount: 5 })
+  })
+
+  it('목록에 없는 경매면 아무 일도 없다', () => {
+    // 서버는 사람이 있는 모든 방의 수를 보낸다, 내 페이지에 없는 경매의 이벤트가 계속 들어온다
+    expect(applyAudienceEvent(page, 999, 5)).toBe(page)
+  })
+})
+
+describe('스트림 갱신과 자리 재배치가 만나는 지점', () => {
+  const NOW = at('12:00:00')
+
+  it('진행중으로 들어온 카드가 예정 필터 목록에서는 화면에 안 나온다', () => {
+    const started = card(7, '11:59:00', '12:19:00')
+
+    const next = applyCardEvent(page, started, 'ALL', NOW)
+
+    // applyCardEvent 는 넣기만 하고 거르는 것은 arrangeCards 다, 두 규칙을 한 곳에 몰지 않는다
+    expect(ids(next)).toContain(7)
+    expect(ids(arrangeCards(next, NOW, 'PENDING'))).not.toContain(7)
+    expect(ids(arrangeCards(next, NOW, 'LIVE'))).toContain(7)
+  })
+
+  it('시작 시각이 지난 카드는 스트림 없이도 진행중으로 올라간다', () => {
+    // 이미 목록에 있는 카드는 이 이슈가 아니라 #222 의 시각 판정이 옮긴다
+    expect(ids(arrangeCards(page, at('12:06:00'), 'LIVE'))).toContain(3)
   })
 })

@@ -1,5 +1,9 @@
 import type { AuctionBadgeStatus, AuctionStatus } from '@/types/domain'
-import type { AuctionListCard, AuctionListGroup } from '@/features/auctions/types'
+import type {
+  AuctionListCard,
+  AuctionListGroup,
+  AuctionListScope,
+} from '@/features/auctions/types'
 import type { BidIncrementBand } from '@/features/auction-room/types'
 
 /**
@@ -93,6 +97,57 @@ export function arrangeCards(
   if (filter) return grouped[filter]
 
   return [...grouped.LIVE, ...grouped.PENDING, ...grouped.ENDED]
+}
+
+/**
+ * 스트림으로 온 카드 한 장을 목록에 반영한 새 배열. 바뀔 것이 없으면 받은 배열을 그대로 돌려준다.
+ *
+ * 자리는 옮기지 않는다. 그것은 arrangeCards 가 지금 시각으로 판정할 몫이라, 여기서 순서까지
+ * 건드리면 그룹 경계 판정이 두 곳에 생긴다.
+ *
+ * 목록에 없던 경매는 진행중일 때만 뒤에 붙인다. 종료 무리는 커서로 끊어 읽는 창이라 못 보던
+ * 카드를 끼우면 우리가 읽은 페이지 범위와 어긋난다. 진행중은 첫 페이지가 늘 앞에서부터 담고
+ * arrangeCards 가 그 무리의 맨 뒤에 세우는데, 방금 시작한 경매는 마감이 제일 늦어 그 자리가 맞다.
+ */
+export function applyCardEvent(
+  cards: AuctionListCard[],
+  incoming: AuctionListCard,
+  scope: AuctionListScope,
+  nowMs: number,
+): AuctionListCard[] {
+  const index = cards.findIndex((it) => it.auctionId === incoming.auctionId)
+
+  if (index >= 0) {
+    const next = [...cards]
+    next[index] = incoming
+    return next
+  }
+
+  // 스트림은 전체 경매를 흘리므로 나의 경매 목록에 남의 경매가 들어올 수 있다
+  if (scope === 'MINE') return cards
+
+  if (listGroupAt(incoming, nowMs) !== 'LIVE') return cards
+
+  return [...cards, incoming]
+}
+
+/**
+ * 스트림으로 온 시청자 수를 반영한 새 배열. 그 경매가 목록에 없으면 받은 배열을 그대로 돌려준다.
+ *
+ * 서버는 사람이 있는 모든 방의 수를 보내므로 내 페이지에 없는 경매의 이벤트가 계속 들어온다.
+ * 그때마다 새 배열을 만들면 화면이 헛돈다.
+ */
+export function applyAudienceEvent(
+  cards: AuctionListCard[],
+  auctionId: number,
+  connectedCount: number,
+): AuctionListCard[] {
+  const index = cards.findIndex((it) => it.auctionId === auctionId)
+  if (index < 0) return cards
+
+  const next = [...cards]
+  next[index] = { ...next[index], connectedCount }
+  return next
 }
 
 /**
