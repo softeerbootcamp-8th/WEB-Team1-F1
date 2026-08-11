@@ -16,6 +16,7 @@ import com.softeer.race.vehicle.application.dto.command.VehicleImageRegisterComm
 import com.softeer.race.vehicle.application.dto.info.VehicleImageRegisterInfo;
 import com.softeer.race.vehicle.application.VehicleKeywordService;
 import com.softeer.race.vehicle.domain.Vehicle;
+import com.softeer.race.vehicle.domain.VehicleImageRepository;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -78,6 +79,10 @@ class EvaluationResultServiceTest {
 
     @Mock
     private VehicleImageService vehicleImageService;
+
+    /* 제출 경로는 쓰지 않지만 생성자 인자라 둔다. 없으면 서비스에 null이 주입된다 */
+    @Mock
+    private VehicleImageRepository vehicleImageRepository;
 
     @Mock
     private VehicleKeywordService vehicleKeywordService;
