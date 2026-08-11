@@ -16,7 +16,12 @@ import { EmptyState } from '@/components/common/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { FUEL_TYPE_LABEL, MANUFACTURER_LABEL, TRANSMISSION_LABEL } from '@/features/quote/types'
+import {
+  FUEL_TYPE_LABEL,
+  MANUFACTURER_LABEL,
+  TRANSMISSION_LABEL,
+  VEHICLE_KEYWORD_LABEL,
+} from '@/features/quote/types'
 import { getErrorMessage } from '@/lib/axios'
 import { formatDateTime, formatKRW, formatMileage } from '@/lib/format'
 import { fetchEvaluationDetail } from '../api'
@@ -112,13 +117,29 @@ export function MyRequestDetailPage() {
             <CardHeader><CardTitle className="flex items-center gap-2"><CarFront />{isDiagnosed ? '진단 결과' : '차량 정보'}</CardTitle></CardHeader>
             <CardContent>
               <p className="text-muted-foreground text-sm">{FUEL_TYPE_LABEL[detail.fuelType]} · {TRANSMISSION_LABEL[detail.transmission]}</p>
-              {isDiagnosed && detail.mileage !== null && detail.estimatedPrice !== null ? (
+              {detail.status === 'REJECTED' ? (
+                <div className="border-destructive/20 bg-destructive/5 mt-5 rounded-xl border p-5 text-sm">
+                  <p className="text-destructive font-semibold">방문 결과가 반려되었습니다</p>
+                  <p className="mt-2 whitespace-pre-wrap">{detail.rejectReason}</p>
+                </div>
+              ) : isDiagnosed && detail.mileage !== null && detail.estimatedPrice !== null ? (
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   <div className="bg-muted/50 rounded-xl p-5"><p className="text-muted-foreground text-sm">실측 주행거리</p><p className="mt-2 text-xl font-semibold">{formatMileage(detail.mileage)}</p></div>
                   <div className="bg-foreground text-background rounded-xl p-5"><p className="text-background/60 text-sm">평가 산정 시세</p><p className="mt-2 text-xl font-semibold">{formatKRW(detail.estimatedPrice)}</p></div>
                 </div>
               ) : (
                 <div className="bg-muted/50 mt-5 rounded-xl p-5 text-sm"><p className="font-medium">아직 진단 전입니다</p><p className="text-muted-foreground mt-1">평가사가 결과를 제출하면 주행거리와 산정 시세가 표시됩니다.</p></div>
+              )}
+
+              {isDiagnosed && detail.keywords.length > 0 && (
+                <div className="mt-5">
+                  <p className="mb-2 text-sm font-medium">차량 상태</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {detail.keywords.map((keyword) => (
+                      <Badge key={keyword} variant="secondary">{VEHICLE_KEYWORD_LABEL[keyword]}</Badge>
+                    ))}
+                  </div>
+                </div>
               )}
 
               {detail.imageUrls.length > 0 && (
