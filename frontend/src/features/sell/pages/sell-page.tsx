@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { lookupVehicle } from '@/features/vehicle/api'
@@ -49,22 +48,21 @@ export function SellPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-14" aria-label="내 차 팔기">
-      <header className="max-w-2xl">
+      <header>
         <p className="text-muted-foreground text-sm tracking-[0.18em] uppercase">
           Sell with RACE
         </p>
-        <h1 className="mt-4 text-4xl font-semibold md:text-5xl">
+        <h1 className="mt-4 text-3xl font-semibold md:text-4xl lg:text-5xl lg:whitespace-nowrap">
           차량 정보로 판매 준비를 시작하세요.
         </h1>
-        <p className="text-muted-foreground mt-4 leading-7">
+        <p className="text-muted-foreground mt-4 text-lg leading-8">
           차량 정보를 확인한 뒤 평가사 방문견적 신청으로 이어집니다.
         </p>
       </header>
 
-      <div className="mt-12 rounded-2xl border p-7">
+      <div className="mx-auto mt-12 max-w-2xl rounded-2xl border p-7 md:p-9">
         <VehicleOwnerForm
           actionLabel="방문견적 예약하기"
-          actionIcon={ArrowRight}
           initialValues={prefill ?? undefined}
           isSubmitting={isLookingUp}
           onSubmit={reserveVisitQuote}

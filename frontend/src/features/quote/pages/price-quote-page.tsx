@@ -66,16 +66,16 @@ export function PriceQuotePage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-14" aria-label="내 차 시세 조회">
-      <header className="max-w-2xl">
+      <header>
         <p className="text-muted-foreground text-sm tracking-[0.18em] uppercase">
           Price Check
         </p>
-        <h1 className="mt-4 text-4xl font-semibold md:text-5xl">
+        <h1 className="mt-4 text-3xl font-semibold md:text-4xl lg:text-5xl lg:whitespace-nowrap">
           {vehicle
             ? '현재 주행거리를 알려주세요.'
             : '내 차 정보를 확인해보세요!'}
         </h1>
-        <p className="text-muted-foreground mt-4 leading-7">
+        <p className="text-muted-foreground mt-4 text-lg leading-8">
           {vehicle
             ? '확인된 차량에 현재 주행거리를 반영해 예상 시세를 계산합니다.'
             : '차량 소유자 이름과 번호판으로 차량 정보를 먼저 확인합니다.'}
@@ -143,7 +143,7 @@ export function PriceQuotePage() {
           </aside>
         </div>
       ) : (
-        <div className="mt-12 rounded-2xl border p-7">
+        <div className="mx-auto mt-12 max-w-2xl rounded-2xl border p-7 md:p-9">
           <VehicleOwnerForm
             actionLabel="차량 정보 확인"
             actionIcon={Search}
