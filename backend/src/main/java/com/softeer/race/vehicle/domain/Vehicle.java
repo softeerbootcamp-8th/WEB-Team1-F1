@@ -137,6 +137,56 @@ public class Vehicle extends BaseTimeEntity {
     }
 
     /**
+     * 실측 주행거리만 고쳐 적는다.
+     * <p>
+     * {@link #completeDiagnosis}와 나눠 두는 이유는 <b>부르는 시점이 다르기</b> 때문이다. 저쪽은
+     * 비어 있던 네 칸을 한꺼번에 채워 차량을 온전하게 만드는 지점이라 넷을 전부 요구해야 하지만,
+     * 이 메서드는 이미 온전한 차량의 한 칸만 바꾼다. 나머지 셋을 다시 받게 하면 사진 한 장을
+     * 바꾸려는 평가사가 주행거리와 시세를 함께 보내야 하는 지금 문제가 그대로 남는다.
+     * <p>
+     * <b>진단 전 차량에 불러서는 안 된다.</b> mileage만 채워지고 estimatedPrice가 비어 있는 차량이
+     * 생겨 {@link #isDiagnosed}가 거짓인 채로 값이 남는다. 그 관문은 호출자가 지킨다 —
+     * {@code Evaluation.approve}가 바로 앞의 검증을 전제로 두는 것과 같다.
+     */
+    public void reviseMileage(int mileage) {
+        this.mileage = mileage;
+    }
+
+    /**
+     * 산정한 예상 시세만 고쳐 적는다. {@link #reviseMileage}와 같은 이유로 나눠 둔다.
+     * <p>
+     * 여기서도 {@code QuotePolicy}로 다시 계산하지 않고 만원 단위로 내리지도 않는다.
+     * 실물을 보고 사람이 매긴 값이라는 점이 최초 제출과 다르지 않다.
+     */
+    public void reviseEstimatedPrice(long estimatedPrice) {
+        this.estimatedPrice = estimatedPrice;
+    }
+
+    /**
+     * 진단서만 새 주소로 갈아 끼운다.
+     * <p>
+     * 이전 주소의 파일을 지우지 않는다. 저장소에서 지우는 일은 실패해도 롤백되지 않아 트랜잭션
+     * 밖의 부작용이 되고, 지워진 뒤 이 트랜잭션이 롤백되면 차량이 없는 파일을 가리키게 된다.
+     */
+    public void replaceDiagnosticReport(String diagnosticReportUrl) {
+        this.diagnosticReportUrl = diagnosticReportUrl;
+    }
+
+    /**
+     * 대표 사진을 바꾼다. 사진 목록이 바뀔 때마다 <b>반드시 함께</b> 불러야 한다.
+     * <p>
+     * 대표 사진이 vehicle 행에 따로 있고 갤러리는 vehicle_image에 있어, 목록만 갈아 끼우면
+     * 방금 지운 사진의 주소가 대표로 남는다. 경매 목록 썸네일과 경매방이 그 값을 읽으므로
+     * 목록에서 사라진 사진이 카드에는 계속 보이게 된다.
+     * <p>
+     * 목록의 첫 장을 넣는 것은 호출자의 몫이다. "첫 장이 대표"라는 규칙은 사진 순서를 정하는
+     * 쪽이 들고 있고, 차량은 어느 것이 첫 장인지 알지 못한다.
+     */
+    public void changeMainPhoto(String mainPhotoUrl) {
+        this.mainPhotoUrl = mainPhotoUrl;
+    }
+
+    /**
      * 평가사가 진단을 끝내야 mileage 랑 estimatedPrice를 채우므로 이 판정이 곧 승인 여부다.
      */
     public boolean isDiagnosed() {
