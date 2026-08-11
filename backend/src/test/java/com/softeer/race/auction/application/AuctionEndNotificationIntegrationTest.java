@@ -116,7 +116,7 @@ class AuctionEndNotificationIntegrationTest extends IntegrationTestSupport {
         // then 6 : 낙찰자만 거래 화면을 가리킨다, 결과 확인이 끝나면 경매방에는 볼 것이 없고
         // 실제로 해야 할 일(구매 확정)은 거래 화면에 있다
         long dealId = dealRepository.findAll().getFirst().getId();
-        assertThat(linksOf(bob)).containsOnly("/deals/" + dealId);
+        assertThat(linksOf(bob)).containsOnly("/mypage/deals/" + dealId);
     }
 
     @Test

@@ -6,8 +6,6 @@ import type {
   EvaluationResult,
   EvaluationResultRequest,
   EvaluationSummariesResponse,
-  PresignedUploadRequest,
-  PresignedUploadResponse,
 } from './types'
 
 export async function fetchAssignableEvaluations(): Promise<AssignableEvaluationsResponse> {
@@ -45,16 +43,6 @@ export async function fetchEvaluationDetail(
 ): Promise<EvaluationDetail> {
   const { data } = await axiosInstance.get<EvaluationDetail>(
     `/api/evaluations/${evaluationId}`,
-  )
-  return data
-}
-
-export async function requestPresignedUploads(
-  request: PresignedUploadRequest,
-): Promise<PresignedUploadResponse> {
-  const { data } = await axiosInstance.post<PresignedUploadResponse>(
-    '/api/uploads/presigned',
-    request,
   )
   return data
 }
