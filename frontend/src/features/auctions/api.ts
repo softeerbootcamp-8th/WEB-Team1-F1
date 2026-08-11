@@ -43,6 +43,8 @@ interface AudiencePayload {
 export interface AuctionListStreamHandlers {
   onCard: (card: AuctionListCard) => void
   onAudience: (payload: AudiencePayload) => void
+  /** 다시 붙었을 때. 첫 연결에서는 불리지 않는다 */
+  onReconnect: () => void
 }
 
 /**
@@ -55,6 +57,7 @@ export interface AuctionListStreamHandlers {
 export function subscribeAuctionListStream({
   onCard,
   onAudience,
+  onReconnect,
 }: AuctionListStreamHandlers): () => void {
   const baseURL = axiosInstance.defaults.baseURL ?? ''
   const source = new EventSource(`${baseURL}/api/auctions/stream`)
@@ -66,6 +69,14 @@ export function subscribeAuctionListStream({
   source.addEventListener('audience', (event) => {
     onAudience(JSON.parse(event.data) as AudiencePayload)
   })
+
+  // 끊기면 EventSource 가 스스로 다시 붙고 그 사이의 이벤트는 유실이다. 서버가 다시 보내지
+  // 않으므로 복구는 재조회뿐이다. 첫 연결은 방금 조회한 목록이 최신이라 알리지 않는다
+  let opened = false
+  source.onopen = () => {
+    if (opened) onReconnect()
+    opened = true
+  }
 
   return () => source.close()
 }

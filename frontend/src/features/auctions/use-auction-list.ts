@@ -199,25 +199,6 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
     }
   }, [scope, filter, enabled, reloadToken])
 
-  // 이벤트가 도착한 그 순간의 서버 시각으로 판정해야 한다. 의존성에 넣으면 보정값이 바뀔 때마다
-  // 구독을 다시 연다
-  const offsetRef = useRef(offsetMs)
-  offsetRef.current = offsetMs
-
-  // filter 는 의존성이 아니다. 필터는 화면이 arrangeCards 로 거르는 것이라 구독을 다시 열 이유가 없다
-  useEffect(() => {
-    if (!enabled) return
-
-    return subscribeAuctionListStream({
-      onCard: (card) => {
-        setCards((current) => applyCardEvent(current, card, scope, Date.now() + offsetRef.current))
-      },
-      onAudience: ({ auctionId, connectedCount }) => {
-        setCards((current) => applyAudienceEvent(current, auctionId, connectedCount))
-      },
-    })
-  }, [scope, enabled])
-
   // 스트림으로 바뀐 값이 캐시에도 닿아야 한다, 안 그러면 경매방을 다녀오는 순간 값이 되돌아간다
   // 업데이터 안에서 쓰지 않는다, StrictMode 가 업데이터를 두 번 불러 부수효과를 넣을 자리가 아니다
   useEffect(() => {
@@ -275,6 +256,27 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
     listCache.clear()
     setReloadToken((token) => token + 1)
   }, [])
+
+  // 이벤트가 도착한 그 순간의 서버 시각으로 판정해야 한다. 의존성에 넣으면 보정값이 바뀔 때마다
+  // 구독을 다시 연다
+  const offsetRef = useRef(offsetMs)
+  offsetRef.current = offsetMs
+
+  // filter 는 의존성이 아니다. 필터는 화면이 arrangeCards 로 거르는 것이라 구독을 다시 열 이유가 없다
+  useEffect(() => {
+    if (!enabled) return
+
+    return subscribeAuctionListStream({
+      onCard: (card) => {
+        setCards((current) => applyCardEvent(current, card, scope, Date.now() + offsetRef.current))
+      },
+      onAudience: ({ auctionId, connectedCount }) => {
+        setCards((current) => applyAudienceEvent(current, auctionId, connectedCount))
+      },
+      // 끊긴 동안 온 것은 유실이고 서버가 다시 보내지 않는다, 복구는 재조회 몫이다
+      onReconnect: reload,
+    })
+  }, [scope, enabled, reload])
 
   return {
     cards,
