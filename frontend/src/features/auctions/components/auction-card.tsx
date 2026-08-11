@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Eye, Gauge } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -68,6 +68,12 @@ export function AuctionCard({
       ? () => onPreview(auction, status === 'ENDED' ? 'ENDED' : 'NOT_OPEN')
       : null
 
+  // 경매방의 "뒤로"가 돌아올 자리. 탭(범위·상태)까지 담아 보내야 나의 경매에서 들어간
+  // 사람이 전체 목록으로 떨어지지 않는다. 목록 자체는 캐시가 데이터와 스크롤을 되살린다.
+  // 미리보기 버튼에는 필요 없다 — 목록을 떠나지 않아 돌아올 일 자체가 없다.
+  const location = useLocation()
+  const roomLinkState = { from: `${location.pathname}${location.search}` }
+
   /** 들어갈 수 있으면 방으로 가는 링크, 아니면 미리보기를 여는 버튼 */
   function Open({ className, children }: { className?: string; children: ReactNode }) {
     if (preview) {
@@ -78,7 +84,7 @@ export function AuctionCard({
       )
     }
     return (
-      <Link to={`/auctions/${auction.auctionId}`} className={className}>
+      <Link to={`/auctions/${auction.auctionId}`} state={roomLinkState} className={className}>
         {children}
       </Link>
     )

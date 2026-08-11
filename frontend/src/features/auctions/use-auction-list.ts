@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { fetchAuctionList } from '@/features/auctions/api'
 import { serverClockOffset } from '@/lib/auction'
@@ -17,23 +17,77 @@ interface UseAuctionListOptions {
   enabled?: boolean
 }
 
+/** 화면을 떠났다 돌아올 때 이어 보기 위한 목록 한 벌 */
+interface CachedList {
+  cards: AuctionListCard[]
+  cursor: AuctionListCursor | null
+  hasNext: boolean
+  offsetMs: number
+  /** 목록을 떠나던 순간의 세로 스크롤. 돌아오면 이 높이에서 다시 시작한다. */
+  scrollY: number
+  /** 첫 페이지를 받은 시각. 이어 읽기로는 갱신하지 않는다 — 목록의 나이는 첫 페이지가 정한다. */
+  fetchedAt: number
+}
+
+/**
+ * 이 시간이 지난 캐시는 버리고 첫 페이지부터 다시 읽는다. 목록은 폴링이 없어 조회한
+ * 순간부터 낡기 시작하는 화면이라, 경매방을 잠깐 다녀오는 왕복은 이어 보는 쪽이 낫고
+ * 한참 만의 복귀는 현재가와 구성이 달라졌을 테니 새로 읽는 쪽이 맞다.
+ */
+const CACHE_TTL_MS = 2 * 60_000
+
+/**
+ * 경매방에 다녀와도 목록이 초기화되지 않도록 모듈에 남겨 두는 캐시.
+ * 키는 범위와 필터의 조합 — 커서와 마찬가지로 다른 목록끼리 섞어 쓸 수 없다.
+ */
+const listCache = new Map<string, CachedList>()
+
+function cacheKeyOf(scope: AuctionListScope, filter: AuctionListGroup | null) {
+  return `${scope}:${filter ?? 'ALL'}`
+}
+
+function readFreshCache(key: string): CachedList | null {
+  const entry = listCache.get(key)
+  if (!entry) return null
+  if (Date.now() - entry.fetchedAt > CACHE_TTL_MS) {
+    listCache.delete(key)
+    return null
+  }
+  return entry
+}
+
+/** 로그아웃 시 호출한다. "나의 경매" 캐시가 다음에 로그인한 사용자에게 보이면 안 된다. */
+export function clearAuctionListCache() {
+  listCache.clear()
+}
+
 /**
  * 경매 목록 조회 + 커서 기반 "더 보기" 페이지네이션.
  *
  * 범위(전체/나의 경매)나 상태 필터가 바뀌면 들고 있던 커서를 즉시 버리고 첫 페이지부터
  * 다시 읽는다. 커서는 목록에서의 위치가 아니라 정렬축(마감·시작 시각) 위의 좌표라,
  * 다른 목록에 그대로 쓰면 앞부분이 통째로 잘린 페이지를 받는다.
+ *
+ * 읽어 온 목록과 떠날 때의 스크롤은 모듈 캐시에 남긴다. 경매방에 들어갔다 뒤로가기로
+ * 돌아오면 이 훅이 새로 마운트되는데, 그때 캐시가 신선하면 조회 없이 보던 자리부터 잇는다.
  */
 export function useAuctionList({ scope, filter, enabled = true }: UseAuctionListOptions) {
-  const [cards, setCards] = useState<AuctionListCard[]>([])
-  const [cursor, setCursor] = useState<AuctionListCursor | null>(null)
-  const [hasNext, setHasNext] = useState(false)
-  const [isLoading, setIsLoading] = useState(enabled)
+  // 마운트하는 순간에 동기로 복원한다. 이펙트에서 하면 스켈레톤이 한 프레임 그려진 뒤
+  // 목록으로 갈아끼워져 화면이 튀고, 스크롤을 되돌리려 해도 그 사이엔 되돌아갈 높이가 없다.
+  const [restored] = useState(() =>
+    enabled ? readFreshCache(cacheKeyOf(scope, filter)) : null,
+  )
+
+  const [cards, setCards] = useState<AuctionListCard[]>(restored?.cards ?? [])
+  const [cursor, setCursor] = useState<AuctionListCursor | null>(restored?.cursor ?? null)
+  const [hasNext, setHasNext] = useState(restored?.hasNext ?? false)
+  const [isLoading, setIsLoading] = useState(enabled && !restored)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<unknown>(null)
   // 서버 시각 - 이 브라우저의 시계. 서버는 남은 시간이 아니라 절대 시각을 주므로,
   // 시계가 어긋난 사람이 아직 진행 중인 경매를 끝난 것으로 보지 않으려면 이 값이 필요하다.
-  const [offsetMs, setOffsetMs] = useState(0)
+  // 두 시계의 간격은 목록을 다녀오는 동안 변하지 않으므로 복원해도 그대로 맞는다.
+  const [offsetMs, setOffsetMs] = useState(restored?.offsetMs ?? 0)
   // 이어 읽기 실패는 첫 페이지 실패와 분리한다. 같이 두면 스크롤 도중 한 번 실패했을 때
   // 이미 보고 있던 목록이 통째로 에러 화면으로 바뀐다.
   const [loadMoreError, setLoadMoreError] = useState<unknown>(null)
@@ -43,7 +97,55 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
   // 응답이 뒤늦게 도착해도 알아볼 수 있게 한다.
   const generationRef = useRef(0)
 
+  // 복원으로 시작한 마운트에서는 조회를 건너뛰기 위한 표식. 첫 실행에서 소진하는 방식은
+  // 안 된다 — StrictMode가 이펙트를 mount→cleanup→mount로 재실행해서, 두 번째 실행이
+  // 표식 없이 재조회를 타며 복원한 목록을 스켈레톤으로 되돌린다.
+  const restoredKeyRef = useRef(restored ? cacheKeyOf(scope, filter) : null)
+
+  // 보던 높이는 스크롤할 때마다 담아 뒀다가 떠날 때 캐시에 새긴다. 마운트 해제 시점에
+  // window.scrollY를 읽으면 이미 다음 화면이 그려진 뒤라, 그 화면이 목록보다 짧으면
+  // 브라우저가 잘라낸 높이가 남는다.
+  const keyRef = useRef(cacheKeyOf(scope, filter))
+  keyRef.current = cacheKeyOf(scope, filter)
+  const scrollYRef = useRef(restored?.scrollY ?? 0)
   useEffect(() => {
+    const record = () => {
+      scrollYRef.current = window.scrollY
+    }
+    window.addEventListener('scroll', record, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', record)
+      const entry = listCache.get(keyRef.current)
+      if (entry) entry.scrollY = scrollYRef.current
+    }
+  }, [])
+
+  // 복원한 목록은 보던 높이로 옮겨 놓고 그린다. 카드가 첫 렌더부터 있고 사진 칸도
+  // 비율(aspect-ratio)로 서 있어, 이미지가 오기 전에도 되돌아갈 높이는 확보돼 있다.
+  // html에 scroll-behavior: smooth가 걸려 있어 instant를 명시한다. 복원이 애니메이션이 되면
+  // 맨 위에서 보던 자리까지 화면이 흘러내려, 되돌아온 게 아니라 이동하는 것처럼 보인다.
+  // 브라우저 뒤로가기(popstate)는 브라우저의 자체 스크롤 복원이 함께 돌므로 이 코드가
+  // 없어도 자리가 맞는다. 이 코드는 앞으로 가는 진입(경매방의 "뒤로" 버튼)을 위한 것이다.
+  useLayoutEffect(() => {
+    if (restored) window.scrollTo({ top: restored.scrollY, behavior: 'instant' })
+  }, [restored])
+
+  useEffect(() => {
+    const key = cacheKeyOf(scope, filter)
+
+    // 복원한 그 키를 계속 보고 있는 동안만 조회를 건너뛴다. reload가 불리면(토큰 > 0)
+    // 캐시를 지웠으니 새로 읽어야 하고, 키가 갈렸다면 화면은 이미 다른 목록이며,
+    // enabled가 꺼졌다면(예: 로그아웃) 아래로 내려가 복원한 목록을 비워야 한다.
+    if (enabled && reloadToken === 0 && restoredKeyRef.current === key) {
+      // 복원이라 조회는 없지만, 목록을 벗어날 때의 정리는 조회했을 때와 같아야 한다.
+      return () => {
+        generationRef.current += 1
+      }
+    }
+    // 다른 키로 넘어간 순간 표식을 지운다. 남겨 두면 원래 키로 돌아왔을 때 화면에는
+    // 다른 목록이 있는데도 조회를 건너뛴다.
+    restoredKeyRef.current = null
+
     // 응답을 기다리는 동안 "더 보기"가 눌려도 이전 목록의 커서가 나가지 않도록 먼저 비운다.
     setCursor(null)
     setHasNext(false)
@@ -65,11 +167,21 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
       .then((page) => {
         if (cancelled) return
         // 응답이 도착한 이 순간에 잡는다. 렌더 시점에 재면 조회 이후 흐른 시간만큼 어긋난다.
-        setOffsetMs(serverClockOffset(page.serverTime, Date.now()))
+        const offset = serverClockOffset(page.serverTime, Date.now())
+        setOffsetMs(offset)
         setCards(page.content)
         setCursor(page.nextCursor)
         setHasNext(page.hasNext)
         setError(null)
+        // 새 첫 페이지는 새 목록이다. 남아 있던 스크롤은 이전 목록의 것이라 함께 버린다.
+        listCache.set(key, {
+          cards: page.content,
+          cursor: page.nextCursor,
+          hasNext: page.hasNext,
+          offsetMs: offset,
+          scrollY: 0,
+          fetchedAt: Date.now(),
+        })
       })
       .catch((cause) => {
         if (cancelled) return
@@ -102,9 +214,22 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
       const page = await fetchAuctionList({ scope, filter, cursor })
       // 이전 목록의 페이지다. 그대로 붙이면 카드가 섞이고 커서까지 그 목록 것으로 덮인다.
       if (isStale()) return
-      setCards((prev) => [...prev, ...page.content])
+      const merged = [...cards, ...page.content]
+      setCards(merged)
       setCursor(page.nextCursor)
       setHasNext(page.hasNext)
+
+      // 돌아왔을 때도 여기까지 읽은 만큼 이어지도록 캐시에도 붙인다.
+      const key = cacheKeyOf(scope, filter)
+      const entry = listCache.get(key)
+      if (entry) {
+        listCache.set(key, {
+          ...entry,
+          cards: merged,
+          cursor: page.nextCursor,
+          hasNext: page.hasNext,
+        })
+      }
     } catch (cause) {
       // 무한 스크롤은 실패해도 화면이 그대로라 자동으로 다시 시도하면 조용히 반복 호출된다.
       // 여기서 멈추고, 다시 시도할지는 사용자가 정하게 한다.
@@ -114,9 +239,14 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
       // 목록이 갈렸다면 이 플래그는 이펙트가 이미 내렸다. 새 목록의 상태를 덮지 않는다.
       if (!isStale()) setIsLoadingMore(false)
     }
-  }, [cursor, isLoading, isLoadingMore, scope, filter])
+  }, [cards, cursor, isLoading, isLoadingMore, scope, filter])
 
-  const reload = useCallback(() => setReloadToken((token) => token + 1), [])
+  const reload = useCallback(() => {
+    // 수정·삭제 뒤의 다시 읽기. 한 경매는 전체/나의 경매와 여러 상태 목록에 겹쳐 있어,
+    // 지금 키만 지우면 다른 목록의 캐시에 낡은 카드가 그대로 남는다.
+    listCache.clear()
+    setReloadToken((token) => token + 1)
+  }, [])
 
   return {
     cards,
