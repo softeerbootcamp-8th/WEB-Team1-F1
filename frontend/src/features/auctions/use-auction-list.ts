@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { fetchAuctionList, subscribeAuctionListStream } from '@/features/auctions/api'
+import type { AuctionVehicleFilter } from '@/features/auctions/filter'
+import { EMPTY_FILTER, filterKey, hasActiveFilter } from '@/features/auctions/filter'
 import { useDocumentVisible } from '@/hooks/use-document-visible'
 import { applyAudienceEvent, applyCardEvent, serverClockOffset } from '@/lib/auction'
 import type {
@@ -14,6 +16,8 @@ interface UseAuctionListOptions {
   scope: AuctionListScope
   /** null이면 상태 필터 없이 전체 */
   filter: AuctionListGroup | null
+  /** 차량·가격 조건. 서버가 걸러 주므로 바뀌면 커서를 버리고 첫 페이지부터 다시 읽는다 */
+  vehicle?: AuctionVehicleFilter
   /** false면 조회하지 않고 빈 상태로 둔다(예: 나의 경매인데 비로그인) */
   enabled?: boolean
 }
@@ -43,8 +47,8 @@ const CACHE_TTL_MS = 2 * 60_000
  */
 const listCache = new Map<string, CachedList>()
 
-function cacheKeyOf(scope: AuctionListScope, filter: AuctionListGroup | null) {
-  return `${scope}:${filter ?? 'ALL'}`
+function cacheKeyOf(scope: AuctionListScope, filter: AuctionListGroup | null, vehicleKey: string) {
+  return `${scope}:${filter ?? 'ALL'}:${vehicleKey}`
 }
 
 function readFreshCache(key: string): CachedList | null {
@@ -72,13 +76,21 @@ export function clearAuctionListCache() {
  * 읽어 온 목록과 떠날 때의 스크롤은 모듈 캐시에 남긴다. 경매방에 들어갔다 뒤로가기로
  * 돌아오면 이 훅이 새로 마운트되는데, 그때 캐시가 신선하면 조회 없이 보던 자리부터 잇는다.
  */
-export function useAuctionList({ scope, filter, enabled = true }: UseAuctionListOptions) {
+export function useAuctionList({
+  scope,
+  filter,
+  vehicle = EMPTY_FILTER,
+  enabled = true,
+}: UseAuctionListOptions) {
   const visible = useDocumentVisible()
+
+  // 조건은 객체라 렌더마다 새것일 수 있다. 값으로 만든 키를 기준으로 삼아야 같은 조건이 같은 목록이 된다.
+  const vehicleKey = filterKey(vehicle)
 
   // 마운트하는 순간에 동기로 복원한다. 이펙트에서 하면 스켈레톤이 한 프레임 그려진 뒤
   // 목록으로 갈아끼워져 화면이 튀고, 스크롤을 되돌리려 해도 그 사이엔 되돌아갈 높이가 없다.
   const [restored] = useState(() =>
-    enabled ? readFreshCache(cacheKeyOf(scope, filter)) : null,
+    enabled ? readFreshCache(cacheKeyOf(scope, filter, vehicleKey)) : null,
   )
 
   const [cards, setCards] = useState<AuctionListCard[]>(restored?.cards ?? [])
@@ -103,13 +115,13 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
   // 복원으로 시작한 마운트에서는 조회를 건너뛰기 위한 표식. 첫 실행에서 소진하는 방식은
   // 안 된다 — StrictMode가 이펙트를 mount→cleanup→mount로 재실행해서, 두 번째 실행이
   // 표식 없이 재조회를 타며 복원한 목록을 스켈레톤으로 되돌린다.
-  const restoredKeyRef = useRef(restored ? cacheKeyOf(scope, filter) : null)
+  const restoredKeyRef = useRef(restored ? cacheKeyOf(scope, filter, vehicleKey) : null)
 
   // 보던 높이는 스크롤할 때마다 담아 뒀다가 떠날 때 캐시에 새긴다. 마운트 해제 시점에
   // window.scrollY를 읽으면 이미 다음 화면이 그려진 뒤라, 그 화면이 목록보다 짧으면
   // 브라우저가 잘라낸 높이가 남는다.
-  const keyRef = useRef(cacheKeyOf(scope, filter))
-  keyRef.current = cacheKeyOf(scope, filter)
+  const keyRef = useRef(cacheKeyOf(scope, filter, vehicleKey))
+  keyRef.current = cacheKeyOf(scope, filter, vehicleKey)
   const scrollYRef = useRef(restored?.scrollY ?? 0)
   useEffect(() => {
     const record = () => {
@@ -134,7 +146,7 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
   }, [restored])
 
   useEffect(() => {
-    const key = cacheKeyOf(scope, filter)
+    const key = cacheKeyOf(scope, filter, vehicleKey)
 
     // 복원한 그 키를 계속 보고 있는 동안만 조회를 건너뛴다. reload가 불리면(토큰 > 0)
     // 캐시를 지웠으니 새로 읽어야 하고, 키가 갈렸다면 화면은 이미 다른 목록이며,
@@ -166,7 +178,7 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
     let cancelled = false
     setIsLoading(true)
 
-    fetchAuctionList({ scope, filter })
+    fetchAuctionList({ scope, filter, vehicle })
       .then((page) => {
         if (cancelled) return
         // 응답이 도착한 이 순간에 잡는다. 렌더 시점에 재면 조회 이후 흐른 시간만큼 어긋난다.
@@ -200,14 +212,16 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
       // 진행 중이던 이어 읽기 응답을 이 시점부터 무효로 만든다.
       generationRef.current += 1
     }
-  }, [scope, filter, enabled, reloadToken])
+    // vehicleKey 로 건다. 조건 객체는 렌더마다 새것일 수 있어 그대로 걸면 조회가 끝없이 반복된다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope, filter, vehicleKey, enabled, reloadToken])
 
   // 스트림으로 바뀐 값이 캐시에도 닿아야 한다, 안 그러면 경매방을 다녀오는 순간 값이 되돌아간다
   // 업데이터 안에서 쓰지 않는다, StrictMode 가 업데이터를 두 번 불러 부수효과를 넣을 자리가 아니다
   useEffect(() => {
-    const entry = listCache.get(cacheKeyOf(scope, filter))
+    const entry = listCache.get(cacheKeyOf(scope, filter, vehicleKey))
     if (entry) entry.cards = cards
-  }, [cards, scope, filter])
+  }, [cards, scope, filter, vehicleKey])
 
   const loadMore = useCallback(async () => {
     // 첫 페이지를 다시 읽는 중이면 지금 커서는 비어 있거나 이전 목록의 것이다.
@@ -221,7 +235,7 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
     setIsLoadingMore(true)
     setLoadMoreError(null)
     try {
-      const page = await fetchAuctionList({ scope, filter, cursor })
+      const page = await fetchAuctionList({ scope, filter, vehicle, cursor })
       // 이전 목록의 페이지다. 그대로 붙이면 카드가 섞이고 커서까지 그 목록 것으로 덮인다.
       if (isStale()) return
       // 스트림이 끼워 넣은 카드가 이 페이지에 다시 올 수 있다
@@ -232,7 +246,7 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
       setHasNext(page.hasNext)
 
       // 돌아왔을 때도 여기까지 읽은 만큼 이어지도록 캐시에도 붙인다.
-      const key = cacheKeyOf(scope, filter)
+      const key = cacheKeyOf(scope, filter, vehicleKey)
       const entry = listCache.get(key)
       if (entry) {
         listCache.set(key, {
@@ -251,7 +265,7 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
       // 목록이 갈렸다면 이 플래그는 이펙트가 이미 내렸다. 새 목록의 상태를 덮지 않는다.
       if (!isStale()) setIsLoadingMore(false)
     }
-  }, [cards, cursor, isLoading, isLoadingMore, scope, filter])
+  }, [cards, cursor, isLoading, isLoadingMore, scope, filter, vehicle, vehicleKey])
 
   const reload = useCallback(() => {
     // 수정·삭제 뒤의 다시 읽기. 한 경매는 전체/나의 경매와 여러 상태 목록에 겹쳐 있어,
@@ -264,6 +278,10 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
   // 구독을 다시 연다
   const offsetRef = useRef(offsetMs)
   offsetRef.current = offsetMs
+
+  // 조건이 걸려 있는지도 같은 이유로 ref 다. 조건이 바뀔 때마다 구독을 다시 열 이유가 없다.
+  const isFilteredRef = useRef(false)
+  isFilteredRef.current = hasActiveFilter(vehicle)
 
   // 가려진 사이에 온 것은 유실이다. 서버가 다시 보내지 않으므로 돌아올 때 목록을 다시 읽는다.
   // onReconnect 는 같은 EventSource 가 스스로 붙을 때만 돌아서 이 경로를 대신하지 못한다
@@ -288,7 +306,14 @@ export function useAuctionList({ scope, filter, enabled = true }: UseAuctionList
 
     return subscribeAuctionListStream({
       onCard: (card) => {
-        setCards((current) => applyCardEvent(current, card, scope, Date.now() + offsetRef.current))
+        setCards((current) => {
+          // 조건이 걸린 목록에는 새 카드를 넣지 않는다. 무엇이 조건에 맞는지는 서버만 알고,
+          // 카드에는 연료·변속기가 없어 여기서 판정할 수 없다. 이미 있는 카드의 갱신은 그대로 받는다.
+          if (isFilteredRef.current && !current.some((it) => it.auctionId === card.auctionId)) {
+            return current
+          }
+          return applyCardEvent(current, card, scope, Date.now() + offsetRef.current)
+        })
       },
       onAudience: ({ auctionId, connectedCount }) => {
         setCards((current) => applyAudienceEvent(current, auctionId, connectedCount))

@@ -1,4 +1,6 @@
 import { axiosInstance } from '@/lib/axios'
+import type { AuctionVehicleFilter } from '@/features/auctions/filter'
+import { toFilterParams } from '@/features/auctions/filter'
 import type {
   AuctionListCard,
   AuctionListCursor,
@@ -11,6 +13,8 @@ export interface AuctionListParams {
   scope: AuctionListScope
   /** null이면 전체 상태를 진행중 → 예정 → 종료 순으로 받는다 */
   filter: AuctionListGroup | null
+  /** 차량·가격 조건. 없으면 조건 없이 전부 */
+  vehicle?: AuctionVehicleFilter
   cursor?: AuctionListCursor | null
 }
 
@@ -25,11 +29,20 @@ export interface AuctionListParams {
 export async function fetchAuctionList({
   scope,
   filter,
+  vehicle,
   cursor,
 }: AuctionListParams): Promise<AuctionListPage> {
+  // 연료는 여러 개라 같은 이름이 반복돼야 서버의 List 에 붙는다. 객체로 넘기면 axios 가
+  // fuelTypes[] 로 바꿔 이름이 어긋난다.
+  const params = vehicle ? toFilterParams(vehicle) : new URLSearchParams()
+  if (filter) params.set('filter', filter)
+  if (cursor) {
+    for (const [key, value] of Object.entries(cursor)) params.set(key, String(value))
+  }
+
   const { data } = await axiosInstance.get<AuctionListPage>(
     scope === 'MINE' ? '/api/auctions/me' : '/api/auctions',
-    { params: { ...cursor, ...(filter ? { filter } : {}) } },
+    { params },
   )
   return data
 }
