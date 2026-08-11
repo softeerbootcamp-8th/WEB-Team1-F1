@@ -234,3 +234,23 @@ describe('applyAudienceEvent', () => {
     expect(applyAudienceEvent(page, 999, 5)).toBe(page)
   })
 })
+
+describe('스트림 갱신과 자리 재배치가 만나는 지점', () => {
+  const NOW = at('12:00:00')
+
+  it('진행중으로 들어온 카드가 예정 필터 목록에서는 화면에 안 나온다', () => {
+    const started = card(7, '11:59:00', '12:19:00')
+
+    const next = applyCardEvent(page, started, 'ALL', NOW)
+
+    // applyCardEvent 는 넣기만 하고 거르는 것은 arrangeCards 다, 두 규칙을 한 곳에 몰지 않는다
+    expect(ids(next)).toContain(7)
+    expect(ids(arrangeCards(next, NOW, 'PENDING'))).not.toContain(7)
+    expect(ids(arrangeCards(next, NOW, 'LIVE'))).toContain(7)
+  })
+
+  it('시작 시각이 지난 카드는 스트림 없이도 진행중으로 올라간다', () => {
+    // 이미 목록에 있는 카드는 이 이슈가 아니라 #222 의 시각 판정이 옮긴다
+    expect(ids(arrangeCards(page, at('12:06:00'), 'LIVE'))).toContain(3)
+  })
+})
