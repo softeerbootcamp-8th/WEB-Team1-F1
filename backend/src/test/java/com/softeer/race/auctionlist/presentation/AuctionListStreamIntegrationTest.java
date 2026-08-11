@@ -204,8 +204,53 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
                 .contains("\"phase\":\"CLOSED\"");
     }
 
+    @Test
+    @DisplayName("시나리오 8 : 경매방에 사람이 들어옴 -> 목록에 시청자 수가 흘러온다")
+    void enteringRoomStreamsAudience() throws Exception {
+        long auctionId = liveAuction();
+        MvcResult list = subscribe().andExpect(request().asyncStarted()).andReturn();
+
+        // 대역을 손으로 물리지 않는다, 경매방 구독이 목록 수로 이어지는 사슬까지 봐야 한다
+        enterRoom(auctionId);
+
+        auctionListStreamService.broadcastAudienceChanges();
+
+        assertThat(body(list))
+                .contains("event:audience")
+                .contains("\"auctionId\":" + auctionId)
+                .contains("\"connectedCount\":1");
+    }
+
+    @Test
+    @DisplayName("시나리오 9 : 수가 그대로면 다음 주기에 아무것도 나가지 않는다")
+    void unchangedAudienceStreamsNothing() throws Exception {
+        long auctionId = liveAuction();
+        MvcResult list = subscribe().andExpect(request().asyncStarted()).andReturn();
+        enterRoom(auctionId);
+        auctionListStreamService.broadcastAudienceChanges();
+
+        int sent = audienceCount(list, auctionId);
+        auctionListStreamService.broadcastAudienceChanges();
+
+        // 조용한 방에도 매 주기 방송이 나가면 팬아웃이 보는 사람 수만큼 헛돈다
+        assertThat(audienceCount(list, auctionId)).isEqualTo(sent);
+    }
+
     private ResultActions subscribe() throws Exception {
         return mockMvc.perform(get("/api/auctions/stream"));
+    }
+
+    private void enterRoom(long auctionId) throws Exception {
+        String token = sessionService.issue(users.user("한구경", Role.DEALER));
+
+        mockMvc.perform(get("/api/auctions/{auctionId}/room/stream", auctionId)
+                        .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, token)))
+                .andExpect(status().isOk());
+    }
+
+    // 경매방 명부는 싱글턴이라 앞 테스트가 남긴 방의 이벤트가 섞인다, 내 경매 것만 센다
+    private static int audienceCount(MvcResult list, long auctionId) {
+        return body(list).split("\"auctionId\":" + auctionId + ",\"connectedCount\"", -1).length - 1;
     }
 
     private ResultActions bid(long auctionId, long amount) throws Exception {

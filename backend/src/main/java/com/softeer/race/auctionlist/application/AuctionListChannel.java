@@ -24,6 +24,11 @@ public interface AuctionListChannel {
     void broadcastCard(AuctionCardInfo card);
 
     /**
+     * 열려 있는 모든 구독에 시청자 수 전송, 닫힌 구독은 순회가 끝난 뒤 걷어낸다
+     */
+    void broadcastAudience(long auctionId, int connectedCount);
+
+    /**
      * 목록을 보고 있는 구독이 하나라도 있는지
      */
     // 방송이 이것으로 먼저 걸러 아무도 안 볼 때 DB 를 읽지 않는다

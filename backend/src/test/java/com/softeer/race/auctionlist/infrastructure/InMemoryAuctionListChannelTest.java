@@ -85,6 +85,20 @@ class InMemoryAuctionListChannelTest {
         assertThat(dying.listedWhenClosed).isFalse();
     }
 
+    @Test
+    @DisplayName("시청자 수 전송도 카드와 같은 걷어내기를 탄다")
+    void audienceBroadcastDiscardsClosedToo() {
+        FakeSubscriber dying = new FakeSubscriber();
+        dying.diesOnSend = true;
+        channel.subscribe(dying);
+
+        channel.broadcastAudience(1L, 3);
+
+        // 보낼 것이 둘이라 정리를 각자 하면 한쪽 경로에서만 응답이 만료까지 살아남는다
+        assertThat(channel.hasSubscribers()).isFalse();
+        assertThat(dying.closed).isTrue();
+    }
+
     // 채널은 카드 내용을 보지 않고 그대로 넘기기만 하므로 식별자만 채운다
     private static AuctionCardInfo card(long auctionId) {
         return new AuctionCardInfo(auctionId, null, null, null, null, null, null,
@@ -105,6 +119,13 @@ class InMemoryAuctionListChannelTest {
         public void sendCard(AuctionCardInfo card) {
             received.add(card);
 
+            if (diesOnSend) {
+                open = false;
+            }
+        }
+
+        @Override
+        public void sendAudience(long auctionId, int connectedCount) {
             if (diesOnSend) {
                 open = false;
             }

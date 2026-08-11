@@ -3,6 +3,7 @@ package com.softeer.race.auctionlist.presentation;
 import com.softeer.race.auctionlist.application.AuctionListSubscriber;
 import com.softeer.race.auctionlist.application.dto.AuctionCardInfo;
 import com.softeer.race.auctionlist.presentation.response.AuctionCardResponse;
+import com.softeer.race.auctionlist.presentation.response.AudienceResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -37,25 +38,15 @@ class SseAuctionListSubscriber implements AuctionListSubscriber {
         }
     }
 
+    // 화면이 이 이름으로 리스너를 나눠 단다, 실린 내용의 모양을 뜯어보고 분기하지 않는다
     @Override
     public void sendCard(AuctionCardInfo card) {
-        if (!open) {
-            return;
-        }
+        send("card", AuctionCardResponse.from(card));
+    }
 
-        try {
-            // 미디어 타입을 명시한다, 생략하면 어떤 변환기가 잡히는지가 데이터 타입에 딸려간다
-            emitter.send(SseEmitter.event().name("card")
-                    .data(AuctionCardResponse.from(card), MediaType.APPLICATION_JSON));
-        } catch (IOException e) {
-            // 탭을 닫거나 화면을 옮기면 나는 정상 경로다
-            log.debug("목록 카드 전송 중 연결이 끊겼다", e);
-            open = false;
-        } catch (IllegalStateException e) {
-            // 스프링이 IOException 을 뺀 전부를 이 타입으로 감싼다, 직렬화 실패가 여기로 와서 warn 이다
-            log.warn("목록 카드 전송 실패", e);
-            open = false;
-        }
+    @Override
+    public void sendAudience(long auctionId, int connectedCount) {
+        send("audience", new AudienceResponse(auctionId, connectedCount));
     }
 
     @Override
@@ -78,5 +69,24 @@ class SseAuctionListSubscriber implements AuctionListSubscriber {
     @Override
     public boolean isOpen() {
         return open;
+    }
+
+    private void send(String eventName, Object data) {
+        if (!open) {
+            return;
+        }
+
+        try {
+            // 미디어 타입을 명시한다, 생략하면 어떤 변환기가 잡히는지가 데이터 타입에 딸려간다
+            emitter.send(SseEmitter.event().name(eventName).data(data, MediaType.APPLICATION_JSON));
+        } catch (IOException e) {
+            // 탭을 닫거나 화면을 옮기면 나는 정상 경로다
+            log.debug("목록 변화 전송 중 연결이 끊겼다, 이벤트 {}", eventName, e);
+            open = false;
+        } catch (IllegalStateException e) {
+            // 스프링이 IOException 을 뺀 전부를 이 타입으로 감싼다, 직렬화 실패가 여기로 와서 warn 이다
+            log.warn("목록 변화 전송 실패, 이벤트 {}", eventName, e);
+            open = false;
+        }
     }
 }

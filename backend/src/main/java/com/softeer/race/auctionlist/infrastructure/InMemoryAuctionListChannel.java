@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 @Component
 public class InMemoryAuctionListChannel implements AuctionListChannel {
@@ -28,10 +29,25 @@ public class InMemoryAuctionListChannel implements AuctionListChannel {
 
     @Override
     public void broadcastCard(AuctionCardInfo card) {
+        forEachOpen(subscriber -> subscriber.sendCard(card));
+    }
+
+    @Override
+    public void broadcastAudience(long auctionId, int connectedCount) {
+        forEachOpen(subscriber -> subscriber.sendAudience(auctionId, connectedCount));
+    }
+
+    @Override
+    public boolean hasSubscribers() {
+        return !subscribers.isEmpty();
+    }
+
+    // 보낼 것이 둘로 늘었다, 걷어내기를 각자 하면 한 곳만 빠뜨려도 그 응답이 만료까지 살아남는다
+    private void forEachOpen(Consumer<AuctionListSubscriber> send) {
         Set<AuctionListSubscriber> closed = new HashSet<>();
 
         for (AuctionListSubscriber subscriber : subscribers) {
-            subscriber.sendCard(card);
+            send.accept(subscriber);
 
             if (!subscriber.isOpen()) {
                 closed.add(subscriber);
@@ -43,10 +59,5 @@ public class InMemoryAuctionListChannel implements AuctionListChannel {
 
         // 명부에서 빼기만 하면 그 응답은 아무도 끝내지 않아 만료까지 산다
         closed.forEach(AuctionListSubscriber::close);
-    }
-
-    @Override
-    public boolean hasSubscribers() {
-        return !subscribers.isEmpty();
     }
 }
