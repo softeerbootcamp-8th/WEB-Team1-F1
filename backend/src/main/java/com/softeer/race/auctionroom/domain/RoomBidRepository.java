@@ -24,6 +24,41 @@ public interface RoomBidRepository extends Repository<Bid, Long> {
     BidStats findStats(@Param("auctionId") long auctionId);
 
     /**
+     * 그 사람이 이 경매에 넣은 가장 높은 입찰가, 한 번도 넣지 않았으면 없다
+     */
+    @Query("""
+            select max(b.amount)
+            from Bid b
+            where b.auction.id = :auctionId
+              and b.bidder.id = :bidderId
+            """)
+    Long findTopAmount(@Param("auctionId") long auctionId, @Param("bidderId") long bidderId);
+
+    /**
+     * 주어진 금액보다 높이 부른 사람 수, 순위를 매기는 데 쓴다
+     */
+    @Query("""
+            select count(distinct b.bidder.id)
+            from Bid b
+            where b.auction.id = :auctionId
+              and b.amount > :amount
+            """)
+    long countBiddersAbove(@Param("auctionId") long auctionId, @Param("amount") long amount);
+
+    /**
+     * 가격이 오른 과정, 선을 왼쪽부터 그리도록 시간순이고 건수 제한이 없다
+     */
+    // 호가창과 달리 이름을 읽지 않는다, 스무 건 제한도 없다
+    @Query("""
+            select new com.softeer.race.auctionroom.domain.PricePoint(
+                b.bidder.id, b.amount, b.createdAt)
+            from Bid b
+            where b.auction.id = :auctionId
+            order by b.id
+            """)
+    List<PricePoint> findPriceCurve(@Param("auctionId") long auctionId);
+
+    /**
      * 최신순 호가, 이름은 담기는 시점에 마스킹된다
      */
     @Query("""

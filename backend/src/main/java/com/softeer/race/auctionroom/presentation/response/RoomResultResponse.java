@@ -5,6 +5,7 @@ import com.softeer.race.auctionroom.domain.AuctionOutcome;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Schema(description = "끝난 경매의 결과 요약, 더 이상 바뀌지 않는다")
 public record RoomResultResponse(
@@ -28,6 +29,12 @@ public record RoomResultResponse(
         @Schema(description = "낙찰자, 유찰이면 키는 있고 값이 null 이다")
         WinnerResponse winner,
 
+        @Schema(description = "조회한 사람이 이 차를 내놓은 사람인지")
+        boolean sellerIsMine,
+
+        @Schema(description = "조회한 사람의 성적, 입찰한 적이 없으면 키는 있고 값이 null 이다")
+        MyBidResponse myBid,
+
         @Schema(description = "끝날 때까지 들어온 입찰 건수", example = "4")
         long bidCount,
 
@@ -49,7 +56,11 @@ public record RoomResultResponse(
 
         @Schema(description = "응답을 만든 서버 시각(KST), 남은 열람 시간을 세는 기준이다",
                 example = "2026-08-03T18:51:00")
-        LocalDateTime serverTime
+        LocalDateTime serverTime,
+
+        @Schema(description = "가격이 오른 과정, 시간순 전체이고 유찰이면 빈 배열이다. "
+                + "시작가는 담기지 않으므로 곡선의 첫 점은 첫 입찰이다")
+        List<PricePointResponse> priceCurve
 ) {
 
     public static RoomResultResponse from(RoomResultView view) {
@@ -60,13 +71,16 @@ public record RoomResultResponse(
                 view.startPrice(),
                 view.winningPrice(),
                 WinnerResponse.from(view),
+                view.sellerIsMine(),
+                MyBidResponse.from(view),
                 view.stats().bidCount(),
                 view.stats().bidderCount(),
                 view.extensionCount(),
                 view.startAt(),
                 view.endAt(),
                 view.resultViewingEndsAt(),
-                view.serverTime()
+                view.serverTime(),
+                view.priceCurve().stream().map(PricePointResponse::from).toList()
         );
     }
 }

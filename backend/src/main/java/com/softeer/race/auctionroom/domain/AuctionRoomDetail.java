@@ -27,6 +27,7 @@ public record AuctionRoomDetail(
         int mileage,
         FuelType fuelType,
         String diagnosticReportUrl,
+        long sellerId,
         Long winnerId,
         MaskedName winner
 ) {
@@ -47,6 +48,7 @@ public record AuctionRoomDetail(
                              int mileage,
                              FuelType fuelType,
                              String diagnosticReportUrl,
+                             long sellerId,
                              Long winnerId,
                              String winnerRealName) {
 
@@ -64,6 +66,7 @@ public record AuctionRoomDetail(
                 mileage,
                 fuelType,
                 diagnosticReportUrl,
+                sellerId,
                 winnerId,
                 winnerRealName != null ? MaskedName.mask(winnerRealName) : null);
     }
@@ -102,6 +105,13 @@ public record AuctionRoomDetail(
      */
     public boolean isWonBy(long viewerId) {
         return Optional.ofNullable(winnerId).filter(id -> id == viewerId).isPresent();
+    }
+
+    /**
+     * 조회한 사람이 차를 내놓은 사람인지
+     */
+    public boolean isSoldBy(long viewerId) {
+        return sellerId == viewerId;
     }
 
     /**

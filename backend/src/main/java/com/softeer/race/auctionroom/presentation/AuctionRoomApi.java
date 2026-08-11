@@ -48,13 +48,15 @@ public interface AuctionRoomApi {
             @Parameter(hidden = true) AuthenticatedUser authenticatedUser);
 
     @Operation(summary = "끝난 경매의 결과 요약",
-            description = "차량 요약, 시작가와 최종 낙찰가, 낙찰자, 입찰 건수를 반환합니다. "
-                    + "입찰이 한 건도 없었으면 유찰(UNSOLD)이고 낙찰가와 낙찰자가 없습니다. "
+            description = "차량 요약, 시작가와 최종 낙찰가, 낙찰자, 집계, 가격이 오른 과정을 반환합니다. "
+                    + "입찰이 한 건도 없었으면 유찰(UNSOLD)이고 낙찰가와 낙찰자가 없으며 곡선은 빈 배열입니다. "
+                    + "조회한 사람 기준의 값은 셋입니다. 낙찰자 본인 여부, 판매자 본인 여부, 그리고 자기 최고 "
+                    + "입찰가와 순위입니다. 입찰한 적이 없으면 myBid 가 통째로 null 이라 낙찰자·탈락자·판매자·"
+                    + "구경꾼을 이 응답만으로 가릴 수 있습니다. 그래서 세션 쿠키가 필요합니다. "
                     + "더 이상 바뀌지 않는 경매라 접속자 수와 호가창은 담지 않습니다. serverTime 은 결과값이 "
                     + "아니라 남은 열람 시간을 세는 기준이고 resultEndAt 과 짝입니다. "
                     + "판정 기준은 마감 시각이 아니라 확정된 경매 상태입니다. 마감 직후 확정되기 전까지는 409 이고, "
-                    + "결과 확인 구간 5분이 지난 뒤에도 계속 조회됩니다. "
-                    + "낙찰자 본인 여부가 세션 주인 기준으로 판정되므로 세션 쿠키가 필요합니다.")
+                    + "결과 확인 구간 5분이 지난 뒤에도 계속 조회됩니다. 모든 시각은 KST입니다.")
     @ApiResponse(responseCode = "200", description = "확정된 경매 결과입니다.")
     @ApiResponse(responseCode = "401", description = "세션 쿠키가 없거나 만료된 경우입니다.")
     @ApiResponse(responseCode = "404", description = "없는 경매이거나 경매글이 삭제된 경우입니다.")

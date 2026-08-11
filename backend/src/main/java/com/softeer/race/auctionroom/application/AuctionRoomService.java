@@ -68,6 +68,8 @@ public class AuctionRoomService {
                 .orElseThrow(() -> new BusinessException(AUCTION_NOT_ENDED));
 
         return RoomResultView.of(detail, outcome, auctionRoomReader.findStats(auctionId), viewerId,
+                auctionRoomReader.findStanding(auctionId, viewerId).orElse(null),
+                auctionRoomReader.findPriceCurve(auctionId),
                 auctionRoomReader.findPhotoUrls(auctionId), LocalDateTime.now(clock));
     }
 }

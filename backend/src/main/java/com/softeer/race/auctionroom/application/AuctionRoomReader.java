@@ -60,6 +60,19 @@ class AuctionRoomReader {
         return roomBidRepository.findStats(auctionId);
     }
 
+    @Transactional(readOnly = true)
+    public List<PricePoint> findPriceCurve(long auctionId) {
+        return roomBidRepository.findPriceCurve(auctionId);
+    }
+
+    // 넣은 적이 없으면 순위도 없다, 순위 쿼리를 돌릴 이유도 없어 여기서 갈린다
+    @Transactional(readOnly = true)
+    public Optional<BidderStanding> findStanding(long auctionId, long viewerId) {
+        return Optional.ofNullable(roomBidRepository.findTopAmount(auctionId, viewerId))
+                .map(topBid -> BidderStanding.of(
+                        topBid, roomBidRepository.countBiddersAbove(auctionId, topBid)));
+    }
+
     private RoomQueryResult readWith(AuctionRoomDetail detail) {
         LocalDateTime now = LocalDateTime.now(clock);
 
