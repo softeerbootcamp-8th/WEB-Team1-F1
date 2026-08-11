@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, FileText, Flag, ListFilter, Lock, SquareArrowOutUpRight } from 'lucide-react'
+import {
+  Bell,
+  ChartLine,
+  FileText,
+  Flag,
+  ListFilter,
+  Lock,
+  SquareArrowOutUpRight,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -14,6 +22,7 @@ import { Countdown } from '@/components/common/countdown'
 import { CarPhotos } from '@/features/auction-room/components/car-detail'
 import { fetchAuctionRoom, fetchRoomOpening, fetchRoomResult } from '@/features/auction-room/api'
 import type { RoomOpeningView, RoomResultView } from '@/features/auction-room/types'
+import { similarFilter, type AuctionVehicleFilter } from '@/features/auctions/filter'
 import type { AuctionListCard } from '@/features/auctions/types'
 import { FUEL_TYPE_LABEL, MANUFACTURER_LABEL } from '@/features/quote/types'
 import { getErrorCode, getErrorMessage } from '@/lib/axios'
@@ -34,6 +43,8 @@ interface AuctionPreviewDialogProps {
   /** 서버 시각 - 브라우저 시계 */
   offsetMs: number
   onOpenChange: (open: boolean) => void
+  /** 비슷한 조건으로 목록을 갈아끼운다. 이 화면은 목록을 떠나지 않는 것이 목적이라 이동이 아니다 */
+  onSimilar: (filter: AuctionVehicleFilter) => void
 }
 
 /**
@@ -51,6 +62,7 @@ export function AuctionPreviewDialog({
   card,
   offsetMs,
   onOpenChange,
+  onSimilar,
 }: AuctionPreviewDialogProps) {
   const navigate = useNavigate()
   const [detail, setDetail] = useState<RoomOpeningView | RoomResultView | null>(null)
@@ -117,6 +129,13 @@ export function AuctionPreviewDialog({
   const startPrice = detail?.startPrice ?? card?.startPrice
   const openAt = (detail as RoomOpeningView | null)?.openAt ?? card?.openAt
   const startAt = (detail as RoomOpeningView | null)?.startAt ?? card?.startAt
+
+  // 헤더가 쓰는 것과 같은 값을 기준으로 잡는다. 유찰이면 낙찰가가 없어 시작가로 내려간다
+  const manufacturer = vehicle?.manufacturer ?? card?.manufacturer
+  const similar =
+    manufacturer !== undefined && startPrice !== undefined
+      ? similarFilter(manufacturer, result?.winningPrice ?? startPrice)
+      : null
 
   return (
     <Dialog open={auctionId !== null} onOpenChange={onOpenChange}>
@@ -232,10 +251,20 @@ export function AuctionPreviewDialog({
                   개장 알림 받기
                 </Button>
               ) : (
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  <ListFilter />
-                  비슷한 경매 보기
-                </Button>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={similar === null}
+                    onClick={() => similar && onSimilar(similar)}
+                  >
+                    <ListFilter />
+                    비슷한 경매 보기
+                  </Button>
+                  <Button onClick={() => navigate(`/auctions/${auctionId}/result`)}>
+                    <ChartLine />
+                    결과 자세히 보기
+                  </Button>
+                </div>
               )}
             </div>
           </>

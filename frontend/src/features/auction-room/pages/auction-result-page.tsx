@@ -4,6 +4,7 @@ import { CircleAlert, Clock, Gavel, Trophy } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/empty-state'
+import { similarFilter, toFilterParams } from '@/features/auctions/filter'
 import { useAuth } from '@/features/auth/auth-context'
 import { MANUFACTURER_LABEL } from '@/features/quote/types'
 import { formatClock, formatDuration, formatKRW } from '@/lib/format'
@@ -13,7 +14,6 @@ import type { RoomResultView } from '@/features/auction-room/types'
 import { BackLink } from '../components/back-link'
 import { CarDetail } from '../components/car-detail'
 import { PriceCurve } from '../components/price-curve'
-import { NextAuctions } from '../components/next-auctions'
 import { curveShapeOf, viewerStandingOf } from '../result'
 import { useAuctionResult } from '../use-auction-result'
 
@@ -78,11 +78,6 @@ function ResultContent({ auctionId }: { auctionId: number }) {
       </div>
 
       {result.outcome === 'UNSOLD' ? <UnsoldBody result={result} /> : <SoldBody result={result} />}
-
-      {/* 파는 사람에게 이어서 볼 경매를 권하지 않는다, 버튼과 같은 이유다 */}
-      {viewerStandingOf(result) !== 'SELLER' && (
-        <NextAuctions exceptAuctionId={result.auctionId} />
-      )}
     </main>
   )
 }
@@ -178,6 +173,11 @@ function Headline({ result }: { result: RoomResultView }) {
   const gap =
     result.myBid && result.winningPrice !== null ? result.winningPrice - result.myBid.amount : null
 
+  // 유찰이면 팔린 값이 없어 시작가로 범위를 잡는다
+  const similarPath = `/auctions?${toFilterParams(
+    similarFilter(result.vehicle.manufacturer, result.winningPrice ?? result.startPrice),
+  )}`
+
   const title = unsold
     ? standing === 'SELLER'
       ? '이번엔 팔리지 않았어요'
@@ -242,9 +242,9 @@ function Headline({ result }: { result: RoomResultView }) {
       </div>
 
       {/*
-        차를 내놓은 사람에게는 추천이 앞뒤가 안 맞는다. "이 판매자 다른 차" 는 자기 차이고
-        "비슷한 경매" 는 남의 차라, 팔렸으면 거래로 가고 안 팔렸으면 다시 올릴 길만 있으면 된다.
-        추천 두 곳의 목적지는 아직 서버가 주지 않는다(#256), 그때까지는 목록으로 보낸다
+        차를 내놓은 사람에게는 추천이 앞뒤가 안 맞는다. 팔렸으면 거래로 가고 안 팔렸으면
+        다시 올릴 길만 있으면 된다.
+        "이 판매자 다른 차"는 지웠다(#256), 판매자의 경매만 모아 볼 길이 목록에 없다
       */}
       <div className="flex flex-wrap gap-2">
         {standing === 'SELLER' ? (
@@ -259,11 +259,8 @@ function Headline({ result }: { result: RoomResultView }) {
           )
         ) : (
           <>
-            <Button variant="outline" asChild>
-              <Link to="/auctions">이 판매자 다른 차</Link>
-            </Button>
             <Button variant={standing === 'WON' ? 'outline' : 'default'} asChild>
-              <Link to="/auctions">비슷한 경매 보기</Link>
+              <Link to={similarPath}>비슷한 경매 보기</Link>
             </Button>
             {standing === 'WON' && (
               <Button asChild>
