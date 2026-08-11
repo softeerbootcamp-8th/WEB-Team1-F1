@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { useDocumentVisible } from '@/hooks/use-document-visible'
 import { incrementForPrice } from '@/lib/auction'
 import { getErrorCode, getErrorStatus } from '@/lib/axios'
 import {
@@ -48,6 +49,11 @@ const ENTRY_BY_ERROR_CODE: Record<string, RoomEntry> = {
  * 내 입찰 표시가 없으므로, 최초 조회에서 알아낸 내 입찰 금액을 기억해뒀다가 직접 표시한다.
  */
 export function useAuctionRoom(auctionId: number) {
+  const visible = useDocumentVisible()
+
+  // 방이 바뀌었는지 가리는 표식. 탭이 돌아와 이펙트가 다시 도는 것과 구분해야 화면이 깜빡이지 않는다
+  const lastAuctionId = useRef<number | null>(null)
+
   const [room, setRoom] = useState<AuctionRoomView | null>(null)
   const [bands, setBands] = useState<BidIncrementBand[]>([])
   // 진입 결과, 들어갈 수 없으면 사유까지 들고 있어야 화면이 개장 안내나 결과로 옮겨갈 수 있다
@@ -129,14 +135,21 @@ export function useAuctionRoom(auctionId: number) {
   }, [markExtended])
 
   useEffect(() => {
-    // ref 는 컴포넌트 인스턴스에 붙어 있어 다른 방으로 옮겨도 살아남는다. 비우지 않으면 이전 방에서
-    // 부른 금액이 새 방의 같은 금액을 내 것으로 만들어, 남이 낙찰받은 방에 내 이름이 뜬다
-    myBidAmounts.current.clear()
-    prevPrice.current = null
-    prevEndAt.current = null
-    // 이전 방의 차량과 가격이 새 응답이 올 때까지 그려지는 것도 같은 이유다
-    setRoom(null)
-    setExtended(false)
+    // 방이 바뀐 경우에만 지운다. 탭이 돌아와 이펙트가 다시 도는 것뿐이면 보던 화면을 그대로 둔다
+    if (lastAuctionId.current !== auctionId) {
+      lastAuctionId.current = auctionId
+      // ref 는 컴포넌트 인스턴스에 붙어 있어 다른 방으로 옮겨도 살아남는다. 비우지 않으면 이전 방에서
+      // 부른 금액이 새 방의 같은 금액을 내 것으로 만들어, 남이 낙찰받은 방에 내 이름이 뜬다
+      myBidAmounts.current.clear()
+      prevPrice.current = null
+      prevEndAt.current = null
+      // 이전 방의 차량과 가격이 새 응답이 올 때까지 그려지는 것도 같은 이유다
+      setRoom(null)
+      setExtended(false)
+    }
+
+    // 보지 않는 사람은 접속자가 아니다. 정리 함수가 구독을 닫고, 돌아오면 connect 가 조회부터 다시 한다
+    if (!visible) return
 
     let cancelled = false
     let unsubscribe: (() => void) | null = null
@@ -291,7 +304,7 @@ export function useAuctionRoom(auctionId: number) {
       unsubscribe?.()
       if (reentryTimer !== null) window.clearTimeout(reentryTimer)
     }
-  }, [auctionId, mergeStreamState])
+  }, [auctionId, mergeStreamState, visible])
 
   const increment = room ? incrementForPrice(room.currentPrice, bands) : null
   // 첫 입찰은 시작가 그대로가 최소금액이다 — bidCount가 0이면 currentPrice가 곧 startPrice.
