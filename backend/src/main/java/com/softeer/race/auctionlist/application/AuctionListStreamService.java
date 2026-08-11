@@ -25,6 +25,10 @@ public class AuctionListStreamService {
     // 이슈가 요구하는 상한이 1초다, 사람이 드나든 것을 그 안에 목록이 알아야 한다
     private static final long AUDIENCE_INTERVAL_MILLIS = 1_000L;
 
+    // 방송이 한 번 나가면 죽은 구독은 그때 드러난다, 이 주기가 실제로 일하는 것은 조용한 시간뿐이라
+    // 값이 급하지 않다. 앞단에 프록시가 생기면 그 유휴 타임아웃보다 짧은지 그때 확인한다
+    private static final long SWEEP_INTERVAL_MILLIS = 10_000L;
+
     private final VehicleKeywordService vehicleKeywordService;
     private final AuctionListRepository auctionListRepository;
     private final AuctionCardAssembler cardAssembler;
@@ -76,6 +80,15 @@ public class AuctionListStreamService {
 
         audienceSnapshot.advanceTo(roomChannel.viewerCounts())
                 .forEach(auctionListChannel::broadcastAudience);
+    }
+
+    /**
+     * 끊긴 구독을 걷어낸다
+     */
+    // 서버는 이 연결에 쓰기만 하고 읽지 않아, 아무 일 없는 동안에는 상대가 사라진 것을 알 길이 없다
+    @Scheduled(fixedDelay = SWEEP_INTERVAL_MILLIS, scheduler = SchedulingConfig.LIST_STREAM)
+    public void sweepClosedSubscriptions() {
+        auctionListChannel.sweepClosed();
     }
 
     // 조회와 같은 모양이어야 한다, 키워드를 비워 보내면 화면이 들고 있던 카드에서 그것이 지워진다

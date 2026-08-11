@@ -99,6 +99,34 @@ class InMemoryAuctionListChannelTest {
         assertThat(dying.closed).isTrue();
     }
 
+    @Test
+    @DisplayName("찔러 보다 드러난 죽은 구독을 걷어낸다")
+    void sweepDiscardsSubscriberFoundDead() {
+        // 서버는 이 연결에 쓰기만 하고 읽지 않아, 상대가 끊어도 다음 쓰기 전까지 모른다
+        FakeSubscriber dying = new FakeSubscriber();
+        dying.diesOnPing = true;
+        channel.subscribe(dying);
+
+        channel.sweepClosed();
+
+        assertThat(channel.hasSubscribers()).isFalse();
+        assertThat(dying.closed).isTrue();
+    }
+
+    @Test
+    @DisplayName("살아 있는 구독은 걷어내기에서 살아남는다")
+    void sweepKeepsOpenSubscriber() {
+        FakeSubscriber alive = new FakeSubscriber();
+        channel.subscribe(alive);
+
+        channel.sweepClosed();
+
+        // 아무 일 없는 동안 연결을 유지하는 것도 이 주기의 몫이라, 멀쩡한 구독을 끊으면 안 된다
+        assertThat(channel.hasSubscribers()).isTrue();
+        assertThat(alive.closed).isFalse();
+        assertThat(alive.pinged).isTrue();
+    }
+
     // 채널은 카드 내용을 보지 않고 그대로 넘기기만 하므로 식별자만 채운다
     private static AuctionCardInfo card(long auctionId) {
         return new AuctionCardInfo(auctionId, null, null, null, null, null, null,
@@ -112,6 +140,8 @@ class InMemoryAuctionListChannelTest {
 
         private boolean open = true;
         private boolean diesOnSend;
+        private boolean diesOnPing;
+        private boolean pinged;
         private boolean closed;
         private boolean listedWhenClosed = true;
 
@@ -127,6 +157,15 @@ class InMemoryAuctionListChannelTest {
         @Override
         public void sendAudience(long auctionId, int connectedCount) {
             if (diesOnSend) {
+                open = false;
+            }
+        }
+
+        @Override
+        public void ping() {
+            pinged = true;
+
+            if (diesOnPing) {
                 open = false;
             }
         }

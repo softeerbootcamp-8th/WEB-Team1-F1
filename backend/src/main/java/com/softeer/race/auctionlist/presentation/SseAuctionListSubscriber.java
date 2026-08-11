@@ -30,12 +30,12 @@ class SseAuctionListSubscriber implements AuctionListSubscriber {
 
     // 톰캣이 첫 쓰기까지 응답 헤더를 붙잡아, 아무것도 안 보내면 EventSource 가 onopen 을 못 쏜다
     void flushHeaders() {
-        try {
-            emitter.send(SseEmitter.event().comment("open"));
-        } catch (IOException | IllegalStateException e) {
-            log.debug("목록 스트림을 여는 중 연결이 끊겼다", e);
-            open = false;
-        }
+        comment("open");
+    }
+
+    @Override
+    public void ping() {
+        comment("keep-alive");
     }
 
     // 화면이 이 이름으로 리스너를 나눠 단다, 실린 내용의 모양을 뜯어보고 분기하지 않는다
@@ -69,6 +69,21 @@ class SseAuctionListSubscriber implements AuctionListSubscriber {
     @Override
     public boolean isOpen() {
         return open;
+    }
+
+    // 데이터가 아니라 SSE 주석 한 줄이다, 화면은 무시하고 우리는 연결이 살아 있는지만 확인한다
+    private void comment(String text) {
+        if (!open) {
+            return;
+        }
+
+        try {
+            emitter.send(SseEmitter.event().comment(text));
+        } catch (IOException | IllegalStateException e) {
+            // 직렬화할 값이 없어 서버 버그가 낄 자리가 없다, 찔러 보다 드러난 끊김이다
+            log.debug("목록 스트림 연결 확인 실패", e);
+            open = false;
+        }
     }
 
     private void send(String eventName, Object data) {

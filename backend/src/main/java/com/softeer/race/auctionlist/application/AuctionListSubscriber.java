@@ -20,6 +20,11 @@ public interface AuctionListSubscriber {
     void sendAudience(long auctionId, int connectedCount);
 
     /**
+     * 살아 있는지 확인만 하는 신호, 목록 변화를 담지 않는다
+     */
+    void ping();
+
+    /**
      * 서버가 연결을 끝낸다, 이미 끝났으면 아무 일도 없다
      */
     void close();

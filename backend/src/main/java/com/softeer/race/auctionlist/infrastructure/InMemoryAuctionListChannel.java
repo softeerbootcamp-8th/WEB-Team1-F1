@@ -37,6 +37,13 @@ public class InMemoryAuctionListChannel implements AuctionListChannel {
         forEachOpen(subscriber -> subscriber.sendAudience(auctionId, connectedCount));
     }
 
+    // 서버는 이 연결에 쓰기만 하고 읽지 않아, 상대가 끊어도 다음 쓰기 전까지 모른다
+    // 목록은 몇 분 아무 일도 없는 것이 정상이라 찔러 보지 않으면 죽은 구독이 영영 드러나지 않는다
+    @Override
+    public void sweepClosed() {
+        forEachOpen(AuctionListSubscriber::ping);
+    }
+
     @Override
     public boolean hasSubscribers() {
         return !subscribers.isEmpty();
