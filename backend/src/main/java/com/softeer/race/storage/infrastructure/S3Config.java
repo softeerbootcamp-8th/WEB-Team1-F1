@@ -7,6 +7,8 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 import java.net.URI;
@@ -47,6 +49,26 @@ public class S3Config {
                         .pathStyleAccessEnabled(true)
                         .build())
                 // 기본 탐색에 맡기면 ~/.aws/credentials 를 집어 MinIO 가 모르는 키로 서명한다
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(s3Properties.accessKey(), s3Properties.secretKey())))
+                .build();
+    }
+
+    /** 사원증 가입 시 업로드가 실제로 끝났는지 HeadObject로 확인할 때 사용한다. */
+    @Bean
+    public S3Client s3Client() {
+        S3ClientBuilder builder = S3Client.builder()
+                .region(Region.of(s3Properties.region()));
+
+        if (s3Properties.endpoint() == null) {
+            return builder.build();
+        }
+
+        return builder
+                .endpointOverride(URI.create(s3Properties.endpoint()))
+                .serviceConfiguration(S3Configuration.builder()
+                        .pathStyleAccessEnabled(true)
+                        .build())
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(s3Properties.accessKey(), s3Properties.secretKey())))
                 .build();

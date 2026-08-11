@@ -29,6 +29,19 @@ export interface PresignedUploadResponse {
   uploads: PresignedUpload[]
 }
 
+export type DealerLicenseContentType = Exclude<UploadContentType, 'image/webp'>
+
+export interface PreparedDealerLicenseFile {
+  file: File
+  contentType: DealerLicenseContentType
+}
+
+interface PresignedDealerLicense {
+  key: string
+  uploadUrl: string
+  expiresAt: string
+}
+
 export async function requestPresignedUploads(
   request: PresignedUploadRequest,
 ): Promise<PresignedUploadResponse> {
@@ -42,6 +55,7 @@ export async function requestPresignedUploads(
 export const MAX_IMAGE_COUNT = 20
 export const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 export const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024
+export const MAX_DEALER_LICENSE_SIZE = 10 * 1024 * 1024
 
 const IMAGE_TYPES = new Set<UploadContentType>([
   'image/jpeg',
@@ -95,6 +109,44 @@ export function prepareDocumentFile(file: File): PreparedUploadFile {
     throw new Error('진단서는 20MB까지 등록할 수 있습니다.')
   }
   return { file, contentType }
+}
+
+export function prepareDealerLicenseFile(file: File): PreparedDealerLicenseFile {
+  const contentType = inferContentType(file)
+  if (
+    contentType !== 'image/jpeg' &&
+    contentType !== 'image/png' &&
+    contentType !== 'application/pdf'
+  ) {
+    throw new Error('자동차매매사원증은 JPG, PNG, PDF 파일만 등록할 수 있습니다.')
+  }
+  if (file.size <= 0) throw new Error('비어 있는 자동차매매사원증 파일입니다.')
+  if (file.size > MAX_DEALER_LICENSE_SIZE) {
+    throw new Error('자동차매매사원증은 10MB까지 등록할 수 있습니다.')
+  }
+  return { file, contentType }
+}
+
+/** 회원가입 전에 비공개 영역으로 사원증 한 건을 업로드하고 가입 요청용 키를 돌려준다. */
+export async function uploadDealerLicense(
+  prepared: PreparedDealerLicenseFile,
+): Promise<string> {
+  const { file, contentType } = prepared
+  const { data } = await axiosInstance.post<PresignedDealerLicense>(
+    '/api/uploads/dealer-license/presigned',
+    { contentType, contentLength: file.size },
+  )
+
+  const response = await fetch(data.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: file,
+  })
+  if (!response.ok) {
+    throw new Error('자동차매매사원증 업로드에 실패했습니다. 다시 시도해 주세요.')
+  }
+
+  return data.key
 }
 
 /**

@@ -2,11 +2,20 @@ package com.softeer.race.storage.infrastructure;
 
 import com.softeer.race.storage.domain.FileCategory;
 import com.softeer.race.storage.domain.FileStorage;
+import com.softeer.race.storage.domain.DealerLicenseStorage;
 import com.softeer.race.storage.domain.PresignedUpload;
+import com.softeer.race.storage.domain.PresignedDealerLicense;
 import com.softeer.race.storage.domain.UploadContentType;
+import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.storage.exception.StorageErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
@@ -26,7 +35,7 @@ import java.util.stream.Collectors;
  */
 @Component
 @RequiredArgsConstructor
-public class S3FileStorage implements FileStorage {
+public class S3FileStorage implements FileStorage, DealerLicenseStorage {
 
     private static final DateTimeFormatter KEY_DATE_PATTERN = DateTimeFormatter.ofPattern("yyyy/MM");
 
@@ -49,12 +58,38 @@ public class S3FileStorage implements FileStorage {
                             category -> category, S3FileStorage::managedKeyPattern));
 
     private final S3Presigner s3Presigner;
+    private final S3Client s3Client;
     private final S3Properties s3Properties;
     private final Clock clock;
 
     @Override
     public PresignedUpload presign(UploadContentType contentType, long contentLength) {
-        String key = createKey(contentType);
+        String key = createKey(contentType.category(), contentType);
+
+        PresignedPutObjectRequest presigned = presignPut(key, contentType, contentLength);
+
+        // 업로드 주소는 서명이 묶인 S3 호스트, 조회 주소는 CloudFront다. 저장할 값은 뒤쪽이다
+        return new PresignedUpload(
+                key,
+                presigned.url().toString(),
+                s3Properties.cdnBaseUrl() + "/" + key,
+                LocalDateTime.ofInstant(presigned.expiration(), clock.getZone()));
+    }
+
+    @Override
+    public PresignedDealerLicense presignDealerLicense(
+            UploadContentType contentType, long contentLength) {
+        String key = createKey(FileCategory.DEALER_LICENSE, contentType);
+        PresignedPutObjectRequest presigned = presignPut(key, contentType, contentLength);
+
+        return new PresignedDealerLicense(
+                key,
+                presigned.url().toString(),
+                LocalDateTime.ofInstant(presigned.expiration(), clock.getZone()));
+    }
+
+    private PresignedPutObjectRequest presignPut(
+            String key, UploadContentType contentType, long contentLength) {
 
         // Content-Type과 크기를 요청에 넣으면 둘 다 서명에 포함된다. 클라이언트가 신고한 값과 실제
         // 업로드가 다르면 S3가 서명 검증에서 거부하므로, 파일을 받지 않고도 형식과 크기는 강제된다
@@ -65,18 +100,45 @@ public class S3FileStorage implements FileStorage {
                 .contentLength(contentLength)
                 .build();
 
-        PresignedPutObjectRequest presigned = s3Presigner.presignPutObject(
+        return s3Presigner.presignPutObject(
                 PutObjectPresignRequest.builder()
                         .signatureDuration(s3Properties.presignExpiry())
                         .putObjectRequest(objectRequest)
                         .build());
+    }
 
-        // 업로드 주소는 서명이 묶인 S3 호스트, 조회 주소는 CloudFront다. 저장할 값은 뒤쪽이다
-        return new PresignedUpload(
-                key,
-                presigned.url().toString(),
-                s3Properties.cdnBaseUrl() + "/" + key,
-                LocalDateTime.ofInstant(presigned.expiration(), clock.getZone()));
+    @Override
+    public boolean isValidUploadedDealerLicense(String key) {
+        if (key == null || !MANAGED_KEY_PATTERNS.get(FileCategory.DEALER_LICENSE).matcher(key).matches()) {
+            return false;
+        }
+
+        try {
+            HeadObjectResponse object = s3Client.headObject(HeadObjectRequest.builder()
+                    .bucket(s3Properties.bucket())
+                    .key(key)
+                    .build());
+
+            UploadContentType contentType;
+            try {
+                contentType = UploadContentType.from(object.contentType());
+            } catch (BusinessException exception) {
+                return false;
+            }
+
+            return contentType.isDealerLicenseAllowed()
+                    && key.endsWith("." + contentType.extension())
+                    && object.contentLength() != null
+                    && object.contentLength() > 0
+                    && object.contentLength() <= UploadContentType.MAX_DEALER_LICENSE_SIZE;
+        } catch (S3Exception exception) {
+            if (exception.statusCode() == 404) {
+                return false;
+            }
+            throw new BusinessException(StorageErrorCode.STORAGE_UNAVAILABLE);
+        } catch (SdkException exception) {
+            throw new BusinessException(StorageErrorCode.STORAGE_UNAVAILABLE);
+        }
     }
 
     /**
@@ -90,7 +152,8 @@ public class S3FileStorage implements FileStorage {
      */
     @Override
     public boolean isManagedUrl(String fileUrl, FileCategory category) {
-        if (fileUrl == null) {
+        // 사원증은 공개 조회 URL이라는 개념 자체가 없다. 전용 키와 HeadObject로만 검증한다.
+        if (fileUrl == null || category == FileCategory.DEALER_LICENSE) {
             return false;
         }
         String baseUrl = s3Properties.cdnBaseUrl() + "/";
@@ -109,6 +172,12 @@ public class S3FileStorage implements FileStorage {
     }
 
     private static String allowedExtensions(FileCategory category) {
+        if (category == FileCategory.DEALER_LICENSE) {
+            return Arrays.stream(UploadContentType.values())
+                    .filter(UploadContentType::isDealerLicenseAllowed)
+                    .map(UploadContentType::extension)
+                    .collect(Collectors.joining("|"));
+        }
         return Arrays.stream(UploadContentType.values())
                 .filter(type -> type.category() == category)
                 .map(UploadContentType::extension)
@@ -128,9 +197,9 @@ public class S3FileStorage implements FileStorage {
      * 날짜로 나누는 것은 한 접두사 아래 객체가 무한정 쌓이지 않게 하려는 것뿐이다. 파일명은 UUID라
      * 같은 이름이 겹쳐 덮어써질 일이 없다.
      */
-    private String createKey(UploadContentType contentType) {
+    private String createKey(FileCategory category, UploadContentType contentType) {
         return "%s/%s/%s.%s".formatted(
-                contentType.category().keyPrefix(),
+                category.keyPrefix(),
                 LocalDate.now(clock).format(KEY_DATE_PATTERN),
                 UUID.randomUUID(),
                 contentType.extension());

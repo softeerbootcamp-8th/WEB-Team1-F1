@@ -23,7 +23,16 @@ public enum StorageErrorCode implements ErrorCode {
      * 것은 <b>절대 상한은 통과했지만 그 형식에는 큰</b> 경우뿐이다(예: 15MB짜리 JPEG).
      */
     FILE_TOO_LARGE(HttpStatus.BAD_REQUEST,
-            "파일 크기가 허용 범위를 넘었습니다. 이미지는 10MB, 문서는 20MB까지 업로드할 수 있습니다.");
+            "파일 크기가 허용 범위를 넘었습니다. 이미지는 10MB, 문서는 20MB까지 업로드할 수 있습니다."),
+
+    UNSUPPORTED_DEALER_LICENSE_TYPE(HttpStatus.BAD_REQUEST,
+            "자동차매매사원증은 jpeg, png, pdf 형식만 업로드할 수 있습니다."),
+
+    DEALER_LICENSE_TOO_LARGE(HttpStatus.BAD_REQUEST,
+            "자동차매매사원증은 10MB까지 업로드할 수 있습니다."),
+
+    STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE,
+            "파일 저장소를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.");
 
     private final HttpStatus status;
     private final String message;

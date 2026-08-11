@@ -42,6 +42,9 @@ public enum UploadContentType {
      */
     public static final long MAX_DOCUMENT_SIZE = 20L * 1024 * 1024;
 
+    /** 자동차매매사원증은 이미지와 PDF 모두 같은 상한을 사용한다. */
+    public static final long MAX_DEALER_LICENSE_SIZE = 10L * 1024 * 1024;
+
     private final String mimeType;
     private final String extension;
     private final FileCategory category;
@@ -83,5 +86,9 @@ public enum UploadContentType {
 
     public FileCategory category() {
         return category;
+    }
+
+    public boolean isDealerLicenseAllowed() {
+        return this == JPEG || this == PNG || this == PDF;
     }
 }

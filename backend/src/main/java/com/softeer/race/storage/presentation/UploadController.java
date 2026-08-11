@@ -3,7 +3,10 @@ package com.softeer.race.storage.presentation;
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
 import com.softeer.race.storage.application.UploadService;
+import com.softeer.race.storage.application.DealerLicenseUploadService;
+import com.softeer.race.storage.presentation.request.DealerLicenseUploadRequest;
 import com.softeer.race.storage.presentation.request.UploadRequest;
+import com.softeer.race.storage.presentation.response.DealerLicenseUploadResponse;
 import com.softeer.race.storage.presentation.response.UploadResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class UploadController implements UploadApi {
 
     private final UploadService uploadService;
+    private final DealerLicenseUploadService dealerLicenseUploadService;
 
     /**
      * 201이 아니라 200이다. 이 요청은 아무것도 만들지 않는다. 서명된 주소를 계산해 돌려줄 뿐이고,
@@ -40,5 +44,14 @@ public class UploadController implements UploadApi {
             @Valid @RequestBody UploadRequest request) {
 
         return ResponseEntity.ok(UploadResponse.from(uploadService.issue(request.toCommand())));
+    }
+
+    /** 회원가입 전 호출하므로 인증 주체를 요구하지 않는다. */
+    @Override
+    @PostMapping("/dealer-license/presigned")
+    public ResponseEntity<DealerLicenseUploadResponse> issueDealerLicense(
+            @Valid @RequestBody DealerLicenseUploadRequest request) {
+        return ResponseEntity.ok(DealerLicenseUploadResponse.from(
+                dealerLicenseUploadService.issue(request.contentType(), request.contentLength())));
     }
 }

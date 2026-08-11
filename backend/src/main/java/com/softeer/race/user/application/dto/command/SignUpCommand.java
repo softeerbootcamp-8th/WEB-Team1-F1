@@ -13,6 +13,7 @@ public record SignUpCommand(
         String password,
         String realName,
         String phone,
-        Role role
+        Role role,
+        String dealerLicenseKey
 ) {
 }

@@ -12,10 +12,12 @@ import static org.mockito.Mockito.when;
 
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.security.PasswordEncoder;
+import com.softeer.race.storage.domain.DealerLicenseStorage;
 import com.softeer.race.user.application.dto.command.SignUpCommand;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
+import com.softeer.race.user.exception.UserErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,11 +41,14 @@ class UserServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private DealerLicenseStorage dealerLicenseStorage;
+
     private UserService userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, passwordEncoder);
+        userService = new UserService(userRepository, passwordEncoder, dealerLicenseStorage);
     }
 
     @Test
@@ -107,6 +112,64 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("딜러 회원가입에 사원증 키가 없으면 거부한다")
+    void signUpRejectsDealerWithoutLicense() {
+        SignUpCommand command = signUpCommand(Role.DEALER, null);
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode())
+                                .isEqualTo(UserErrorCode.DEALER_LICENSE_REQUIRED));
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("일반 회원가입에 사원증 키가 오면 거부한다")
+    void signUpRejectsGeneralWithLicense() {
+        SignUpCommand command = signUpCommand(Role.GENERAL, dealerLicenseKey());
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode())
+                                .isEqualTo(UserErrorCode.DEALER_LICENSE_NOT_ALLOWED));
+
+        verify(dealerLicenseStorage, never()).isValidUploadedDealerLicense(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("업로드가 확인되지 않은 사원증 키면 딜러 가입을 거부한다")
+    void signUpRejectsInvalidDealerLicense() {
+        SignUpCommand command = signUpCommand(Role.DEALER, dealerLicenseKey());
+        when(dealerLicenseStorage.isValidUploadedDealerLicense(command.dealerLicenseKey()))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode())
+                                .isEqualTo(UserErrorCode.INVALID_DEALER_LICENSE));
+
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("업로드가 확인된 사원증 키를 딜러 계정에 저장한다")
+    void signUpStoresDealerLicenseKey() {
+        SignUpCommand command = signUpCommand(Role.DEALER, dealerLicenseKey());
+        when(dealerLicenseStorage.isValidUploadedDealerLicense(command.dealerLicenseKey()))
+                .thenReturn(true);
+        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        savesWithId();
+
+        userService.signUp(command);
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getDealerLicenseKey()).isEqualTo(dealerLicenseKey());
+    }
+
+    @Test
     @DisplayName("동시 가입으로 이메일 제약이 위반되면 중복 이메일 예외로 변환한다")
     void signUpConvertsDataIntegrityViolation() {
         SignUpCommand command = signUpCommand(Role.GENERAL);
@@ -134,6 +197,23 @@ class UserServiceTest {
                         exception -> assertThat(exception.errorCode()).isEqualTo(DUPLICATE_USERNAME));
     }
 
+    @Test
+    @DisplayName("동일 사원증 키의 DB 제약 위반은 중복 사원증 예외로 변환한다")
+    void signUpConvertsDealerLicenseDataIntegrityViolation() {
+        SignUpCommand command = signUpCommand(Role.DEALER, dealerLicenseKey());
+        when(dealerLicenseStorage.isValidUploadedDealerLicense(command.dealerLicenseKey()))
+                .thenReturn(true);
+        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        when(userRepository.save(any(User.class)))
+                .thenThrow(new DataIntegrityViolationException(
+                        "Duplicate entry for key 'uk_users_dealer_license_key'"));
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode())
+                                .isEqualTo(UserErrorCode.DUPLICATE_DEALER_LICENSE));
+    }
+
     // 실제 저장은 IDENTITY 라 save 시점에 식별자가 붙는다, 발행이 그 값을 쓰므로 대역도 붙여서 돌려준다
     private void savesWithId() {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
@@ -145,12 +225,21 @@ class UserServiceTest {
     }
 
     private static SignUpCommand signUpCommand(Role role) {
+        return signUpCommand(role, null);
+    }
+
+    private static SignUpCommand signUpCommand(Role role, String dealerLicenseKey) {
         return new SignUpCommand(
                 "race_kim",
                 "race@race.kr",
                 RAW_PASSWORD,
                 "김레이스",
                 "010-1234-5678",
-                role);
+                role,
+                dealerLicenseKey);
+    }
+
+    private static String dealerLicenseKey() {
+        return "dealer-licenses/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg";
     }
 }
