@@ -277,17 +277,26 @@ function Headline({ result }: { result: RoomResultView }) {
 function CurveCard({ result }: { result: RoomResultView }) {
   const shape = curveShapeOf(result)
 
-  // 내 입찰선은 낙찰가와 얼마나 떨어졌는지 보라고 있는 선이다. 낙찰자에게는 그 차이가 0이라
-  // 낙찰 표시와 눈금 위에 겹쳐 놓이기만 한다
-  const myAmount = viewerStandingOf(result) === 'LOST' ? (result.myBid?.amount ?? null) : null
+  // 내 최고가와 낙찰가가 붙었을 때 표시를 어떻게 합칠지는 곡선이 자기 좌표를 보고 정한다
+  const mineWon = viewerStandingOf(result) === 'WON'
 
   return (
     <section className="rounded-xl border p-6">
-      <div className="mb-4 flex items-baseline justify-between">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-semibold">가격이 오른 과정</h3>
-        <span className="text-muted-foreground text-sm">
-          {minutesBetween(result.startAt, result.endAt)}분 동안 {result.bidCount}번
-        </span>
+
+        <div className="text-muted-foreground flex items-center gap-3 text-sm">
+          {/* 빨강이 나라는 뜻은 입찰한 사람에게만 필요하다, 안 넣었으면 곡선에 빨강이 없다 */}
+          {result.myBid && (
+            <span className="flex items-center gap-1.5">
+              <span className="bg-destructive size-2 rounded-full" aria-hidden />
+              내 입찰
+            </span>
+          )}
+          <span>
+            {minutesBetween(result.startAt, result.endAt)}분 동안 {result.bidCount}번
+          </span>
+        </div>
       </div>
 
       {shape ? (
@@ -295,7 +304,8 @@ function CurveCard({ result }: { result: RoomResultView }) {
           shape={shape}
           startAt={result.startAt}
           endAt={result.endAt}
-          myAmount={myAmount}
+          myAmount={result.myBid?.amount ?? null}
+          mineWon={mineWon}
         />
       ) : (
         <p className="text-muted-foreground py-12 text-center text-sm">
