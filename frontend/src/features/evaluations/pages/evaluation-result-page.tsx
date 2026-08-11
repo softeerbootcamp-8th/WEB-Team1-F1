@@ -615,9 +615,9 @@ export function EvaluationResultPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>방문 결과를 반려할까요?</DialogTitle>
+            <DialogTitle>이 방문견적을 반려할까요?</DialogTitle>
             <DialogDescription>
-              반려하면 이 신청에는 결과를 제출할 수 없고 판매자에게 사유가 전달됩니다. 이 작업은 되돌릴 수 없습니다.
+              반려하면 방문견적이 종료되고 판매자에게 사유가 전달됩니다. 반려 후에는 진단 결과를 제출할 수 없습니다.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
