@@ -2,6 +2,7 @@ package com.softeer.race.user.presentation;
 
 import static org.hamcrest.Matchers.hasItems;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,6 +24,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.mockito.ArgumentCaptor;
 
 @WebMvcTest(controllers = UserController.class)
 @Import(GlobalExceptionHandler.class)
@@ -56,6 +58,35 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.realName").value("김레이스"))
                 .andExpect(jsonPath("$.role").value("GENERAL"))
                 .andExpect(jsonPath("$.password").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("딜러 회원가입의 사원증 키는 서비스로 전달하지만 응답에는 노출하지 않는다")
+    void dealerSignUpPassesPrivateKeyWithoutExposingIt() throws Exception {
+        when(userService.signUp(any(SignUpCommand.class)))
+                .thenReturn(new SignUpInfo(1L, "race_kim", "race@race.kr", "김레이스", Role.DEALER));
+
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "race_kim",
+                                  "email": "race@race.kr",
+                                  "password": "password123",
+                                  "realName": "김레이스",
+                                  "phone": "010-1234-5678",
+                                  "role": "DEALER",
+                                  "dealerLicenseKey": "dealer-licenses/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("DEALER"))
+                .andExpect(jsonPath("$.dealerLicenseKey").doesNotExist());
+
+        ArgumentCaptor<SignUpCommand> command = ArgumentCaptor.forClass(SignUpCommand.class);
+        verify(userService).signUp(command.capture());
+        org.assertj.core.api.Assertions.assertThat(command.getValue().dealerLicenseKey())
+                .startsWith("dealer-licenses/");
     }
 
     @Test

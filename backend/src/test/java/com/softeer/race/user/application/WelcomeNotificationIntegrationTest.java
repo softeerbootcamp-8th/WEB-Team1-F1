@@ -165,7 +165,8 @@ class WelcomeNotificationIntegrationTest extends IntegrationTestSupport {
                 "password123",
                 "김레이스",
                 "010-1234-5678",
-                Role.GENERAL);
+                Role.GENERAL,
+                null);
     }
 
     private Long countRows(String table) {

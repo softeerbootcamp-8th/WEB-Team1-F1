@@ -20,7 +20,8 @@ import lombok.NoArgsConstructor;
 // UserService가 제약명으로 중복 원인을 가려내므로 이름을 직접 지정한다
 @Table(name = "users", uniqueConstraints = {
         @UniqueConstraint(name = "uk_users_username", columnNames = "username"),
-        @UniqueConstraint(name = "uk_users_email", columnNames = "email")
+        @UniqueConstraint(name = "uk_users_email", columnNames = "email"),
+        @UniqueConstraint(name = "uk_users_dealer_license_key", columnNames = "dealer_license_key")
 })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTimeEntity {
@@ -48,19 +49,25 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private Role role;
 
+    // 외부 조회 URL이 아니라 비공개 S3 객체 키만 저장한다. 일반 회원과 기존 딜러는 null일 수 있다.
+    @Column(name = "dealer_license_key", length = 255)
+    private String dealerLicenseKey;
+
     private User(
             String username,
             String email,
             String encodedPassword,
             String realName,
             String phone,
-            Role role) {
+            Role role,
+            String dealerLicenseKey) {
         this.username = username;
         this.email = email;
         this.password = encodedPassword;
         this.realName = realName;
         this.phone = phone;
         this.role = role;
+        this.dealerLicenseKey = dealerLicenseKey;
     }
 
     public static User create(
@@ -70,6 +77,17 @@ public class User extends BaseTimeEntity {
             String realName,
             String phone,
             Role role) {
-        return new User(username, email, encodedPassword, realName, phone, role);
+        return create(username, email, encodedPassword, realName, phone, role, null);
+    }
+
+    public static User create(
+            String username,
+            String email,
+            String encodedPassword,
+            String realName,
+            String phone,
+            Role role,
+            String dealerLicenseKey) {
+        return new User(username, email, encodedPassword, realName, phone, role, dealerLicenseKey);
     }
 }

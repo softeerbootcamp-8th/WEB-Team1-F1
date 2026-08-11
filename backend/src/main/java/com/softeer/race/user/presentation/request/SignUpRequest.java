@@ -43,10 +43,16 @@ public record SignUpRequest(
 
         @Schema(description = "회원 유형", example = "GENERAL")
         @NotNull
-        Role role
+        Role role,
+
+        @Schema(description = "딜러 회원가입 전에 업로드한 자동차매매사원증 객체 키",
+                example = "dealer-licenses/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg",
+                nullable = true)
+        @Size(max = 255)
+        String dealerLicenseKey
 ) {
 
     public SignUpCommand toCommand() {
-        return new SignUpCommand(username, email, password, realName, phone, role);
+        return new SignUpCommand(username, email, password, realName, phone, role, dealerLicenseKey);
     }
 }

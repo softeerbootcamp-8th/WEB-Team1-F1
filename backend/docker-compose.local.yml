@@ -38,12 +38,14 @@ services:
     container_name: race-minio-init
     depends_on:
       - minio
+    volumes:
+      - ./minio-public-read-policy.json:/public-read-policy.json:ro
     # healthcheck 로 기다리지 않고 alias 등록을 재시도한다, minio 이미지에 curl 이 있는지가
     # 태그마다 갈려 healthcheck 쪽이 오히려 잘 깨진다
     entrypoint: >
       sh -c "until mc alias set local http://minio:9000 race racelocal; do sleep 1; done &&
              mc mb --ignore-existing local/race-local &&
-             mc anonymous set download local/race-local"
+             mc anonymous set-json /public-read-policy.json local/race-local"
 
 volumes:
   race-minio-data:
