@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { User, UserRole } from '@/types/domain'
+import { clearAuctionListCache } from '@/features/auctions/use-auction-list'
 import { fetchMe, loginRequest, logoutRequest, type LoginPayload } from './api'
 
 /**
@@ -51,6 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setUser(null)
       queryClient.clear()
+      // 경매 목록은 react-query 밖의 자체 캐시를 쓴다. "나의 경매"가 들어 있을 수 있어
+      // 다음에 로그인한 사용자에게 보이지 않도록 함께 비운다.
+      clearAuctionListCache()
     }
   }, [queryClient])
 

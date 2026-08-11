@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Eye, Gauge } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -34,9 +34,14 @@ export function AuctionCard({ auction, nowMs, offsetMs = 0, actions }: AuctionCa
   const priceLabel = isLive ? '현재가' : status === 'ENDED' ? '낙찰가' : '시작가'
   const price = isBeforeStart ? auction.startPrice : auction.currentPrice
 
+  // 경매방의 "뒤로"가 돌아올 자리. 탭(범위·상태)까지 담아 보내야 나의 경매에서 들어간
+  // 사람이 전체 목록으로 떨어지지 않는다. 목록 자체는 캐시가 데이터와 스크롤을 되살린다.
+  const location = useLocation()
+  const roomLinkState = { from: `${location.pathname}${location.search}` }
+
   return (
     <Card className="group gap-0 overflow-hidden py-0 transition-[transform,box-shadow,border-color] duration-500 ease-out hover:-translate-y-1.5 hover:border-foreground/20 hover:shadow-xl hover:shadow-black/10">
-      <Link to={`/auctions/${auction.auctionId}`} className="block">
+      <Link to={`/auctions/${auction.auctionId}`} state={roomLinkState} className="block">
         {/* 2열 구간에서는 사진을 크게 눕힌다. 열이 넓어 4:3이면 사진 한 장이 화면 높이를
             다 먹고, 한 화면에 두 장밖에 남지 않아 고를 대상이 눈에 들어오지 않는다 */}
         <div className="bg-muted relative aspect-[4/3] overflow-hidden md:aspect-[5/2]">
@@ -63,7 +68,7 @@ export function AuctionCard({ auction, nowMs, offsetMs = 0, actions }: AuctionCa
       </Link>
 
       <div className="flex flex-col gap-2 p-4">
-        <Link to={`/auctions/${auction.auctionId}`}>
+        <Link to={`/auctions/${auction.auctionId}`} state={roomLinkState}>
           {/* 한 줄로 고정한다. 제목이 카드마다 한 줄이거나 두 줄이면 그리드에서 행 높이가
               들쭉날쭉해지므로, 제조사까지 붙어 넘치는 글자는 줄이지 않고 말줄임으로 자른다 */}
           <h3 className="truncate text-lg font-semibold tracking-tight md:text-xl">
