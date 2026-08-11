@@ -185,18 +185,15 @@ class NotificationIntegrationTest extends IntegrationTestSupport {
         User me = userRepository.findById(MY_ID).orElseThrow();
         notificationRepository.save(Notification.create(me, NotificationType.AUCTION_ENDED, 5L));
         notificationRepository.save(Notification.create(me, NotificationType.AUCTION_WON, 7L));
-        notificationRepository.save(Notification.create(me, NotificationType.WELCOME, null));
         notificationRepository.save(Notification.create(me, NotificationType.EVAL_APPROVED, 9L));
 
         list(null)
                 .andExpect(status().isOk())
                 // 참조를 경로가 아니라 질의로 붙이는 종류도 조립은 서버가 한다
                 .andExpect(jsonPath("$.content[0].link").value("/sell/auction-post?evaluationId=9"))
-                // 참조가 필요 없는 종류는 고정 경로다
-                .andExpect(jsonPath("$.content[1].link").value("/auctions"))
                 // 낙찰은 경매방이 아니라 거래로 보낸다
-                .andExpect(jsonPath("$.content[2].link").value("/mypage/deals/7"))
-                .andExpect(jsonPath("$.content[3].link").value("/auctions/5"))
+                .andExpect(jsonPath("$.content[1].link").value("/mypage/deals/7"))
+                .andExpect(jsonPath("$.content[2].link").value("/auctions/5"))
                 // 클라이언트가 종류별로 주소를 조립하지 않도록 참조값 자체는 내보내지 않는다
                 .andExpect(jsonPath("$.content[0].referenceId").doesNotExist());
     }
@@ -224,7 +221,7 @@ class NotificationIntegrationTest extends IntegrationTestSupport {
 
         for (int i = 1; i <= count; i++) {
             Notification saved = notificationRepository.save(
-                    Notification.create(user, NotificationType.DEAL_STATUS_CHANGED, (long) i));
+                    Notification.create(user, NotificationType.DEAL_CANCELLED, (long) i));
             ids.add(saved.getId());
         }
 

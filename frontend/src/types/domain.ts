@@ -66,11 +66,9 @@ export interface AuctionCard {
  * 종류가 늘면 벨의 아이콘 대응표도 함께 고쳐야 한다. 대응표가 전수라 빠뜨리면 빌드가 깨진다.
  */
 export type NotificationType =
-  | 'WELCOME'
   | 'EVAL_APPROVED'
   | 'EVAL_REJECTED'
   | 'AUCTION_WON'
-  | 'AUCTION_WON_RESULT'
   | 'OUTBID'
   | 'AUCTION_ENDED'
   | 'AUCTION_SOLD'
@@ -79,8 +77,6 @@ export type NotificationType =
   | 'DEAL_BUYER_SCHEDULE_REQUIRED'
   | 'DEAL_CONFIRMED'
   | 'DEAL_CANCELLED'
-  /** 단계별 종류로 대체돼 더는 발행되지 않는다. 이미 쌓인 알림이 이 이름을 들고 있어 지우지 못한다 */
-  | 'DEAL_STATUS_CHANGED'
 
 export interface AppNotification {
   id: number

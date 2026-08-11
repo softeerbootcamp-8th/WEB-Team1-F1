@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Toaster as Sonner, type ToasterProps } from 'sonner'
 
-/**
- * 전역 토스트. 알림(평가 승인/거절, 낙찰, 거래 상태 변경) 노출에 사용.
- * 시스템 테마(.dark)에 맞춰 자동 전환.
- */
-function Toaster(props: ToasterProps) {
+import { cn } from '@/lib/utils'
+
+/** 일반 토스트와 서버 알림 큐가 함께 쓰는 렌더러. 시스템 테마를 동일하게 따른다. */
+function Toaster({ className, style, ...props }: ToasterProps) {
   const [theme, setTheme] = useState<ToasterProps['theme']>('light')
 
   useEffect(() => {
@@ -16,13 +15,14 @@ function Toaster(props: ToasterProps) {
   return (
     <Sonner
       theme={theme}
-      className="toaster group"
+      className={cn('toaster group', className)}
       position="top-center"
       style={
         {
           '--normal-bg': 'var(--popover)',
           '--normal-text': 'var(--popover-foreground)',
           '--normal-border': 'var(--border)',
+          ...style,
         } as React.CSSProperties
       }
       {...props}

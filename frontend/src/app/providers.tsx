@@ -12,7 +12,26 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <BrowserRouter>
         <AuthProvider>
           {children}
-          <Toaster />
+          <Toaster
+            closeButton
+            toastOptions={{ closeButtonAriaLabel: '토스트 닫기' }}
+          />
+          <Toaster
+            id="server-notifications"
+            className="notification-toaster"
+            position="top-right"
+            expand
+            visibleToasts={3}
+            offset={{ top: '5rem', right: '1.5rem' }}
+            mobileOffset={{ top: '4.5rem', right: '1rem', left: '1rem' }}
+            swipeDirections={['right']}
+            containerAriaLabel="서버 알림"
+            style={
+              {
+                '--width': 'min(27rem, calc(100vw - 2rem))',
+              } as React.CSSProperties
+            }
+          />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

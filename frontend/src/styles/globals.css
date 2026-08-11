@@ -258,6 +258,74 @@
 }
 
 /* ================================================================== *
+ *  GENERAL TOAST — 카드 안쪽의 조용한 닫기 버튼
+ * ================================================================== */
+.toaster [data-sonner-toast][data-styled='true'] {
+  padding-right: 2.75rem;
+}
+
+.toaster [data-sonner-toast][data-styled='true'] [data-close-button] {
+  top: 0.5rem;
+  right: 0.5rem;
+  left: auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  transform: none;
+  color: var(--foreground);
+  background: transparent;
+  border-color: color-mix(in oklch, var(--foreground) 14%, transparent);
+  border-radius: 0.375rem;
+  box-shadow: none;
+  opacity: 1;
+}
+
+.toaster [data-sonner-toast][data-styled='true'] [data-close-button]:hover {
+  color: var(--foreground);
+  background: var(--muted);
+  border-color: color-mix(in oklch, var(--foreground) 22%, transparent);
+  opacity: 1;
+}
+
+.toaster [data-sonner-toast][data-styled='true'] [data-close-button]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+  opacity: 1;
+}
+
+.toaster [data-sonner-toast][data-styled='true'] [data-close-button] svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* ================================================================== *
+ *  SERVER NOTIFICATION — 알림 벨 아래에서 가로로 들어오는 별도 큐
+ * ================================================================== */
+.notification-toaster [data-sonner-toast] {
+  transition:
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms ease-out,
+    height 280ms ease-out;
+}
+
+/* Sonner 기본 진입은 위쪽 translateY다. 마운트 전 변수만 가로 이동으로 바꿔
+   일반 토스트의 세로 애니메이션에는 영향을 주지 않는다. */
+.notification-toaster [data-sonner-toast][data-mounted='false'] {
+  --y: translateX(2.5rem);
+}
+
+.notification-toaster
+  [data-sonner-toast][data-removed='true'][data-front='true'][data-swipe-out='false'] {
+  --y: translateX(2.5rem);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-toaster [data-sonner-toast] {
+    transition-duration: 1ms;
+  }
+}
+
+/* ================================================================== *
  *  KEYFRAMES  —  실시간 신호
  * ================================================================== */
 @keyframes live-pulse {
