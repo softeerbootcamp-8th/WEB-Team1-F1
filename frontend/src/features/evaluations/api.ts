@@ -3,7 +3,9 @@ import type {
   AssignableEvaluationsResponse,
   EvaluationAssignment,
   EvaluationDetail,
+  EvaluationRejection,
   EvaluationResult,
+  EvaluationResultPatchRequest,
   EvaluationResultRequest,
   EvaluationSummariesResponse,
 } from './types'
@@ -54,6 +56,28 @@ export async function submitEvaluationResult(
   const { data } = await axiosInstance.put<EvaluationResult>(
     `/api/evaluations/${evaluationId}/result`,
     request,
+  )
+  return data
+}
+
+export async function patchEvaluationResult(
+  evaluationId: number,
+  request: EvaluationResultPatchRequest,
+): Promise<EvaluationResult> {
+  const { data } = await axiosInstance.patch<EvaluationResult>(
+    `/api/evaluations/${evaluationId}/result`,
+    request,
+  )
+  return data
+}
+
+export async function rejectEvaluation(
+  evaluationId: number,
+  reason: string,
+): Promise<EvaluationRejection> {
+  const { data } = await axiosInstance.post<EvaluationRejection>(
+    `/api/evaluations/${evaluationId}/rejection`,
+    { reason },
   )
   return data
 }

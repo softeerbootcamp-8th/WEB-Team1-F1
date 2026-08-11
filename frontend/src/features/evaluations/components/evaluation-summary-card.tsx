@@ -35,7 +35,7 @@ export function EvaluationSummaryCard({
             </div>
 
             <p className="text-muted-foreground mt-2 text-sm">
-              {evaluation.modelYear}년식 · {evaluation.plateNumber} · 방문견적 #{evaluation.evaluationId}
+              {evaluation.modelYear}년식 · {evaluation.plateNumber}
             </p>
 
             <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-[1fr_1.4fr_auto]">
