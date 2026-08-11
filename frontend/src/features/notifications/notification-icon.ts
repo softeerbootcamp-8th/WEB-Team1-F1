@@ -10,6 +10,7 @@ import {
   Handshake,
   PackageCheck,
   PartyPopper,
+  TrendingUp,
   Trophy,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -28,6 +29,7 @@ export const NOTIFICATION_ICON: Record<NotificationType, LucideIcon> = {
   EVAL_REJECTED: CircleX,
   AUCTION_WON: Trophy,
   AUCTION_WON_RESULT: Trophy,
+  OUTBID: TrendingUp,
   AUCTION_ENDED: Gavel,
   AUCTION_SOLD: HandCoins,
   AUCTION_FAILED: CircleOff,

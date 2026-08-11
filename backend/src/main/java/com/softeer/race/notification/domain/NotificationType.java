@@ -35,6 +35,9 @@ public enum NotificationType {
     // 목적지를 되돌리는 순간 여기서 쌓인 알림이 엉뚱한 거래를 가리킨다
     AUCTION_WON_RESULT("낙찰되었습니다. 결과를 확인해 주세요.", "/auctions/%d"),
 
+    // 직전 최고 입찰자에게 간다. 차량·새 입찰자·금액은 NotificationContent가 완성한다.
+    OUTBID("내 입찰보다 높은 입찰이 등록되었습니다.", "/auctions/%d"),
+
     // 낙찰되지 못한 참여자에게 간다. 거래가 없으므로 경매방으로 보낸다
     AUCTION_ENDED("경매가 종료되었습니다.", "/auctions/%d"),
 
