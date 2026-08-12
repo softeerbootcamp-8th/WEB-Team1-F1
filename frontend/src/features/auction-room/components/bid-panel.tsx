@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { formatKRW, formatManwon } from '@/lib/format'
 import { getErrorMessage } from '@/lib/axios'
 import { useAuth } from '@/features/auth/auth-context'
+import { useCountdown } from '@/hooks/use-countdown'
 
+import { acceptsBidAt } from '../deadline'
 import { bidBlockOf, type BidBlock } from '../bid-eligibility'
 
 interface BidPanelProps {
@@ -17,7 +19,10 @@ interface BidPanelProps {
   nextMin: number | null
   /** 조회한 사람이 이 차를 내놓은 사람인지, 서버가 판정해 준다 */
   sellerIsMine: boolean
-  disabled?: boolean
+  /** 서버가 정한 마감 시각, 마감 임박 입찰로 밀리면 새 값이 온다 */
+  endAt: string
+  /** 서버 시각 - 브라우저 시계 */
+  clockOffset: number
   onBid: (amount: number) => Promise<void>
 }
 
@@ -40,10 +45,15 @@ export function BidPanel({
   increment,
   nextMin,
   sellerIsMine,
-  disabled,
+  endAt,
+  clockOffset,
   onBid,
 }: BidPanelProps) {
   const { user, isAuthenticated } = useAuth()
+
+  // 1초마다 다시 그려 마감을 넘긴 순간을 잡는다, 마지막 1초는 제출 직전 재확인이 막는다
+  // 조기 반환 앞에 둔다, 뒤에 두면 로그인 상태가 바뀔 때 훅 수가 달라진다
+  useCountdown(endAt, 1000, clockOffset)
 
   if (!isAuthenticated || !user) {
     return (
@@ -65,6 +75,13 @@ export function BidPanel({
     return <BidBlocked {...BLOCK_NOTICE[block]} />
   }
 
+  // 마감 뒤에는 서버가 어떤 입찰도 받지 않는다, 화면이 폼을 열어 두면 눌러서 실패를 받게 된다
+  if (!acceptsBidAt(endAt, Date.now() + clockOffset)) {
+    return (
+      <BidBlocked title="입찰이 마감됐습니다" description="곧 결과 화면으로 넘어갑니다." />
+    )
+  }
+
   // 호가 단위를 모르면 얼마를 낼 수 있는지 안내할 수 없다. 0으로 대체하면
   // 올리지 않아도 되는 입찰을 안내하게 되고 그 입찰은 서버가 거부한다.
   if (increment === null || nextMin === null) {
@@ -82,7 +99,8 @@ export function BidPanel({
       currentPrice={currentPrice}
       increment={increment}
       nextMin={nextMin}
-      disabled={disabled}
+      endAt={endAt}
+      clockOffset={clockOffset}
       onBid={onBid}
     />
   )
@@ -103,13 +121,15 @@ function BidForm({
   currentPrice,
   increment,
   nextMin,
-  disabled,
+  endAt,
+  clockOffset,
   onBid,
 }: {
   currentPrice: number
   increment: number
   nextMin: number
-  disabled?: boolean
+  endAt: string
+  clockOffset: number
   onBid: (amount: number) => Promise<void>
 }) {
   const [amount, setAmount] = useState(nextMin)
@@ -122,6 +142,9 @@ function BidForm({
   }, [nextMin, increment])
 
   const submit = async () => {
+    // 잠금은 1초마다 다시 그려 걸리므로 마지막 1초가 남는다, 보내기 직전에 같은 규칙으로 한 번 더 본다
+    if (!acceptsBidAt(endAt, Date.now() + clockOffset)) return
+
     setIsSubmitting(true)
     try {
       await onBid(amount)
@@ -149,7 +172,7 @@ function BidForm({
           variant="ghost"
           size="icon"
           className="h-11 rounded-none"
-          disabled={disabled || amount <= nextMin}
+          disabled={amount <= nextMin}
           onClick={() => setAmount((prev) => Math.max(nextMin, prev - increment))}
           aria-label="입찰가 낮추기"
         >
@@ -163,7 +186,6 @@ function BidForm({
           variant="ghost"
           size="icon"
           className="h-11 rounded-none"
-          disabled={disabled}
           onClick={() => setAmount((prev) => prev + increment)}
           aria-label="입찰가 높이기"
         >
@@ -186,7 +208,7 @@ function BidForm({
         type="button"
         size="lg"
         className="mt-4 w-full"
-        disabled={disabled || isSubmitting || amount < nextMin}
+        disabled={isSubmitting || amount < nextMin}
         onClick={submit}
       >
         입찰

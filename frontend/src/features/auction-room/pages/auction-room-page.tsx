@@ -239,6 +239,8 @@ function LiveRoom({
             increment={increment}
             nextMin={nextMin}
             sellerIsMine={room.sellerIsMine}
+            endAt={room.endAt}
+            clockOffset={clockOffset}
             onBid={placeBid}
           />
         </div>
