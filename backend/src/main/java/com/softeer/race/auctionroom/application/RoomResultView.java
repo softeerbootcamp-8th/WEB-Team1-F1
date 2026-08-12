@@ -7,6 +7,7 @@ import com.softeer.race.auctionroom.domain.BidderStanding;
 import com.softeer.race.auctionroom.domain.PricePoint;
 import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.auctionroom.domain.VehicleSummary;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,12 +39,12 @@ public record RoomResultView(
     static RoomResultView of(
             AuctionRoomDetail detail, AuctionOutcome outcome, BidStats stats,
             long viewerId, BidderStanding standing, List<PricePoint> priceCurve,
-            List<String> imageUrls, LocalDateTime serverTime) {
+            List<String> imageUrls, List<VehicleKeyword> keywords, LocalDateTime serverTime) {
 
         return new RoomResultView(
                 detail.auctionId(),
                 outcome,
-                detail.vehicle(imageUrls),
+                detail.vehicle(imageUrls, keywords),
                 detail.startPrice(),
                 detail.winningPrice().orElse(null),
                 detail.winnerName().orElse(null),

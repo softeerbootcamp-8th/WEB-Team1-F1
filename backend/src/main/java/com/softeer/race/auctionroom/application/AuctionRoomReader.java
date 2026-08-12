@@ -1,6 +1,8 @@
 package com.softeer.race.auctionroom.application;
 
 import com.softeer.race.auctionroom.domain.*;
+import com.softeer.race.vehicle.application.VehicleKeywordService;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Component;
@@ -20,6 +22,7 @@ class AuctionRoomReader {
 
     private final AuctionRoomRepository auctionRoomRepository;
     private final RoomBidRepository roomBidRepository;
+    private final VehicleKeywordService vehicleKeywordService;
     private final Clock clock;
 
     // 클래스는 패키지 밖에 안 보이지만 메서드는 public 이어야 한다, 프록시가 public 메서드만 자문한다
@@ -34,7 +37,15 @@ class AuctionRoomReader {
     public Optional<RoomOpening> findOpening(long auctionId) {
         return auctionRoomRepository.findDetailById(auctionId)
                 .map(detail -> RoomOpening.of(detail,
-                        auctionRoomRepository.findPhotoUrls(auctionId), LocalDateTime.now(clock)));
+                        auctionRoomRepository.findPhotoUrls(auctionId),
+                        findKeywords(detail.vehicleId()), LocalDateTime.now(clock)));
+    }
+
+    // 목록이 부르는 것을 그대로 부른다, 표시 순서까지 그쪽에서 정해져 온다
+    @Transactional(readOnly = true)
+    public List<VehicleKeyword> findKeywords(long vehicleId) {
+        return vehicleKeywordService.findByVehicleIds(List.of(vehicleId))
+                .getOrDefault(vehicleId, List.of());
     }
 
     // 브로드캐스트는 차량을 보내지 않으므로 find 안에 두면 방송마다 헛되이 한 번 더 읽는다

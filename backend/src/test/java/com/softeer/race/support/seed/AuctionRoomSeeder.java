@@ -36,6 +36,7 @@ public class AuctionRoomSeeder {
 
     private final VehicleRepository vehicleRepository;
     private final VehicleImageRepository vehicleImageRepository;
+    private final VehicleKeywordTagRepository vehicleKeywordTagRepository;
     private final AuctionPostRepository auctionPostRepository;
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
@@ -64,6 +65,8 @@ public class AuctionRoomSeeder {
         };
         // 사진과 확장자·경로가 다르다, 둘 다 String 이라 자리가 바뀌어도 컴파일되므로 기본값을 갈라 둔다
         private String diagnosticReportUrl = "https://cdn.race.dev/avante-report.pdf";
+        // 기본으로 심지 않는다, 심어 두면 키워드를 지정하지 않은 테스트의 기대값이 조용히 바뀐다
+        private VehicleKeyword[] keywords = {};
         private long startPrice = DEFAULT_START_PRICE;
         private boolean closed;
 
@@ -84,6 +87,11 @@ public class AuctionRoomSeeder {
 
         public RoomBuilder diagnosticReportUrl(String diagnosticReportUrl) {
             this.diagnosticReportUrl = diagnosticReportUrl;
+            return this;
+        }
+
+        public RoomBuilder keywords(VehicleKeyword... keywords) {
+            this.keywords = keywords;
             return this;
         }
 
@@ -122,6 +130,9 @@ public class AuctionRoomSeeder {
                 vehicleRepository.save(vehicle);
                 for (int order = 0; order < photos.length; order++) {
                     vehicleImageRepository.save(VehicleImage.create(vehicle, photos[order], order));
+                }
+                for (VehicleKeyword keyword : keywords) {
+                    vehicleKeywordTagRepository.save(VehicleKeywordTag.create(vehicle, keyword));
                 }
                 AuctionPost post = auctionPostRepository.save(AuctionPost.create(vehicle, publishedAt));
 

@@ -2,6 +2,7 @@ package com.softeer.race.auctionroom.domain;
 
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 
 import java.util.List;
 
@@ -14,6 +15,7 @@ public record VehicleSummary(
         int modelYear,
         int mileage,
         FuelType fuelType,
+        List<VehicleKeyword> keywords,
         List<String> imageUrls,
         String diagnosticReportUrl
 ) {
