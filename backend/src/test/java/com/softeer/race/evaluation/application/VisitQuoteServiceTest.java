@@ -80,8 +80,8 @@ class VisitQuoteServiceTest {
     @DisplayName("사전 확인은 차량 소유 정보를 대조한 뒤 진행 중 신청 여부를 돌려준다")
     void precheck() {
         givenLookup();
-        given(evaluationRepository.existsByVehiclePlateNumberAndStatusIn(
-                PLATE_NUMBER, EvaluationStatus.inProgress())).willReturn(true);
+        given(evaluationRepository.existsBlockingVisitQuoteByPlateNumber(PLATE_NUMBER))
+                .willReturn(true);
 
         VisitQuotePrecheckInfo info = service.precheck(
                 new VehicleLookupCommand(PLATE_NUMBER, OWNER_NAME));
@@ -147,8 +147,8 @@ class VisitQuoteServiceTest {
     // 중복 판정 기준이 vehicle_id가 아니라 번호판이어야 한다는 결정을 고정한다
     // vehicle_id로 묶으면 방금 만든 차량만 보게 되어 중복이 전부 통과한다
     @Test
-    @DisplayName("중복 검사는 번호판과 진행 중 상태로만 조회한다")
-    void requestChecksDuplicateByPlateNumberAndInProgressStatuses() {
+    @DisplayName("중복 검사는 번호판으로 판매 흐름이 끝나지 않은 신청을 조회한다")
+    void requestChecksBlockingRequestByPlateNumber() {
         givenNoDuplicate();
         givenLookup();
         givenSeller();
@@ -157,13 +157,13 @@ class VisitQuoteServiceTest {
         service.request(command(TODAY.plusDays(16)));
 
         then(evaluationRepository).should()
-                .existsByVehiclePlateNumberAndStatusIn(PLATE_NUMBER, EvaluationStatus.inProgress());
+                .existsBlockingVisitQuoteByPlateNumber(PLATE_NUMBER);
     }
 
     @Test
     @DisplayName("진행 중인 신청이 있으면 차량을 만들기 전에 409 코드로 거부한다")
     void requestRejectsDuplicate() {
-        given(evaluationRepository.existsByVehiclePlateNumberAndStatusIn(eq(PLATE_NUMBER), any()))
+        given(evaluationRepository.existsBlockingVisitQuoteByPlateNumber(PLATE_NUMBER))
                 .willReturn(true);
 
         assertThatThrownBy(() -> service.request(command(TODAY.plusDays(16))))
@@ -228,7 +228,7 @@ class VisitQuoteServiceTest {
     // ================= given =================
 
     private void givenNoDuplicate() {
-        given(evaluationRepository.existsByVehiclePlateNumberAndStatusIn(eq(PLATE_NUMBER), any()))
+        given(evaluationRepository.existsBlockingVisitQuoteByPlateNumber(PLATE_NUMBER))
                 .willReturn(false);
     }
 

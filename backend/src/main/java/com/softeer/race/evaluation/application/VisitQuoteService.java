@@ -6,7 +6,6 @@ import com.softeer.race.evaluation.application.dto.info.VisitQuoteInfo;
 import com.softeer.race.evaluation.application.dto.info.VisitQuotePrecheckInfo;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
-import com.softeer.race.evaluation.domain.EvaluationStatus;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
@@ -59,8 +58,7 @@ public class VisitQuoteService {
                 .orElseThrow(() -> new BusinessException(EvaluationErrorCode.VEHICLE_NOT_FOUND));
 
         boolean hasInProgressVisitQuote =
-                evaluationRepository.existsByVehiclePlateNumberAndStatusIn(
-                        spec.plateNumber(), EvaluationStatus.inProgress());
+                evaluationRepository.existsBlockingVisitQuoteByPlateNumber(spec.plateNumber());
 
         return new VisitQuotePrecheckInfo(
                 VehicleLookupInfo.from(spec), hasInProgressVisitQuote);
@@ -79,8 +77,7 @@ public class VisitQuoteService {
         // 락을 걸 대상 행도 없다(막아야 하는 것은 아직 없는 행이다). 저빈도 쓰기이고 배정 단계에서
         // 사람이 걸러낼 수 있어 수용한다. 정말 막아야 하면 vehicle 위가 아닌 "번호판" 단위의
         // 별도 테이블에 unique를 걸어 접수 슬롯을 선점하는 구조가 필요하다
-        if (evaluationRepository.existsByVehiclePlateNumberAndStatusIn(
-                command.plateNumber(), EvaluationStatus.inProgress())) {
+        if (evaluationRepository.existsBlockingVisitQuoteByPlateNumber(command.plateNumber())) {
             throw new BusinessException(EvaluationErrorCode.DUPLICATE_REQUEST);
         }
 

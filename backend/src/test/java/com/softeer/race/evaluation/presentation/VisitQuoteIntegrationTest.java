@@ -231,6 +231,58 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
         assertThat(countOf("vehicle")).isEqualTo(2);
     }
 
+    @Test
+    @DisplayName("낙찰로 경매가 끝난 차량은 같은 번호판으로 다시 방문견적을 신청할 수 있다")
+    void endedAuctionAllowsNewVisitQuote() throws Exception {
+        request(PLATE_NUMBER, today().plusDays(16)).andExpect(status().isCreated());
+        markApprovedWithAuction("ENDED");
+
+        precheck(PLATE_NUMBER, OWNER_NAME)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasInProgressVisitQuote").value(false));
+        request(PLATE_NUMBER, today().plusDays(20)).andExpect(status().isCreated());
+
+        assertThat(countOf("evaluation")).isEqualTo(2);
+        assertThat(countOf("vehicle")).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("유찰된 차량은 기존 진단으로 재출품할 수 있으므로 새 방문견적을 막는다")
+    void failedAuctionStillBlocksNewVisitQuote() throws Exception {
+        request(PLATE_NUMBER, today().plusDays(16)).andExpect(status().isCreated());
+        markApprovedWithAuction("FAILED");
+
+        precheck(PLATE_NUMBER, OWNER_NAME)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasInProgressVisitQuote").value(true));
+        request(PLATE_NUMBER, today().plusDays(20)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("EVALUATION_DUPLICATE_REQUEST"));
+
+        assertThat(countOf("evaluation")).isEqualTo(1);
+    }
+
+    private void markApprovedWithAuction(String auctionStatus) {
+        Long vehicleId = jdbcTemplate.queryForObject("select id from vehicle", Long.class);
+        jdbcTemplate.update("update evaluation set status = 'APPROVED'");
+        jdbcTemplate.update("""
+                insert into auction_post
+                    (id, vehicle_id, published_at, created_at, updated_at)
+                values (1401, ?, NOW(6), NOW(6), NOW(6))
+                """, vehicleId);
+        jdbcTemplate.update("""
+                insert into auction
+                    (id, post_id, winner_id, start_price, current_price, room_open_at,
+                     start_time, current_end_time, extension_count, status, price_updated_at,
+                     created_at, updated_at)
+                values
+                    (1401, 1401, ?, 30000000, ?, NOW(6), NOW(6), NOW(6), 0, ?,
+                     NOW(6), NOW(6), NOW(6))
+                """,
+                "ENDED".equals(auctionStatus) ? SELLER_ID : null,
+                "ENDED".equals(auctionStatus) ? 31000000 : null,
+                auctionStatus);
+    }
+
     private static Cookie evaluatorCookie() {
         return new Cookie(SessionCookieFactory.COOKIE_NAME, EVALUATOR_RAW_TOKEN);
     }
