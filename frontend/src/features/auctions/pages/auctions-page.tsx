@@ -18,6 +18,7 @@ import {
   hasActiveFilter,
   readFilterParams,
   writeFilterParams,
+  type AuctionVehicleFilter,
 } from '@/features/auctions/filter'
 import { useAuctionList } from '@/features/auctions/use-auction-list'
 import type { AuctionListCard, AuctionListScope } from '@/features/auctions/types'
@@ -140,6 +141,22 @@ export function AuctionsPage() {
       next.delete('as')
       setSearchParams(next, { replace: true })
     }
+  }
+
+  /**
+   * 미리보기에서 비슷한 조건으로 넘어올 때. 조건 쓰기와 미리보기 닫기를 한 번에 해야 한다,
+   * 나눠 쓰면 resetFilters와 같은 이유로 나중 것이 앞의 것을 되살린다.
+   * 상태 탭은 전체로 되돌린다. 마감된 경매를 보다 온 사람에게 종료 탭이 남아 있으면
+   * 비슷한 경매도 끝난 것만 나온다.
+   */
+  const showSimilar = (filter: AuctionVehicleFilter) => {
+    const params = new URLSearchParams(searchParams)
+    writeFilterParams(filter, params)
+    params.delete(STATUS_PARAM)
+    params.delete('open')
+    params.delete('as')
+    setSearchParams(params, { replace: true })
+    setPreview(null)
   }
 
   // 상태 필터는 서버가 건다. 받아온 카드만 걸러내면 다음 페이지를 읽을수록 화면이 실제와 어긋난다.
@@ -330,6 +347,7 @@ export function AuctionsPage() {
         card={preview?.card ?? cards.find((c) => c.auctionId === deepLink?.id) ?? null}
         offsetMs={offsetMs}
         onOpenChange={(open) => !open && closePreview()}
+        onSimilar={showSimilar}
       />
       <AuctionEditDialog
         auction={editing}
