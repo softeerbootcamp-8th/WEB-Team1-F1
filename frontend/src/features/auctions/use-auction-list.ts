@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigationType } from 'react-router-dom'
 
 import { keepScrollOnEnter } from '@/app/scroll-reset'
 import { fetchAuctionList, subscribeAuctionListStream } from '@/features/auctions/api'
@@ -23,14 +23,28 @@ interface UseAuctionListOptions {
   /** false면 조회하지 않고 빈 상태로 둔다(예: 나의 경매인데 비로그인) */
   enabled?: boolean
   /**
-   * 돌아왔을 때 보던 높이까지 되살릴지. 목록을 이어 보는 화면만 켠다.
+   * 되돌아온 진입에서 보던 높이까지 되살릴지. 목록을 이어 보는 화면만 켠다.
    *
    * 목록 데이터 캐시와 나눠 둔 이유: 홈도 같은 캐시를 써서 경매방을 다녀와도 카드가 깜빡이지
    * 않아야 하지만, 홈은 이어 보는 화면이 아니다. 켜 두면 헤더의 "홈"을 눌렀을 때 지난번에
    * 보던 중간 높이로 떨어진다.
+   *
+   * 켜도 아무 진입에서나 되살리지 않는다 — 되돌아온 진입에서만이다({@link RETURNING_STATE_KEY}).
    */
   restoreScroll?: boolean
 }
+
+/**
+ * "이 이동은 되돌아가는 것"이라는 표시. 되돌아가는 링크가 목적지에 실어 보낸다.
+ *
+ * 캐시가 살아 있다는 사실만으로는 되살릴 수 없다. 시세 조회나 내 차 팔기에서 목록으로 넘어오는
+ * 것도 캐시는 그대로 살아 있는 새 진입이고, 그때는 맨 위부터 봐야 한다. 되돌아가는 이동인지는
+ * 이동을 만드는 쪽만 안다.
+ */
+export const RETURNING_STATE_KEY = 'returningToList'
+
+/** 되돌아가는 링크가 목적지에 실을 state */
+export const returningToList = { [RETURNING_STATE_KEY]: true } as const
 
 /** 화면을 떠났다 돌아올 때 이어 보기 위한 목록 한 벌 */
 interface CachedList {
@@ -98,16 +112,26 @@ export function useAuctionList({
   // 조건은 객체라 렌더마다 새것일 수 있다. 값으로 만든 키를 기준으로 삼아야 같은 조건이 같은 목록이 된다.
   const vehicleKey = filterKey(vehicle)
 
-  const { pathname } = useLocation()
+  const { pathname, state } = useLocation()
+  const navigationType = useNavigationType()
+
+  // 되돌아온 진입인가. 브라우저 뒤로가기(POP)이거나, 되돌아가는 링크가 표시를 실어 보냈을 때다.
+  // 경매방의 "뒤로"는 뒤로가기가 아니라 목록 주소로 새로 들어오는 이동이라 표시가 필요하다.
+  // 마운트 시점의 판단을 고정한다 — 목록은 필터를 replace로 주소에 쓰므로 state가 곧 사라진다
+  const [returning] = useState(
+    () =>
+      navigationType === 'POP' ||
+      (state as Record<string, unknown> | null)?.[RETURNING_STATE_KEY] === true,
+  )
+  const shouldRestore = restoreScroll && returning
 
   // 마운트하는 순간에 동기로 복원한다. 이펙트에서 하면 스켈레톤이 한 프레임 그려진 뒤
   // 목록으로 갈아끼워져 화면이 튀고, 스크롤을 되돌리려 해도 그 사이엔 되돌아갈 높이가 없다.
   const [restored] = useState(() => {
     const entry = enabled ? readFreshCache(cacheKeyOf(scope, filter, vehicleKey)) : null
-    // 되살릴 높이를 들고 있으면 이 진입에서는 맨 위로 올리지 않도록 알린다. 경매방의 "뒤로"는
-    // 뒤로가기가 아니라 목록 주소로 새로 들어가는 이동이라, 알리지 않으면 첫 화면으로 튄다.
-    // 이펙트가 아니라 이 자리에서 세우는 이유는 아래 복원 이펙트보다 먼저여야 하기 때문이다
-    if (entry && restoreScroll) keepScrollOnEnter(pathname)
+    // 되살릴 높이가 있으면 이 진입에서는 맨 위로 올리지 않도록 알린다. 이펙트가 아니라 이
+    // 자리에서 세우는 이유는 아래 복원 이펙트보다 먼저여야 하기 때문이다
+    if (entry && shouldRestore) keepScrollOnEnter(pathname)
     return entry
   })
 
@@ -160,10 +184,10 @@ export function useAuctionList({
   // 브라우저 뒤로가기(popstate)는 브라우저의 자체 스크롤 복원이 함께 돌므로 이 코드가
   // 없어도 자리가 맞는다. 이 코드는 앞으로 가는 진입(경매방의 "뒤로" 버튼)을 위한 것이다.
   useLayoutEffect(() => {
-    if (restored && restoreScroll) {
+    if (restored && shouldRestore) {
       window.scrollTo({ top: restored.scrollY, behavior: 'instant' })
     }
-  }, [restored, restoreScroll])
+  }, [restored, shouldRestore])
 
   useEffect(() => {
     const key = cacheKeyOf(scope, filter, vehicleKey)
