@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDocumentVisible } from '@/hooks/use-document-visible'
 import { incrementForPrice } from '@/lib/auction'
 import { getErrorCode, getErrorStatus } from '@/lib/axios'
+import { millisUntil } from '@/features/auction-room/deadline'
 import {
   fetchAuctionRoom,
   fetchBidIncrementBands,
@@ -69,6 +70,8 @@ export function useAuctionRoom(auctionId: number) {
   const prevPrice = useRef<number | null>(null)
   const prevEndAt = useRef<string | null>(null)
   const extendedTimer = useRef<number | null>(null)
+  // 마감 예약이 별도 이펙트로 나가 있어 그쪽에서도 구독을 끊는다, 지역 변수로 두면 닿지 않는다
+  const unsubscribeRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     fetchBidIncrementBands()
@@ -151,9 +154,7 @@ export function useAuctionRoom(auctionId: number) {
     if (!visible) return
 
     let cancelled = false
-    let unsubscribe: (() => void) | null = null
     let reentryTimer: number | null = null
-    let deadlineTimer: number | null = null
     let reconnectAttempts = 0
 
     // 아직 열리지 않은 방은 안내를 받아 두고, 열리는 시각에 스스로 다시 들어간다
@@ -191,8 +192,8 @@ export function useAuctionRoom(auctionId: number) {
 
     // 끝난 방은 방이 답할 것이 없다. 결과는 다른 화면이 다른 API 로 받으므로 여기서는 넘겨만 준다
     const leaveForResult = () => {
-      unsubscribe?.()
-      unsubscribe = null
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = null
       setEntry('CLOSED')
     }
 
@@ -202,8 +203,8 @@ export function useAuctionRoom(auctionId: number) {
     // 조회는 되는데 구독만 계속 거절당하는 상태도 있다. 그때 곧바로 다시 붙으면 지연이 없는 루프가
     // 되므로 시도할수록 간격을 늘리고 몇 번 뒤에는 그만둔다
     const reconnect = () => {
-      unsubscribe?.()
-      unsubscribe = null
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = null
 
       if (reconnectAttempts >= MAX_REENTRY_ATTEMPTS) {
         setEntry('UNSTABLE')
@@ -235,17 +236,9 @@ export function useAuctionRoom(auctionId: number) {
           setRoom(view)
           setEntry('OPEN')
 
-          // 마감을 서버가 알려주기를 기다리지 않는다. 서버의 주기 정리는 최대 5초 늦고, 그 사이
-          // 화면은 끝난 경매의 호가창을 보여준다. 마감 시각과 시계 보정값이 이미 있으니 스스로 센다
-          if (view.phase === 'LIVE') {
-            const offsetMs = new Date(view.serverTime).getTime() - Date.now()
-            const until = new Date(view.endAt).getTime() - (Date.now() + offsetMs)
-            deadlineTimer = window.setTimeout(leaveForResult, Math.max(0, until))
-          }
-
           // 열린 방만 응답하므로 여기 도달했으면 구독도 받아 준다
           if (CONNECTABLE_PHASES.has(view.phase)) {
-            unsubscribe = subscribeRoomStream(
+            unsubscribeRef.current = subscribeRoomStream(
               auctionId,
               (state) => {
                 // 조회가 200 인 것으로는 부족하다, 구독이 값을 보내와야 연결이 산 것이다
@@ -285,11 +278,29 @@ export function useAuctionRoom(auctionId: number) {
 
     return () => {
       cancelled = true
-      unsubscribe?.()
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = null
       if (reentryTimer !== null) window.clearTimeout(reentryTimer)
-      if (deadlineTimer !== null) window.clearTimeout(deadlineTimer)
     }
   }, [auctionId, mergeStreamState, visible])
+
+  // 마감을 서버가 알려주기를 기다리지 않는다. 서버의 주기 정리는 최대 5초 늦고, 그 사이 화면은
+  // 끝난 경매의 호가창을 보여준다. 마감 시각과 시계 보정값이 이미 있으니 스스로 센다.
+  // 마감이 밀리면 endAt 이 바뀌어 이 이펙트가 다시 돌고 예약이 갱신된다, 큰 이펙트에 두면
+  // 연장마다 방을 다시 조회하고 구독을 다시 붙이게 된다
+  const openEndAt = entry === 'OPEN' && room?.phase === 'LIVE' ? room.endAt : null
+
+  useEffect(() => {
+    if (openEndAt === null) return
+
+    const timer = window.setTimeout(() => {
+      unsubscribeRef.current?.()
+      unsubscribeRef.current = null
+      setEntry('CLOSED')
+    }, millisUntil(openEndAt, Date.now() + clockOffset))
+
+    return () => window.clearTimeout(timer)
+  }, [openEndAt, clockOffset])
 
   const increment = room ? incrementForPrice(room.currentPrice, bands) : null
   // 첫 입찰은 시작가 그대로가 최소금액이다 — bidCount가 0이면 currentPrice가 곧 startPrice.
