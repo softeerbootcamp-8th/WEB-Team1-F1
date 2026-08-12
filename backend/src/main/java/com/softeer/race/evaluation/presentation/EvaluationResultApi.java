@@ -42,7 +42,7 @@ public interface EvaluationResultApi {
             description = "값이 허용 범위를 벗어났거나, 우리가 발급하지 않은 주소입니다. "
                     + "사진 자리에 문서 주소를, 진단서 자리에 이미지 주소를 보낸 경우도 포함합니다.")
     @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
-    @ApiResponse(responseCode = "403", description = "다른 평가사가 담당인 신청입니다.")
+    @ApiResponse(responseCode = "403", description = "평가사 역할이 아니거나 다른 평가사가 담당인 신청입니다.")
     @ApiResponse(responseCode = "404", description = "없는 평가입니다.")
     @ApiResponse(responseCode = "409",
             description = "이미 반려되어 끝났거나, 아직 담당 평가사가 정해지지 않은 신청입니다. "
@@ -80,7 +80,7 @@ public interface EvaluationResultApi {
             description = "값이 허용 범위를 벗어났거나, 우리가 발급하지 않은 주소이거나, "
                     + "바꿀 항목을 하나도 보내지 않았습니다.")
     @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
-    @ApiResponse(responseCode = "403", description = "다른 평가사가 담당인 신청입니다.")
+    @ApiResponse(responseCode = "403", description = "평가사 역할이 아니거나 다른 평가사가 담당인 신청입니다.")
     @ApiResponse(responseCode = "404", description = "없는 평가입니다.")
     @ApiResponse(responseCode = "409",
             description = "아직 결과가 제출되지 않았거나, 이미 반려되어 끝났거나, "
@@ -116,7 +116,7 @@ public interface EvaluationResultApi {
     @ApiResponse(responseCode = "200", description = "반려되었습니다.")
     @ApiResponse(responseCode = "400", description = "사유가 비어 있거나 길이 상한을 넘었습니다.")
     @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
-    @ApiResponse(responseCode = "403", description = "다른 평가사가 담당인 신청입니다.")
+    @ApiResponse(responseCode = "403", description = "평가사 역할이 아니거나 다른 평가사가 담당인 신청입니다.")
     @ApiResponse(responseCode = "404", description = "없는 평가입니다.")
     @ApiResponse(responseCode = "409",
             description = "이미 승인·반려로 끝났거나, 아직 담당 평가사가 정해지지 않은 신청입니다. "

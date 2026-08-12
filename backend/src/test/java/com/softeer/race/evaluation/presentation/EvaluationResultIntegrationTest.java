@@ -186,11 +186,11 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("평가와 무관한 회원도 403")
+    @DisplayName("평가사 역할이 아닌 회원은 공통 인가에서 403")
     void submitRejectsStranger() throws Exception {
         submit(EVALUATION_ID, STRANGER_TOKEN, DOCUMENT_URL, IMAGE_1)
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("EVALUATION_NOT_ASSIGNED_EVALUATOR"));
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
     }
 
     @Test

@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 6. 상태 — 평가가 끝난 신청은 ALREADY_ASSIGNED 가 아니라 NOT_ASSIGNABLE 인지
  * <p>
- * 7. 인증과 인가 — 비로그인 요청은 막히고, 역할은 아직 보지 않는지
+ * 7. 인증과 인가 — 비로그인과 비평가사 요청을 구분해 막고 역할 변경을 즉시 반영하는지
  * <p>
  * 8. 동시성 — 비관적 잠금이 필요한지를 실제로 확인한다
  * <p>
@@ -181,28 +181,35 @@ class EvaluationAssignmentIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.code").value("EVALUATION_NOT_FOUND"));
     }
 
-    /**
-     * 인가 장치가 아직 없어 역할을 보지 않는다는 결정을 고정한다. 박판매는 이 차량의 판매자이기도
-     * 해서, 지금은 자기 신청을 스스로 수락하는 것까지 통과한다. 인가가 붙으면 이 테스트가 깨지고
-     * 그때 무엇이 막히게 되었는지 드러난다.
-     */
     @Test
-    @DisplayName("시나리오 8 : 평가사가 아닌 회원도 목록을 보고 수락할 수 있다")
-    void scenario8_NonEvaluatorIsAllowedForNow() throws Exception {
+    @DisplayName("시나리오 8 : 평가사가 아닌 회원은 목록 조회와 수락이 모두 403이다")
+    void scenario8_NonEvaluatorIsForbidden() throws Exception {
         assignable(PARK_TOKEN)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.evaluations.length()").value(3));
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
 
-        assign(WAITING_EVALUATION, PARK_TOKEN).andExpect(status().isCreated());
+        assign(WAITING_EVALUATION, PARK_TOKEN)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
 
-        assertThat(rowOf(WAITING_EVALUATION).get("evaluator_id")).isEqualTo(PARK_ID);
+        assertThat(rowOf(WAITING_EVALUATION).get("evaluator_id")).isNull();
+    }
+
+    @Test
+    @DisplayName("시나리오 9 : 세션이 살아 있어도 DB 역할 변경은 다음 요청에 즉시 반영된다")
+    void scenario9_RoleChangeTakesEffectOnNextRequest() throws Exception {
+        assignable(PARK_TOKEN).andExpect(status().isForbidden());
+
+        jdbcTemplate.update("update users set role = 'EVALUATOR' where id = ?", PARK_ID);
+
+        assignable(PARK_TOKEN).andExpect(status().isOk());
     }
 
     // 두 핸들러의 @LoginUser 선언으로 인증이 실제로 요구되는지. 구현체가 아니라 인터페이스에
     // 붙이면 AuthInterceptor 에 보이지 않아 조용히 공개 API 가 된다
     @Test
-    @DisplayName("시나리오 9 : 세션 쿠키가 없으면 401이다")
-    void scenario9_RequiresSession() throws Exception {
+    @DisplayName("시나리오 10 : 세션 쿠키가 없으면 401이다")
+    void scenario10_RequiresSession() throws Exception {
         mockMvc.perform(get("/api/evaluations/assignable")).andExpect(status().isUnauthorized());
         mockMvc.perform(post("/api/evaluations/" + WAITING_EVALUATION + "/assignment"))
                 .andExpect(status().isUnauthorized());
@@ -218,8 +225,8 @@ class EvaluationAssignmentIntegrationTest extends IntegrationTestSupport {
      * 잠금이 필요하다는 근거가 여기 있다.
      */
     @Test
-    @DisplayName("시나리오 10 : 두 평가사가 동시에 수락해도 한 명만 배정된다")
-    void scenario10_SerializesConcurrentAssignments() throws Exception {
+    @DisplayName("시나리오 11 : 두 평가사가 동시에 수락해도 한 명만 배정된다")
+    void scenario11_SerializesConcurrentAssignments() throws Exception {
         int threads = 2;
         CountDownLatch ready = new CountDownLatch(threads);
         CountDownLatch fire = new CountDownLatch(1);

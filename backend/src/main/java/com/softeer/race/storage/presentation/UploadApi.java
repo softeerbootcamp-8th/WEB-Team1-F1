@@ -1,6 +1,5 @@
 package com.softeer.race.storage.presentation;
 
-import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.storage.presentation.request.UploadRequest;
 import com.softeer.race.storage.presentation.request.DealerLicenseUploadRequest;
 import com.softeer.race.storage.presentation.response.UploadResponse;
@@ -38,8 +37,8 @@ public interface UploadApi {
             description = "지원하지 않는 형식이거나, 파일 크기·건수가 허용 범위를 벗어난 경우입니다. "
                     + "한 건이라도 잘못되면 아무것도 발급하지 않습니다.")
     @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
-    ResponseEntity<UploadResponse> issue(
-            AuthenticatedUser authenticatedUser, UploadRequest request);
+    @ApiResponse(responseCode = "403", description = "평가사 역할이 아닌 경우입니다.")
+    ResponseEntity<UploadResponse> issue(UploadRequest request);
 
     @Operation(summary = "자동차매매사원증 업로드 주소 발급",
             description = """

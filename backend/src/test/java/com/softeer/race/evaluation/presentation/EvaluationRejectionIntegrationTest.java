@@ -179,13 +179,7 @@ class EvaluationRejectionIntegrationTest extends IntegrationTestSupport {
                 .isEqualTo(FIXTURE_REASON);
     }
 
-    /**
-     * 반려 자격을 배정으로만 판정하기로 한 결정을 고정한다. 602는 평가사 계정이지만 이 건의
-     * 담당이 아니라 403이고, 603은 평가사도 아니라 같은 403이다 — 역할을 따로 보지 않는다.
-     * <p>
-     * 배정 전(602번 신청)은 403이 아니라 409다. 권한이 모자란 것이 아니라 담당자를 정하는 단계를
-     * 아직 지나지 않았고, 요청자가 누구든 답이 같다.
-     */
+    /** 역할은 공통 인가에서, 담당 여부와 배정 상태는 도메인에서 차례로 판정한다. */
     @Test
     @DisplayName("시나리오 5 : 담당이 아니면 403, 아직 배정 전이면 누구에게도 409")
     void scenario5_ChecksAssignment() throws Exception {
@@ -195,13 +189,17 @@ class EvaluationRejectionIntegrationTest extends IntegrationTestSupport {
 
         reject(EVALUATION_ID, STRANGER_TOKEN, REASON)
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("EVALUATION_NOT_ASSIGNED_EVALUATOR"));
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
 
-        for (String token : List.of(EVALUATOR_TOKEN, OTHER_EVALUATOR_TOKEN, STRANGER_TOKEN)) {
+        for (String token : List.of(EVALUATOR_TOKEN, OTHER_EVALUATOR_TOKEN)) {
             reject(UNASSIGNED_EVALUATION_ID, token, REASON)
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.code").value("EVALUATION_EVALUATOR_NOT_ASSIGNED"));
         }
+
+        reject(UNASSIGNED_EVALUATION_ID, STRANGER_TOKEN, REASON)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
 
         // 거부된 요청은 아무것도 남기지 않는다
         assertThat(evaluationColumn(EVALUATION_ID, "status")).isEqualTo("REQUESTED");

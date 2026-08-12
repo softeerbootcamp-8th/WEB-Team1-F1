@@ -14,8 +14,10 @@ import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.exception.AuthErrorCode;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
+import com.softeer.race.auth.presentation.annotation.RequireRole;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.presentation.GlobalExceptionHandler;
+import com.softeer.race.user.domain.Role;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -79,12 +81,59 @@ class AuthInterceptorTest {
     @Test
     @DisplayName("@LoginUser가 있는 핸들러는 쿠키를 보내면 주체가 주입된다")
     void protectedHandlerInjectsPrincipal() throws Exception {
-        given(sessionService.authenticate(RAW_TOKEN)).willReturn(new AuthenticatedUser(USER_ID));
+        given(sessionService.authenticate(RAW_TOKEN))
+                .willReturn(new AuthenticatedUser(USER_ID, Role.GENERAL));
 
         mockMvc.perform(post("/api/interceptor-test")
                         .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, RAW_TOKEN)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(USER_ID));
+    }
+
+    @Test
+    @DisplayName("@RequireRole만 있는 핸들러도 인증을 요구한다")
+    void roleProtectedHandlerRequiresAuthentication() throws Exception {
+        given(sessionService.authenticate(null))
+                .willThrow(new BusinessException(AuthErrorCode.UNAUTHENTICATED));
+
+        mockMvc.perform(post("/api/interceptor-test/evaluator"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
+    }
+
+    @Test
+    @DisplayName("허용되지 않은 역할은 403으로 거부한다")
+    void roleProtectedHandlerRejectsDisallowedRole() throws Exception {
+        given(sessionService.authenticate(RAW_TOKEN))
+                .willReturn(new AuthenticatedUser(USER_ID, Role.GENERAL));
+
+        mockMvc.perform(post("/api/interceptor-test/evaluator")
+                        .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, RAW_TOKEN)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
+    }
+
+    @Test
+    @DisplayName("허용된 역할은 @LoginUser 파라미터 없이도 통과한다")
+    void roleProtectedHandlerAllowsRole() throws Exception {
+        given(sessionService.authenticate(RAW_TOKEN))
+                .willReturn(new AuthenticatedUser(USER_ID, Role.EVALUATOR));
+
+        mockMvc.perform(post("/api/interceptor-test/evaluator")
+                        .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, RAW_TOKEN)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result").value("evaluator"));
+    }
+
+    @Test
+    @DisplayName("여러 허용 역할 중 하나만 일치해도 통과한다")
+    void roleProtectedHandlerAllowsAnyDeclaredRole() throws Exception {
+        given(sessionService.authenticate(RAW_TOKEN))
+                .willReturn(new AuthenticatedUser(USER_ID, Role.DEALER));
+
+        mockMvc.perform(post("/api/interceptor-test/trader")
+                        .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, RAW_TOKEN)))
+                .andExpect(status().isOk());
     }
 
     // 인터셉터 범위가 /api/** 로 넓어졌으므로 preflight가 401이 되는 회귀를 여기서 잡는다
@@ -112,6 +161,18 @@ class AuthInterceptorTest {
         @PostMapping
         PrincipalResult secured(@LoginUser AuthenticatedUser authenticatedUser) {
             return new PrincipalResult(authenticatedUser.id());
+        }
+
+        @PostMapping("/evaluator")
+        @RequireRole(Role.EVALUATOR)
+        PublicResult evaluatorOnly() {
+            return new PublicResult("evaluator");
+        }
+
+        @PostMapping("/trader")
+        @RequireRole({Role.DEALER, Role.EVALUATOR})
+        PublicResult traderOnly() {
+            return new PublicResult("trader");
         }
     }
 

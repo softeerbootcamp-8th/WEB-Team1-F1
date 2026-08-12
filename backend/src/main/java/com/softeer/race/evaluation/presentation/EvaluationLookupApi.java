@@ -32,6 +32,7 @@ public interface EvaluationLookupApi {
                     """)
     @ApiResponse(responseCode = "200", description = "없으면 빈 배열입니다.")
     @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
+    @ApiResponse(responseCode = "403", description = "평가사 역할이 아닌 경우입니다.")
     ResponseEntity<EvaluationSummariesResponse> findMyAssignments(AuthenticatedUser authenticatedUser);
 
     @Operation(summary = "신청 상세",

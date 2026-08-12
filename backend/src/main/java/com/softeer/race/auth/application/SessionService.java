@@ -48,7 +48,7 @@ public class SessionService {
             throw new BusinessException(UNAUTHENTICATED);
         }
 
-        UserSession session = userSessionRepository.findById(sessionTokenGenerator.hash(rawToken))
+        UserSession session = userSessionRepository.findByIdWithUser(sessionTokenGenerator.hash(rawToken))
                 .orElseThrow(() -> new BusinessException(UNAUTHENTICATED));
 
         LocalDateTime now = now();
@@ -61,8 +61,8 @@ public class SessionService {
             session.extend(now, authProperties.session().ttl());
         }
 
-        // LAZY 프록시의 식별자 getter는 프록시를 초기화하지 않으므로 users 조회가 추가로 나가지 않는다
-        return new AuthenticatedUser(session.getUser().getId());
+        // 역할을 세션에 비정규화하지 않는다. join fetch로 읽은 최신 회원 역할을 요청 주체에 담는다
+        return new AuthenticatedUser(session.getUser().getId(), session.getUser().getRole());
     }
 
     /** 없는 토큰이어도 예외를 던지지 않는다. 로그아웃은 멱등해야 한다. */

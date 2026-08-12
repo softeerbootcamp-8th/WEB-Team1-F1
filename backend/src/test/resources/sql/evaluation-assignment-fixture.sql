@@ -20,8 +20,7 @@ values (500, 'assign_kim', 'assign-kim@race.dev', 'pw',
        (501, 'assign_lee', 'assign-lee@race.dev', 'pw',
         '이평가', '01000000501', 'EVALUATOR', NOW(6), NOW(6));
 
--- 판매자. 인가가 아직 없어 이 계정으로도 목록 조회와 수락이 통과한다는 것을 이 계정으로 확인한다
--- (자기 차량의 신청을 스스로 수락하는 것까지 지금은 막히지 않는다)
+-- 판매자. 평가사 전용 목록 조회와 수락이 403으로 거부되는 것을 이 계정으로 확인한다
 insert into users (id, username, email, password, real_name, phone, role, created_at, updated_at)
 values (502, 'assign_park', 'assign-park@race.dev', 'pw',
         '박판매', '01000000502', 'GENERAL', NOW(6), NOW(6));

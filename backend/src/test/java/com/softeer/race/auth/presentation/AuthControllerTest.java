@@ -149,7 +149,8 @@ class AuthControllerTest {
     @Test
     @DisplayName("세션 쿠키가 있으면 내 정보를 반환한다")
     void me() throws Exception {
-        when(sessionService.authenticate(SESSION_TOKEN)).thenReturn(new AuthenticatedUser(1L));
+        when(sessionService.authenticate(SESSION_TOKEN))
+                .thenReturn(new AuthenticatedUser(1L, Role.GENERAL));
         when(authService.me(1L)).thenReturn(authUserInfo());
 
         mockMvc.perform(get("/api/auth/me")

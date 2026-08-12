@@ -27,8 +27,8 @@ public class AuthWebMvcConfig implements WebMvcConfigurer {
 
     /**
      * API 전체를 인터셉터에 걸고, 인증이 필요한지는 AuthInterceptor가 핸들러를 보고 판정한다.
-     * <b>여기에는 경로를 나열하지 않는다.</b> 인증 요구를 선언하는 곳은 핸들러의
-     * {@code @LoginUser} 파라미터 한 곳뿐이므로, 새 API가 생겨도 이 메서드는 고치지 않는다.
+     * <b>여기에는 경로를 나열하지 않는다.</b> 인증 요구는 핸들러의 {@code @LoginUser} 파라미터나
+     * {@code @RequireRole} 메서드 애너테이션으로 선언하므로, 새 API가 생겨도 이 메서드는 고치지 않는다.
      * <p>
      * 경로 목록을 걷어낸 이유는 메서드를 구분하지 못했기 때문이다. {@code /api/auctions} 하나에
      * 공개인 목록 조회(GET)와 로그인이 필요한 경매 등록(POST)이 함께 매핑돼 있어, 경로를 넣으면

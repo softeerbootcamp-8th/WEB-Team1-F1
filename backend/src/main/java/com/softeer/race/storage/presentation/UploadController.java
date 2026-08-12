@@ -1,13 +1,13 @@
 package com.softeer.race.storage.presentation;
 
-import com.softeer.race.auth.domain.AuthenticatedUser;
-import com.softeer.race.auth.presentation.annotation.LoginUser;
+import com.softeer.race.auth.presentation.annotation.RequireRole;
 import com.softeer.race.storage.application.UploadService;
 import com.softeer.race.storage.application.DealerLicenseUploadService;
 import com.softeer.race.storage.presentation.request.DealerLicenseUploadRequest;
 import com.softeer.race.storage.presentation.request.UploadRequest;
 import com.softeer.race.storage.presentation.response.DealerLicenseUploadResponse;
 import com.softeer.race.storage.presentation.response.UploadResponse;
+import com.softeer.race.user.domain.Role;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -32,15 +32,13 @@ public class UploadController implements UploadApi {
      * 201이 아니라 200이다. 이 요청은 아무것도 만들지 않는다. 서명된 주소를 계산해 돌려줄 뿐이고,
      * 객체가 생기는 것은 클라이언트가 그 주소로 PUT 할 때다.
      * <p>
-     * {@code authenticatedUser}를 쓰지 않지만 파라미터로 받는다. 인터셉터가 이 파라미터를 보고
-     * 인증을 요구하므로, <b>지우면 인증이 함께 사라진다.</b>
-     * <p>
-     * TODO 역할 기반 인가가 들어오면 평가사(EVALUATOR)로 좁힌다. 지금은 로그인만 확인한다.
+     * 차량 평가 사진과 진단서 발급 경로이므로 평가사만 호출할 수 있다. 인증 주체 값은 서비스에서
+     * 사용하지 않아 파라미터로 받지 않고, 메서드의 역할 애너테이션이 인증과 인가를 함께 요구한다.
      */
     @Override
     @PostMapping("/presigned")
+    @RequireRole(Role.EVALUATOR)
     public ResponseEntity<UploadResponse> issue(
-            @LoginUser AuthenticatedUser authenticatedUser,
             @Valid @RequestBody UploadRequest request) {
 
         return ResponseEntity.ok(UploadResponse.from(uploadService.issue(request.toCommand())));

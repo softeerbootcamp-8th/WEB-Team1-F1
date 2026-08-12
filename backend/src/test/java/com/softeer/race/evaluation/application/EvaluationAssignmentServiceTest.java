@@ -76,24 +76,6 @@ class EvaluationAssignmentServiceTest {
         then(evaluationRepository).should(never()).save(evaluation);
     }
 
-    /**
-     * 인가가 아직 없어 역할을 보지 않는다는 결정을 고정한다. 이 검사가 붙는 순간 이 테스트가 깨져,
-     * 그때 무엇이 바뀌었는지 드러난다.
-     */
-    @Test
-    @DisplayName("평가사가 아닌 회원도 수락할 수 있다")
-    void assignAllowsNonEvaluator() {
-        User dealer = userWithRole(Role.DEALER);
-        Evaluation evaluation = requestedWithPlateNumber();
-        given(userRepository.findById(EVALUATOR_ID)).willReturn(Optional.of(dealer));
-        given(evaluationRepository.findByIdForUpdate(EVALUATION_ID))
-                .willReturn(Optional.of(evaluation));
-
-        evaluationAssignmentService.assign(EVALUATION_ID, EVALUATOR_ID);
-
-        assertThat(evaluation.getEvaluator()).isSameAs(dealer);
-    }
-
     @Test
     @DisplayName("없는 회원의 세션이면 EVALUATOR_NOT_FOUND로 거부한다")
     void assignRejectsMissingEvaluator() {
@@ -146,4 +128,5 @@ class EvaluationAssignmentServiceTest {
         return Evaluation.request(
                 vehicle, VISIT_DATE, VISIT_ADDRESS, CONTACT_PHONE, VISIT_DATE.minusDays(16));
     }
+
 }

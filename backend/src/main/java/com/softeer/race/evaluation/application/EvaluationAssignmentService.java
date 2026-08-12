@@ -17,11 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 평가사 배정. 대기 중인 방문견적 신청을 보여주고, 먼저 수락한 한 명을 담당으로 확정한다.
  * <p>
- * <b>역할을 검사하지 않는다. 로그인한 회원이면 누구나 목록을 보고 수락할 수 있다.</b> 이 저장소에
- * 인가 장치가 아직 없어 의도적으로 열어 둔 상태다. 그래서 지금은 평가사가 아닌 회원이
- * {@code Evaluation.evaluator}에 들어갈 수 있고, 판매자가 자기 신청을 스스로 수락할 수도 있다.
- * 인가가 붙으면 두 가지를 여기서 막는다 — 요청자가 {@code Role.EVALUATOR}인지, 그리고 그 사람이
- * 신청 차량의 판매자가 아닌지({@code BidService}가 판매자의 자기 경매 입찰을 막는 것과 같은 검사다).
+ * 역할 기반 인가는 컨트롤러의 {@code RequireRole}과 인증 인터셉터가 공통으로 처리한다.
  * <p>
  * <b>배정하는 주체는 서버가 아니라 수락하는 사람이다.</b> 지역 · 부하로 서버가 골라 할당하는 방식을
  * 쓰지 않는다. 그러려면 평가사의 담당 지역과 가용 일정을 서버가 들고 있어야 하는데 그 정보가 없고,
@@ -49,8 +45,7 @@ public class EvaluationAssignmentService {
     /**
      * 아직 아무도 수락하지 않은 신청 목록. 방문일이 임박한 순서다.
      * <p>
-     * 요청자를 받지 않는다. 역할을 보지 않으므로 누가 물어도 답이 같다. 인가가 붙으면 요청자
-     * 식별자를 받아 자격을 확인하는 자리가 여기다.
+     * 요청자를 받지 않는다. 역할 판정은 핸들러 호출 전에 끝나고 목록 자체는 요청자에 따라 갈리지 않는다.
      */
     public List<AssignableEvaluationInfo> findAssignable() {
         return evaluationRepository.findAssignable(EvaluationStatus.REQUESTED).stream()
