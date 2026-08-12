@@ -248,7 +248,8 @@ public class Evaluation extends BaseTimeEntity {
      * 한 평가사가 같은 날 맡는 건수에도 상한을 두지 않는다.
      *
      * @throws BusinessException 평가가 이미 끝난 신청이거나({@code NOT_ASSIGNABLE})
-     *                           다른 평가사가 이미 배정된 경우({@code ALREADY_ASSIGNED})
+     *                           다른 평가사가 이미 배정된 경우({@code ALREADY_ASSIGNED}),
+     *                           자기 차량의 신청인 경우({@code SELF_ASSIGNMENT_NOT_ALLOWED})
      */
     public void assignTo(User evaluator) {
         // 상태를 먼저 본다. 이미 배정된 신청은 평가가 끝날 때까지 REQUESTED로 남아 이 관문을
@@ -259,6 +260,9 @@ public class Evaluation extends BaseTimeEntity {
         }
         if (this.evaluator != null) {
             throw new BusinessException(EvaluationErrorCode.ALREADY_ASSIGNED);
+        }
+        if (vehicle.isOwnedBy(evaluator.getId())) {
+            throw new BusinessException(EvaluationErrorCode.SELF_ASSIGNMENT_NOT_ALLOWED);
         }
         this.evaluator = evaluator;
     }

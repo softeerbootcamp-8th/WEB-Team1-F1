@@ -59,6 +59,7 @@ class EvaluationAssignmentServiceTest {
     @DisplayName("평가사가 수락하면 담당으로 확정되고 판매자 연락처가 함께 나간다")
     void assign() {
         User evaluator = userWithRole(Role.EVALUATOR);
+        given(evaluator.getId()).willReturn(EVALUATOR_ID);
         Evaluation evaluation = requestedWithPlateNumber();
         given(userRepository.findById(EVALUATOR_ID)).willReturn(Optional.of(evaluator));
         given(evaluationRepository.findByIdForUpdate(EVALUATION_ID))
@@ -74,6 +75,24 @@ class EvaluationAssignmentServiceTest {
 
         // 저장 호출이 없다. 잠금과 함께 읽어 온 영속 엔티티라 커밋 시점에 변경이 반영된다
         then(evaluationRepository).should(never()).save(evaluation);
+    }
+
+    @Test
+    @DisplayName("평가사는 자기 차량의 신청을 직접 수락할 수 없다")
+    void assignRejectsSelfAssignment() {
+        User evaluator = userWithRole(Role.EVALUATOR);
+        given(evaluator.getId()).willReturn(EVALUATOR_ID);
+        Evaluation evaluation = requestedOwnedByEvaluator();
+        given(userRepository.findById(EVALUATOR_ID)).willReturn(Optional.of(evaluator));
+        given(evaluationRepository.findByIdForUpdate(EVALUATION_ID))
+                .willReturn(Optional.of(evaluation));
+
+        assertThatThrownBy(() -> evaluationAssignmentService.assign(EVALUATION_ID, EVALUATOR_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.SELF_ASSIGNMENT_NOT_ALLOWED));
+
+        assertThat(evaluation.getEvaluator()).isNull();
     }
 
     @Test
@@ -124,6 +143,14 @@ class EvaluationAssignmentServiceTest {
     private Evaluation requestedWithPlateNumber() {
         Vehicle vehicle = mock(Vehicle.class);
         given(vehicle.getPlateNumber()).willReturn(PLATE_NUMBER);
+
+        return Evaluation.request(
+                vehicle, VISIT_DATE, VISIT_ADDRESS, CONTACT_PHONE, VISIT_DATE.minusDays(16));
+    }
+
+    private Evaluation requestedOwnedByEvaluator() {
+        Vehicle vehicle = mock(Vehicle.class);
+        given(vehicle.isOwnedBy(EVALUATOR_ID)).willReturn(true);
 
         return Evaluation.request(
                 vehicle, VISIT_DATE, VISIT_ADDRESS, CONTACT_PHONE, VISIT_DATE.minusDays(16));

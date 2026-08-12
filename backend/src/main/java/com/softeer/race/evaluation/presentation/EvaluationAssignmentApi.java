@@ -21,7 +21,8 @@ public interface EvaluationAssignmentApi {
                     + "페이징은 없습니다 — 배정되는 즉시 빠지는 목록이라 규모의 상한이 낮습니다. "
                     + "세션 쿠키와 평가사 역할이 필요합니다.")
     @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
-    @ApiResponse(responseCode = "403", description = "평가사 역할이 아닌 경우입니다.")
+    @ApiResponse(responseCode = "403",
+            description = "평가사 역할이 아니거나 본인 차량의 신청인 경우입니다.")
     ResponseEntity<AssignableEvaluationsResponse> findAssignable();
 
     @Operation(summary = "방문견적 신청 수락",

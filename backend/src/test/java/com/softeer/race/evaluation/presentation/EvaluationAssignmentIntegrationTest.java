@@ -70,6 +70,8 @@ class EvaluationAssignmentIntegrationTest extends IntegrationTestSupport {
     private static final long LATER_EVALUATION = 522L;
     /** 평가가 끝난 건(APPROVED, 이평가 배정) */
     private static final long FINISHED_EVALUATION = 523L;
+    /** 평가사 김평가가 판매자인 차량의 신청 */
+    private static final long SELF_OWNED_EVALUATION = 524L;
 
     private static final String CONTACT_PHONE = "01011112222";
 
@@ -205,11 +207,37 @@ class EvaluationAssignmentIntegrationTest extends IntegrationTestSupport {
         assignable(PARK_TOKEN).andExpect(status().isOk());
     }
 
+    @Test
+    @DisplayName("시나리오 10 : 평가사는 자기 차량의 신청을 직접 수락할 수 없다")
+    void scenario10_EvaluatorCannotAssignOwnVehicle() throws Exception {
+        jdbcTemplate.update("""
+                insert into vehicle
+                    (id, seller_id, manufacturer, model, model_year, mileage, fuel_type,
+                     transmission, plate_number, estimated_price, created_at, updated_at)
+                values (?, ?, 'HYUNDAI', '아이오닉 5', 2024, null, 'ELECTRIC',
+                        'AUTOMATIC', '90마1234', null, NOW(6), NOW(6))
+                """, 514L, KIM_ID);
+        jdbcTemplate.update("""
+                insert into evaluation
+                    (id, vehicle_id, evaluator_id, visit_date, visit_address, contact_phone,
+                     status, reject_reason, created_at, updated_at)
+                values (?, ?, null, '2026-08-27', '서울 종로구 세종대로 1', '01099990000',
+                        'REQUESTED', null, NOW(6), NOW(6))
+                """, SELF_OWNED_EVALUATION, 514L);
+
+        assign(SELF_OWNED_EVALUATION, KIM_TOKEN)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code")
+                        .value("EVALUATION_SELF_ASSIGNMENT_NOT_ALLOWED"));
+
+        assertThat(rowOf(SELF_OWNED_EVALUATION).get("evaluator_id")).isNull();
+    }
+
     // 두 핸들러의 @LoginUser 선언으로 인증이 실제로 요구되는지. 구현체가 아니라 인터페이스에
     // 붙이면 AuthInterceptor 에 보이지 않아 조용히 공개 API 가 된다
     @Test
-    @DisplayName("시나리오 10 : 세션 쿠키가 없으면 401이다")
-    void scenario10_RequiresSession() throws Exception {
+    @DisplayName("시나리오 11 : 세션 쿠키가 없으면 401이다")
+    void scenario11_RequiresSession() throws Exception {
         mockMvc.perform(get("/api/evaluations/assignable")).andExpect(status().isUnauthorized());
         mockMvc.perform(post("/api/evaluations/" + WAITING_EVALUATION + "/assignment"))
                 .andExpect(status().isUnauthorized());
@@ -225,8 +253,8 @@ class EvaluationAssignmentIntegrationTest extends IntegrationTestSupport {
      * 잠금이 필요하다는 근거가 여기 있다.
      */
     @Test
-    @DisplayName("시나리오 11 : 두 평가사가 동시에 수락해도 한 명만 배정된다")
-    void scenario11_SerializesConcurrentAssignments() throws Exception {
+    @DisplayName("시나리오 12 : 두 평가사가 동시에 수락해도 한 명만 배정된다")
+    void scenario12_SerializesConcurrentAssignments() throws Exception {
         int threads = 2;
         CountDownLatch ready = new CountDownLatch(threads);
         CountDownLatch fire = new CountDownLatch(1);
