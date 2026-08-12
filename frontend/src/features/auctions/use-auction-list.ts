@@ -6,7 +6,12 @@ import { fetchAuctionList, subscribeAuctionListStream } from '@/features/auction
 import type { AuctionVehicleFilter } from '@/features/auctions/filter'
 import { EMPTY_FILTER, filterKey, hasActiveFilter } from '@/features/auctions/filter'
 import { useDocumentVisible } from '@/hooks/use-document-visible'
-import { applyAudienceEvent, applyCardEvent, serverClockOffset } from '@/lib/auction'
+import {
+  applyAudienceEvent,
+  applyCardEvent,
+  mergeFirstPage,
+  serverClockOffset,
+} from '@/lib/auction'
 import type {
   AuctionListCard,
   AuctionListCursor,
@@ -318,6 +323,34 @@ export function useAuctionList({
     setReloadToken((token) => token + 1)
   }, [])
 
+  // 갱신 함수는 조회 조건이 바뀔 때마다 새것이 되면 안 된다, 스트림 구독 이펙트가 의존성으로
+  // 들고 있어 렌더마다 구독을 다시 연다. 조건은 ref 로 읽는다
+  const paramsRef = useRef({ scope, filter, vehicle, enabled })
+  paramsRef.current = { scope, filter, vehicle, enabled }
+
+  /**
+   * 보고 있는 목록을 최신 값으로 갱신. 탭이 다시 보이거나 스트림이 다시 붙었을 때 쓴다.
+   *
+   * 조회 이펙트를 다시 돌리지 않는다. 그쪽은 목록이 갈릴 때의 길이라 스켈레톤부터 그리고
+   * 이어 읽어 둔 뒷 페이지를 첫 페이지로 치환해, 화면이 번쩍이고 보던 자리가 사라진다.
+   */
+  const refresh = useCallback(async () => {
+    const { scope, filter, vehicle, enabled } = paramsRef.current
+    // 비로그인 상태의 "나의 경매". 부르면 401 만 받는다
+    if (!enabled) return
+
+    const generation = generationRef.current
+    try {
+      const page = await fetchAuctionList({ scope, filter, vehicle })
+      // 기다리는 동안 목록이 갈렸다. 이 페이지는 이전 목록의 것이다
+      if (generation !== generationRef.current) return
+      setOffsetMs(serverClockOffset(page.serverTime, Date.now()))
+      setCards((current) => mergeFirstPage(current, page.content))
+    } catch {
+      // 갱신 실패는 보고 있던 목록을 건드리지 않는다, 다음 갱신이 다시 시도한다
+    }
+  }, [])
+
   // 이벤트가 도착한 그 순간의 서버 시각으로 판정해야 한다. 의존성에 넣으면 보정값이 바뀔 때마다
   // 구독을 다시 연다
   const offsetRef = useRef(offsetMs)
@@ -327,7 +360,7 @@ export function useAuctionList({
   const isFilteredRef = useRef(false)
   isFilteredRef.current = hasActiveFilter(vehicle)
 
-  // 가려진 사이에 온 것은 유실이다. 서버가 다시 보내지 않으므로 돌아올 때 목록을 다시 읽는다.
+  // 가려진 사이에 온 것은 유실이다. 서버가 다시 보내지 않으므로 돌아올 때 목록을 갱신한다.
   // onReconnect 는 같은 EventSource 가 스스로 붙을 때만 돌아서 이 경로를 대신하지 못한다
   const wasHidden = useRef(false)
   useEffect(() => {
@@ -339,9 +372,9 @@ export function useAuctionList({
     // 첫 표시에서는 부르지 않는다, 그때는 방금 조회한 목록이 최신이다
     if (wasHidden.current) {
       wasHidden.current = false
-      reload()
+      refresh()
     }
-  }, [visible, reload])
+  }, [visible, refresh])
 
   // filter 는 의존성이 아니다. 필터는 화면이 arrangeCards 로 거르는 것이라 구독을 다시 열 이유가 없다
   useEffect(() => {
@@ -362,10 +395,10 @@ export function useAuctionList({
       onAudience: ({ auctionId, connectedCount }) => {
         setCards((current) => applyAudienceEvent(current, auctionId, connectedCount))
       },
-      // 끊긴 동안 온 것은 유실이고 서버가 다시 보내지 않는다, 복구는 재조회 몫이다
-      onReconnect: reload,
+      // 끊긴 동안 온 것은 유실이고 서버가 다시 보내지 않는다, 복구는 갱신 몫이다
+      onReconnect: refresh,
     })
-  }, [scope, enabled, visible, reload])
+  }, [scope, enabled, visible, refresh])
 
   return {
     cards,
