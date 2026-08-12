@@ -17,6 +17,7 @@ function result(over: Partial<RoomResultView> = {}): RoomResultView {
       modelYear: 2022,
       mileage: 41_000,
       fuelType: 'GASOLINE',
+      keywords: [],
       imageUrls: [],
       diagnosticReportUrl: 'https://cdn.race.dev/casper.pdf',
     },
