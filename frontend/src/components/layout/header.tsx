@@ -143,11 +143,15 @@ export function Header() {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem onClick={() => navigate('/mypage')}>
-                  <UserIcon className="size-4" />
-                  마이페이지
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                {user.role !== 'EVALUATOR' && (
+                  <>
+                    <DropdownMenuItem onClick={() => navigate('/mypage')}>
+                      <UserIcon className="size-4" />
+                      마이페이지
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem variant="destructive" onClick={logout}>
                   <LogOut className="size-4" />
                   로그아웃
