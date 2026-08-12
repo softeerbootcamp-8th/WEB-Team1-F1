@@ -352,6 +352,9 @@ export function useAuctionRoom(auctionId: number) {
     room,
     entry,
     opening,
+    // 구간표 원본도 함께 내보낸다. 도움말 표가 같은 값을 다시 요청하면 정책이 바뀌는 순간
+    // 패널과 도움말이 서로 다른 금액을 안내하게 된다
+    bands,
     increment,
     nextMin,
     flashKey,

@@ -1,5 +1,6 @@
 import { axiosInstance } from '@/lib/axios'
 import type {
+  DemoVehicle,
   VehicleLookupRequest,
   VehicleLookupResponse,
 } from '@/features/vehicle/types'
@@ -12,5 +13,14 @@ export async function lookupVehicle(
     '/api/vehicles/lookup',
     request,
   )
+  return data
+}
+
+/**
+ * GET /api/vehicles/demo. 넣어 볼 수 있는 데모 차량만 온다 — 이미 신청·승인된 차량은 서버가
+ * 뺀 뒤에 내려주므로 화면이 다시 거르지 않는다. 로그인이 필요하지 않다.
+ */
+export async function fetchDemoVehicles(): Promise<DemoVehicle[]> {
+  const { data } = await axiosInstance.get<DemoVehicle[]>('/api/vehicles/demo')
   return data
 }

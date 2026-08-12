@@ -1,9 +1,11 @@
 import type { LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 
+import { HelpPopover } from '@/components/common/help-popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DemoVehicleHelp } from '@/features/vehicle/components/demo-vehicle-help'
 import type { VehicleLookupRequest } from '@/features/vehicle/types'
 
 const PLATE_PATTERN = /^\d{2,3}[가-힣]\d{4}$/
@@ -39,6 +41,17 @@ export function VehicleOwnerForm({
         })
       }}
     >
+      {/* 도움말은 입력 상자 위 오른쪽에 둔다. 폼 안이라 type="button" 이 없으면 눌러서 제출된다 */}
+      <div className="flex justify-end">
+        {/* 옆으로 빼 봤지만 카드가 화면 오른쪽에 붙어 있어 Radix 가 다시 왼쪽으로 뒤집는다.
+            아래로 열어 입력 상자를 잠깐 덮는 편이 낫다 — 벗어나면 닫히는 도움말이다 */}
+        <HelpPopover
+          label="넣어 볼 수 있는 데모 차량 보기"
+          contentClassName="w-90"
+        >
+          <DemoVehicleHelp />
+        </HelpPopover>
+      </div>
       <div className="space-y-3">
         <Label className="text-lg" htmlFor={`${actionLabel}-owner-name`}>
           이름
