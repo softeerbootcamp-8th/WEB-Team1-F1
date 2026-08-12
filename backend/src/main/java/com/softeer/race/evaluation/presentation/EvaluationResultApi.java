@@ -45,8 +45,8 @@ public interface EvaluationResultApi {
     @ApiResponse(responseCode = "403", description = "다른 평가사가 담당인 신청입니다.")
     @ApiResponse(responseCode = "404", description = "없는 평가입니다.")
     @ApiResponse(responseCode = "409",
-            description = "이미 반려되어 끝났거나, 아직 담당 평가사가 정해지지 않은 신청입니다. "
-                    + "뒤쪽은 배정 대기 목록에서 수락하면 풀립니다.")
+            description = "이미 반려되어 끝났거나, 아직 담당 평가사가 정해지지 않았거나, "
+                    + "차량에 경매가 등록되어 평가 결과가 확정된 신청입니다.")
     ResponseEntity<EvaluationResultResponse> submit(
             AuthenticatedUser authenticatedUser,
             long evaluationId,
@@ -84,7 +84,8 @@ public interface EvaluationResultApi {
     @ApiResponse(responseCode = "404", description = "없는 평가입니다.")
     @ApiResponse(responseCode = "409",
             description = "아직 결과가 제출되지 않았거나, 이미 반려되어 끝났거나, "
-                    + "아직 담당 평가사가 정해지지 않은 신청입니다.")
+                    + "아직 담당 평가사가 정해지지 않았거나, 차량에 경매가 등록되어 "
+                    + "평가 결과가 확정된 신청입니다.")
     ResponseEntity<EvaluationResultResponse> patch(
             AuthenticatedUser authenticatedUser,
             long evaluationId,

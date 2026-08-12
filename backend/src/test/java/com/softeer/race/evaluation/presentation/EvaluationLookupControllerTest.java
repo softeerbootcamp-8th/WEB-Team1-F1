@@ -1,5 +1,6 @@
 package com.softeer.race.evaluation.presentation;
 
+import com.softeer.race.auction.domain.AuctionStatus;
 import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.exception.AuthErrorCode;
@@ -94,6 +95,7 @@ class EvaluationLookupControllerTest {
                 .andExpect(jsonPath("$.evaluations.length()").value(1))
                 .andExpect(jsonPath("$.evaluations[0].evaluationId").value(EVALUATION_ID))
                 .andExpect(jsonPath("$.evaluations[0].status").value("APPROVED"))
+                .andExpect(jsonPath("$.evaluations[0].auctionStatus").value("IN_PROGRESS"))
                 .andExpect(jsonPath("$.evaluations[0].plateNumber").value("12가3456"))
                 .andExpect(jsonPath("$.evaluations[0].visitDate").value("2026-08-20"))
                 // 배정돼도 status는 REQUESTED로 남으므로 이 값이 없으면
@@ -216,7 +218,8 @@ class EvaluationLookupControllerTest {
     }
 
     private static EvaluationSummaryInfo summary() {
-        return new EvaluationSummaryInfo(EVALUATION_ID, "APPROVED", true, "12가3456",
+        return new EvaluationSummaryInfo(EVALUATION_ID, "APPROVED", true,
+                AuctionStatus.IN_PROGRESS, "12가3456",
                 Manufacturer.HYUNDAI, "그랜저 IG", 2021,
                 VISIT_DATE, "서울 성동구 왕십리로 83", REQUESTED_AT);
     }

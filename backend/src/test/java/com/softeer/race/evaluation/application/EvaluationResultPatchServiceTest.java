@@ -1,6 +1,7 @@
 package com.softeer.race.evaluation.application;
 
 import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.evaluation.application.dto.command.EvaluationResultPatchCommand;
 import com.softeer.race.evaluation.application.dto.info.EvaluationResultInfo;
 import com.softeer.race.evaluation.domain.Evaluation;
@@ -18,6 +19,7 @@ import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleImage;
 import com.softeer.race.vehicle.domain.VehicleImageRepository;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
+import com.softeer.race.vehicle.domain.VehicleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -90,6 +92,12 @@ class EvaluationResultPatchServiceTest {
 
     @Mock
     private EvaluationRepository evaluationRepository;
+
+    @Mock
+    private AuctionRepository auctionRepository;
+
+    @Mock
+    private VehicleRepository vehicleRepository;
 
     @Mock
     private VehicleImageService vehicleImageService;
@@ -281,6 +289,8 @@ class EvaluationResultPatchServiceTest {
         given(evaluationRepository.findByIdForUpdate(EVALUATION_ID))
                 .willReturn(Optional.of(evaluation));
         given(evaluation.getVehicle()).willReturn(vehicle);
+        given(vehicle.getId()).willReturn(VEHICLE_ID);
+        given(vehicleRepository.findByIdForUpdate(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         given(vehicle.isDiagnosed()).willReturn(false);
 
         // when & then : 이 관문이 없으면 주행거리만 채워지고 시세가 빈 차량이 만들어진다
@@ -292,6 +302,27 @@ class EvaluationResultPatchServiceTest {
 
         then(vehicle).should(never()).reviseMileage(anyInt());
         then(vehicleImageService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("경매가 등록된 차량은 결과를 수정할 수 없다")
+    void patchRejectsResultLockedByAuction() {
+        given(evaluationRepository.findByIdForUpdate(EVALUATION_ID))
+                .willReturn(Optional.of(evaluation));
+        given(evaluation.getVehicle()).willReturn(vehicle);
+        given(vehicle.getId()).willReturn(VEHICLE_ID);
+        given(vehicleRepository.findByIdForUpdate(VEHICLE_ID)).willReturn(Optional.of(vehicle));
+        given(auctionRepository.existsByVehicleId(VEHICLE_ID)).willReturn(true);
+
+        assertThatThrownBy(() -> evaluationResultService.patch(
+                command().mileage(NEW_MILEAGE).build()))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.RESULT_LOCKED_BY_AUCTION));
+
+        then(vehicle).should(never()).reviseMileage(anyInt());
+        then(vehicleImageService).shouldHaveNoInteractions();
+        then(vehicleKeywordService).shouldHaveNoInteractions();
     }
 
     @Test
@@ -349,6 +380,8 @@ class EvaluationResultPatchServiceTest {
         given(evaluationRepository.findByIdForUpdate(EVALUATION_ID))
                 .willReturn(Optional.of(evaluation));
         given(evaluation.getVehicle()).willReturn(vehicle);
+        given(vehicle.getId()).willReturn(VEHICLE_ID);
+        given(vehicleRepository.findByIdForUpdate(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         given(vehicle.isDiagnosed()).willReturn(true);
         given(evaluation.getStatus()).willReturn(EvaluationStatus.APPROVED);
         given(vehicle.getMileage()).willReturn(MILEAGE);

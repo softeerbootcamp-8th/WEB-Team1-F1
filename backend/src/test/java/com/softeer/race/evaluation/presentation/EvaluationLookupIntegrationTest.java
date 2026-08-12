@@ -116,6 +116,32 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("판매자와 평가사 목록에 차량의 최신 경매 상태가 나온다")
+    void listsLatestAuctionStatus() throws Exception {
+        // given : 같은 차량의 앞선 유찰 뒤 새 경매가 진행 중이다
+        registerAuction(650L, "FAILED");
+        registerAuction(651L, "IN_PROGRESS");
+
+        lookup("/my-requests", SELLER_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations[2].evaluationId").value(EVALUATION_ID))
+                .andExpect(jsonPath("$.evaluations[2].auctionStatus").value("IN_PROGRESS"));
+
+        lookup("/my-assignments", EVALUATOR_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations[0].evaluationId").value(EVALUATION_ID))
+                .andExpect(jsonPath("$.evaluations[0].auctionStatus").value("IN_PROGRESS"));
+    }
+
+    @Test
+    @DisplayName("경매 이력이 없는 차량은 목록에 경매 상태가 없다")
+    void listOmitsAuctionStatusWithoutAuction() throws Exception {
+        lookup("/my-requests", SELLER_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations[0].auctionStatus").doesNotExist());
+    }
+
+    @Test
     @DisplayName("진단 전 상세는 결과 칸이 비어 있고 제출 뒤에 채워진다")
     void findDetail() throws Exception {
         // given : 아직 결과가 제출되지 않았다
@@ -205,6 +231,22 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
 
     private ResultActions lookup(String path, String rawToken) throws Exception {
         return mockMvc.perform(get("/api/evaluations" + path).cookie(cookie(rawToken)));
+    }
+
+    private void registerAuction(long auctionId, String auctionStatus) {
+        jdbcTemplate.update("""
+                insert into auction_post
+                    (id, vehicle_id, published_at, created_at, updated_at)
+                values (?, ?, NOW(6), NOW(6), NOW(6))
+                """, auctionId, EVALUATION_ID);
+        jdbcTemplate.update("""
+                insert into auction
+                    (id, post_id, start_price, current_price, room_open_at, start_time,
+                     current_end_time, extension_count, status, created_at, updated_at)
+                values (?, ?, 10000000, null,
+                        DATE_SUB(NOW(6), INTERVAL 30 MINUTE), NOW(6),
+                        DATE_ADD(NOW(6), INTERVAL 20 MINUTE), 0, ?, NOW(6), NOW(6))
+                """, auctionId, auctionId, auctionStatus);
     }
 
     private ResultActions submitResult() throws Exception {

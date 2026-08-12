@@ -1,5 +1,6 @@
 package com.softeer.race.evaluation.application.dto.info;
 
+import com.softeer.race.auction.domain.AuctionStatus;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.vehicle.domain.Manufacturer;
 import com.softeer.race.vehicle.domain.Vehicle;
@@ -23,6 +24,9 @@ import java.time.LocalDateTime;
  * 평가사 이름까지는 담지 않는다. 목록에서 할 판단은 "진행됐는가"뿐이고, 누가 오는지는 상세를
  * 열어 확인한다.
  * <p>
+ * <b>최신 경매 상태를 담는다.</b> 유찰 뒤 재출품할 수 있으므로 경매 이력의 존재만으로는 현재
+ * 상황을 말할 수 없다. 경매가 없으면 null이고, 있으면 가장 최근 경매의 상태다.
+ * <p>
  * <b>contactPhone을 담지 않는다.</b> 담당 평가사에게는 필요한 값이지만 배정이 확정될 때
  * {@link EvaluationAssignmentInfo}가 이미 준다. 목록마다 다시 실어 나르면 개인정보가 로그와
  * 캐시에 남는 면만 넓어진다.
@@ -31,6 +35,7 @@ public record EvaluationSummaryInfo(
         Long evaluationId,
         String status,
         boolean assigned,
+        AuctionStatus auctionStatus,
         String plateNumber,
         Manufacturer manufacturer,
         String model,
@@ -40,7 +45,7 @@ public record EvaluationSummaryInfo(
         LocalDateTime requestedAt
 ) {
 
-    public static EvaluationSummaryInfo from(Evaluation evaluation) {
+    public static EvaluationSummaryInfo from(Evaluation evaluation, AuctionStatus auctionStatus) {
         Vehicle vehicle = evaluation.getVehicle();
 
         return new EvaluationSummaryInfo(
@@ -48,6 +53,7 @@ public record EvaluationSummaryInfo(
                 evaluation.getStatus().name(),
                 // null 검사는 프록시를 초기화하지 않는다. 이름을 읽었다면 건수만큼 쿼리가 늘었을 것이다
                 evaluation.getEvaluator() != null,
+                auctionStatus,
                 vehicle.getPlateNumber(),
                 vehicle.getManufacturer(),
                 vehicle.getModel(),

@@ -124,6 +124,29 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("경매가 등록된 뒤에는 결과 전체를 다시 제출할 수 없다")
+    void rejectsResubmissionLockedByAuction() throws Exception {
+        // given : 최초 제출 뒤 판매자가 경매를 등록했다
+        submit(EVALUATION_ID, EVALUATOR_TOKEN, DOCUMENT_URL, IMAGE_1, IMAGE_2)
+                .andExpect(status().isOk());
+        registerAuction();
+
+        // when & then : 새 결과는 어느 항목도 반영되지 않는다
+        submit(EVALUATION_ID, EVALUATOR_TOKEN, NEW_DOCUMENT_URL, IMAGE_2)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code")
+                        .value("EVALUATION_RESULT_LOCKED_BY_AUCTION"));
+
+        Map<String, Object> vehicle = vehicleRow();
+        assertThat(vehicle.get("mileage")).isEqualTo(MILEAGE);
+        assertThat(vehicle.get("estimated_price")).isEqualTo(ESTIMATED_PRICE);
+        assertThat(vehicle.get("main_photo_url")).isEqualTo(IMAGE_1);
+        assertThat(vehicle.get("diagnostic_report_url")).isEqualTo(DOCUMENT_URL);
+        assertThat(imageUrls()).containsExactly(IMAGE_1, IMAGE_2);
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "NO_LEAK");
+    }
+
+    @Test
     @DisplayName("진단서 자리에 이미지 주소를 보내면 400이고 기존 사진이 살아남는다")
     void submitRejectsImageAsDocument() throws Exception {
         // given
@@ -270,6 +293,22 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
                                  String documentUrl, String... imageUrls) throws Exception {
         return submitWithKeywords(evaluationId, rawToken, documentUrl,
                 List.of("ACCIDENT_FREE", "NO_LEAK"), imageUrls);
+    }
+
+    private void registerAuction() {
+        jdbcTemplate.update("""
+                insert into auction_post
+                    (id, vehicle_id, published_at, created_at, updated_at)
+                values (650, ?, NOW(6), NOW(6), NOW(6))
+                """, VEHICLE_ID);
+        jdbcTemplate.update("""
+                insert into auction
+                    (id, post_id, start_price, current_price, room_open_at, start_time,
+                     current_end_time, extension_count, status, created_at, updated_at)
+                values (650, 650, 10000000, null,
+                        DATE_ADD(NOW(6), INTERVAL 30 MINUTE), DATE_ADD(NOW(6), INTERVAL 1 HOUR),
+                        DATE_ADD(NOW(6), INTERVAL 80 MINUTE), 0, 'SCHEDULED', NOW(6), NOW(6))
+                """);
     }
 
     private ResultActions submitWithKeywords(long evaluationId, String rawToken, String documentUrl,

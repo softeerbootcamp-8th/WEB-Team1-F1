@@ -76,6 +76,7 @@ const RESULT_ERROR_MESSAGES: Record<string, string> = {
   EVALUATION_EVALUATOR_NOT_ASSIGNED: '아직 평가사가 배정되지 않은 신청입니다.',
   EVALUATION_NOT_DIAGNOSABLE: '반려되어 종료된 신청에는 결과를 제출할 수 없습니다.',
   EVALUATION_RESULT_NOT_SUBMITTED: '평가 결과를 먼저 제출한 뒤 수정해 주세요.',
+  EVALUATION_RESULT_LOCKED_BY_AUCTION: '경매에 등록된 차량의 평가 결과는 수정할 수 없습니다.',
   EVALUATION_NOT_REJECTABLE: '이미 완료된 신청은 반려할 수 없습니다.',
 }
 

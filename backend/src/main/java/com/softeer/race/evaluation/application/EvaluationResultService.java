@@ -3,6 +3,7 @@ package com.softeer.race.evaluation.application;
 import static com.softeer.race.notification.domain.NotificationType.EVAL_APPROVED;
 import static com.softeer.race.notification.domain.NotificationType.EVAL_REJECTED;
 
+import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.command.EvaluationRejectCommand;
 import com.softeer.race.evaluation.application.dto.command.EvaluationResultPatchCommand;
@@ -23,6 +24,7 @@ import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleImage;
 import com.softeer.race.vehicle.domain.VehicleImageRepository;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
+import com.softeer.race.vehicle.domain.VehicleRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -58,6 +60,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class EvaluationResultService {
 
     private final EvaluationRepository evaluationRepository;
+    private final AuctionRepository auctionRepository;
+    private final VehicleRepository vehicleRepository;
     private final VehicleImageService vehicleImageService;
     private final VehicleImageRepository vehicleImageRepository;
     private final VehicleKeywordService vehicleKeywordService;
@@ -79,7 +83,7 @@ public class EvaluationResultService {
 
         evaluation.validateDiagnosableBy(command.evaluatorId());
 
-        Vehicle vehicle = evaluation.getVehicle();
+        Vehicle vehicle = lockEditableVehicle(evaluation);
         // 요청 검증이 최소 한 장을 강제하므로 첫 장이 항상 있다
         vehicle.completeDiagnosis(command.mileage(), command.estimatedPrice(),
                 command.imageUrls().getFirst(), command.diagnosticReportUrl());
@@ -150,7 +154,7 @@ public class EvaluationResultService {
 
         evaluation.validateDiagnosableBy(command.evaluatorId());
 
-        Vehicle vehicle = evaluation.getVehicle();
+        Vehicle vehicle = lockEditableVehicle(evaluation);
         // 상태(APPROVED)가 아니라 차량이 채워졌는지로 판정한다. 상태는 배정만으로도 REQUESTED에
         // 머무는데 정작 봐야 할 것은 "고칠 결과가 실제로 있는가"이고, 그건 차량에 적혀 있다
         if (!vehicle.isDiagnosed()) {
@@ -257,6 +261,23 @@ public class EvaluationResultService {
             return vehicleKeywordService.findByVehicle(vehicle);
         }
         return vehicleKeywordService.replace(vehicle, keywords);
+    }
+
+    /**
+     * 경매 등록과 같은 차량 행을 잠근 뒤 평가 결과가 아직 수정 가능한지 확인한다.
+     * <p>
+     * 평가 행만 잠그면 경매 등록은 그 잠금에 참여하지 않아 두 요청이 모두 경매 없음으로 판정할
+     * 수 있다. 차량을 공통 잠금 대상으로 삼으면 먼저 끝난 요청의 결과를 다음 요청이 보고 판정한다.
+     */
+    private Vehicle lockEditableVehicle(Evaluation evaluation) {
+        long vehicleId = evaluation.getVehicle().getId();
+        Vehicle vehicle = vehicleRepository.findByIdForUpdate(vehicleId)
+                .orElseThrow(() -> new BusinessException(EvaluationErrorCode.NOT_FOUND));
+
+        if (auctionRepository.existsByVehicleId(vehicleId)) {
+            throw new BusinessException(EvaluationErrorCode.RESULT_LOCKED_BY_AUCTION);
+        }
+        return vehicle;
     }
 
     private void validateManagedDocument(String fileUrl) {
