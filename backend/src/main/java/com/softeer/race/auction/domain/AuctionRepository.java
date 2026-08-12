@@ -23,6 +23,26 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
     boolean existsByVehicleId(@Param("vehicleId") long vehicleId);
 
     /**
+     * 여러 차량의 가장 최근 경매 상태를 한 번에 읽는다.
+     * <p>
+     * 유찰 뒤 재출품할 수 있으므로 아무 경매나 고르면 안 된다. 차량별 가장 큰 경매 id를 최신
+     * 경매로 보고 그 상태만 돌려준다. 경매가 없는 차량은 결과에 포함되지 않는다.
+     */
+    @Query("""
+            select new com.softeer.race.auction.domain.VehicleAuctionStatusRow(
+                a.post.vehicle.id, a.status)
+            from Auction a
+            where a.id in (
+                select max(latest.id)
+                from Auction latest
+                where latest.post.vehicle.id in :vehicleIds
+                group by latest.post.vehicle.id
+            )
+            """)
+    List<VehicleAuctionStatusRow> findLatestStatusesByVehicleIdIn(
+            @Param("vehicleIds") Collection<Long> vehicleIds);
+
+    /**
      * 해당 차량에 주어진 상태의 경매가 이미 있는지 확인한다
      */
     @Query("""
