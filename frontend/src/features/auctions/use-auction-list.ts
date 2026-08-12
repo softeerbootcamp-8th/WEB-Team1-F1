@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 
+import { keepScrollOnEnter } from '@/app/scroll-reset'
 import { fetchAuctionList, subscribeAuctionListStream } from '@/features/auctions/api'
 import type { AuctionVehicleFilter } from '@/features/auctions/filter'
 import { EMPTY_FILTER, filterKey, hasActiveFilter } from '@/features/auctions/filter'
@@ -20,6 +22,14 @@ interface UseAuctionListOptions {
   vehicle?: AuctionVehicleFilter
   /** false면 조회하지 않고 빈 상태로 둔다(예: 나의 경매인데 비로그인) */
   enabled?: boolean
+  /**
+   * 돌아왔을 때 보던 높이까지 되살릴지. 목록을 이어 보는 화면만 켠다.
+   *
+   * 목록 데이터 캐시와 나눠 둔 이유: 홈도 같은 캐시를 써서 경매방을 다녀와도 카드가 깜빡이지
+   * 않아야 하지만, 홈은 이어 보는 화면이 아니다. 켜 두면 헤더의 "홈"을 눌렀을 때 지난번에
+   * 보던 중간 높이로 떨어진다.
+   */
+  restoreScroll?: boolean
 }
 
 /** 화면을 떠났다 돌아올 때 이어 보기 위한 목록 한 벌 */
@@ -81,17 +91,25 @@ export function useAuctionList({
   filter,
   vehicle = EMPTY_FILTER,
   enabled = true,
+  restoreScroll = false,
 }: UseAuctionListOptions) {
   const visible = useDocumentVisible()
 
   // 조건은 객체라 렌더마다 새것일 수 있다. 값으로 만든 키를 기준으로 삼아야 같은 조건이 같은 목록이 된다.
   const vehicleKey = filterKey(vehicle)
 
+  const { pathname } = useLocation()
+
   // 마운트하는 순간에 동기로 복원한다. 이펙트에서 하면 스켈레톤이 한 프레임 그려진 뒤
   // 목록으로 갈아끼워져 화면이 튀고, 스크롤을 되돌리려 해도 그 사이엔 되돌아갈 높이가 없다.
-  const [restored] = useState(() =>
-    enabled ? readFreshCache(cacheKeyOf(scope, filter, vehicleKey)) : null,
-  )
+  const [restored] = useState(() => {
+    const entry = enabled ? readFreshCache(cacheKeyOf(scope, filter, vehicleKey)) : null
+    // 되살릴 높이를 들고 있으면 이 진입에서는 맨 위로 올리지 않도록 알린다. 경매방의 "뒤로"는
+    // 뒤로가기가 아니라 목록 주소로 새로 들어가는 이동이라, 알리지 않으면 첫 화면으로 튄다.
+    // 이펙트가 아니라 이 자리에서 세우는 이유는 아래 복원 이펙트보다 먼저여야 하기 때문이다
+    if (entry && restoreScroll) keepScrollOnEnter(pathname)
+    return entry
+  })
 
   const [cards, setCards] = useState<AuctionListCard[]>(restored?.cards ?? [])
   const [cursor, setCursor] = useState<AuctionListCursor | null>(restored?.cursor ?? null)
@@ -142,8 +160,10 @@ export function useAuctionList({
   // 브라우저 뒤로가기(popstate)는 브라우저의 자체 스크롤 복원이 함께 돌므로 이 코드가
   // 없어도 자리가 맞는다. 이 코드는 앞으로 가는 진입(경매방의 "뒤로" 버튼)을 위한 것이다.
   useLayoutEffect(() => {
-    if (restored) window.scrollTo({ top: restored.scrollY, behavior: 'instant' })
-  }, [restored])
+    if (restored && restoreScroll) {
+      window.scrollTo({ top: restored.scrollY, behavior: 'instant' })
+    }
+  }, [restored, restoreScroll])
 
   useEffect(() => {
     const key = cacheKeyOf(scope, filter, vehicleKey)

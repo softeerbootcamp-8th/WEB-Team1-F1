@@ -1,5 +1,6 @@
 import { Link, Navigate, Route, Routes, useParams } from 'react-router-dom'
 
+import { useScrollReset } from '@/app/scroll-reset'
 import { AppLayout } from '@/components/layout/app-layout'
 import { EmptyState } from '@/components/common/empty-state'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,10 @@ import { EvaluationResultPage } from '@/features/evaluations/pages/evaluation-re
 import { MyRequestDetailPage } from '@/features/evaluations/pages/my-request-detail-page'
 
 export function AppRouter() {
+  // 이동할 때 화면을 맨 위로 두는 판단을 여기 한 곳에 모은다. 화면마다 각자 하면 새 화면을
+  // 추가할 때 빠뜨리고, 실제로 지금까지 목록만 처리돼 있었다
+  useScrollReset()
+
   return (
     <Routes>
       {/* 인증 화면은 전용 풀스크린 레이아웃 */}
