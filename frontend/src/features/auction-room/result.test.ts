@@ -46,7 +46,7 @@ function point(minutesFromStart: number, amount: number, mine = false): PricePoi
   const date = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`
   const time = `${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}`
 
-  return { at: `${date}T${time}`, amount, mine }
+  return { at: `${date}T${time}`, amount, mine, extended: false }
 }
 
 // 화면의 첫 문장이 여기서 갈린다. 네 갈래가 각각 다른 말을 해야 한다
@@ -149,5 +149,17 @@ describe('curveShapeOf', () => {
 
     expect(shape?.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true)
     expect(shape?.points.at(-1)?.x).toBe(0)
+  })
+
+  // 마감이 밀린 자리를 그리려면 어느 점이 마감을 밀었는지가 좌표까지 따라와야 한다
+  it('마감을 밀어낸 입찰 표시를 좌표에 실어 보낸다', () => {
+    const shape = curveShapeOf(
+      result({
+        priceCurve: [point(10, 9_300_000), { ...point(19, 10_100_000), extended: true }],
+      }),
+    )
+
+    // 앞에 붙는 시작가 점은 입찰이 아니라 마감을 밀 수 없다
+    expect(shape?.points.map((p) => p.extended)).toEqual([false, false, true])
   })
 })

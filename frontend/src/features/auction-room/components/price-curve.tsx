@@ -54,6 +54,8 @@ export function PriceCurve({ shape, startAt, endAt, myAmount, mineWon }: PriceCu
   // 선 아래를 옅게 채운다. 같은 경로에 바닥을 붙여 닫는다
   const area = `${path} V ${y(0)} H ${x(first.x)} Z`
 
+  const extendedAt = shape.points.filter((point) => point.extended)
+
   // 낙찰가와 내 최고가가 이만큼도 안 떨어져 있으면 마커 둘로 가를 수 없다. 라벨을 합친다
   const mergedLabel =
     mineWon ||
@@ -102,6 +104,33 @@ export function PriceCurve({ shape, startAt, endAt, myAmount, mineWon }: PriceCu
           <stop offset="100%" stopColor="currentColor" stopOpacity={0} />
         </linearGradient>
       </defs>
+
+      {/* 마감이 밀린 자리. 값이 아니라 시간 축의 사건이라 세로로 긋고, 곡선보다 아래에 깔린다 */}
+      {extendedAt.map((point, index) => (
+        <g key={index}>
+          <line
+            x1={x(point.x)}
+            x2={x(point.x)}
+            y1={PAD_TOP}
+            y2={HEIGHT - PAD_BOTTOM}
+            className="stroke-muted-foreground"
+            strokeWidth={1}
+            strokeDasharray="3 3"
+            strokeOpacity={0.45}
+          />
+          {/* 라벨은 첫 자리에만 붙인다, 연장은 마감 직전에 몰려 여러 번이면 글자가 서로 겹친다 */}
+          {index === 0 && (
+            <text
+              x={x(point.x) - 4}
+              y={HEIGHT - PAD_BOTTOM - 4}
+              textAnchor="end"
+              className="fill-muted-foreground text-[11px]"
+            >
+              연장
+            </text>
+          )}
+        </g>
+      ))}
 
       <path d={area} fill={`url(#${fillId})`} stroke="none" />
 
