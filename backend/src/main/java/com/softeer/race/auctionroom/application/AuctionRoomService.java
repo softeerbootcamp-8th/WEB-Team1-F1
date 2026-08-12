@@ -36,7 +36,8 @@ public class AuctionRoomService {
 
         // 조회는 접속이 아니다, 접속자는 열려 있는 구독으로만 센다
         return AuctionRoomView.of(userId, result, roomChannel.countViewers(auctionId),
-                auctionRoomReader.findPhotoUrls(auctionId));
+                auctionRoomReader.findPhotoUrls(auctionId),
+                auctionRoomReader.findKeywords(result.detail().vehicleId()));
     }
 
     /**
@@ -70,6 +71,7 @@ public class AuctionRoomService {
         return RoomResultView.of(detail, outcome, auctionRoomReader.findStats(auctionId), viewerId,
                 auctionRoomReader.findStanding(auctionId, viewerId).orElse(null),
                 auctionRoomReader.findPriceCurve(auctionId),
-                auctionRoomReader.findPhotoUrls(auctionId), LocalDateTime.now(clock));
+                auctionRoomReader.findPhotoUrls(auctionId),
+                auctionRoomReader.findKeywords(detail.vehicleId()), LocalDateTime.now(clock));
     }
 }

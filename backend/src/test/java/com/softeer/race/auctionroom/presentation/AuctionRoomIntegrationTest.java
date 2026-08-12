@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -75,6 +76,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 .photos("https://cdn.race.dev/avante-1.jpg", "https://cdn.race.dev/avante-2.jpg",
                         "https://cdn.race.dev/avante-3.jpg")
                 .diagnosticReportUrl("https://cdn.race.dev/avante-report.pdf")
+                .keywords(VehicleKeyword.CLEAN_INTERIOR, VehicleKeyword.MINOR_EXCHANGE)
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 40, 5), viewer, 11_000_000L)
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 42, 18), users.user("남궁민수", Role.DEALER), 12_000_000L)
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 44, 31), viewer, 12_500_000L)
@@ -112,7 +114,10 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.vehicle.imageUrls.length()").value(3),
                 jsonPath("$.vehicle.imageUrls[0]").value("https://cdn.race.dev/avante-1.jpg"),
                 jsonPath("$.vehicle.diagnosticReportUrl")
-                        .value("https://cdn.race.dev/avante-report.pdf"));
+                        .value("https://cdn.race.dev/avante-report.pdf"),
+                jsonPath("$.vehicle.keywords.length()").value(2),
+                jsonPath("$.vehicle.keywords[0]").value("MINOR_EXCHANGE"),
+                jsonPath("$.vehicle.keywords[1]").value("CLEAN_INTERIOR"));
 
         // then 5 : 차량을 특정할 수 있는 번호판은 응답에 없다
         response.andExpect(jsonPath("$.vehicle.plateNumber").doesNotExist());

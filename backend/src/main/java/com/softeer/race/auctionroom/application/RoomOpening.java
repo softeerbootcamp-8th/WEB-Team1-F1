@@ -3,6 +3,7 @@ package com.softeer.race.auctionroom.application;
 import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import com.softeer.race.auctionroom.domain.VehicleSummary;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,11 +24,12 @@ public record RoomOpening(
     /**
      * 한 번 읽어 온 상세와 기준 시각으로 안내를 조립한다
      */
-    static RoomOpening of(AuctionRoomDetail detail, List<String> imageUrls, LocalDateTime now) {
+    static RoomOpening of(AuctionRoomDetail detail, List<String> imageUrls,
+                          List<VehicleKeyword> keywords, LocalDateTime now) {
         return new RoomOpening(
                 detail.auctionId(),
                 detail.phaseAt(now),
-                detail.vehicle(imageUrls),
+                detail.vehicle(imageUrls, keywords),
                 detail.startPrice(),
                 detail.roomOpenAt(),
                 detail.startTime(),
