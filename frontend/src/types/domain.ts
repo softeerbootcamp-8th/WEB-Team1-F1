@@ -68,6 +68,7 @@ export interface AuctionCard {
 export type NotificationType =
   | 'EVAL_APPROVED'
   | 'EVAL_REJECTED'
+  | 'AUCTION_STARTED'
   | 'AUCTION_WON'
   | 'OUTBID'
   | 'AUCTION_ENDED'

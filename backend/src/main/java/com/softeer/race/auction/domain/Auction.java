@@ -184,6 +184,16 @@ public class Auction extends BaseTimeEntity {
     }
 
     /**
+     * 시작 알림을 신청할 수 있는 상태인지
+     * <p>
+     * 시작 시각 정각은 신청이 안 된다. 그 순간부터는 isStartableAt 이 참이라 시작 전이 대상이고,
+     * 두 판정이 같은 시각에 동시에 참이면 "시작 전까지만 신청"이라는 규칙에 경계가 겹친다.
+     */
+    public boolean isStartAlertOpenAt(LocalDateTime now) {
+        return status == AuctionStatus.SCHEDULED && now.isBefore(startTime);
+    }
+
+    /**
      * 시작 시각이 지났고 아직 예약 상태인지
      */
     public boolean isStartableAt(LocalDateTime now) {

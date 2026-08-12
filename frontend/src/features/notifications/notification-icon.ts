@@ -1,4 +1,5 @@
 import {
+  AlarmClock,
   Ban,
   CalendarClock,
   CheckCheck,
@@ -24,6 +25,7 @@ import type { NotificationType } from '@/types/domain'
 export const NOTIFICATION_ICON: Record<NotificationType, LucideIcon> = {
   EVAL_APPROVED: CheckCheck,
   EVAL_REJECTED: CircleX,
+  AUCTION_STARTED: AlarmClock,
   AUCTION_WON: Trophy,
   OUTBID: TrendingUp,
   AUCTION_ENDED: Gavel,
