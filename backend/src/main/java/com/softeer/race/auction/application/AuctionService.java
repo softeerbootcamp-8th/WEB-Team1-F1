@@ -38,7 +38,9 @@ public class AuctionService {
      */
     @Transactional
     public AuctionCreateInfo create(long sellerId, Long vehicleId, long startPrice, LocalDateTime startAt) {
-        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+        // 평가 결과 변경과 같은 차량 행을 잠근다. 둘 중 먼저 잠근 요청이 끝난 뒤 다른 요청이
+        // 최신 상태를 검증하므로, 경매가 만들어진 뒤 평가 결과가 바뀌는 틈이 생기지 않는다.
+        Vehicle vehicle = vehicleRepository.findByIdForUpdate(vehicleId)
                 .orElseThrow(() -> new BusinessException(AuctionErrorCode.VEHICLE_NOT_FOUND));
 
         if (!vehicle.getSeller().getId().equals(sellerId)) {

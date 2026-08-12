@@ -1,6 +1,7 @@
 package com.softeer.race.evaluation.application;
 
 import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.evaluation.application.dto.command.EvaluationRejectCommand;
 import com.softeer.race.evaluation.application.dto.command.EvaluationResultSubmitCommand;
 import com.softeer.race.evaluation.application.dto.info.EvaluationRejectionInfo;
@@ -20,6 +21,7 @@ import com.softeer.race.vehicle.application.VehicleKeywordService;
 import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleImageRepository;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
+import com.softeer.race.vehicle.domain.VehicleRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -84,6 +86,12 @@ class EvaluationResultServiceTest {
 
     @Mock
     private EvaluationRepository evaluationRepository;
+
+    @Mock
+    private AuctionRepository auctionRepository;
+
+    @Mock
+    private VehicleRepository vehicleRepository;
 
     @Mock
     private VehicleImageService vehicleImageService;
@@ -204,6 +212,26 @@ class EvaluationResultServiceTest {
         // then
         then(vehicle).should().completeDiagnosis(MILEAGE, ESTIMATED_PRICE, IMAGE_1, NEW_DOCUMENT_URL);
         assertThat(info.diagnosticReportUrl()).isEqualTo(NEW_DOCUMENT_URL);
+    }
+
+    @Test
+    @DisplayName("경매가 등록된 차량은 결과를 다시 제출할 수 없다")
+    void submitRejectsResultLockedByAuction() {
+        givenManagedDocument(NEW_DOCUMENT_URL);
+        given(evaluationRepository.findByIdForUpdate(EVALUATION_ID)).willReturn(Optional.of(evaluation));
+        given(evaluation.getVehicle()).willReturn(vehicle);
+        given(vehicle.getId()).willReturn(VEHICLE_ID);
+        given(vehicleRepository.findByIdForUpdate(VEHICLE_ID)).willReturn(Optional.of(vehicle));
+        given(auctionRepository.existsByVehicleId(VEHICLE_ID)).willReturn(true);
+
+        assertThatThrownBy(() -> evaluationResultService.submit(command(NEW_DOCUMENT_URL)))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.RESULT_LOCKED_BY_AUCTION));
+
+        then(vehicle).should(never()).completeDiagnosis(anyInt(), anyLong(), any(), any());
+        then(vehicleImageService).shouldHaveNoInteractions();
+        then(notificationPublisher).shouldHaveNoInteractions();
     }
 
     @Test
@@ -334,6 +362,7 @@ class EvaluationResultServiceTest {
         given(evaluationRepository.findByIdForUpdate(EVALUATION_ID)).willReturn(Optional.of(evaluation));
         given(evaluation.getVehicle()).willReturn(vehicle);
         given(vehicle.getId()).willReturn(VEHICLE_ID);
+        given(vehicleRepository.findByIdForUpdate(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         given(vehicle.getSeller()).willReturn(seller);
         given(seller.getId()).willReturn(SELLER_ID);
     }

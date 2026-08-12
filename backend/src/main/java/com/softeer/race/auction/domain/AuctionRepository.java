@@ -14,6 +14,14 @@ import java.util.Optional;
 
 public interface AuctionRepository extends JpaRepository<Auction, Long> {
 
+    /** 해당 차량에 상태와 관계없이 경매가 한 번이라도 등록됐는지 확인한다. */
+    @Query("""
+            select count(a) > 0
+            from Auction a
+            where a.post.vehicle.id = :vehicleId
+            """)
+    boolean existsByVehicleId(@Param("vehicleId") long vehicleId);
+
     /**
      * 해당 차량에 주어진 상태의 경매가 이미 있는지 확인한다
      */
