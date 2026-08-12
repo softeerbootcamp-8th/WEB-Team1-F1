@@ -13,6 +13,7 @@ import static com.softeer.race.notification.domain.NotificationType.AUCTION_SOLD
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_WON;
 import static com.softeer.race.notification.domain.NotificationType.DEAL_CONFIRMED;
 import static com.softeer.race.notification.domain.NotificationType.OUTBID;
+import static com.softeer.race.notification.domain.NotificationType.AUCTION_STARTED;
 
 /**
  * 알림 종류와 발행 시점에 완성한 문구
@@ -41,6 +42,12 @@ public record NotificationContent(NotificationType type, String message) {
 
     public static NotificationContent defaultOf(NotificationType type) {
         return new NotificationContent(type, type.defaultMessage());
+    }
+
+    public static NotificationContent auctionStarted(String vehicleModel) {
+        return new NotificationContent(AUCTION_STARTED,
+                "%s 경매가 시작되었습니다. 지금 입찰할 수 있습니다."
+                        .formatted(text(vehicleModel)));
     }
 
     public static NotificationContent outbid(
