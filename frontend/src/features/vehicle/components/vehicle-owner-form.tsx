@@ -42,7 +42,8 @@ export function VehicleOwnerForm({
       }}
     >
       {/* 도움말은 입력 상자 위 오른쪽에 둔다. 폼 안이라 type="button" 이 없으면 눌러서 제출된다 */}
-      <div className="flex justify-end">
+      {/* 폼의 space-y-7 을 그대로 받으면 버튼 높이까지 더해져 이름 라벨이 멀리 밀린다 */}
+      <div className="-mb-5 flex justify-end">
         {/* 옆으로 빼 봤지만 카드가 화면 오른쪽에 붙어 있어 Radix 가 다시 왼쪽으로 뒤집는다.
             아래로 열어 입력 상자를 잠깐 덮는 편이 낫다 — 벗어나면 닫히는 도움말이다 */}
         <HelpPopover
