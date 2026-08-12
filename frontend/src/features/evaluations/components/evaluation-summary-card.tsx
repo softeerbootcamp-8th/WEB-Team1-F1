@@ -11,16 +11,23 @@ interface EvaluationSummaryCardProps {
   evaluation: EvaluationSummary
   action?: React.ReactNode
   layout?: 'card' | 'list'
+  viewer?: 'seller' | 'evaluator'
 }
 
 export function EvaluationSummaryCard({
   evaluation,
   action,
   layout = 'card',
+  viewer = 'seller',
 }: EvaluationSummaryCardProps) {
-  const status = getEvaluationStatusMeta(evaluation.status, evaluation.assigned)
+  const status = getEvaluationStatusMeta(evaluation.status, evaluation.assigned, viewer)
   const auctionStatus = evaluation.auctionStatus
-    ? getAuctionStatusMeta(evaluation.auctionStatus)
+    ? viewer === 'evaluator'
+      ? {
+          label: '경매 등록됨',
+          className: 'bg-primary/10 text-primary border-primary/20',
+        }
+      : getAuctionStatusMeta(evaluation.auctionStatus)
     : null
 
   const statusBadges = (

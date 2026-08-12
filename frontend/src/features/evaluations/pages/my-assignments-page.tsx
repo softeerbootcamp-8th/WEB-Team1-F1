@@ -66,6 +66,7 @@ export function MyAssignmentsPage() {
               <EvaluationSummaryCard
                 evaluation={evaluation}
                 layout="list"
+                viewer="evaluator"
                 action={
                   evaluation.status === 'REJECTED' ? (
                     <Button className="w-full" disabled>
@@ -79,8 +80,8 @@ export function MyAssignmentsPage() {
                     <Button asChild className="w-full">
                       <Link to={`/evaluations/${evaluation.evaluationId}/result`}>
                         {evaluation.status === 'APPROVED'
-                          ? '결과 확인·수정'
-                          : '연락처 확인·결과 작성'}
+                          ? '진단 확인·수정'
+                          : '진단 작성하기'}
                       </Link>
                     </Button>
                   )
