@@ -1,10 +1,13 @@
 package com.softeer.race.evaluation.presentation;
 
+import com.softeer.race.auction.domain.AuctionStatus;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.ResultActions;
@@ -243,6 +246,37 @@ class EvaluationResultPatchIntegrationTest extends IntegrationTestSupport {
         assertThat(mileageOf(UNSUBMITTED_VEHICLE_ID)).isNull();
     }
 
+    @ParameterizedTest(name = "{0} 경매")
+    @EnumSource(AuctionStatus.class)
+    @DisplayName("경매가 등록되면 상태와 삭제 여부에 관계없이 평가 결과를 수정할 수 없다")
+    void rejectsResultLockedByAuction(AuctionStatus auctionStatus) throws Exception {
+        // given : 종료·유찰 글은 삭제돼도 참여자에게 공개됐던 평가 결과가 잠긴다
+        registerAuction(auctionStatus,
+                auctionStatus == AuctionStatus.ENDED || auctionStatus == AuctionStatus.FAILED);
+
+        // when & then
+        patchResult(EVALUATION_ID, EVALUATOR_TOKEN, """
+                {
+                  "mileage": 46000,
+                  "estimatedPrice": 21000000,
+                  "imageUrls": ["%s"],
+                  "diagnosticReportUrl": "%s",
+                  "keywords": []
+                }
+                """.formatted(NEW_IMAGE, NEW_DOCUMENT_URL))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code")
+                        .value("EVALUATION_RESULT_LOCKED_BY_AUCTION"));
+
+        Map<String, Object> vehicle = vehicleRow();
+        assertThat(vehicle.get("mileage")).isEqualTo(MILEAGE);
+        assertThat(vehicle.get("estimated_price")).isEqualTo(ESTIMATED_PRICE);
+        assertThat(vehicle.get("main_photo_url")).isEqualTo(IMAGE_1);
+        assertThat(vehicle.get("diagnostic_report_url")).isEqualTo(DOCUMENT_URL);
+        assertThat(imageUrls()).containsExactly(IMAGE_1, IMAGE_2);
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "NO_LEAK");
+    }
+
     @Test
     @DisplayName("진단서 자리에 이미지 주소를 보내면 400이고 기존 사진이 살아남는다")
     void rejectsImageAsDocument() throws Exception {
@@ -303,6 +337,30 @@ class EvaluationResultPatchIntegrationTest extends IntegrationTestSupport {
                 .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, rawToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body));
+    }
+
+    private void registerAuction(AuctionStatus status, boolean deleted) {
+        if (deleted) {
+            jdbcTemplate.update("""
+                    insert into auction_post
+                        (id, vehicle_id, published_at, deleted_at, created_at, updated_at)
+                    values (750, ?, NOW(6), NOW(6), NOW(6), NOW(6))
+                    """, VEHICLE_ID);
+        } else {
+            jdbcTemplate.update("""
+                    insert into auction_post
+                        (id, vehicle_id, published_at, created_at, updated_at)
+                    values (750, ?, NOW(6), NOW(6), NOW(6))
+                    """, VEHICLE_ID);
+        }
+        jdbcTemplate.update("""
+                insert into auction
+                    (id, post_id, start_price, current_price, room_open_at, start_time,
+                     current_end_time, extension_count, status, created_at, updated_at)
+                values (750, 750, 10000000, null,
+                        DATE_SUB(NOW(6), INTERVAL 30 MINUTE), NOW(6),
+                        DATE_ADD(NOW(6), INTERVAL 20 MINUTE), 0, ?, NOW(6), NOW(6))
+                """, status.name());
     }
 
     private static String quoted(List<String> values) {

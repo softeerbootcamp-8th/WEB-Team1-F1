@@ -2,7 +2,10 @@ package com.softeer.race.auth.presentation.support;
 
 import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.auth.domain.AuthenticatedUser;
+import com.softeer.race.auth.exception.AuthErrorCode;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
+import com.softeer.race.auth.presentation.annotation.RequireRole;
+import com.softeer.race.common.exception.BusinessException;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,14 +22,14 @@ import java.util.Arrays;
 /**
  * 쿠키의 세션 토큰을 검증해 요청 속성에 주체를 심는다.
  * <p>
- * <b>인증이 필요한지는 경로가 아니라 핸들러가 결정한다.</b> 핸들러 파라미터에 {@code @LoginUser}가
- * 있으면 인증을 요구하고, 없으면 공개로 통과시킨다. 경로 패턴은 메서드를 구분하지 못해
+ * <b>인증이 필요한지는 경로가 아니라 핸들러가 결정한다.</b> 핸들러에 {@code @LoginUser} 파라미터나
+ * {@code @RequireRole}이 있으면 인증을 요구하고, 둘 다 없으면 공개로 통과시킨다. 경로 패턴은 메서드를 구분하지 못해
  * {@code GET /api/auctions}(공개 목록)와 {@code POST /api/auctions}(경매 등록)에 서로 다른 조건을
  * 줄 수 없었다. DispatcherServlet이 경로와 메서드 매칭을 끝낸 뒤 preHandle을 부르므로,
  * 판정을 핸들러로 옮기면 메서드별 분기가 따라온다.
  * <p>
- * 판정 신호를 {@code @LoginUser} 하나로 둔 것은 적을 곳을 한 곳으로 줄이기 위함이다. 대신
- * <b>선언을 빠뜨린 핸들러는 조용히 공개로 동작한다.</b> 공개 API가 아무 표시를 하지 않는 것이
+ * 인증 주체 값이 필요한 API는 {@code @LoginUser}, 역할만 필요한 API는 {@code @RequireRole}로 선언한다.
+ * 대신 <b>둘 다 빠뜨린 핸들러는 조용히 공개로 동작한다.</b> 공개 API가 아무 표시를 하지 않는 것이
  * 정상이라 누락과 구분할 방법이 없다. 기본 차단으로 뒤집는 일은 별도 이슈로 다룬다.
  * <p>
  * 서블릿 Filter가 아니라 인터셉터인 이유는 응답 포맷이다. DispatcherServlet은 preHandle을 try 안에서
@@ -70,7 +73,8 @@ public class AuthInterceptor implements HandlerInterceptor {
         if (!(handler instanceof HandlerMethod handlerMethod)) {
             return true;
         }
-        if (!requiresAuthentication(handlerMethod)) {
+        RequireRole requireRole = handlerMethod.getMethodAnnotation(RequireRole.class);
+        if (!requiresAuthentication(handlerMethod, requireRole)) {
             return true;
         }
 
@@ -81,6 +85,11 @@ public class AuthInterceptor implements HandlerInterceptor {
         AuthenticatedUser authenticatedUser =
                 sessionService.authenticate(cookie == null ? null : cookie.getValue());
 
+        if (requireRole != null && Arrays.stream(requireRole.value())
+                .noneMatch(role -> role == authenticatedUser.role())) {
+            throw new BusinessException(AuthErrorCode.ACCESS_DENIED);
+        }
+
         request.setAttribute(LOGIN_USER, authenticatedUser);
         return true;
     }
@@ -88,10 +97,10 @@ public class AuthInterceptor implements HandlerInterceptor {
     /**
      * 이 저장소의 컨트롤러는 Swagger 애너테이션을 {@code *Api} 인터페이스에, Spring MVC 애너테이션을
      * 구현체에 둔다. HandlerMethod는 브리지된 구현 메서드를 보므로 인터페이스에 선언한 파라미터
-     * 애너테이션은 여기서 보이지 않는다. {@code @LoginUser}는 반드시 구현체에 붙여야 한다.
+     * 애너테이션은 여기서 보이지 않는다. {@code @LoginUser}와 {@code @RequireRole}은 반드시 구현체에 붙여야 한다.
      */
-    private boolean requiresAuthentication(HandlerMethod handlerMethod) {
-        return Arrays.stream(handlerMethod.getMethodParameters())
+    private boolean requiresAuthentication(HandlerMethod handlerMethod, RequireRole requireRole) {
+        return requireRole != null || Arrays.stream(handlerMethod.getMethodParameters())
                 .anyMatch(parameter -> parameter.hasParameterAnnotation(LoginUser.class));
     }
 }

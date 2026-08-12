@@ -59,6 +59,7 @@ class EvaluationAssignmentServiceTest {
     @DisplayName("평가사가 수락하면 담당으로 확정되고 판매자 연락처가 함께 나간다")
     void assign() {
         User evaluator = userWithRole(Role.EVALUATOR);
+        given(evaluator.getId()).willReturn(EVALUATOR_ID);
         Evaluation evaluation = requestedWithPlateNumber();
         given(userRepository.findById(EVALUATOR_ID)).willReturn(Optional.of(evaluator));
         given(evaluationRepository.findByIdForUpdate(EVALUATION_ID))
@@ -76,22 +77,22 @@ class EvaluationAssignmentServiceTest {
         then(evaluationRepository).should(never()).save(evaluation);
     }
 
-    /**
-     * 인가가 아직 없어 역할을 보지 않는다는 결정을 고정한다. 이 검사가 붙는 순간 이 테스트가 깨져,
-     * 그때 무엇이 바뀌었는지 드러난다.
-     */
     @Test
-    @DisplayName("평가사가 아닌 회원도 수락할 수 있다")
-    void assignAllowsNonEvaluator() {
-        User dealer = userWithRole(Role.DEALER);
-        Evaluation evaluation = requestedWithPlateNumber();
-        given(userRepository.findById(EVALUATOR_ID)).willReturn(Optional.of(dealer));
+    @DisplayName("평가사는 자기 차량의 신청을 직접 수락할 수 없다")
+    void assignRejectsSelfAssignment() {
+        User evaluator = userWithRole(Role.EVALUATOR);
+        given(evaluator.getId()).willReturn(EVALUATOR_ID);
+        Evaluation evaluation = requestedOwnedByEvaluator();
+        given(userRepository.findById(EVALUATOR_ID)).willReturn(Optional.of(evaluator));
         given(evaluationRepository.findByIdForUpdate(EVALUATION_ID))
                 .willReturn(Optional.of(evaluation));
 
-        evaluationAssignmentService.assign(EVALUATION_ID, EVALUATOR_ID);
+        assertThatThrownBy(() -> evaluationAssignmentService.assign(EVALUATION_ID, EVALUATOR_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.SELF_ASSIGNMENT_NOT_ALLOWED));
 
-        assertThat(evaluation.getEvaluator()).isSameAs(dealer);
+        assertThat(evaluation.getEvaluator()).isNull();
     }
 
     @Test
@@ -146,4 +147,13 @@ class EvaluationAssignmentServiceTest {
         return Evaluation.request(
                 vehicle, VISIT_DATE, VISIT_ADDRESS, CONTACT_PHONE, VISIT_DATE.minusDays(16));
     }
+
+    private Evaluation requestedOwnedByEvaluator() {
+        Vehicle vehicle = mock(Vehicle.class);
+        given(vehicle.isOwnedBy(EVALUATOR_ID)).willReturn(true);
+
+        return Evaluation.request(
+                vehicle, VISIT_DATE, VISIT_ADDRESS, CONTACT_PHONE, VISIT_DATE.minusDays(16));
+    }
+
 }

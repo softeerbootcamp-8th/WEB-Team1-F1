@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -32,6 +33,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 4. 한 번의 조회로 읽어오는 차량과 낙찰자 (MySQL)
  * 경매·경매글·차량·낙찰자를 프로젝션 하나로 받음
+ * <p>
+ * 4-1. 보는 사람 기준의 판정
+ * 같은 방이라도 조회자에 따라 갈리는 값, 낙찰자 여부와 판매자 여부
  * <p>
  * 5. 직렬화
  * 마감 절대시각과 서버 시각을 오프셋 없는 KST 문자열로 내림
@@ -72,6 +76,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 .photos("https://cdn.race.dev/avante-1.jpg", "https://cdn.race.dev/avante-2.jpg",
                         "https://cdn.race.dev/avante-3.jpg")
                 .diagnosticReportUrl("https://cdn.race.dev/avante-report.pdf")
+                .keywords(VehicleKeyword.CLEAN_INTERIOR, VehicleKeyword.MINOR_EXCHANGE)
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 40, 5), viewer, 11_000_000L)
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 42, 18), users.user("남궁민수", Role.DEALER), 12_000_000L)
                 .bid(LocalDateTime.of(2026, 8, 3, 20, 44, 31), viewer, 12_500_000L)
@@ -109,7 +114,10 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.vehicle.imageUrls.length()").value(3),
                 jsonPath("$.vehicle.imageUrls[0]").value("https://cdn.race.dev/avante-1.jpg"),
                 jsonPath("$.vehicle.diagnosticReportUrl")
-                        .value("https://cdn.race.dev/avante-report.pdf"));
+                        .value("https://cdn.race.dev/avante-report.pdf"),
+                jsonPath("$.vehicle.keywords.length()").value(2),
+                jsonPath("$.vehicle.keywords[0]").value("MINOR_EXCHANGE"),
+                jsonPath("$.vehicle.keywords[1]").value("CLEAN_INTERIOR"));
 
         // then 5 : 차량을 특정할 수 있는 번호판은 응답에 없다
         response.andExpect(jsonPath("$.vehicle.plateNumber").doesNotExist());
@@ -220,6 +228,26 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.content[0].auctionId").value(auctionId),
                 jsonPath("$.content[0].phase").value("LIVE"),
                 jsonPath("$.content[0].currentPrice").value(10000000));
+    }
+
+    @Test
+    @DisplayName("시나리오 6 : 판매자와 제3자가 같은 방을 조회 -> 판매자에게만 sellerIsMine 이 참이다")
+    void scenario6_SellerFlag_JudgedPerViewer() throws Exception {
+        // given : 박판매가 내놓은 진행 중인 방, 한구경은 이 경매와 아무 관계가 없다
+        User seller = users.user("박판매", Role.GENERAL);
+        User onlooker = users.user("한구경", Role.DEALER);
+
+        long auctionId = rooms.room(seller, START_AT).create();
+
+        // when & then 1 : 자기 차를 내놓은 사람은 입찰 버튼 자리에서 안내를 봐야 한다, 화면이 그 판정을 여기서 받는다
+        getRoom(auctionId, loginAs(seller)).andExpectAll(
+                status().isOk(),
+                jsonPath("$.sellerIsMine").value(true));
+
+        // when & then 2 : 같은 방이라도 남에게는 거짓이다, 방이 아니라 보는 사람 기준의 판정이다
+        getRoom(auctionId, loginAs(onlooker)).andExpectAll(
+                status().isOk(),
+                jsonPath("$.sellerIsMine").value(false));
     }
 
     // ================= 도메인에 아직 없는 전이 ====================

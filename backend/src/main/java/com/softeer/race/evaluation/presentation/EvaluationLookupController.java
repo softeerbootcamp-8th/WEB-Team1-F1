@@ -2,9 +2,11 @@ package com.softeer.race.evaluation.presentation;
 
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
+import com.softeer.race.auth.presentation.annotation.RequireRole;
 import com.softeer.race.evaluation.application.EvaluationLookupService;
 import com.softeer.race.evaluation.presentation.response.EvaluationDetailResponse;
 import com.softeer.race.evaluation.presentation.response.EvaluationSummariesResponse;
+import com.softeer.race.user.domain.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,6 +36,7 @@ public class EvaluationLookupController implements EvaluationLookupApi {
 
     @Override
     @GetMapping("/my-assignments")
+    @RequireRole(Role.EVALUATOR)
     public ResponseEntity<EvaluationSummariesResponse> findMyAssignments(
             @LoginUser AuthenticatedUser authenticatedUser) {
 

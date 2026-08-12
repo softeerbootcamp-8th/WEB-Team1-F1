@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/features/auth/auth-context'
 import type { AppNotification } from '@/types/domain'
@@ -53,6 +53,7 @@ export function useNotifications() {
   const { isAuthenticated, user } = useAuth()
   const userId = user?.id
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [items, setItems] = useState<AppNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -124,10 +125,17 @@ export function useNotifications() {
    * 그것을 의존성에 넣으면 화면을 옮길 때마다 연결이 끊기고 다시 붙는다. 실제로 그렇게 동작했다.
    */
   const openRef = useRef(open)
+  // pathname만 보면 승인 알림처럼 query로 대상을 가르는 화면을 같은 곳으로 오판한다.
+  // hash는 서버 알림 링크에 쓰지 않으므로 경로와 query만 비교한다.
+  const currentTargetRef = useRef(`${location.pathname}${location.search}`)
 
   useEffect(() => {
     openRef.current = open
   }, [open])
+
+  useEffect(() => {
+    currentTargetRef.current = `${location.pathname}${location.search}`
+  }, [location.pathname, location.search])
 
   // 최초 적재. 건수를 따로 묻는 이유는 실시간 연결이 막힌 환경에서도 배지가 맞아야 하기 때문이다
   useEffect(() => {
@@ -191,9 +199,11 @@ export function useNotifications() {
         countChangedSinceLoad.current = true
         setUnreadCount(count)
 
-        // 위치는 전역 토스트(top-center)를 그대로 쓴다. 헤더 메뉴를 잠깐 가리지만,
-        // 눈에 먼저 들어오는 자리가 화면 위쪽이고 알림은 놓치면 값이 없다
-        showNotificationToast(notification, () => openRef.current(notification))
+        // 지금 화면이 이미 같은 사건을 보여 주면 팝업만 생략한다. 위에서 목록과 배지는 먼저
+        // 반영했으므로 기록은 남는다. 경매·거래 id나 query가 다르면 다른 대상이라 그대로 띄운다.
+        if (notification.link !== currentTargetRef.current) {
+          showNotificationToast(notification, () => openRef.current(notification))
+        }
       },
       onUnreadCount: (count) => {
         countChangedSinceLoad.current = true

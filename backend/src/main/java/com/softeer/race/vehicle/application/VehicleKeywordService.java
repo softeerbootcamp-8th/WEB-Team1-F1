@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -51,7 +50,7 @@ public class VehicleKeywordService {
         // 순서가 뒤바뀌어도 조용히 통과했을 뿐이다
         vehicleKeywordTagRepository.flush();
 
-        List<VehicleKeyword> replaced = sorted(keywords.stream().distinct().toList());
+        List<VehicleKeyword> replaced = VehicleKeyword.inDisplayOrder(keywords.stream().distinct().toList());
 
         vehicleKeywordTagRepository.saveAll(replaced.stream()
                 .map(keyword -> VehicleKeywordTag.create(vehicle, keyword))
@@ -64,19 +63,9 @@ public class VehicleKeywordService {
      * 이 차량의 키워드. 아직 매겨지지 않았으면 빈 목록이다.
      */
     public List<VehicleKeyword> findByVehicle(Vehicle vehicle) {
-        return sorted(vehicleKeywordTagRepository.findAllByVehicle(vehicle).stream()
+        return VehicleKeyword.inDisplayOrder(vehicleKeywordTagRepository.findAllByVehicle(vehicle).stream()
                 .map(VehicleKeywordTag::getKeyword)
                 .toList());
-    }
-
-    /**
-     * 선언 순서로 정렬한다. enum 의 자연 순서가 곧 선언 순서다.
-     * <p>
-     * 읽는 쪽에 맡기지 않고 여기서 끝낸다. 같은 차량의 키워드가 화면마다 다른 순서로 보이면
-     * 화면을 옮길 때 키워드가 뒤바뀐 것처럼 보인다.
-     */
-    private static List<VehicleKeyword> sorted(List<VehicleKeyword> keywords) {
-        return keywords.stream().sorted(Comparator.naturalOrder()).toList();
     }
 
     public Map<Long, List<VehicleKeyword>> findByVehicleIds(Collection<Long> vehicleIds) {
@@ -89,7 +78,7 @@ public class VehicleKeywordService {
                                 VehicleKeywordRow::vehicleId,
                                 Collectors.collectingAndThen(
                                         Collectors.mapping(VehicleKeywordRow::keyword, Collectors.toList()),
-                                        VehicleKeywordService::sorted)
+                                        VehicleKeyword::inDisplayOrder)
                         )
                 );
     }

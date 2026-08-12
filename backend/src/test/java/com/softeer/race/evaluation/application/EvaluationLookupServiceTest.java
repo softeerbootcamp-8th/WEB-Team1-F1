@@ -1,5 +1,8 @@
 package com.softeer.race.evaluation.application;
 
+import com.softeer.race.auction.domain.AuctionRepository;
+import com.softeer.race.auction.domain.AuctionStatus;
+import com.softeer.race.auction.domain.VehicleAuctionStatusRow;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.info.EvaluationDetailInfo;
 import com.softeer.race.evaluation.domain.Evaluation;
@@ -50,6 +53,7 @@ class EvaluationLookupServiceTest {
 
     private static final long EVALUATION_ID = 600L;
     private static final long SELLER_ID = 600L;
+    private static final long EVALUATOR_ID = 601L;
     private static final long STRANGER_ID = 603L;
     private static final long VEHICLE_ID = 6000L;
 
@@ -58,6 +62,9 @@ class EvaluationLookupServiceTest {
 
     @Mock
     private EvaluationRepository evaluationRepository;
+
+    @Mock
+    private AuctionRepository auctionRepository;
 
     @Mock
     private VehicleImageRepository vehicleImageRepository;
@@ -89,6 +96,29 @@ class EvaluationLookupServiceTest {
         assertThat(evaluationLookupService.findMyRequests(SELLER_ID))
                 .extracting(info -> info.evaluationId())
                 .containsExactly(700L, 600L);
+    }
+
+    @Test
+    @DisplayName("평가 목록에 차량의 최신 경매 상태를 붙인다")
+    void findMyRequestsIncludesLatestAuctionStatus() {
+        List<Evaluation> found = List.of(summaryOf(700L), summaryOf(600L));
+        given(evaluationRepository.findBySellerId(SELLER_ID)).willReturn(found);
+        given(auctionRepository.findLatestStatusesByVehicleIdIn(List.of(700L, 600L)))
+                .willReturn(List.of(new VehicleAuctionStatusRow(700L, AuctionStatus.IN_PROGRESS)));
+
+        assertThat(evaluationLookupService.findMyRequests(SELLER_ID))
+                .extracting(info -> info.auctionStatus())
+                .containsExactly(AuctionStatus.IN_PROGRESS, null);
+    }
+
+    @Test
+    @DisplayName("평가 목록이 비면 경매 상태를 조회하지 않는다")
+    void emptyAssignmentsSkipAuctionLookup() {
+        given(evaluationRepository.findByEvaluatorId(EVALUATOR_ID)).willReturn(List.of());
+
+        assertThat(evaluationLookupService.findMyAssignments(EVALUATOR_ID)).isEmpty();
+
+        then(auctionRepository).shouldHaveNoInteractions();
     }
 
     @Test
@@ -196,6 +226,7 @@ class EvaluationLookupServiceTest {
 
     private static Evaluation summaryOf(long evaluationId) {
         Vehicle vehicle = mock(Vehicle.class);
+        given(vehicle.getId()).willReturn(evaluationId);
         given(vehicle.getManufacturer()).willReturn(Manufacturer.HYUNDAI);
 
         Evaluation evaluation = mock(Evaluation.class);

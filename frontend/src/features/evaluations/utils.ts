@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios'
-import type { EvaluationStatus } from './types'
+import type { EvaluationAuctionStatus, EvaluationStatus } from './types'
 
 interface EvaluationProblemDetail {
   code?: string
@@ -25,15 +25,35 @@ export function formatPhone(value: string): string {
   return value
 }
 
-export function getEvaluationStatusMeta(status: EvaluationStatus, assigned: boolean) {
+export function getEvaluationStatusMeta(
+  status: EvaluationStatus,
+  assigned: boolean,
+  viewer: 'seller' | 'evaluator' = 'seller',
+) {
   if (status === 'APPROVED') {
     return { label: '진단 완료', className: 'bg-success/10 text-success border-success/20' }
   }
   if (status === 'REJECTED') {
     return { label: '반려', className: 'bg-destructive/10 text-destructive border-destructive/20' }
   }
+  if (viewer === 'evaluator') {
+    return { label: '진단 전', className: 'bg-deal-active/10 text-deal-active border-deal-active/20' }
+  }
   if (assigned) {
     return { label: '평가사 배정됨', className: 'bg-deal-active/10 text-deal-active border-deal-active/20' }
   }
   return { label: '접수됨 · 배정 대기', className: 'bg-warning/10 text-warning border-warning/20' }
+}
+
+export function getAuctionStatusMeta(status: EvaluationAuctionStatus) {
+  if (status === 'SCHEDULED') {
+    return { label: '경매 예정', className: 'bg-warning/10 text-warning border-warning/20' }
+  }
+  if (status === 'IN_PROGRESS') {
+    return { label: '경매 진행 중', className: 'bg-primary/10 text-primary border-primary/20' }
+  }
+  if (status === 'ENDED') {
+    return { label: '낙찰 완료', className: 'bg-success/10 text-success border-success/20' }
+  }
+  return { label: '유찰', className: 'bg-muted text-muted-foreground border-border' }
 }

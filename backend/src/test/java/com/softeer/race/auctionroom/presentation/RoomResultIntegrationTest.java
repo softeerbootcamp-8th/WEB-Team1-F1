@@ -5,6 +5,7 @@ import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -65,6 +66,7 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
                 .model("더 뉴 셀토스")
                 .photos("https://cdn.race.dev/seltos-1.jpg", "https://cdn.race.dev/seltos-2.jpg")
                 .diagnosticReportUrl("https://cdn.race.dev/seltos-report.pdf")
+                .keywords(VehicleKeyword.GOOD_TIRE, VehicleKeyword.UNDERBODY_INTACT)
                 .startPrice(20_000_000L)
                 .bid(ENDED_START_AT.plusMinutes(5), loser, 21_000_000L)
                 .bid(ENDED_START_AT.plusMinutes(10), winner, 22_000_000L)
@@ -94,7 +96,10 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.vehicle.imageUrls.length()").value(2),
                 jsonPath("$.vehicle.imageUrls[0]").value("https://cdn.race.dev/seltos-1.jpg"),
                 jsonPath("$.vehicle.diagnosticReportUrl")
-                        .value("https://cdn.race.dev/seltos-report.pdf"));
+                        .value("https://cdn.race.dev/seltos-report.pdf"),
+                jsonPath("$.vehicle.keywords.length()").value(2),
+                jsonPath("$.vehicle.keywords[0]").value("UNDERBODY_INTACT"),
+                jsonPath("$.vehicle.keywords[1]").value("GOOD_TIRE"));
 
         // then 3-1 : 차량 정보는 한 덩어리로 온다, 사진이 최상위에 남으면 화면이 두 군데서 조립한다
         response.andExpect(jsonPath("$.thumbnailUrl").doesNotHaveJsonPath());
@@ -110,6 +115,11 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.extensionCount").value(1),
                 jsonPath("$.startAt").value("2026-08-03T18:30:00"),
                 jsonPath("$.endAt").value("2026-08-03T18:50:10"));
+
+        // then 4-2 : 어느 입찰이 마감을 밀었는지는 곡선의 점에 남는다, 횟수만으로는 그 자리를 못 그린다
+        response.andExpectAll(
+                jsonPath("$.priceCurve[2].extended").value(false),
+                jsonPath("$.priceCurve[3].extended").value(true));
 
         // then 5 : 낙찰자는 호가와 같은 규칙으로 마스킹되고, 본인 여부는 이름 비교 없이 내려간다
         response.andExpectAll(
@@ -223,6 +233,11 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         response.andExpectAll(
                 jsonPath("$.priceCurve[0].name").doesNotHaveJsonPath(),
                 jsonPath("$.priceCurve[0].bidderId").doesNotHaveJsonPath());
+
+        // then 5 : 마감 임박에 들어온 입찰이 없어 마감을 밀어낸 점도 없다
+        response.andExpectAll(
+                jsonPath("$.extensionCount").value(0),
+                jsonPath("$.priceCurve[3].extended").value(false));
     }
 
     @Test
@@ -256,6 +271,11 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.priceCurve").isArray(),
                 jsonPath("$.priceCurve.length()").value(0),
                 jsonPath("$.bidderCount").value(0));
+
+        // 키워드가 없는 차량도 null 이 아니라 빈 배열로 내린다
+        response.andExpectAll(
+                jsonPath("$.vehicle.keywords").isArray(),
+                jsonPath("$.vehicle.keywords.length()").value(0));
     }
 
     @Test

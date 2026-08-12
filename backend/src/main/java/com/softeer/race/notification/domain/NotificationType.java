@@ -9,10 +9,6 @@ package com.softeer.race.notification.domain;
  */
 public enum NotificationType {
 
-    // 더는 발행하지 않는다. 가입 시점엔 구독이 없어 실시간으로 닿을 수 없었고, 화면이 목록에서 찾아
-    // 대신 안내하는 예외만 남았다. 이미 쌓인 알림이 이 이름을 들고 있어 상수는 지우지 않는다
-    WELCOME("환영합니다! 진행 중인 경매에 참여해 보세요.", "/auctions"),
-
     // 승인 뒤 판매자가 할 일이 출품 하나뿐이라 결과 화면이 아니라 등록 화면으로 보낸다.
     // 참조가 차량이 아니라 신청 건인 이유는 #144 참고 — 신청 상세 하나로 시세까지 채워진다
     EVAL_APPROVED("차량 평가가 승인되었습니다. 경매글을 등록해 주세요.", "/sell/auction-post?evaluationId=%d"),
@@ -22,16 +18,14 @@ public enum NotificationType {
     // 있는 곳으로 보낸다. 반려 뒤 할 일은 사유를 읽고 다시 신청할지 정하는 것이고, 둘 다 상세에서 한다
     EVAL_REJECTED("차량 평가가 반려되었습니다. 사유를 확인해 주세요.", "/mypage/evaluations/%d"),
 
+    // 시작 알림을 누른 사람이 할 일은 입찰이고, 그건 경매방에서만 한다. AUCTION_ENDED 와 같은 주소를
+    // 쓰는 것은 같은 경매의 시작과 종료가 서로 다른 곳으로 가면 안 되기 때문이다.
+    // 차량명은 NotificationContent 가 채운다 — 여러 건이 쌓이면 어느 차인지 문구로 가려야 한다
+    AUCTION_STARTED("경매가 시작되었습니다.", "/auctions/%d"),
+
     // 낙찰과 동시에 거래가 만들어지므로 경매방이 아니라 거래로 보낸다. 경매방은 결과 확인 5분이
     // 지나면 볼 것이 없지만, 낙찰자가 실제로 해야 할 일은 거래 화면에 있다
     AUCTION_WON("낙찰되었습니다. 거래를 진행해 주세요.", "/mypage/deals/%d"),
-
-    // 거래가 아직 만들어지지 않아 임시로 둔다. #125 에서 발행을 AUCTION_WON 으로 옮긴다.
-    // 그때도 이 상수는 지우지 못한다 — 저장된 알림이 자기 종류를 이름으로 들고 있어서,
-    // 지우면 그 행을 읽는 순간 터진다.
-    // AUCTION_WON 의 목적지만 바꾸지 않은 이유: 같은 종류인데 참조가 거래와 경매로 갈리면
-    // 목적지를 되돌리는 순간 여기서 쌓인 알림이 엉뚱한 거래를 가리킨다
-    AUCTION_WON_RESULT("낙찰되었습니다. 결과를 확인해 주세요.", "/auctions/%d"),
 
     // 직전 최고 입찰자에게 간다. 차량·새 입찰자·금액은 NotificationContent가 완성한다.
     OUTBID("내 입찰보다 높은 입찰이 등록되었습니다.", "/auctions/%d"),
@@ -50,11 +44,7 @@ public enum NotificationType {
     DEAL_SELLER_SUBMIT_REQUIRED("구매자가 구매를 확정했습니다. 서류와 탁송 일정을 등록해 주세요.", "/mypage/deals/%d"),
     DEAL_BUYER_SCHEDULE_REQUIRED("판매자가 탁송 일정을 등록했습니다. 인도 일정을 정해 주세요.", "/mypage/deals/%d"),
     DEAL_CONFIRMED("거래가 확정되었습니다. 인도 일정을 확인해 주세요.", "/mypage/deals/%d"),
-    DEAL_CANCELLED("거래가 취소되었습니다.", "/mypage/deals/%d"),
-
-    // 단계별 종류로 대체돼 더는 발행되지 않는다. 저장된 알림이 자기 종류를 이름으로 들고 있어서,
-    // 지우면 그 행을 읽는 순간 터진다
-    DEAL_STATUS_CHANGED("거래가 다음 단계로 넘어갔습니다.", "/mypage/deals/%d");
+    DEAL_CANCELLED("거래가 취소되었습니다.", "/mypage/deals/%d");
 
     private static final String REFERENCE = "%d";
 

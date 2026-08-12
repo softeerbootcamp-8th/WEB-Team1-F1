@@ -11,8 +11,8 @@ export type ViewerStanding = 'SELLER' | 'WON' | 'LOST' | 'ONLOOKER'
 /**
  * 서버가 판정해 준 값 셋으로 자리를 정한다.
  *
- * 판매자를 먼저 본다. 지금은 자기 차에 입찰하는 것을 막지 않는데(#163), 그런 사람에게는
- * "낙찰받았어요"보다 "내 차가 팔렸어요"가 맞는 말이다.
+ * 서버가 자기 차 입찰을 막으므로 판매자가 낙찰자일 수는 없다. 그래도 판매자를 먼저 보는 것은
+ * 그 규칙이 흔들려도 판매자에게는 "낙찰받았어요"보다 "내 차가 팔렸어요"가 맞는 말이기 때문이다.
  */
 export function viewerStandingOf(result: RoomResultView): ViewerStanding {
   if (result.sellerIsMine) return 'SELLER'
@@ -29,6 +29,8 @@ export interface CurvePoint {
   y: number
   amount: number
   mine: boolean
+  /** 이 입찰로 마감이 밀렸는지, 앞에 붙는 시작가 점은 입찰이 아니라 항상 거짓이다 */
+  extended: boolean
 }
 
 export interface CurveShape {
@@ -71,6 +73,7 @@ export function curveShapeOf(result: RoomResultView): CurveShape | null {
     y: heightOf(amount),
     amount,
     mine: index === 0 ? false : result.priceCurve[index - 1].mine,
+    extended: index === 0 ? false : result.priceCurve[index - 1].extended,
   }))
 
   return {

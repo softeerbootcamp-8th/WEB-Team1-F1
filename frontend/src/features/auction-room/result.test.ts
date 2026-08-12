@@ -17,6 +17,7 @@ function result(over: Partial<RoomResultView> = {}): RoomResultView {
       modelYear: 2022,
       mileage: 41_000,
       fuelType: 'GASOLINE',
+      keywords: [],
       imageUrls: [],
       diagnosticReportUrl: 'https://cdn.race.dev/casper.pdf',
     },
@@ -46,7 +47,7 @@ function point(minutesFromStart: number, amount: number, mine = false): PricePoi
   const date = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`
   const time = `${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}`
 
-  return { at: `${date}T${time}`, amount, mine }
+  return { at: `${date}T${time}`, amount, mine, extended: false }
 }
 
 // 화면의 첫 문장이 여기서 갈린다. 네 갈래가 각각 다른 말을 해야 한다
@@ -63,7 +64,7 @@ describe('viewerStandingOf', () => {
     expect(viewerStandingOf(result({ sellerIsMine: true }))).toBe('SELLER')
   })
 
-  // 지금은 자기 차에 입찰하는 것을 막지 않는다(#163). 그 사람에게는 낙찰보다 판매가 앞선 사실이다
+  // 서버가 막으므로 실제로는 나올 수 없는 조합이다. 그 규칙이 흔들려도 판매가 앞서는지를 여기서 고정한다
   it('자기 차를 자기가 받아도 판매자로 본다', () => {
     const selfDealt = result({ sellerIsMine: true, winner: { name: '최*매', mine: true } })
 
@@ -149,5 +150,17 @@ describe('curveShapeOf', () => {
 
     expect(shape?.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true)
     expect(shape?.points.at(-1)?.x).toBe(0)
+  })
+
+  // 마감이 밀린 자리를 그리려면 어느 점이 마감을 밀었는지가 좌표까지 따라와야 한다
+  it('마감을 밀어낸 입찰 표시를 좌표에 실어 보낸다', () => {
+    const shape = curveShapeOf(
+      result({
+        priceCurve: [point(10, 9_300_000), { ...point(19, 10_100_000), extended: true }],
+      }),
+    )
+
+    // 앞에 붙는 시작가 점은 입찰이 아니라 마감을 밀 수 없다
+    expect(shape?.points.map((p) => p.extended)).toEqual([false, false, true])
   })
 })

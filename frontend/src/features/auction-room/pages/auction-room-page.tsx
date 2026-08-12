@@ -13,6 +13,7 @@ import { BidLedger } from '../components/bid-ledger'
 import { WaitingRoom } from '../components/waiting-room'
 import { CarDetail } from '../components/car-detail'
 import { BackLink } from '../components/back-link'
+import { KeywordBadges } from '../components/keyword-badges'
 import { RoomStateBanner, RoomStateBar } from '../components/room-state-banner'
 import type { RoomStateMode } from '../components/room-state-banner'
 import type { AuctionRoomView, RoomVehicle } from '../types'
@@ -50,6 +51,7 @@ function RoomHeading({ vehicle, mode }: { vehicle: RoomVehicle; mode: RoomStateM
             <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
               {MANUFACTURER_LABEL[vehicle.manufacturer]} {vehicle.model}
             </h1>
+            <KeywordBadges keywords={vehicle.keywords} />
           </div>
         </div>
 
@@ -238,6 +240,9 @@ function LiveRoom({
             currentPrice={room.currentPrice}
             increment={increment}
             nextMin={nextMin}
+            sellerIsMine={room.sellerIsMine}
+            endAt={room.endAt}
+            clockOffset={clockOffset}
             onBid={placeBid}
           />
         </div>

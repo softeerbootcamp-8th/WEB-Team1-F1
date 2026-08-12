@@ -3,6 +3,7 @@ package com.softeer.race.auctionroom.presentation.response;
 import com.softeer.race.auctionroom.domain.VehicleSummary;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
@@ -24,6 +25,10 @@ public record VehicleResponse(
         @Schema(description = "연료", example = "GASOLINE")
         FuelType fuelType,
 
+        @Schema(description = "평가사가 매긴 키워드, 목록과 같은 표시 순서이고 없으면 빈 배열",
+                example = "[\"ACCIDENT_FREE\", \"NO_LEAK\"]")
+        List<VehicleKeyword> keywords,
+
         @Schema(description = "차량 사진, 등록 순서 그대로이고 첫 장이 대표다",
                 example = "[\"https://cdn.race.dev/avante-1.jpg\"]")
         List<String> imageUrls,
@@ -40,6 +45,7 @@ public record VehicleResponse(
                 vehicle.modelYear(),
                 vehicle.mileage(),
                 vehicle.fuelType(),
+                vehicle.keywords(),
                 vehicle.imageUrls(),
                 vehicle.diagnosticReportUrl());
     }

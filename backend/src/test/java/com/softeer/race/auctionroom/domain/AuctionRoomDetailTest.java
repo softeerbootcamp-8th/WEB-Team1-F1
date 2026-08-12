@@ -79,6 +79,7 @@ class AuctionRoomDetailTest {
 
     private static final long WINNER_ID = 7L;
     private static final long SELLER_ID = 3L;
+    private static final long VEHICLE_ID = 5L;
     private static final long START_PRICE = 10_000_000L;
 
     private static AuctionRoomDetail sold(long winningPrice) {
@@ -101,6 +102,7 @@ class AuctionRoomDetailTest {
                 START_AT,
                 START_AT.plusMinutes(20),
                 0,
+                VEHICLE_ID,
                 Manufacturer.HYUNDAI,
                 "아반떼 CN7",
                 2022,

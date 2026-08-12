@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
+import { returningToList } from '@/features/auctions/use-auction-list'
 
 /**
  * 왔던 목록으로 돌아가는 버튼. 목록 카드가 state.from에 자기 주소(탭 포함)를 실어 보내고,
@@ -20,7 +21,9 @@ export function BackLink() {
 
   return (
     <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
-      <Link to={target}>
+      {/* 되돌아가는 이동이라고 목적지에 알린다. 앞으로 가는 이동이어서 목록이 스스로는
+          구분할 수 없다 — 표시가 없으면 목록은 새 진입으로 보고 맨 위부터 그린다 */}
+      <Link to={target} state={returningToList}>
         <ArrowLeft className="size-4" />
         뒤로
       </Link>

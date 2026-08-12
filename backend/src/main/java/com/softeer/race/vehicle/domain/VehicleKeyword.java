@@ -1,5 +1,8 @@
 package com.softeer.race.vehicle.domain;
 
+import java.util.Collection;
+import java.util.List;
+
 /**
  * 평가사가 방문해 확인한 것을 차량에 매기는 키워드. 한 차량에 여러 개가 붙는다.
  * <p>
@@ -28,24 +31,45 @@ package com.softeer.race.vehicle.domain;
  */
 public enum VehicleKeyword {
 
-    /** 완전무사고. 외부패널에 교환도 판금도 없다 */
+    /**
+     * 완전무사고. 외부패널에 교환도 판금도 없다
+     */
     ACCIDENT_FREE,
 
-    /** 단순교환 무사고. 교환이나 판금은 있으나 프레임은 정상이다 */
+    /**
+     * 단순교환 무사고. 교환이나 판금은 있으나 프레임은 정상이다
+     */
     MINOR_EXCHANGE,
 
-    /** 누유가 없다 */
+    /**
+     * 누유가 없다
+     */
     NO_LEAK,
 
-    /** 파손된 부위가 없다 */
+    /**
+     * 파손된 부위가 없다
+     */
     NO_DAMAGE,
 
-    /** 하부에 부식이나 손상이 없다 */
+    /**
+     * 하부에 부식이나 손상이 없다
+     */
     UNDERBODY_INTACT,
 
-    /** 타이어 잔량이 충분하다 */
+    /**
+     * 타이어 잔량이 충분하다
+     */
     GOOD_TIRE,
 
-    /** 실내 상태가 깨끗하다 */
-    CLEAN_INTERIOR
+    /**
+     * 실내 상태가 깨끗하다
+     */
+    CLEAN_INTERIOR;
+
+    /**
+     * 받은 키워드를 표시 순서로 정렬한 목록
+     */
+    public static List<VehicleKeyword> inDisplayOrder(Collection<VehicleKeyword> keywords) {
+        return keywords.stream().sorted().toList();
+    }
 }

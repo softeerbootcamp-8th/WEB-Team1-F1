@@ -15,7 +15,8 @@ public enum AuctionErrorCode implements ErrorCode {
     NOT_AUCTION_SELLER(FORBIDDEN, "본인이 등록한 경매만 처리 할 수 있습니다."),
     AUCTION_ROOM_ALREADY_OPEN(CONFLICT, "이미 경매방이 열린 경매는 수정할 수 없습니다."),
     AUCTION_NOT_ENDED(CONFLICT, "종료되지 않은 경매는 삭제할 수 없습니다."),
-    VEHICLE_NOT_APPROVED(CONFLICT, "평가사 승인이 완료된 차량만 경매로 등록할 수 있습니다.");
+    VEHICLE_NOT_APPROVED(CONFLICT, "평가사 승인이 완료된 차량만 경매로 등록할 수 있습니다."),
+    START_ALERT_NOT_OPEN(CONFLICT, "시작 전인 경매만 시작 알림을 신청할 수 있습니다.");
 
     private final HttpStatus status;
     private final String message;

@@ -1,6 +1,6 @@
 import type { RoomPhase } from '@/features/auctions/types'
 // 차량 제원 어휘는 시세 조회 화면이 먼저 정의했고 백엔드 enum과 같은 값이라 그대로 쓴다
-import type { FuelType, Manufacturer } from '@/features/quote/types'
+import type { FuelType, Manufacturer, VehicleKeyword } from '@/features/quote/types'
 import type { UserRole } from '@/types/domain'
 
 export type { RoomPhase }
@@ -27,6 +27,8 @@ export interface RoomVehicle {
   modelYear: number
   mileage: number
   fuelType: FuelType
+  /** 서버가 표시 순서로 정렬해 보낸다, 진단 키워드가 없으면 빈 배열 */
+  keywords: VehicleKeyword[]
   imageUrls: string[]
   /** 출품된 차량은 결과 제출을 거쳤으므로 서버가 항상 채워 보낸다 */
   diagnosticReportUrl: string
@@ -60,6 +62,8 @@ export interface AuctionRoomView {
   bidderCount: number
   bidCount: number
   winner: RoomWinner | null
+  /** 조회한 사람이 이 차를 내놓은 사람인지, 판매자는 자기 차량에 입찰할 수 없다 */
+  sellerIsMine: boolean
   recentBids: RecentBid[]
 }
 
@@ -109,6 +113,8 @@ export interface PricePoint {
   at: string
   amount: number
   mine: boolean
+  /** 이 입찰로 마감이 밀렸는지 */
+  extended: boolean
 }
 
 /** 조회한 사람의 성적. 입찰한 적이 없으면 이 객체 자체가 null 이다 */

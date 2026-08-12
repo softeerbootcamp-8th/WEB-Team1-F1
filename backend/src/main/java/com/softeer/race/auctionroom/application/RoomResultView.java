@@ -7,6 +7,7 @@ import com.softeer.race.auctionroom.domain.BidderStanding;
 import com.softeer.race.auctionroom.domain.PricePoint;
 import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.auctionroom.domain.VehicleSummary;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,12 +39,12 @@ public record RoomResultView(
     static RoomResultView of(
             AuctionRoomDetail detail, AuctionOutcome outcome, BidStats stats,
             long viewerId, BidderStanding standing, List<PricePoint> priceCurve,
-            List<String> imageUrls, LocalDateTime serverTime) {
+            List<String> imageUrls, List<VehicleKeyword> keywords, LocalDateTime serverTime) {
 
         return new RoomResultView(
                 detail.auctionId(),
                 outcome,
-                detail.vehicle(imageUrls),
+                detail.vehicle(imageUrls, keywords),
                 detail.startPrice(),
                 detail.winningPrice().orElse(null),
                 detail.winnerName().orElse(null),
@@ -56,6 +57,10 @@ public record RoomResultView(
                 serverTime,
                 detail.extensionCount(),
                 stats,
-                priceCurve.stream().map(point -> PricePointView.of(point, viewerId)).toList());
+                // 마감이 어느 입찰에 밀렸는지는 저장돼 있지 않아 점마다 되짚어 묻는다
+                priceCurve.stream()
+                        .map(point -> PricePointView.of(point, viewerId,
+                                point.pushedDeadline(detail.startTime())))
+                        .toList());
     }
 }

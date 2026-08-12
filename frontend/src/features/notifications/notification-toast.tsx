@@ -9,6 +9,7 @@ import { NOTIFICATION_ICON } from './notification-icon'
  * 이동까지 할 수 있는 안내라면 읽는 시간과 누르는 시간이 둘 다 필요하다
  */
 const DURATION_MILLIS = 6_000
+const SERVER_NOTIFICATION_TOASTER_ID = 'server-notifications'
 
 /**
  * 새 알림 안내.
@@ -27,7 +28,7 @@ export function showNotificationToast(notification: AppNotification, onOpen: () 
 
   toast.custom(
     (id) => (
-      <div className="bg-popover text-popover-foreground border-border relative w-[27rem] overflow-hidden rounded-xl border shadow-lg">
+      <div className="bg-popover text-popover-foreground border-border relative w-full overflow-hidden rounded-xl border shadow-lg">
         {/* 본문 전체가 이동 영역이다. X 를 덮지 않도록 오른쪽에 여백을 둔다 */}
         <button
           type="button"
@@ -58,6 +59,12 @@ export function showNotificationToast(notification: AppNotification, onOpen: () 
         </button>
       </div>
     ),
-    { duration: DURATION_MILLIS },
+    // 일반 토스트의 전역 X 대신 이 카드에 포함된 우측 상단 X만 사용한다
+    {
+      duration: DURATION_MILLIS,
+      closeButton: false,
+      toasterId: SERVER_NOTIFICATION_TOASTER_ID,
+      unstyled: true,
+    },
   )
 }

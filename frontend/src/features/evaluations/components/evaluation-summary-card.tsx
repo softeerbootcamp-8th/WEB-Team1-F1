@@ -5,20 +5,43 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { MANUFACTURER_LABEL } from '@/features/quote/types'
 import { formatDateTime } from '@/lib/format'
 import type { EvaluationSummary } from '../types'
-import { formatVisitDate, getEvaluationStatusMeta } from '../utils'
+import { formatVisitDate, getAuctionStatusMeta, getEvaluationStatusMeta } from '../utils'
 
 interface EvaluationSummaryCardProps {
   evaluation: EvaluationSummary
   action?: React.ReactNode
   layout?: 'card' | 'list'
+  viewer?: 'seller' | 'evaluator'
 }
 
 export function EvaluationSummaryCard({
   evaluation,
   action,
   layout = 'card',
+  viewer = 'seller',
 }: EvaluationSummaryCardProps) {
-  const status = getEvaluationStatusMeta(evaluation.status, evaluation.assigned)
+  const status = getEvaluationStatusMeta(evaluation.status, evaluation.assigned, viewer)
+  const auctionStatus = evaluation.auctionStatus
+    ? viewer === 'evaluator'
+      ? {
+          label: '경매 등록됨',
+          className: 'bg-primary/10 text-primary border-primary/20',
+        }
+      : getAuctionStatusMeta(evaluation.auctionStatus)
+    : null
+
+  const statusBadges = (
+    <div className="flex flex-wrap gap-2">
+      <Badge variant="outline" className={status.className}>
+        {status.label}
+      </Badge>
+      {auctionStatus && (
+        <Badge variant="outline" className={auctionStatus.className}>
+          {auctionStatus.label}
+        </Badge>
+      )}
+    </div>
+  )
 
   if (layout === 'list') {
     return (
@@ -29,9 +52,7 @@ export function EvaluationSummaryCard({
               <h2 className="text-lg font-semibold">
                 {MANUFACTURER_LABEL[evaluation.manufacturer]} {evaluation.model}
               </h2>
-              <Badge variant="outline" className={status.className}>
-                {status.label}
-              </Badge>
+              {statusBadges}
             </div>
 
             <p className="text-muted-foreground mt-2 text-sm">
@@ -75,9 +96,7 @@ export function EvaluationSummaryCard({
               {evaluation.modelYear}년식 · {evaluation.plateNumber}
             </p>
           </div>
-          <Badge variant="outline" className={status.className}>
-            {status.label}
-          </Badge>
+          {statusBadges}
         </div>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">

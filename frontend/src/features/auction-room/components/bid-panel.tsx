@@ -7,30 +7,55 @@ import { Button } from '@/components/ui/button'
 import { formatKRW, formatManwon } from '@/lib/format'
 import { getErrorMessage } from '@/lib/axios'
 import { useAuth } from '@/features/auth/auth-context'
+import { useCountdown } from '@/hooks/use-countdown'
+
+import { acceptsBidAt } from '../deadline'
+import { bidBlockOf, type BidBlock } from '../bid-eligibility'
 
 interface BidPanelProps {
   currentPrice: number
   // 구간표를 받기 전에는 상승가와 최소 입찰가를 정할 수 없다
   increment: number | null
   nextMin: number | null
-  disabled?: boolean
+  /** 조회한 사람이 이 차를 내놓은 사람인지, 서버가 판정해 준다 */
+  sellerIsMine: boolean
+  /** 서버가 정한 마감 시각, 마감 임박 입찰로 밀리면 새 값이 온다 */
+  endAt: string
+  /** 서버 시각 - 브라우저 시계 */
+  clockOffset: number
   onBid: (amount: number) => Promise<void>
 }
 
+// 문구는 서버 것을 그대로 쓴다, 눌러서 토스트로 보던 말을 같은 자리에서 먼저 본다
+const BLOCK_NOTICE: Record<BidBlock, { title: string; description: string }> = {
+  EVALUATOR: { title: '평가사 계정입니다', description: '평가사는 입찰할 수 없습니다.' },
+  SELLER: {
+    title: '내가 내놓은 차량입니다',
+    description: '판매자는 자기 차량에 입찰할 수 없습니다.',
+  },
+}
+
 /**
- * 입찰 패널. 로그인한 회원이면 누구나(개인·딜러 모두) 입찰 가능.
+ * 입찰 패널. 로그인한 개인·딜러 회원이 입찰한다.
+ * 판매자는 자기 차량에, 평가사는 어느 차량에도 입찰할 수 없어 폼 대신 안내를 본다.
  * 금액은 직접 입력하지 않고 호가 단위만큼 -/+로만 조정한다 — 단위에 안 맞는 금액을 낼 수 없다.
  */
 export function BidPanel({
   currentPrice,
   increment,
   nextMin,
-  disabled,
+  sellerIsMine,
+  endAt,
+  clockOffset,
   onBid,
 }: BidPanelProps) {
-  const { isAuthenticated } = useAuth()
+  const { user, isAuthenticated } = useAuth()
 
-  if (!isAuthenticated) {
+  // 1초마다 다시 그려 마감을 넘긴 순간을 잡는다, 마지막 1초는 제출 직전 재확인이 막는다
+  // 조기 반환 앞에 둔다, 뒤에 두면 로그인 상태가 바뀔 때 훅 수가 달라진다
+  useCountdown(endAt, 1000, clockOffset)
+
+  if (!isAuthenticated || !user) {
     return (
       <div className="rounded-xl border p-5 text-center">
         <p className="text-muted-foreground mb-3 text-sm">
@@ -40,6 +65,20 @@ export function BidPanel({
           <Link to="/login">로그인하고 입찰하기</Link>
         </Button>
       </div>
+    )
+  }
+
+  // 이 둘은 기다린다고 열리지 않는다. 잠긴 폼을 남기면 절대 입찰하지 않을 사람에게
+  // 호가 단위와 최소 입찰가를 계속 안내하게 된다
+  const block = bidBlockOf(user.role, sellerIsMine)
+  if (block !== null) {
+    return <BidBlocked {...BLOCK_NOTICE[block]} />
+  }
+
+  // 마감 뒤에는 서버가 어떤 입찰도 받지 않는다, 화면이 폼을 열어 두면 눌러서 실패를 받게 된다
+  if (!acceptsBidAt(endAt, Date.now() + clockOffset)) {
+    return (
+      <BidBlocked title="입찰이 마감됐습니다" description="곧 결과 화면으로 넘어갑니다." />
     )
   }
 
@@ -60,9 +99,20 @@ export function BidPanel({
       currentPrice={currentPrice}
       increment={increment}
       nextMin={nextMin}
-      disabled={disabled}
+      endAt={endAt}
+      clockOffset={clockOffset}
       onBid={onBid}
     />
+  )
+}
+
+// 입찰 폼과 같은 상자를 쓴다, 자리도 테두리도 그대로라 이 사람만 레이아웃이 달라지지 않는다
+function BidBlocked({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-xl border p-5 text-center">
+      <p className="text-sm font-semibold">{title}</p>
+      <p className="text-muted-foreground mt-1 text-sm">{description}</p>
+    </div>
   )
 }
 
@@ -71,13 +121,15 @@ function BidForm({
   currentPrice,
   increment,
   nextMin,
-  disabled,
+  endAt,
+  clockOffset,
   onBid,
 }: {
   currentPrice: number
   increment: number
   nextMin: number
-  disabled?: boolean
+  endAt: string
+  clockOffset: number
   onBid: (amount: number) => Promise<void>
 }) {
   const [amount, setAmount] = useState(nextMin)
@@ -90,6 +142,9 @@ function BidForm({
   }, [nextMin, increment])
 
   const submit = async () => {
+    // 잠금은 1초마다 다시 그려 걸리므로 마지막 1초가 남는다, 보내기 직전에 같은 규칙으로 한 번 더 본다
+    if (!acceptsBidAt(endAt, Date.now() + clockOffset)) return
+
     setIsSubmitting(true)
     try {
       await onBid(amount)
@@ -117,7 +172,7 @@ function BidForm({
           variant="ghost"
           size="icon"
           className="h-11 rounded-none"
-          disabled={disabled || amount <= nextMin}
+          disabled={amount <= nextMin}
           onClick={() => setAmount((prev) => Math.max(nextMin, prev - increment))}
           aria-label="입찰가 낮추기"
         >
@@ -131,7 +186,6 @@ function BidForm({
           variant="ghost"
           size="icon"
           className="h-11 rounded-none"
-          disabled={disabled}
           onClick={() => setAmount((prev) => prev + increment)}
           aria-label="입찰가 높이기"
         >
@@ -154,7 +208,7 @@ function BidForm({
         type="button"
         size="lg"
         className="mt-4 w-full"
-        disabled={disabled || isSubmitting || amount < nextMin}
+        disabled={isSubmitting || amount < nextMin}
         onClick={submit}
       >
         입찰

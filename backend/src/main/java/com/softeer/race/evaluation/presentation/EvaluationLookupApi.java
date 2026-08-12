@@ -17,7 +17,8 @@ public interface EvaluationLookupApi {
 
                     status가 APPROVED면 평가사의 진단이 끝난 것이고, 그때부터 그 차량을 경매로
                     출품할 수 있습니다. 진단 결과(주행거리 · 시세 · 사진 · 진단서)는 이 목록에
-                    없으며 상세 조회에서 받습니다.
+                    없으며 상세 조회에서 받습니다. auctionStatus는 최신 경매 상태이고, 경매 이력이
+                    없으면 null입니다.
                     """)
     @ApiResponse(responseCode = "200", description = "없으면 빈 배열입니다.")
     @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
@@ -29,9 +30,11 @@ public interface EvaluationLookupApi {
 
                     아직 수락하지 않은 신청은 배정 대기 목록(GET /api/evaluations/assignable)에
                     있습니다. 판매자 연락처는 수락할 때 받은 응답에 있고 이 목록에는 없습니다.
+                    auctionStatus로 차량의 최신 경매 상태를 확인할 수 있습니다.
                     """)
     @ApiResponse(responseCode = "200", description = "없으면 빈 배열입니다.")
     @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
+    @ApiResponse(responseCode = "403", description = "평가사 역할이 아닌 경우입니다.")
     ResponseEntity<EvaluationSummariesResponse> findMyAssignments(AuthenticatedUser authenticatedUser);
 
     @Operation(summary = "신청 상세",

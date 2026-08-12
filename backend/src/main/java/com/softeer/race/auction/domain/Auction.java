@@ -99,6 +99,13 @@ public class Auction extends BaseTimeEntity {
     }
 
     /**
+     * 그 입찰이 마감을 밀어냈는지, 끝난 경매를 되짚을 때 쓴다
+     */
+    public static boolean isDeadlineExtending(LocalDateTime startTime, LocalDateTime bidAt) {
+        return !bidAt.isBefore(startTime.plusMinutes(DURATION_MINUTES).minus(SOFT_CLOSE_WINDOW));
+    }
+
+    /**
      * 마감 임박 입찰이면 마감을 입찰 시각 기준으로 다시 채우고 연장 횟수를 올린다
      */
     public void extendIfClosingSoon(LocalDateTime bidAt) {
@@ -174,6 +181,16 @@ public class Auction extends BaseTimeEntity {
 
         winner = topBidder;
         status = topBidder == null ? AuctionStatus.FAILED : AuctionStatus.ENDED;
+    }
+
+    /**
+     * 시작 알림을 신청할 수 있는 상태인지
+     * <p>
+     * 시작 시각 정각은 신청이 안 된다. 그 순간부터는 isStartableAt 이 참이라 시작 전이 대상이고,
+     * 두 판정이 같은 시각에 동시에 참이면 "시작 전까지만 신청"이라는 규칙에 경계가 겹친다.
+     */
+    public boolean isStartAlertOpenAt(LocalDateTime now) {
+        return status == AuctionStatus.SCHEDULED && now.isBefore(startTime);
     }
 
     /**

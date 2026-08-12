@@ -1,5 +1,6 @@
 package com.softeer.race.evaluation.presentation.response;
 
+import com.softeer.race.auction.domain.AuctionStatus;
 import com.softeer.race.evaluation.application.dto.info.EvaluationSummaryInfo;
 import com.softeer.race.vehicle.domain.Manufacturer;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -27,6 +28,13 @@ public record EvaluationSummaryResponse(
                 example = "true")
         boolean assigned,
 
+        @Schema(description = "이 차량의 최신 경매 상태. 경매 이력이 없으면 null입니다. "
+                + "SCHEDULED는 예정, IN_PROGRESS는 진행 중, ENDED는 낙찰 종료, FAILED는 유찰입니다",
+                example = "IN_PROGRESS",
+                allowableValues = {"SCHEDULED", "IN_PROGRESS", "ENDED", "FAILED"},
+                nullable = true)
+        AuctionStatus auctionStatus,
+
         @Schema(description = "차량 번호판", example = "12가3456")
         String plateNumber,
 
@@ -51,7 +59,7 @@ public record EvaluationSummaryResponse(
 
     public static EvaluationSummaryResponse from(EvaluationSummaryInfo info) {
         return new EvaluationSummaryResponse(
-                info.evaluationId(), info.status(), info.assigned(), info.plateNumber(),
+                info.evaluationId(), info.status(), info.assigned(), info.auctionStatus(), info.plateNumber(),
                 info.manufacturer(), info.model(), info.modelYear(),
                 info.visitDate(), info.visitAddress(), info.requestedAt());
     }

@@ -1,5 +1,8 @@
 package com.softeer.race.evaluation.application;
 
+import com.softeer.race.auction.domain.AuctionRepository;
+import com.softeer.race.auction.domain.AuctionStatus;
+import com.softeer.race.auction.domain.VehicleAuctionStatusRow;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.info.EvaluationDetailInfo;
 import com.softeer.race.evaluation.application.dto.info.EvaluationSummaryInfo;
@@ -13,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 방문견적 신청을 판매자와 평가사가 각자의 자리에서 조회한다.
@@ -29,6 +34,7 @@ import java.util.List;
 public class EvaluationLookupService {
 
     private final EvaluationRepository evaluationRepository;
+    private final AuctionRepository auctionRepository;
     private final VehicleImageRepository vehicleImageRepository;
     private final VehicleKeywordService vehicleKeywordService;
 
@@ -36,17 +42,35 @@ public class EvaluationLookupService {
      * 판매자가 낸 신청들. 최신 접수부터.
      */
     public List<EvaluationSummaryInfo> findMyRequests(long sellerId) {
-        return evaluationRepository.findBySellerId(sellerId).stream()
-                .map(EvaluationSummaryInfo::from)
-                .toList();
+        return summaries(evaluationRepository.findBySellerId(sellerId));
     }
 
     /**
      * 평가사가 맡은 신청들. 방문일이 임박한 순으로.
      */
     public List<EvaluationSummaryInfo> findMyAssignments(long evaluatorId) {
-        return evaluationRepository.findByEvaluatorId(evaluatorId).stream()
-                .map(EvaluationSummaryInfo::from)
+        return summaries(evaluationRepository.findByEvaluatorId(evaluatorId));
+    }
+
+    /** 목록의 차량들에 최신 경매 상태를 조회 한 번으로 붙인다. */
+    private List<EvaluationSummaryInfo> summaries(List<Evaluation> evaluations) {
+        if (evaluations.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> vehicleIds = evaluations.stream()
+                .map(evaluation -> evaluation.getVehicle().getId())
+                .distinct()
+                .toList();
+        Map<Long, AuctionStatus> statuses = auctionRepository
+                .findLatestStatusesByVehicleIdIn(vehicleIds).stream()
+                .collect(Collectors.toMap(
+                        VehicleAuctionStatusRow::vehicleId,
+                        VehicleAuctionStatusRow::status));
+
+        return evaluations.stream()
+                .map(evaluation -> EvaluationSummaryInfo.from(
+                        evaluation, statuses.get(evaluation.getVehicle().getId())))
                 .toList();
     }
 

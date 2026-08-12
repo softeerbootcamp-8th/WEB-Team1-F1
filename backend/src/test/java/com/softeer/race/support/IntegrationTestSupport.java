@@ -9,6 +9,7 @@ import com.softeer.race.support.seed.AuctionRoomSeeder;
 import com.softeer.race.support.seed.UserSeeder;
 import com.softeer.race.user.domain.UserRepository;
 import com.softeer.race.vehicle.domain.VehicleImageRepository;
+import com.softeer.race.vehicle.domain.VehicleKeywordTagRepository;
 import com.softeer.race.vehicle.domain.VehicleRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,14 +75,15 @@ public abstract class IntegrationTestSupport {
     void createSeeders(UserRepository userRepository,
                        VehicleRepository vehicleRepository,
                        VehicleImageRepository vehicleImageRepository,
+                       VehicleKeywordTagRepository vehicleKeywordTagRepository,
                        AuctionPostRepository auctionPostRepository,
                        AuctionRepository auctionRepository,
                        BidRepository bidRepository,
                        AuctionStarter auctionStarter,
                        AuctionCloser auctionCloser) {
         users = new UserSeeder(userRepository);
-        rooms = new AuctionRoomSeeder(vehicleRepository, vehicleImageRepository, auctionPostRepository,
-                auctionRepository, bidRepository, auctionStarter, auctionCloser);
+        rooms = new AuctionRoomSeeder(vehicleRepository, vehicleImageRepository, vehicleKeywordTagRepository,
+                auctionPostRepository, auctionRepository, bidRepository, auctionStarter, auctionCloser);
     }
 
     // 부모 콜백이 자식보다 먼저 돌아, 앞 테스트가 건 시각을 자식이 자기 시각을 걸기 전에 푼다

@@ -69,7 +69,7 @@ class AuctionServiceTest {
     @DisplayName("경매글을 등록하면 경매글과 경매과 함께 저장된다.")
     void create_성공() {
         Vehicle vehicle = diagnosedVehicle(SELLER_ID);
-        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
+        given(vehicleRepository.findByIdForUpdate(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(auctionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
@@ -83,7 +83,7 @@ class AuctionServiceTest {
     void create_소유자_아님_거부() {
         long strangerId = SELLER_ID + 1;
         Vehicle vehicle = vehicle(SELLER_ID);
-        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
+        given(vehicleRepository.findByIdForUpdate(VEHICLE_ID)).willReturn(Optional.of(vehicle));
 
         assertThatThrownBy(() -> service.create(strangerId, VEHICLE_ID, START_PRICE, VALID_START_AT))
                 .isInstanceOf(BusinessException.class)
@@ -99,7 +99,7 @@ class AuctionServiceTest {
     void create_미승인_차량_거부() {
         Vehicle vehicle = vehicle(SELLER_ID);
         given(vehicle.isDiagnosed()).willReturn(false);
-        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
+        given(vehicleRepository.findByIdForUpdate(VEHICLE_ID)).willReturn(Optional.of(vehicle));
 
         assertThatThrownBy(() -> service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT))
                 .isInstanceOf(BusinessException.class)
@@ -115,7 +115,7 @@ class AuctionServiceTest {
     void create_승인검사가_중복검사보다_먼저() {
         Vehicle vehicle = vehicle(SELLER_ID);
         given(vehicle.isDiagnosed()).willReturn(false);
-        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
+        given(vehicleRepository.findByIdForUpdate(VEHICLE_ID)).willReturn(Optional.of(vehicle));
 
         assertThatThrownBy(() -> service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT))
                 .isInstanceOf(BusinessException.class);
@@ -127,7 +127,7 @@ class AuctionServiceTest {
     @DisplayName("이미 진행 중인 경매가 있는 차량은 다시 등록할 수 없다.")
     void create_중복_경매_거부() {
         Vehicle vehicle = diagnosedVehicle(SELLER_ID);
-        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
+        given(vehicleRepository.findByIdForUpdate(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         given(auctionRepository.existsActiveByVehicleId(any(), any())).willReturn(true);
 
         assertThatThrownBy(() -> service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT))
@@ -141,7 +141,7 @@ class AuctionServiceTest {
     @DisplayName("유찰된 경매는 재등록 판단 대상 상태에서 제외된다.")
     void create_유찰은_활성상태_아님() {
         Vehicle vehicle = diagnosedVehicle(SELLER_ID);
-        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.of(vehicle));
+        given(vehicleRepository.findByIdForUpdate(VEHICLE_ID)).willReturn(Optional.of(vehicle));
         given(auctionRepository.existsActiveByVehicleId(any(), any())).willReturn(false);
         given(auctionPostRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(auctionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -159,7 +159,7 @@ class AuctionServiceTest {
     @Test
     @DisplayName("존재하지 않는 차량이면 경매글을 등록할 수 없다.")
     void create_차량_없음_거부() {
-        given(vehicleRepository.findById(VEHICLE_ID)).willReturn(Optional.empty());
+        given(vehicleRepository.findByIdForUpdate(VEHICLE_ID)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.create(SELLER_ID, VEHICLE_ID, START_PRICE, VALID_START_AT))
                 .isInstanceOf(BusinessException.class);

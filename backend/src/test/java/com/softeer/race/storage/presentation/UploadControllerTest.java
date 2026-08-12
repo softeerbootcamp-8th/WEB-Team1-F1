@@ -12,6 +12,7 @@ import com.softeer.race.storage.application.dto.command.UploadCommand;
 import com.softeer.race.storage.application.dto.info.UploadInfo;
 import com.softeer.race.storage.domain.PresignedUpload;
 import com.softeer.race.storage.exception.StorageErrorCode;
+import com.softeer.race.user.domain.Role;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -48,6 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>허용 건수를 넘으면 400</li>
  *   <li>절대 상한을 넘으면 400이고 어느 파일인지 알려준다</li>
  *   <li>세션이 없으면 401이고 서비스까지 도달하지 않는다</li>
+ *   <li>평가사가 아니면 403이고 서비스까지 도달하지 않는다</li>
  * </ol>
  */
 @WebMvcTest(controllers = UploadController.class)
@@ -81,7 +83,8 @@ class UploadControllerTest {
 
     @BeforeEach
     void before() {
-        given(sessionService.authenticate(any())).willReturn(new AuthenticatedUser(EVALUATOR_ID));
+        given(sessionService.authenticate(any()))
+                .willReturn(new AuthenticatedUser(EVALUATOR_ID, Role.EVALUATOR));
     }
 
     @Test
@@ -211,6 +214,21 @@ class UploadControllerTest {
 
         // then : 인터셉터가 막으므로 본문 파싱 전에 끝난다
         response.andExpect(status().isUnauthorized());
+        then(uploadService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("평가사가 아니면 403이고 서비스까지 가지 않는다")
+    void issueRequiresEvaluatorRole() throws Exception {
+        given(sessionService.authenticate(any()))
+                .willReturn(new AuthenticatedUser(EVALUATOR_ID, Role.GENERAL));
+
+        request("""
+                {"files": [{"contentType": "image/jpeg", "contentLength": 100}]}
+                """)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
+
         then(uploadService).shouldHaveNoInteractions();
     }
 
