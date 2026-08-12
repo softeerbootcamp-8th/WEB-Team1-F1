@@ -185,6 +185,9 @@ export function AuctionsPage() {
     filter: listGroup,
     vehicle: vehicleFilter,
     enabled: scope === 'ALL' || (!isAuthLoading && isAuthenticated),
+    // 목록은 이어 보는 화면이다. 경매방의 "뒤로"는 뒤로가기가 아니라 이 주소로 새로 들어오는
+    // 이동인데, 그때도 보던 자리로 돌아와야 한다
+    restoreScroll: true,
   })
 
   // 시계 하나로 화면 전체를 굴린다. 카드마다 두면 같은 순간에 카드끼리 다른 시각을 본다.
