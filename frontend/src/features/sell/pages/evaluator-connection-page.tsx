@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -103,40 +103,30 @@ export function EvaluatorConnectionPage() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [result, setResult] = useState<VisitQuoteResponse | null>(null)
 
-  const redirectToLogin = useCallback(() => {
-    navigate('/login', {
-      replace: true,
+  // 로그인 왕복에서 돌아올 자리. 안내 화면의 링크와 세션 만료 리다이렉트가 같은 값을 쓴다 —
+  // 두 벌로 두면 한쪽만 draft를 빠뜨려도 티가 안 난다
+  const loginReturnTo = useMemo(
+    () => ({
+      pathname: '/sell/evaluator',
       state: {
-        returnTo: {
-          pathname: '/sell/evaluator',
-          state: {
-            ownerName,
-            plateNumber,
-            vehicle: vehicle!,
-            draft: {
-              visitAddress,
-              visitDate: visitDate ? formatLocalDate(visitDate) : null,
-              contactPhone,
-            },
-          } satisfies EvaluatorConnectionState,
+        ownerName,
+        plateNumber,
+        vehicle: vehicle!,
+        draft: {
+          visitAddress,
+          visitDate: visitDate ? formatLocalDate(visitDate) : null,
+          contactPhone,
         },
-      },
-    })
-  }, [
-    contactPhone,
-    navigate,
-    ownerName,
-    plateNumber,
-    vehicle,
-    visitAddress,
-    visitDate,
-  ])
+      } satisfies EvaluatorConnectionState,
+    }),
+    [contactPhone, ownerName, plateNumber, vehicle, visitAddress, visitDate],
+  )
 
-  useEffect(() => {
-    if (hasVehicle && !isLoading && !isAuthenticated) {
-      redirectToLogin()
-    }
-  }, [hasVehicle, isAuthenticated, isLoading, redirectToLogin])
+  // 작성 중 세션이 끊긴 경우에만 쓴다. 이때는 입력값을 들고 로그인으로 갔다 돌아오는 편이
+  // 폼을 그대로 둔 채 실패를 알리는 것보다 낫다 — 다시 눌러도 또 401 이다
+  const redirectToLogin = useCallback(() => {
+    navigate('/login', { replace: true, state: { returnTo: loginReturnTo } })
+  }, [loginReturnTo, navigate])
 
   const mutation = useMutation({
     mutationFn: requestVisitQuote,
@@ -214,13 +204,35 @@ export function EvaluatorConnectionPage() {
     )
   }
 
-  if (isLoading || !isAuthenticated) {
+  if (isLoading) {
     return (
       <main
         className="flex min-h-80 items-center justify-center"
         aria-label="로그인 확인 중"
       >
         <LoaderCircle className="text-primary size-6 animate-spin" />
+      </main>
+    )
+  }
+
+  // 로그인 화면으로 밀어내지 않고 이유를 이 자리에 남긴다. 경매방·경매 목록·마이페이지가
+  // 쓰는 것과 같은 형태다 — 말없이 이동하면 잘못 눌렀거나 오류가 난 것으로 읽힌다
+  if (!isAuthenticated) {
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-24" aria-label="평가사 연결">
+        <EmptyState
+          title="로그인이 필요합니다"
+          description="방문견적은 예약자 확인이 필요해 로그인 후 신청할 수 있습니다."
+          action={
+            <Button asChild>
+              {/* 히스토리를 늘리지 않는다. 쌓아 두면 로그인을 마친 뒤의 "뒤로"가
+                  이 안내 화면으로 돌아오는데, 그때는 이미 볼 이유가 없는 화면이다 */}
+              <Link to="/login" replace state={{ returnTo: loginReturnTo }}>
+                로그인
+              </Link>
+            </Button>
+          }
+        />
       </main>
     )
   }

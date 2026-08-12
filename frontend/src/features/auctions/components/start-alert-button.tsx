@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Bell, BellRing, LoaderCircle } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -29,9 +30,11 @@ export function StartAlertButton({ auctionId, align = 'end', className }: StartA
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const { phase, signedOut, subscribe } = useStartAlert(auctionId, isAuthenticated)
 
-  // 세션이 끊긴 채 눌렀으면 로그인으로 옮기고, 마치면 보던 화면으로 돌려보낸다
+  // 세션이 끊긴 채 눌렀으면 로그인으로 옮기고, 마치면 보던 화면으로 돌려보낸다.
+  // 버튼 하나라서 화면을 안내로 덮을 수 없다 — 다른 화면과 달리 여기만 토스트로 알린다
   useEffect(() => {
     if (!signedOut) return
+    toast.info('로그인이 만료되어 다시 로그인해야 합니다')
     navigate('/login', {
       state: { returnTo: { pathname: location.pathname, state: location.state } },
     })
@@ -60,6 +63,7 @@ export function StartAlertButton({ auctionId, align = 'end', className }: StartA
         onClick={() => {
           // 비로그인은 눌러 봐야 401 이다. 누구에게 보낼 알림인지가 세션이라 로그인이 먼저다
           if (!isAuthenticated) {
+            toast.info('로그인 후 시작 알림을 신청할 수 있습니다')
             navigate('/login', {
               state: { returnTo: { pathname: location.pathname, state: location.state } },
             })
