@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 
 import { HelpPopover } from '@/components/common/help-popover'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,9 @@ import { DemoVehicleHelp } from '@/features/vehicle/components/demo-vehicle-help
 import type { VehicleLookupRequest } from '@/features/vehicle/types'
 
 const PLATE_PATTERN = /^\d{2,3}[가-힣]\d{4}$/
+
+/** 도움말 버튼 높이(size-8). 도움말을 상자와 상하 대칭으로 놓을 때 기준이 된다 */
+const HELP_BUTTON_SIZE = 32
 
 export type VehicleOwnerValues = VehicleLookupRequest
 
@@ -30,8 +33,31 @@ export function VehicleOwnerForm({
   const [ownerName, setOwnerName] = useState(initialValues?.ownerName ?? '')
   const [plateNumber, setPlateNumber] = useState(initialValues?.plateNumber ?? '')
 
+  // 도움말을 상자와 상하 대칭으로 놓기 위한 내림폭.
+  // 도움말은 버튼을 기준으로 열려 상자 위쪽에 치우치므로, 상자 높이의 절반만큼(버튼 높이는 빼고)
+  // 내려야 가운데가 맞는다. 값을 상수로 박으면 입력이 하나 늘 때 조용히 어긋난다
+  const formRef = useRef<HTMLFormElement>(null)
+  const [helpOffset, setHelpOffset] = useState(0)
+
+  useLayoutEffect(() => {
+    const form = formRef.current
+    if (!form) return
+
+    const measure = () =>
+      setHelpOffset((form.getBoundingClientRect().height - HELP_BUTTON_SIZE) / 2)
+
+    measure()
+
+    // 검증 문구가 붙거나 화면이 좁아지면 높이가 바뀐다
+    const observer = new ResizeObserver(measure)
+    observer.observe(form)
+
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <form
+      ref={formRef}
       className="space-y-7"
       onSubmit={(event) => {
         event.preventDefault()
@@ -50,7 +76,8 @@ export function VehicleOwnerForm({
         <HelpPopover
           label="넣어 볼 수 있는 데모 차량 보기"
           side="right"
-          align="start"
+          align="center"
+          alignOffset={helpOffset}
           // 좁은 화면에서는 폭을 남는 자리에 맞춘다. Radix 는 뒤집은 뒤에도 트리거와 맞닿는
           // 선까지만 밀어 주므로(limitShift), 넓은 채로 두면 화면 밖으로 20px 쯤 나간다
           contentClassName="w-[min(20rem,calc(100vw-7rem))]"

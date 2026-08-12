@@ -18,6 +18,12 @@ interface HelpPopoverProps {
   /** 기본은 아래. 입력 상자를 가리는 자리면 옆으로 뺀다 */
   side?: 'top' | 'right' | 'bottom' | 'left'
   align?: 'start' | 'center' | 'end'
+  /**
+   * 여는 방향과 직각으로 밀어내는 거리.
+   * 기준이 버튼(32px)이라 옆으로 열면 상자 위쪽에 치우친다 — 상자와 상하 대칭으로 두려면
+   * 부르는 쪽이 상자 높이를 재서 그 절반만큼 내린다
+   */
+  alignOffset?: number
   className?: string
   contentClassName?: string
 }
@@ -36,6 +42,7 @@ export function HelpPopover({
   children,
   side = 'bottom',
   align = 'end',
+  alignOffset = 0,
   className,
   contentClassName,
 }: HelpPopoverProps) {
@@ -106,6 +113,7 @@ export function HelpPopover({
       <PopoverContent
         side={side}
         align={align}
+        alignOffset={alignOffset}
         className={contentClassName}
         onOpenAutoFocus={(event) => {
           if (openedByHover.current) event.preventDefault()
