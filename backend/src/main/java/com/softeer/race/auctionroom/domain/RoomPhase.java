@@ -82,9 +82,12 @@ public enum RoomPhase {
      * 개장 안내를 열어 줄 수 없는 사유, 아직 열리지 않은 단계에는 없다
      */
     // 방 입장과 반대 방향의 거절이다, 문마다의 거절 사유를 여기 모아 호출부가 같은 모양으로 읽히게 한다
+    // 끝난 방은 열렸다고 답하지 않는다, 그렇게 답하면 화면이 방으로 옮겨가 한 번 더 거절받는다
     public Optional<AuctionRoomErrorCode> openingRejection() {
-        return this == NOT_OPEN
-                ? Optional.empty()
-                : Optional.of(AuctionRoomErrorCode.ROOM_ALREADY_OPEN);
+        return switch (this) {
+            case NOT_OPEN -> Optional.empty();
+            case CLOSED -> Optional.of(AuctionRoomErrorCode.ROOM_ALREADY_CLOSED);
+            case WAITING, LIVE, RESULT -> Optional.of(AuctionRoomErrorCode.ROOM_ALREADY_OPEN);
+        };
     }
 }

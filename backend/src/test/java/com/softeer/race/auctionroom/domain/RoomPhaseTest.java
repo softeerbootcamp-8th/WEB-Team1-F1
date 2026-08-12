@@ -73,7 +73,7 @@ class RoomPhaseTest {
     }
 
     @Test
-    @DisplayName("개장 안내를 여는 단계는 아직 열리지 않은 방 하나뿐이고, 나머지는 이미 열렸다고 거절한다")
+    @DisplayName("개장 안내는 아직 열리지 않은 방만 열어 주고, 끝난 방은 이미 열렸다고 답하지 않는다")
     void openingOpensOnlyBeforeOpen() {
         assertThat(RoomPhase.NOT_OPEN.openingRejection()).isEmpty();
 
@@ -81,7 +81,10 @@ class RoomPhaseTest {
                 .filter(phase -> phase.openingRejection().isPresent()))
                 .containsExactly(RoomPhase.WAITING, RoomPhase.LIVE, RoomPhase.RESULT, RoomPhase.CLOSED);
 
-        assertThat(RoomPhase.CLOSED.openingRejection()).contains(ROOM_ALREADY_OPEN);
+        assertThat(RoomPhase.WAITING.openingRejection()).contains(ROOM_ALREADY_OPEN);
+        assertThat(RoomPhase.LIVE.openingRejection()).contains(ROOM_ALREADY_OPEN);
+        assertThat(RoomPhase.RESULT.openingRejection()).contains(ROOM_ALREADY_OPEN);
+        assertThat(RoomPhase.CLOSED.openingRejection()).contains(ROOM_ALREADY_CLOSED);
     }
 
     @DisplayName("경매방 단계는 조회 시각으로 결정된다")
