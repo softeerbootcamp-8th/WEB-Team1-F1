@@ -44,11 +44,16 @@ export function VehicleOwnerForm({
       {/* 도움말은 입력 상자 위 오른쪽에 둔다. 폼 안이라 type="button" 이 없으면 눌러서 제출된다 */}
       {/* 폼의 space-y-7 을 그대로 받으면 버튼 높이까지 더해져 이름 라벨이 멀리 밀린다 */}
       <div className="-mb-5 flex justify-end">
-        {/* 옆으로 빼 봤지만 카드가 화면 오른쪽에 붙어 있어 Radix 가 다시 왼쪽으로 뒤집는다.
-            아래로 열어 입력 상자를 잠깐 덮는 편이 낫다 — 벗어나면 닫히는 도움말이다 */}
+        {/* 오른쪽으로 편다. 아래로 열면 표가 입력 상자를 그대로 덮는다.
+            폭이 320px 를 넘으면 남는 자리(350px 남짓)에 안 들어가 Radix 가 왼쪽으로 뒤집는다.
+            좁은 화면에서는 어차피 뒤집히고, 그때는 아래로 여는 것과 같아진다 */}
         <HelpPopover
           label="넣어 볼 수 있는 데모 차량 보기"
-          contentClassName="w-90"
+          side="right"
+          align="start"
+          // 좁은 화면에서는 폭을 남는 자리에 맞춘다. Radix 는 뒤집은 뒤에도 트리거와 맞닿는
+          // 선까지만 밀어 주므로(limitShift), 넓은 채로 두면 화면 밖으로 20px 쯤 나간다
+          contentClassName="w-[min(20rem,calc(100vw-7rem))]"
         >
           <DemoVehicleHelp />
         </HelpPopover>
