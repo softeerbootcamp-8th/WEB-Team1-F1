@@ -77,7 +77,15 @@ export function MyAssignmentsPage() {
                       경매 등록됨 · 수정 불가
                     </Button>
                   ) : (
-                    <Button asChild className="w-full">
+                    <Button
+                      asChild
+                      variant={evaluation.status === 'APPROVED' ? 'outline' : 'default'}
+                      className={
+                        evaluation.status === 'APPROVED'
+                          ? 'border-primary bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary w-full'
+                          : 'w-full'
+                      }
+                    >
                       <Link to={`/evaluations/${evaluation.evaluationId}/result`}>
                         {evaluation.status === 'APPROVED'
                           ? '진단 확인·수정'
