@@ -12,6 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -113,6 +114,41 @@ class AuctionTest {
 
         assertThatThrownBy(() -> auction.extendIfClosingSoon(END_TIME.plusSeconds(secondsAfterEnd)))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    // 끝난 경매의 곡선에 마감이 밀린 자리를 그리려면 지난 입찰을 되짚어야 한다, 저장된 값이 없다
+    @DisplayName("예약 마감의 임계에 들어온 입찰부터 마감을 밀어낸 것으로 본다")
+    @ParameterizedTest(name = "예약 마감 {0}초 전 입찰 → 연장 {1}")
+    @CsvSource({
+            "31, false", // 임계값 밖, extendsOnlyInsideWindow 와 같은 자리다
+            "30, true",  // 경계 포함
+            "29, true",
+            "-30, true"  // 연장으로 밀린 마감 뒤에 들어온 입찰도 연장이다
+    })
+    void marksBidsFromSoftCloseAsExtending(long secondsBeforeEnd, boolean extending) {
+        LocalDateTime bidAt = END_TIME.minusSeconds(secondsBeforeEnd);
+
+        assertThat(Auction.isDeadlineExtending(START_TIME, bidAt)).isEqualTo(extending);
+    }
+
+    @Test
+    @DisplayName("연장 판정은 실제 전이가 남긴 횟수와 마감 시각에 맞는다")
+    void extendingJudgementAgreesWithTransitions() {
+        List<LocalDateTime> bidTimes = List.of(
+                START_TIME.plusMinutes(3),      // 임계 밖
+                END_TIME.minusSeconds(20),      // 잔여 20초, 마감이 +10초로 밀린다
+                END_TIME.plusSeconds(5));       // 밀린 마감 기준 잔여 5초
+
+        // 같은 입찰을 실제 전이에 흘려보낸다, 판정이 그 전이와 어긋나면 곡선이 거짓을 그린다
+        Auction auction = scheduled();
+        bidTimes.forEach(auction::extendIfClosingSoon);
+
+        List<LocalDateTime> extending = bidTimes.stream()
+                .filter(bidAt -> Auction.isDeadlineExtending(START_TIME, bidAt))
+                .toList();
+
+        assertThat(extending).hasSize(auction.getExtensionCount());
+        assertThat(extending.getLast().plusSeconds(30)).isEqualTo(auction.getCurrentEndTime());
     }
 
     // 저장된 status가 아니라 서버 시각으로 판정한다, 경계는 phaseAt의 LIVE 구간과 같아야 한다

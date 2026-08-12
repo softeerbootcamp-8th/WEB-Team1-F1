@@ -56,6 +56,10 @@ public record RoomResultView(
                 serverTime,
                 detail.extensionCount(),
                 stats,
-                priceCurve.stream().map(point -> PricePointView.of(point, viewerId)).toList());
+                // 마감이 어느 입찰에 밀렸는지는 저장돼 있지 않아 점마다 되짚어 묻는다
+                priceCurve.stream()
+                        .map(point -> PricePointView.of(point, viewerId,
+                                point.pushedDeadline(detail.startTime())))
+                        .toList());
     }
 }

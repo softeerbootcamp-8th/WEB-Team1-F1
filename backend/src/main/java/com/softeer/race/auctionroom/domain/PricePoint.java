@@ -1,5 +1,7 @@
 package com.softeer.race.auctionroom.domain;
 
+import com.softeer.race.auction.domain.Auction;
+
 import java.time.LocalDateTime;
 
 /**
@@ -25,6 +27,13 @@ public final class PricePoint {
      */
     public boolean isMine(long viewerId) {
         return bidderId == viewerId;
+    }
+
+    /**
+     * 이 입찰이 마감을 밀어냈는지, 판정은 마감 규칙을 가진 경매에 물어본다
+     */
+    public boolean pushedDeadline(LocalDateTime startTime) {
+        return Auction.isDeadlineExtending(startTime, bidAt);
     }
 
     public long amount() {

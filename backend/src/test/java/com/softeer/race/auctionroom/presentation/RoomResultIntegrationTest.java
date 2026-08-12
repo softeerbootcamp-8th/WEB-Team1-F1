@@ -111,6 +111,11 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.startAt").value("2026-08-03T18:30:00"),
                 jsonPath("$.endAt").value("2026-08-03T18:50:10"));
 
+        // then 4-2 : 어느 입찰이 마감을 밀었는지는 곡선의 점에 남는다, 횟수만으로는 그 자리를 못 그린다
+        response.andExpectAll(
+                jsonPath("$.priceCurve[2].extended").value(false),
+                jsonPath("$.priceCurve[3].extended").value(true));
+
         // then 5 : 낙찰자는 호가와 같은 규칙으로 마스킹되고, 본인 여부는 이름 비교 없이 내려간다
         response.andExpectAll(
                 jsonPath("$.winner.name").value("이*호"),
@@ -223,6 +228,11 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         response.andExpectAll(
                 jsonPath("$.priceCurve[0].name").doesNotHaveJsonPath(),
                 jsonPath("$.priceCurve[0].bidderId").doesNotHaveJsonPath());
+
+        // then 5 : 마감 임박에 들어온 입찰이 없어 마감을 밀어낸 점도 없다
+        response.andExpectAll(
+                jsonPath("$.extensionCount").value(0),
+                jsonPath("$.priceCurve[3].extended").value(false));
     }
 
     @Test

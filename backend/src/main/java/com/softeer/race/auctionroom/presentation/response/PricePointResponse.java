@@ -14,10 +14,13 @@ public record PricePointResponse(
         long amount,
 
         @Schema(description = "조회한 사람이 넣은 입찰인지")
-        boolean mine
+        boolean mine,
+
+        @Schema(description = "이 입찰로 마감이 밀렸는지, 마감 임박에 들어온 입찰만 참이다")
+        boolean extended
 ) {
 
     static PricePointResponse from(PricePointView view) {
-        return new PricePointResponse(view.at(), view.amount(), view.mine());
+        return new PricePointResponse(view.at(), view.amount(), view.mine(), view.extended());
     }
 }
