@@ -13,6 +13,7 @@ import type { RoomResultView } from '@/features/auction-room/types'
 
 import { BackLink } from '../components/back-link'
 import { CarDetail } from '../components/car-detail'
+import { KeywordBadges } from '../components/keyword-badges'
 import { PriceCurve } from '../components/price-curve'
 import { curveShapeOf, viewerStandingOf } from '../result'
 import { useAuctionResult } from '../use-auction-result'
@@ -71,6 +72,7 @@ function ResultContent({ auctionId }: { auctionId: number }) {
             <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
               {MANUFACTURER_LABEL[result.vehicle.manufacturer]} {result.vehicle.model}
             </h1>
+            <KeywordBadges keywords={result.vehicle.keywords} />
           </div>
         </div>
 

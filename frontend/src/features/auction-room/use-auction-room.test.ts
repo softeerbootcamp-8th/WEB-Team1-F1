@@ -25,6 +25,7 @@ function room(endAt: string): AuctionRoomView {
       modelYear: 2022,
       mileage: 35_000,
       fuelType: 'GASOLINE',
+      keywords: [],
       imageUrls: [],
       diagnosticReportUrl: 'https://cdn.race.dev/report.pdf',
     },
