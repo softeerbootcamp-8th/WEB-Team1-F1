@@ -29,6 +29,8 @@ export interface CurvePoint {
   y: number
   amount: number
   mine: boolean
+  /** 이 입찰로 마감이 밀렸는지, 앞에 붙는 시작가 점은 입찰이 아니라 항상 거짓이다 */
+  extended: boolean
 }
 
 export interface CurveShape {
@@ -71,6 +73,7 @@ export function curveShapeOf(result: RoomResultView): CurveShape | null {
     y: heightOf(amount),
     amount,
     mine: index === 0 ? false : result.priceCurve[index - 1].mine,
+    extended: index === 0 ? false : result.priceCurve[index - 1].extended,
   }))
 
   return {

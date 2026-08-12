@@ -99,6 +99,13 @@ public class Auction extends BaseTimeEntity {
     }
 
     /**
+     * 그 입찰이 마감을 밀어냈는지, 끝난 경매를 되짚을 때 쓴다
+     */
+    public static boolean isDeadlineExtending(LocalDateTime startTime, LocalDateTime bidAt) {
+        return !bidAt.isBefore(startTime.plusMinutes(DURATION_MINUTES).minus(SOFT_CLOSE_WINDOW));
+    }
+
+    /**
      * 마감 임박 입찰이면 마감을 입찰 시각 기준으로 다시 채우고 연장 횟수를 올린다
      */
     public void extendIfClosingSoon(LocalDateTime bidAt) {

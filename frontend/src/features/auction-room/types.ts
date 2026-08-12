@@ -111,6 +111,8 @@ export interface PricePoint {
   at: string
   amount: number
   mine: boolean
+  /** 이 입찰로 마감이 밀렸는지 */
+  extended: boolean
 }
 
 /** 조회한 사람의 성적. 입찰한 적이 없으면 이 객체 자체가 null 이다 */
