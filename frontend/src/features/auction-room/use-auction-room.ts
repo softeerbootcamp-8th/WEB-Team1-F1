@@ -10,6 +10,7 @@ import {
   placeBid,
   subscribeRoomStream,
 } from '@/features/auction-room/api'
+import { openingOutcomeOf } from '@/features/auction-room/opening-outcome'
 import type {
   AuctionRoomView,
   BidIncrementBand,
@@ -179,9 +180,16 @@ export function useAuctionRoom(auctionId: number) {
             return
           }
 
-          // 안내를 받는 사이 방이 열렸으면 이 API 가 409 로 막는다, 그때는 방으로 들어가면 된다
-          if (getErrorCode(error) === 'ROOM_ALREADY_OPEN') {
+          // 안내를 받는 사이 방이 열렸거나 끝났으면 이 API 가 409 로 막는다, 갈 곳은 사유가 정한다
+          const outcome = openingOutcomeOf(getErrorCode(error) ?? null)
+
+          if (outcome === 'ENTER_ROOM') {
             connect()
+            return
+          }
+
+          if (outcome === 'RESULT') {
+            setEntry('CLOSED')
             return
           }
 
