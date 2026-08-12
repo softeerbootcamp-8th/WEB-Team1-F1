@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Bell,
   ChartLine,
   FileText,
   Flag,
@@ -19,6 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Countdown } from '@/components/common/countdown'
+import { StartAlertButton } from '@/features/auctions/components/start-alert-button'
 import { CarPhotos } from '@/features/auction-room/components/car-detail'
 import { fetchAuctionRoom, fetchRoomOpening, fetchRoomResult } from '@/features/auction-room/api'
 import type { RoomOpeningView, RoomResultView } from '@/features/auction-room/types'
@@ -245,11 +245,7 @@ export function AuctionPreviewDialog({
               </div>
 
               {loaded === 'NOT_OPEN' ? (
-                // 경매별 알림 구독 API 가 아직 없어 모양만 먼저 둔다
-                <Button disabled>
-                  <Bell />
-                  개장 알림 받기
-                </Button>
+                auctionId !== null && <StartAlertButton auctionId={auctionId} />
               ) : (
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button
