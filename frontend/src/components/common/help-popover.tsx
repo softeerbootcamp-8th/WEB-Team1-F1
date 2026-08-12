@@ -8,8 +8,12 @@ import {
 } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
-/** 마우스를 콘텐츠로 옮기는 사이 닫히지 않게 두는 유예 */
-const CLOSE_DELAY_MS = 120
+/**
+ * 마우스를 콘텐츠로 옮기는 사이 닫히지 않게 두는 유예.
+ * 도움말이 버튼에서 떨어진 자리에 열리면 그 사이는 버튼도 콘텐츠도 아니라, 짧게 잡으면
+ * 건너가는 도중에 닫히고 다시 버튼에 닿아 열리기를 반복한다
+ */
+const CLOSE_DELAY_MS = 300
 
 interface HelpPopoverProps {
   /** 아이콘만 있는 버튼이라 접근 이름을 반드시 받는다 */
@@ -114,7 +118,12 @@ export function HelpPopover({
         side={side}
         align={align}
         alignOffset={alignOffset}
-        className={contentClassName}
+        // 버튼과 표 사이의 빈 틈을 포인터가 지나가도 닫히지 않도록 잡아 주는 다리.
+        // 유예 시간만으로는 천천히 움직이는 사람에게 부족하다
+        className={cn(
+          'relative before:absolute before:-top-6 before:-left-4 before:h-[calc(100%+1.5rem)] before:w-4 before:content-[""]',
+          contentClassName,
+        )}
         onOpenAutoFocus={(event) => {
           if (openedByHover.current) event.preventDefault()
         }}

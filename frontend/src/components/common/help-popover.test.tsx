@@ -14,10 +14,17 @@ function renderHelp() {
 const trigger = () => screen.getByRole('button', { name: '도움말 열기' })
 const isOpen = () => trigger().getAttribute('aria-expanded') === 'true'
 
-/** 닫기 유예(120ms)를 넘긴다 */
+/** 닫기 유예(300ms)를 넘긴다 */
 function runCloseDelay() {
   act(() => {
-    vi.advanceTimersByTime(200)
+    vi.advanceTimersByTime(400)
+  })
+}
+
+/** 유예 안쪽까지만 시간을 보낸다 */
+function runWithinCloseDelay() {
+  act(() => {
+    vi.advanceTimersByTime(250)
   })
 }
 
@@ -38,10 +45,27 @@ describe('도움말 버튼', () => {
 
     fireEvent.pointerLeave(trigger(), { pointerType: 'mouse' })
     // 유예 안에서는 아직 열려 있다 — 콘텐츠로 마우스를 옮기는 사이 닫히면 표를 읽을 수 없다
+    runWithinCloseDelay()
     expect(isOpen()).toBe(true)
 
     runCloseDelay()
     expect(isOpen()).toBe(false)
+  })
+
+  it('버튼을 벗어나 표로 들어가면 열린 채로 남는다', () => {
+    // 표가 버튼에서 떨어진 자리에 열리므로 그 사이를 지나는 동안 닫히면 안 된다.
+    // 이 시나리오가 깨지면 마우스를 내릴 때 열리고 닫히기를 반복한다
+    renderHelp()
+
+    fireEvent.pointerEnter(trigger(), { pointerType: 'mouse' })
+    fireEvent.pointerLeave(trigger(), { pointerType: 'mouse' })
+
+    const content = screen.getByText('도움말 내용')
+    fireEvent.pointerEnter(content, { pointerType: 'mouse' })
+
+    runCloseDelay()
+
+    expect(isOpen()).toBe(true)
   })
 
   it('터치로 올라온 포인터는 hover 로 열지 않는다', () => {
