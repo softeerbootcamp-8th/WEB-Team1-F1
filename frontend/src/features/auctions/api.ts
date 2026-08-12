@@ -126,3 +126,24 @@ export async function updateAuction(
 export async function deleteAuction(auctionId: number): Promise<void> {
   await axiosInstance.delete(`/api/auctions/${auctionId}`)
 }
+
+/**
+ * GET /api/auctions/{id}/start-alert. 부르는 회원이 시작 알림을 신청했는지.
+ * 없는 경매에도 404가 아니라 false 로 답한다 — 화면을 띄운 본 요청이 존재 여부를 이미 판정했다(백엔드 문서).
+ * 발송이 끝나면 신청 기록이 정리되므로 시작 뒤에는 신청했던 회원에게도 false 가 온다.
+ */
+export async function fetchStartAlertSubscribed(auctionId: number): Promise<boolean> {
+  const { data } = await axiosInstance.get<{ subscribed: boolean }>(
+    `/api/auctions/${auctionId}/start-alert`,
+  )
+  return data.subscribed
+}
+
+/**
+ * PUT /api/auctions/{id}/start-alert. 신청 자원이 하나뿐이라 멱등이고, 재전송해도 상태가 같다 —
+ * 처음이면 201, 이미 신청돼 있었으면 204 이며 둘 다 성공이다(백엔드 문서).
+ * 취소는 제공하지 않고, 시작 전이 아니면 409 START_ALERT_NOT_OPEN 이다.
+ */
+export async function subscribeStartAlert(auctionId: number): Promise<void> {
+  await axiosInstance.put(`/api/auctions/${auctionId}/start-alert`)
+}

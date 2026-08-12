@@ -5,6 +5,7 @@ import { Countdown } from '@/components/common/countdown'
 import { formatClock, formatKRW, formatMileage } from '@/lib/format'
 import { FUEL_TYPE_LABEL } from '@/features/quote/types'
 import { CarPhotos } from '@/features/auction-room/components/car-detail'
+import { StartAlertButton } from '@/features/auctions/components/start-alert-button'
 import type { AuctionRoomView } from '@/features/auction-room/types'
 
 interface WaitingRoomProps {
@@ -53,6 +54,10 @@ export function WaitingRoom({ room, clockOffset }: WaitingRoomProps) {
         지금 <span className="text-foreground tabular font-bold">{room.connectedCount}명</span>이
         함께 기다립니다
       </p>
+
+      {/* 방을 지키지 않아도 되게 해 주는 유일한 수단이라 미리보기와 같은 버튼을 여기에도 둔다.
+          입찰이 시작되면 이 화면 자체가 진행중으로 바뀌어 버튼도 함께 사라진다 */}
+      <StartAlertButton auctionId={room.auctionId} align="center" className="mt-5" />
 
       <CarPhotos
         model={room.vehicle.model}
