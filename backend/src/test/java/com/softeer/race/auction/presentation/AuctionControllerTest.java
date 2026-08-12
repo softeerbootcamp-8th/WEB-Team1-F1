@@ -85,6 +85,32 @@ class AuctionControllerTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("평가사는 경매 등록·수정·삭제에 접근할 수 없다")
+    void 평가사_판매_기능_접근_거부() throws Exception {
+        Cookie evaluatorCookie = 평가사_쿠키();
+        LocalDateTime startAt = LocalDateTime.now(clock).plusHours(2).withNano(0);
+
+        mockMvc.perform(post("/api/auctions")
+                        .cookie(evaluatorCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson(startAt)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
+
+        mockMvc.perform(patch("/api/auctions/{auctionId}", 9999L)
+                        .cookie(evaluatorCookie)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequestJson(10_000_000L, startAt)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
+
+        mockMvc.perform(delete("/api/auctions/{auctionId}", 9999L)
+                        .cookie(evaluatorCookie))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
+    }
+
+    @Test
     @DisplayName("필수 값이 없으면 400을 반환한다.")
     void 필수값_누락() throws Exception {
         String invalidJson = """
@@ -337,6 +363,12 @@ class AuctionControllerTest extends IntegrationTestSupport {
         User stranger = userRepository.save(User.create(
                 "stranger", "stranger@race.com", "pw", "김타인", "01055556666", Role.GENERAL));
         return new Cookie(SessionCookieFactory.COOKIE_NAME, sessionService.issue(stranger));
+    }
+
+    private Cookie 평가사_쿠키() {
+        User evaluator = userRepository.save(User.create(
+                "evaluator", "evaluator@race.com", "pw", "김평가", "01077776666", Role.EVALUATOR));
+        return new Cookie(SessionCookieFactory.COOKIE_NAME, sessionService.issue(evaluator));
     }
 
     private String updateRequestJson(long startPrice, LocalDateTime startAt) {

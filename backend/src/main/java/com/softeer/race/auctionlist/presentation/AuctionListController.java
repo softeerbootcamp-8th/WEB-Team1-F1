@@ -6,6 +6,8 @@ import com.softeer.race.auctionlist.presentation.request.AuctionListFilterReques
 import com.softeer.race.auctionlist.presentation.response.AuctionListResponse;
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
+import com.softeer.race.auth.presentation.annotation.RequireRole;
+import com.softeer.race.user.domain.Role;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +34,7 @@ public class AuctionListController implements AuctionListApi {
 
     @Override
     @GetMapping("/me")
+    @RequireRole({Role.GENERAL, Role.DEALER})
     public ResponseEntity<AuctionListResponse> listMine(@LoginUser AuthenticatedUser user,
                                                         @Valid AuctionListCursorRequest request,
                                                         @Valid AuctionListFilterRequest filterRequest) {

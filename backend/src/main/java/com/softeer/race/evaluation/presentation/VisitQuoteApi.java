@@ -4,6 +4,7 @@ import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.evaluation.presentation.request.VisitQuoteRequest;
 import com.softeer.race.evaluation.presentation.response.VisitQuoteResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 
@@ -20,6 +21,7 @@ public interface VisitQuoteApi {
                     + "같은 번호판으로 진행 중인 신청이 이미 있으면 409로 거부합니다. "
                     + "경매글과 경매는 만들어지지 않습니다 — 출품은 진단이 끝난 뒤의 단계입니다. "
                     + "세션 쿠키가 필요합니다.")
+    @ApiResponse(responseCode = "403", description = "평가사 역할은 방문견적을 신청할 수 없습니다.")
     ResponseEntity<VisitQuoteResponse> request(
             AuthenticatedUser authenticatedUser, VisitQuoteRequest request);
 }

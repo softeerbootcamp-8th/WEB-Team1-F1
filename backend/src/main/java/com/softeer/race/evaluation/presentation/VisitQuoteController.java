@@ -2,10 +2,12 @@ package com.softeer.race.evaluation.presentation;
 
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
+import com.softeer.race.auth.presentation.annotation.RequireRole;
 import com.softeer.race.evaluation.application.VisitQuoteService;
 import com.softeer.race.evaluation.application.dto.info.VisitQuoteInfo;
 import com.softeer.race.evaluation.presentation.request.VisitQuoteRequest;
 import com.softeer.race.evaluation.presentation.response.VisitQuoteResponse;
+import com.softeer.race.user.domain.Role;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,7 @@ public class VisitQuoteController implements VisitQuoteApi {
 
     @Override
     @PostMapping
+    @RequireRole({Role.GENERAL, Role.DEALER})
     public ResponseEntity<VisitQuoteResponse> request(
             @LoginUser AuthenticatedUser authenticatedUser,
             @Valid @RequestBody VisitQuoteRequest request) {

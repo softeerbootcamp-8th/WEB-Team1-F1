@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import static org.hamcrest.Matchers.hasItems;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -79,6 +80,19 @@ class VisitQuoteControllerTest {
                 .andExpect(jsonPath("$.contactPhone").doesNotExist())
                 // 금액은 접수 시점에 산정하지 않는다, 있으면 사용자가 평가사 견적으로 읽는다
                 .andExpect(jsonPath("$.estimatedPrice").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("평가사는 방문견적을 신청할 수 없다")
+    void requestRejectsEvaluator() throws Exception {
+        given(sessionService.authenticate(any()))
+                .willReturn(new AuthenticatedUser(SELLER_ID, Role.EVALUATOR));
+
+        perform(validRequest())
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
+
+        then(visitQuoteService).shouldHaveNoInteractions();
     }
 
     // 조회 API가 없어 Location에 넣을 주소가 전부 404를 가리키므로 헤더를 붙이지 않기로 했다

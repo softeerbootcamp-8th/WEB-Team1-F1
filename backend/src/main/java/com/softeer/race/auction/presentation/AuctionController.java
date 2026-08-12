@@ -9,6 +9,8 @@ import com.softeer.race.auction.presentation.response.AuctionCreateResponse;
 import com.softeer.race.auction.presentation.response.AuctionUpdateResponse;
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
+import com.softeer.race.auth.presentation.annotation.RequireRole;
+import com.softeer.race.user.domain.Role;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -28,6 +30,7 @@ public class AuctionController {
 
     @Operation(summary = "경매글 등록", description = "보유 차량으로 경매글을 등록하고 경매를 예약합니다.")
     @PostMapping
+    @RequireRole({Role.GENERAL, Role.DEALER})
     public ResponseEntity<AuctionCreateResponse> create(@LoginUser AuthenticatedUser authenticatedUser,
                                                         @Valid @RequestBody AuctionCreateRequest request) {
         AuctionCreateInfo info = auctionService.create(authenticatedUser.id(), request.vehicleId(), request.startPrice(), request.startAt());
@@ -39,6 +42,7 @@ public class AuctionController {
     }
 
     @PatchMapping("/{auctionId}")
+    @RequireRole({Role.GENERAL, Role.DEALER})
     public ResponseEntity<AuctionUpdateResponse> update(@LoginUser AuthenticatedUser authenticatedUser,
                                                         @PathVariable long auctionId,
                                                         @Valid @RequestBody AuctionUpdateRequest request) {
@@ -48,6 +52,7 @@ public class AuctionController {
     }
 
     @DeleteMapping("/{auctionId}")
+    @RequireRole({Role.GENERAL, Role.DEALER})
     public ResponseEntity<Void> delete(@LoginUser AuthenticatedUser authenticatedUser,
                                        @PathVariable long auctionId) {
         auctionService.delete(authenticatedUser.id(), auctionId);
