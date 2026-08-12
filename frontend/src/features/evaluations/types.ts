@@ -10,6 +10,12 @@ export type EvaluationStatus =
   | 'APPROVED'
   | 'REJECTED'
 
+export type EvaluationAuctionStatus =
+  | 'SCHEDULED'
+  | 'IN_PROGRESS'
+  | 'ENDED'
+  | 'FAILED'
+
 export interface AssignableEvaluation {
   evaluationId: number
   plateNumber: string
@@ -40,6 +46,7 @@ export interface EvaluationSummary {
   evaluationId: number
   status: EvaluationStatus
   assigned: boolean
+  auctionStatus?: EvaluationAuctionStatus | null
   plateNumber: string
   manufacturer: Manufacturer
   model: string

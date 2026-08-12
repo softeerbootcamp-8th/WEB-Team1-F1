@@ -71,6 +71,10 @@ export function MyAssignmentsPage() {
                     <Button className="w-full" disabled>
                       반려되어 종료됨
                     </Button>
+                  ) : evaluation.auctionStatus ? (
+                    <Button className="w-full" disabled>
+                      경매 등록됨 · 수정 불가
+                    </Button>
                   ) : (
                     <Button asChild className="w-full">
                       <Link to={`/evaluations/${evaluation.evaluationId}/result`}>
