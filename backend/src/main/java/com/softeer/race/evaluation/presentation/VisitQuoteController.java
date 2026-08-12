@@ -6,6 +6,8 @@ import com.softeer.race.auth.presentation.annotation.RequireRole;
 import com.softeer.race.evaluation.application.VisitQuoteService;
 import com.softeer.race.evaluation.application.dto.info.VisitQuoteInfo;
 import com.softeer.race.evaluation.presentation.request.VisitQuoteRequest;
+import com.softeer.race.evaluation.presentation.request.VisitQuotePrecheckRequest;
+import com.softeer.race.evaluation.presentation.response.VisitQuotePrecheckResponse;
 import com.softeer.race.evaluation.presentation.response.VisitQuoteResponse;
 import com.softeer.race.user.domain.Role;
 import jakarta.validation.Valid;
@@ -23,6 +25,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class VisitQuoteController implements VisitQuoteApi {
 
     private final VisitQuoteService visitQuoteService;
+
+    @Override
+    @PostMapping("/precheck")
+    @RequireRole({Role.GENERAL, Role.DEALER})
+    public ResponseEntity<VisitQuotePrecheckResponse> precheck(
+            @LoginUser AuthenticatedUser authenticatedUser,
+            @Valid @RequestBody VisitQuotePrecheckRequest request) {
+        return ResponseEntity.ok(
+                VisitQuotePrecheckResponse.from(visitQuoteService.precheck(request.toCommand())));
+    }
 
     @Override
     @PostMapping

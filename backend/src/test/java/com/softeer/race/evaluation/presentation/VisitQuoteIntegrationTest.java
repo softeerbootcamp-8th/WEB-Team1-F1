@@ -149,7 +149,14 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
     @DisplayName("시나리오 3 : 같은 번호판으로 다시 신청하면 409로 막히고 신청은 한 건만 남는다")
     void scenario3_DuplicateRequestIsRejected() throws Exception {
         // given
+        precheck(PLATE_NUMBER, OWNER_NAME)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasInProgressVisitQuote").value(false));
         request(PLATE_NUMBER, today().plusDays(16)).andExpect(status().isCreated());
+
+        precheck(PLATE_NUMBER, OWNER_NAME)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasInProgressVisitQuote").value(true));
 
         // when
         request(PLATE_NUMBER, today().plusDays(20))
@@ -207,6 +214,10 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
                                 """))
                 .andExpect(status().isOk());
 
+        precheck(PLATE_NUMBER, OWNER_NAME)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasInProgressVisitQuote").value(false));
+
         // when
         request(PLATE_NUMBER, today().plusDays(20)).andExpect(status().isCreated());
 
@@ -222,6 +233,15 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
 
     private static Cookie evaluatorCookie() {
         return new Cookie(SessionCookieFactory.COOKIE_NAME, EVALUATOR_RAW_TOKEN);
+    }
+
+    private ResultActions precheck(String plateNumber, String ownerName) throws Exception {
+        return mockMvc.perform(post("/api/visit-quotes/precheck")
+                .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, RAW_TOKEN))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"plateNumber": "%s", "ownerName": "%s"}
+                        """.formatted(plateNumber, ownerName)));
     }
 
     private long evaluationIdOf(ResultActions result) throws Exception {

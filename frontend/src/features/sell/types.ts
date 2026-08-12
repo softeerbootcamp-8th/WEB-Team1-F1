@@ -1,3 +1,5 @@
+import type { VehicleLookupResponse } from '@/features/vehicle/types'
+
 /** POST /api/auctions 요청 계약 */
 export interface AuctionCreateRequest {
   vehicleId: number
@@ -24,6 +26,12 @@ export interface VisitQuoteRequest {
   visitAddress: string
   visitDate: string
   contactPhone: string
+}
+
+/** POST /api/visit-quotes/precheck 200 응답 계약 */
+export interface VisitQuotePrecheckResponse {
+  vehicle: VehicleLookupResponse
+  hasInProgressVisitQuote: boolean
 }
 
 /** POST /api/visit-quotes 201 응답 계약 */

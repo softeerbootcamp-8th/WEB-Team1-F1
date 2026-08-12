@@ -3,12 +3,14 @@ package com.softeer.race.evaluation.application;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.command.VisitQuoteCommand;
 import com.softeer.race.evaluation.application.dto.info.VisitQuoteInfo;
+import com.softeer.race.evaluation.application.dto.info.VisitQuotePrecheckInfo;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.domain.EvaluationStatus;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
+import com.softeer.race.vehicle.application.dto.command.VehicleLookupCommand;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
 import com.softeer.race.vehicle.domain.Transmission;
@@ -72,6 +74,35 @@ class VisitQuoteServiceTest {
     void before() {
         service = new VisitQuoteService(vehicleLookup, userRepository, vehicleRepository,
                 evaluationRepository, FIXED_CLOCK);
+    }
+
+    @Test
+    @DisplayName("사전 확인은 차량 소유 정보를 대조한 뒤 진행 중 신청 여부를 돌려준다")
+    void precheck() {
+        givenLookup();
+        given(evaluationRepository.existsByVehiclePlateNumberAndStatusIn(
+                PLATE_NUMBER, EvaluationStatus.inProgress())).willReturn(true);
+
+        VisitQuotePrecheckInfo info = service.precheck(
+                new VehicleLookupCommand(PLATE_NUMBER, OWNER_NAME));
+
+        assertThat(info.vehicle().plateNumber()).isEqualTo(PLATE_NUMBER);
+        assertThat(info.vehicle().model()).isEqualTo("그랜저 IG");
+        assertThat(info.hasInProgressVisitQuote()).isTrue();
+    }
+
+    @Test
+    @DisplayName("사전 확인은 차량 소유 정보가 틀리면 신청 상태를 조회하지 않는다")
+    void precheckUnknownVehicleDoesNotExposeRequestStatus() {
+        given(vehicleLookup.find(PLATE_NUMBER, OWNER_NAME)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.precheck(
+                new VehicleLookupCommand(PLATE_NUMBER, OWNER_NAME)))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.errorCode())
+                                .isEqualTo(EvaluationErrorCode.VEHICLE_NOT_FOUND));
+
+        then(evaluationRepository).shouldHaveNoInteractions();
     }
 
     @Test
