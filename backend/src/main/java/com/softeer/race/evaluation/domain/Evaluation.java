@@ -210,10 +210,8 @@ public class Evaluation extends BaseTimeEntity {
     /**
      * 이 신청에 배정된 평가사인지. 방문 결과의 두 판정(승인 · 반려)이 함께 쓴다.
      * <p>
-     * <b>배정을 자격의 증명으로 쓴다.</b> {@code Role.EVALUATOR}인지 따로 묻지 않는다. 결과를
-     * 내려면 이 신청에 배정돼 있어야 하고, 배정은 대기 목록에서 수락해야 받는다. 역할 검사를 여기
-     * 더하면 같은 규칙이 배정과 결과 제출 두 곳에 생기고, 배정이 역할을 보게 되는 날 한쪽만 고쳐
-     * 어긋난다. 자격을 봐야 할 자리는 <b>배정하는 곳 한 군데</b>다.
+     * 평가사 역할은 핸들러의 공통 인가가 먼저 확인한다. 이 도메인 검사는 그 평가사가 <b>이 신청에
+     * 배정된 담당자</b>인지 확인하는 리소스 단위 인가만 맡는다.
      * <p>
      * 배정 전(evaluator == null)과 남의 담당을 갈라 던진다. 앞쪽은 대기 목록에서 수락하면 풀리고
      * 뒤쪽은 그렇게 해도 풀리지 않아, 화면이 안내할 말이 다르다.
@@ -250,7 +248,8 @@ public class Evaluation extends BaseTimeEntity {
      * 한 평가사가 같은 날 맡는 건수에도 상한을 두지 않는다.
      *
      * @throws BusinessException 평가가 이미 끝난 신청이거나({@code NOT_ASSIGNABLE})
-     *                           다른 평가사가 이미 배정된 경우({@code ALREADY_ASSIGNED})
+     *                           다른 평가사가 이미 배정된 경우({@code ALREADY_ASSIGNED}),
+     *                           자기 차량의 신청인 경우({@code SELF_ASSIGNMENT_NOT_ALLOWED})
      */
     public void assignTo(User evaluator) {
         // 상태를 먼저 본다. 이미 배정된 신청은 평가가 끝날 때까지 REQUESTED로 남아 이 관문을
@@ -262,7 +261,9 @@ public class Evaluation extends BaseTimeEntity {
         if (this.evaluator != null) {
             throw new BusinessException(EvaluationErrorCode.ALREADY_ASSIGNED);
         }
-
+        if (vehicle.isOwnedBy(evaluator.getId())) {
+            throw new BusinessException(EvaluationErrorCode.SELF_ASSIGNMENT_NOT_ALLOWED);
+        }
         this.evaluator = evaluator;
     }
 }

@@ -2,12 +2,14 @@ package com.softeer.race.evaluation.presentation;
 
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
+import com.softeer.race.auth.presentation.annotation.RequireRole;
 import com.softeer.race.evaluation.application.EvaluationResultService;
 import com.softeer.race.evaluation.presentation.request.EvaluationRejectRequest;
 import com.softeer.race.evaluation.presentation.request.EvaluationResultPatchRequest;
 import com.softeer.race.evaluation.presentation.request.EvaluationResultSubmitRequest;
 import com.softeer.race.evaluation.presentation.response.EvaluationRejectionResponse;
 import com.softeer.race.evaluation.presentation.response.EvaluationResultResponse;
+import com.softeer.race.user.domain.Role;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -42,6 +44,7 @@ public class EvaluationResultController implements EvaluationResultApi {
      */
     @Override
     @PutMapping("/result")
+    @RequireRole(Role.EVALUATOR)
     public ResponseEntity<EvaluationResultResponse> submit(
             @LoginUser AuthenticatedUser authenticatedUser,
             @PathVariable long evaluationId,
@@ -60,6 +63,7 @@ public class EvaluationResultController implements EvaluationResultApi {
      */
     @Override
     @PatchMapping("/result")
+    @RequireRole(Role.EVALUATOR)
     public ResponseEntity<EvaluationResultResponse> patch(
             @LoginUser AuthenticatedUser authenticatedUser,
             @PathVariable long evaluationId,
@@ -78,6 +82,7 @@ public class EvaluationResultController implements EvaluationResultApi {
      */
     @Override
     @PostMapping("/rejection")
+    @RequireRole(Role.EVALUATOR)
     public ResponseEntity<EvaluationRejectionResponse> reject(
             @LoginUser AuthenticatedUser authenticatedUser,
             @PathVariable long evaluationId,

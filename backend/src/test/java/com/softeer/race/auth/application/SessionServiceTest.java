@@ -17,6 +17,7 @@ import com.softeer.race.auth.domain.UserSession;
 import com.softeer.race.auth.domain.UserSessionRepository;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.user.domain.User;
+import com.softeer.race.user.domain.Role;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -86,7 +87,7 @@ class SessionServiceTest {
 
         AuthenticatedUser authenticatedUser = sessionService.authenticate(RAW_TOKEN);
 
-        assertThat(authenticatedUser).isEqualTo(new AuthenticatedUser(USER_ID));
+        assertThat(authenticatedUser).isEqualTo(new AuthenticatedUser(USER_ID, Role.EVALUATOR));
     }
 
     // 2초 폴링에 매 요청 UPDATE가 나가면 한 row에 쓰기가 집중된다, 성능 결정의 회귀 방지선
@@ -119,7 +120,7 @@ class SessionServiceTest {
     void authenticateRejectsExpiredSession() {
         UserSession session = UserSession.issue(HASHED_TOKEN, mock(User.class), NOW.minus(TTL), TTL);
         when(sessionTokenGenerator.hash(RAW_TOKEN)).thenReturn(HASHED_TOKEN);
-        when(userSessionRepository.findById(HASHED_TOKEN)).thenReturn(Optional.of(session));
+        when(userSessionRepository.findByIdWithUser(HASHED_TOKEN)).thenReturn(Optional.of(session));
 
         assertThatThrownBy(() -> sessionService.authenticate(RAW_TOKEN))
                 .isInstanceOfSatisfying(BusinessException.class,
@@ -130,7 +131,7 @@ class SessionServiceTest {
     @DisplayName("존재하지 않는 토큰이면 미인증 예외를 던진다")
     void authenticateRejectsUnknownToken() {
         when(sessionTokenGenerator.hash(RAW_TOKEN)).thenReturn(HASHED_TOKEN);
-        when(userSessionRepository.findById(HASHED_TOKEN)).thenReturn(Optional.empty());
+        when(userSessionRepository.findByIdWithUser(HASHED_TOKEN)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> sessionService.authenticate(RAW_TOKEN))
                 .isInstanceOfSatisfying(BusinessException.class,
@@ -170,11 +171,12 @@ class SessionServiceTest {
     private UserSession sessionIssuedAt(LocalDateTime issuedAt) {
         User user = mock(User.class);
         when(user.getId()).thenReturn(USER_ID);
+        when(user.getRole()).thenReturn(Role.EVALUATOR);
         return UserSession.issue(HASHED_TOKEN, user, issuedAt, TTL);
     }
 
     private void givenStoredSession(UserSession session) {
         when(sessionTokenGenerator.hash(RAW_TOKEN)).thenReturn(HASHED_TOKEN);
-        when(userSessionRepository.findById(HASHED_TOKEN)).thenReturn(Optional.of(session));
+        when(userSessionRepository.findByIdWithUser(HASHED_TOKEN)).thenReturn(Optional.of(session));
     }
 }

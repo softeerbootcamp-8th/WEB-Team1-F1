@@ -58,6 +58,8 @@ public enum EvaluationErrorCode implements ErrorCode {
      */
     NOT_ASSIGNABLE(HttpStatus.CONFLICT, "배정할 수 있는 상태의 신청이 아닙니다."),
 
+    SELF_ASSIGNMENT_NOT_ALLOWED(HttpStatus.FORBIDDEN, "본인 차량의 방문견적 신청은 직접 수락할 수 없습니다."),
+
     /**
      * 우리가 발급하지 않았거나, 발급했더라도 문서가 아닌 주소다. 후자를 구분하지 않는 이유는
      * VehicleErrorCode.UNMANAGED_IMAGE_URL과 같다 — 클라이언트가 할 일이 "발급받은 문서 주소를
@@ -110,8 +112,8 @@ public enum EvaluationErrorCode implements ErrorCode {
     /**
      * 다른 평가사가 담당인 신청에 방문 결과를 내려 했다. 승인 제출과 반려가 함께 쓴다.
      * <p>
-     * 배정을 자격의 증명으로 쓰므로 이 검사 하나가 "평가사인가"와 "이 건의 담당인가"를 함께
-     * 대신한다 — 배정은 대기 목록에서 수락해야 받는다.
+     * 평가사 역할은 공통 인가가 먼저 확인하고, 이 코드는 평가사이지만 이 건의 담당자가 아닌 경우를
+     * 구분한다 — 배정은 대기 목록에서 수락해야 받는다.
      */
     NOT_ASSIGNED_EVALUATOR(HttpStatus.FORBIDDEN, "이 신청에 배정된 평가사만 방문 결과를 등록할 수 있습니다."),
 

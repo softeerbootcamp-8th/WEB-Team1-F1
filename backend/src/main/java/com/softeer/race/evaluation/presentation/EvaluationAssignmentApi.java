@@ -5,6 +5,7 @@ import com.softeer.race.evaluation.presentation.response.AssignableEvaluationsRe
 import com.softeer.race.evaluation.presentation.response.EvaluationAssignmentResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 
@@ -18,9 +19,11 @@ public interface EvaluationAssignmentApi {
                     + "사람들에게까지 전화번호가 뿌려집니다. 연락처는 수락에 성공한 뒤에 나갑니다. "
                     + "주행거리와 예상 시세도 비어 있습니다. 그 값을 채우는 것이 방문해서 할 일입니다. "
                     + "페이징은 없습니다 — 배정되는 즉시 빠지는 목록이라 규모의 상한이 낮습니다. "
-                    + "세션 쿠키가 필요합니다. 역할은 확인하지 않아 로그인한 회원이면 누구나 볼 수 있습니다 "
-                    + "— 인가 장치가 아직 없어 열어 둔 상태입니다.")
-    ResponseEntity<AssignableEvaluationsResponse> findAssignable(AuthenticatedUser authenticatedUser);
+                    + "세션 쿠키와 평가사 역할이 필요합니다.")
+    @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
+    @ApiResponse(responseCode = "403",
+            description = "평가사 역할이 아니거나 본인 차량의 신청인 경우입니다.")
+    ResponseEntity<AssignableEvaluationsResponse> findAssignable();
 
     @Operation(summary = "방문견적 신청 수락",
             description = "신청 한 건을 수락해 요청자를 담당으로 확정합니다. "
@@ -31,8 +34,9 @@ public interface EvaluationAssignmentApi {
                     + "배정으로 신청 상태는 바뀌지 않습니다 — 평가가 끝날 때까지 REQUESTED입니다. "
                     + "방문 날짜와 장소는 받지 않습니다. 판매자가 정한 조건을 그대로 받아들이는 것이 수락입니다. "
                     + "확정되면 되돌릴 수 없습니다. 응답에는 방문 시 연락할 판매자 전화번호가 담깁니다. "
-                    + "세션 쿠키가 필요합니다. 역할은 확인하지 않아 로그인한 회원이면 누구나 수락할 수 "
-                    + "있습니다 — 인가 장치가 아직 없어 열어 둔 상태입니다.")
+                    + "세션 쿠키와 평가사 역할이 필요합니다.")
+    @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
+    @ApiResponse(responseCode = "403", description = "평가사 역할이 아닌 경우입니다.")
     ResponseEntity<EvaluationAssignmentResponse> assign(
             AuthenticatedUser authenticatedUser,
             @Parameter(description = "수락할 방문견적 신청 ID", example = "1") long evaluationId);

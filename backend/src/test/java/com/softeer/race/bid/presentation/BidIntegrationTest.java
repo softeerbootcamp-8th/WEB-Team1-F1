@@ -149,23 +149,23 @@ class BidIntegrationTest extends IntegrationTestSupport {
         assertThat(bidCount(LIVE_AUCTION)).isZero();
     }
 
-    // 판매자와 같은 칸의 규칙이다, 그 차를 직접 보고 시세를 매긴 사람이라 같은 차의 입찰에 설 수 없다
+    // 평가사 역할은 입찰 자체가 허용되지 않으므로 서비스에 도달하기 전에 공통 인가에서 차단한다
     @Test
-    @DisplayName("시나리오 5-1 : 평가사는 입찰할 수 없다")
+    @DisplayName("시나리오 5-1 : 평가사는 역할 인가 단계에서 입찰이 거절된다")
     void rejectsEvaluatorBid() throws Exception {
         bid(LIVE_AUCTION, EVALUATOR_TOKEN, START_PRICE)
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("EVALUATOR_CANNOT_BID"));
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
 
         assertThat(bidCount(LIVE_AUCTION)).isZero();
     }
 
-    // 없는 리소스에 대한 권한 사유는 알려줄 것이 아니라 404 가 먼저다
+    // 없는 리소스에 대한 자격 사유는 알려줄 것이 아니라 404 가 먼저다
     // 자격을 함께 어긴 요청으로 재는 이유는, 평범한 요청은 검사 순서를 바꿔도 통과해 버리기 때문이다
     @Test
-    @DisplayName("시나리오 5-2 : 없는 경매에는 자격 사유보다 경매 없음이 먼저 나간다")
-    void reportsMissingAuctionBeforeEvaluatorRule() throws Exception {
-        bid(MISSING_AUCTION, EVALUATOR_TOKEN, START_PRICE)
+    @DisplayName("시나리오 5-2 : 없는 경매에는 판매자 자격 사유보다 경매 없음이 먼저 나간다")
+    void reportsMissingAuctionBeforeSellerRule() throws Exception {
+        bid(MISSING_AUCTION, SELLER_TOKEN, START_PRICE)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("AUCTION_NOT_FOUND"));
     }

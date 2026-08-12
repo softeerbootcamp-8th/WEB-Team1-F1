@@ -113,6 +113,11 @@ public class Vehicle extends BaseTimeEntity {
         return new Vehicle(seller, spec, null, null);
     }
 
+    /** 이 차량의 판매자인지 식별자만으로 확인한다. */
+    public boolean isOwnedBy(long userId) {
+        return seller.getId().equals(userId);
+    }
+
     /**
      * 평가사가 실측·산정하고 고른 값으로 비어 있던 네 칸을 채운다. {@link #pendingDiagnosis}가 만든
      * 차량이 온전해지는 지점이다.

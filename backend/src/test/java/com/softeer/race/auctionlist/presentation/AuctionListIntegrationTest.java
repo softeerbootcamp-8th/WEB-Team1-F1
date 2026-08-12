@@ -1,6 +1,13 @@
 package com.softeer.race.auctionlist.presentation;
 
+import com.softeer.race.auth.application.SessionService;
+import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.user.domain.Role;
+import com.softeer.race.user.domain.User;
+import com.softeer.race.user.domain.UserRepository;
+import jakarta.servlet.http.Cookie;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +47,12 @@ class AuctionListIntegrationTest extends IntegrationTestSupport {
     // 픽스처가 이 시각을 기준으로 진행중 101·102·103·110 / 예정 104·105 / 종료 106·107 로 나뉜다
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 12, 0, 0);
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private SessionService sessionService;
+
     @BeforeEach
     void fixClock() {
         fixClockAt(NOW);
@@ -67,6 +80,30 @@ class AuctionListIntegrationTest extends IntegrationTestSupport {
 
         // then 4 : 오프셋 없는 KST 문자열
         response.andExpect(jsonPath("$.serverTime").value("2026-08-03T12:00:00"));
+    }
+
+    @Test
+    @DisplayName("일반 회원은 나의 경매 목록을 조회하고 평가사는 403으로 거부된다")
+    void myAuctionsRequiresSellerRole() throws Exception {
+        User seller = userRepository.findById(100L).orElseThrow();
+        User evaluator = userRepository.save(User.create(
+                "list-evaluator", "list-evaluator@race.dev", "pw",
+                "이평가", "01000000999", Role.EVALUATOR));
+
+        mockMvc.perform(get("/api/auctions/me").cookie(sessionCookie(seller)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/auctions/me").cookie(sessionCookie(evaluator)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
+
+        // 전체 경매 목록은 공개 API이므로 평가사도 그대로 조회할 수 있다
+        mockMvc.perform(get("/api/auctions").cookie(sessionCookie(evaluator)))
+                .andExpect(status().isOk());
+    }
+
+    private Cookie sessionCookie(User user) {
+        return new Cookie(SessionCookieFactory.COOKIE_NAME, sessionService.issue(user));
     }
 
     @Test

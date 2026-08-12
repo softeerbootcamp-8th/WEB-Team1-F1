@@ -4,6 +4,7 @@ import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.exception.AuthErrorCode;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
+import com.softeer.race.user.domain.Role;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.presentation.GlobalExceptionHandler;
 import com.softeer.race.evaluation.application.EvaluationResultService;
@@ -81,7 +82,8 @@ class EvaluationResultPatchControllerTest {
 
     @BeforeEach
     void before() {
-        given(sessionService.authenticate(any())).willReturn(new AuthenticatedUser(EVALUATOR_ID));
+        given(sessionService.authenticate(any()))
+                .willReturn(new AuthenticatedUser(EVALUATOR_ID, Role.EVALUATOR));
     }
 
     @Test

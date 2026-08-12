@@ -2,10 +2,12 @@ package com.softeer.race.bid.presentation;
 
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
+import com.softeer.race.auth.presentation.annotation.RequireRole;
 import com.softeer.race.bid.application.BidService;
 import com.softeer.race.bid.application.dto.BidPlaceInfo;
 import com.softeer.race.bid.presentation.request.BidPlaceRequest;
 import com.softeer.race.bid.presentation.response.BidPlaceResponse;
+import com.softeer.race.user.domain.Role;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,6 +27,7 @@ public class BidController implements BidApi {
     // 담을 수 있는 주소가 404가 된다. 이력 조회가 생기면 그때 created(uri) 로 바꾼다
     @Override
     @PostMapping("/{auctionId}/bids")
+    @RequireRole({Role.GENERAL, Role.DEALER})
     public ResponseEntity<BidPlaceResponse> place(
             @PathVariable("auctionId") long auctionId,
             @LoginUser AuthenticatedUser loginUser,

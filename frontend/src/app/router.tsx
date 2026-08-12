@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { Link, Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom'
 
 import { useScrollReset } from '@/app/scroll-reset'
 import { AppLayout } from '@/components/layout/app-layout'
@@ -22,6 +22,7 @@ import { AssignableEvaluationsPage } from '@/features/evaluations/pages/assignab
 import { MyAssignmentsPage } from '@/features/evaluations/pages/my-assignments-page'
 import { EvaluationResultPage } from '@/features/evaluations/pages/evaluation-result-page'
 import { MyRequestDetailPage } from '@/features/evaluations/pages/my-request-detail-page'
+import { useAuth } from '@/features/auth/auth-context'
 
 export function AppRouter() {
   // 이동할 때 화면을 맨 위로 두는 판단을 여기 한 곳에 모은다. 화면마다 각자 하면 새 화면을
@@ -43,32 +44,43 @@ export function AppRouter() {
         <Route path="/auctions/:id" element={<AuctionRoomPage />} />
         {/* 결과는 방과 다른 액자다. 단계를 보지 않으므로 방이 닫힌 뒤에도 이 주소로 남는다 */}
         <Route path="/auctions/:id/result" element={<AuctionResultPage />} />
-        <Route path="/sell" element={<SellPage />} />
-        <Route path="/sell/evaluator" element={<EvaluatorConnectionPage />} />
-        <Route path="/sell/auction-post" element={<AuctionPostPage />} />
-        <Route path="/sell/result" element={<SellResultPage />} />
         <Route path="/evaluations/assignable" element={<AssignableEvaluationsPage />} />
         <Route path="/evaluations/my" element={<MyAssignmentsPage />} />
         <Route path="/evaluations/:evaluationId/result" element={<EvaluationResultPage />} />
-        {/*
-          * 마이페이지의 탭이 곧 경로다. 상세는 주소만 접두사를 공유하고 컴포넌트는 독립이라,
-          * 마이페이지 화면 구조가 바뀌어도 딥링크가 함께 흔들리지 않는다.
-          */}
-        <Route path="/mypage" element={<MyPage />} />
-        <Route path="/mypage/evaluations" element={<MyPage />} />
-        <Route path="/mypage/deals" element={<MyPage />} />
-        <Route path="/mypage/auctions" element={<Navigate to="/mypage/evaluations" replace />} />
-        <Route path="/mypage/evaluations/:evaluationId" element={<MyRequestDetailPage />} />
-        {/* 알림 딥링크의 목적지. 서버 NotificationType 의 링크와 한 쌍이다 */}
-        <Route path="/mypage/deals/:dealId" element={<DealDetailPage />} />
+        <Route element={<SellerOnlyRoute />}>
+          <Route path="/sell" element={<SellPage />} />
+          <Route path="/sell/evaluator" element={<EvaluatorConnectionPage />} />
+          <Route path="/sell/auction-post" element={<AuctionPostPage />} />
+          <Route path="/sell/result" element={<SellResultPage />} />
+          {/*
+            * 마이페이지의 탭이 곧 경로다. 상세는 주소만 접두사를 공유하고 컴포넌트는 독립이라,
+            * 마이페이지 화면 구조가 바뀌어도 딥링크가 함께 흔들리지 않는다.
+            */}
+          <Route path="/mypage" element={<MyPage />} />
+          <Route path="/mypage/evaluations" element={<MyPage />} />
+          <Route path="/mypage/deals" element={<MyPage />} />
+          <Route path="/mypage/auctions" element={<Navigate to="/mypage/evaluations" replace />} />
+          <Route path="/mypage/evaluations/:evaluationId" element={<MyRequestDetailPage />} />
+          {/* 알림 딥링크의 목적지. 서버 NotificationType 의 링크와 한 쌍이다 */}
+          <Route path="/mypage/deals/:dealId" element={<DealDetailPage />} />
 
-        {/* 옛 주소. 어딘가에 복사돼 있을 수 있어 남긴다 */}
-        <Route path="/deals" element={<Navigate to="/mypage/deals" replace />} />
-        <Route path="/deals/:dealId" element={<LegacyDealRedirect />} />
+          {/* 옛 주소. 어딘가에 복사돼 있을 수 있어 남긴다 */}
+          <Route path="/deals" element={<Navigate to="/mypage/deals" replace />} />
+          <Route path="/deals/:dealId" element={<LegacyDealRedirect />} />
+        </Route>
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   )
+}
+
+/** 평가사는 판매자용 화면에 직접 URL로도 들어갈 수 없다. */
+function SellerOnlyRoute() {
+  const { user } = useAuth()
+
+  return user?.role === 'EVALUATOR'
+    ? <Navigate to="/evaluations/assignable" replace />
+    : <Outlet />
 }
 
 /** 옛 거래 상세 주소를 새 자리로 넘긴다. 번호를 그대로 물고 가야 알림이 가리키던 거래에 닿는다 */

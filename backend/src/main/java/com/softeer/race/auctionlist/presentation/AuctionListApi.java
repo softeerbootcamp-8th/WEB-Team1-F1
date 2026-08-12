@@ -5,6 +5,7 @@ import com.softeer.race.auctionlist.presentation.request.AuctionListFilterReques
 import com.softeer.race.auctionlist.presentation.response.AuctionListResponse;
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 
@@ -20,7 +21,8 @@ public interface AuctionListApi {
     ResponseEntity<AuctionListResponse> list(AuctionListCursorRequest request, AuctionListFilterRequest filterRequest);
 
     @Operation(summary = "나의 경매 목록 조회",
-            description = "로그인한 사용자가 등록한 경매만 진행중 -> 예정 -> 종료 순으로 조회한다. 차량 조건 필터는 공개 목록과 같다.")
+            description = "일반 회원이나 딜러가 등록한 경매만 진행중 -> 예정 -> 종료 순으로 조회한다. 차량 조건 필터는 공개 목록과 같다.")
+    @ApiResponse(responseCode = "403", description = "평가사 역할은 나의 경매 목록에 접근할 수 없습니다.")
     ResponseEntity<AuctionListResponse> listMine(AuthenticatedUser user, AuctionListCursorRequest request,
                                                  AuctionListFilterRequest filterRequest);
 }
