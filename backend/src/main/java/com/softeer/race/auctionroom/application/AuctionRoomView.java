@@ -11,6 +11,7 @@ public record AuctionRoomView(
         RoomState state,
         VehicleSummary vehicle,
         boolean winnerIsMine,
+        boolean sellerIsMine,
         List<RecentBidView> recentBids
 ) {
 
@@ -22,6 +23,7 @@ public record AuctionRoomView(
                 RoomState.of(result, connectedCount),
                 result.detail().vehicle(imageUrls),
                 result.detail().isWonBy(viewerId),
+                result.detail().isSoldBy(viewerId),
                 result.recentBids().stream().map(bid -> RecentBidView.of(bid, viewerId)).toList());
     }
 }

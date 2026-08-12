@@ -238,6 +238,7 @@ function LiveRoom({
             currentPrice={room.currentPrice}
             increment={increment}
             nextMin={nextMin}
+            sellerIsMine={room.sellerIsMine}
             onBid={placeBid}
           />
         </div>

@@ -63,7 +63,7 @@ describe('viewerStandingOf', () => {
     expect(viewerStandingOf(result({ sellerIsMine: true }))).toBe('SELLER')
   })
 
-  // 지금은 자기 차에 입찰하는 것을 막지 않는다(#163). 그 사람에게는 낙찰보다 판매가 앞선 사실이다
+  // 서버가 막으므로 실제로는 나올 수 없는 조합이다. 그 규칙이 흔들려도 판매가 앞서는지를 여기서 고정한다
   it('자기 차를 자기가 받아도 판매자로 본다', () => {
     const selfDealt = result({ sellerIsMine: true, winner: { name: '최*매', mine: true } })
 
