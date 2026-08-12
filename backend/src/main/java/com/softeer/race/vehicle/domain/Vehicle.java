@@ -12,6 +12,9 @@ import lombok.NoArgsConstructor;
  */
 @Getter
 @Entity
+// 번호판으로 진행 중 신청을 찾는 경로가 둘이다(데모 목록 안티조인, 방문견적 중복 검사).
+// 이 컬럼에 unique 는 못 붙인다 — 같은 차가 시간을 두고 다시 매물로 나올 수 있다
+@Table(indexes = @Index(name = "idx_vehicle_plate_number", columnList = "plate_number"))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Vehicle extends BaseTimeEntity {
 
