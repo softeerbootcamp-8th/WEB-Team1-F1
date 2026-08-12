@@ -58,6 +58,14 @@ export function Header() {
     return () => window.removeEventListener('scroll', updateHeader)
   }, [isHome])
 
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } finally {
+      navigate('/', { replace: true })
+    }
+  }
+
   return (
     <header
       className={cn(
@@ -152,7 +160,7 @@ export function Header() {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem variant="destructive" onClick={logout}>
+                <DropdownMenuItem variant="destructive" onClick={handleLogout}>
                   <LogOut className="size-4" />
                   로그아웃
                 </DropdownMenuItem>
