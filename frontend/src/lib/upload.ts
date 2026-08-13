@@ -99,14 +99,17 @@ export function prepareImageFile(file: File): PreparedUploadFile {
   return { file, contentType }
 }
 
-export function prepareDocumentFile(file: File): PreparedUploadFile {
+export function prepareDocumentFile(
+  file: File,
+  label = '진단서',
+): PreparedUploadFile {
   const contentType = inferContentType(file)
   if (contentType !== 'application/pdf') {
-    throw new Error('진단서는 PDF 파일만 등록할 수 있습니다.')
+    throw new Error(`${label}는 PDF 파일만 등록할 수 있습니다.`)
   }
-  if (file.size <= 0) throw new Error('비어 있는 진단서 파일입니다.')
+  if (file.size <= 0) throw new Error(`비어 있는 ${label} 파일입니다.`)
   if (file.size > MAX_DOCUMENT_SIZE) {
-    throw new Error('진단서는 20MB까지 등록할 수 있습니다.')
+    throw new Error(`${label}는 20MB까지 등록할 수 있습니다.`)
   }
   return { file, contentType }
 }
@@ -150,8 +153,29 @@ export async function uploadDealerLicense(
 }
 
 /**
- * 서명 발급 후 S3로 직접 업로드한다. uploadUrl에는 공용 axios의 baseURL·쿠키가
- * 붙으면 안 되므로 의도적으로 순수 fetch만 사용한다.
+ * 발급받은 주소로 파일 한 건을 올린다.
+ *
+ * uploadUrl 에는 공용 axios 의 baseURL·쿠키가 붙으면 안 되므로 의도적으로 순수 fetch 만 쓴다.
+ * 발급 경로가 여럿(공용·거래 서류)이라 이 부분만 따로 두었다 — 헤더나 크기 규칙이 갈라지면
+ * 서명이 깨져 S3 가 거부한다.
+ */
+export async function putPreparedFile(
+  { file, contentType }: PreparedUploadFile,
+  uploadUrl: string,
+): Promise<void> {
+  const response = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: file,
+  })
+  if (!response.ok) {
+    throw new Error(`${file.name} 업로드에 실패했습니다. 다시 시도해 주세요.`)
+  }
+}
+
+/**
+ * 차량 평가 경로의 일괄 업로드. 발급이 평가사 전용이라 다른 역할은 부를 수 없다 —
+ * 판매자가 내는 거래 서류는 거래 아래의 전용 발급을 쓴다.
  */
 export async function uploadPreparedFiles(
   preparedFiles: PreparedUploadFile[],
@@ -173,17 +197,7 @@ export async function uploadPreparedFiles(
   }
 
   await Promise.all(
-    uploads.map(async ({ uploadUrl }, index) => {
-      const { file, contentType } = preparedFiles[index]
-      const response = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': contentType },
-        body: file,
-      })
-      if (!response.ok) {
-        throw new Error(`${file.name} 업로드에 실패했습니다. 다시 시도해 주세요.`)
-      }
-    }),
+    uploads.map(({ uploadUrl }, index) => putPreparedFile(preparedFiles[index], uploadUrl)),
   )
 
   return uploads.map(({ fileUrl }) => fileUrl)

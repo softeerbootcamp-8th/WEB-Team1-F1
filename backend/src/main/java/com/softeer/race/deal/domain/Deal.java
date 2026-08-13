@@ -161,6 +161,26 @@ public class Deal extends BaseTimeEntity {
     }
 
     /**
+     * 이 사용자가 거래에서 어느 쪽인가
+     * <p>
+     * 남의 거래는 조회와 같은 이유로 없는 것과 같게 답한다 — 권한 없음으로 갈리면 그 번호의
+     * 거래가 존재한다는 사실이 새어 나간다.
+     * <p>
+     * 판정이 도메인에 있는 이유는 당사자인지 묻는 곳이 진행 말고도 생겼기 때문이다. 서비스마다
+     * 들고 있으면 "남의 거래는 404" 같은 규칙이 한쪽에서만 빠질 수 있다.
+     */
+    public DealSide sideOf(long userId) {
+        if (seller.getId() == userId) {
+            return DealSide.SELLER;
+        }
+        if (buyer.getId() == userId) {
+            return DealSide.BUYER;
+        }
+
+        throw new BusinessException(DealErrorCode.NOT_FOUND);
+    }
+
+    /**
      * 거래를 취소한다, 사유가 귀책과 보증금 향방을 결정한다
      */
     public void cancel(CancellationReason reason, LocalDateTime now) {

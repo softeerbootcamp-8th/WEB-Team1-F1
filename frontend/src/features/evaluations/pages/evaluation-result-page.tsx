@@ -418,8 +418,8 @@ export function EvaluationResultPage() {
           {detail.status === 'REQUESTED' && (
             <Button
               type="button"
-              variant="destructive"
-              className="w-full"
+              variant="outline"
+              className="text-destructive border-destructive/20 hover:bg-destructive/5 hover:text-destructive w-full"
               onClick={() => setRejectDialogOpen(true)}
             >
               <XCircle />반려하기

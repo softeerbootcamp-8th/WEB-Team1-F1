@@ -47,6 +47,16 @@ export interface DealSlice {
   nextCursor: number | null
 }
 
+/** POST /api/deals/{dealId}/documents/presigned 의 응답 */
+export interface DealDocumentUpload {
+  key: string
+  /** 이 주소로 파일을 PUT 한다. 발급 때 적은 형식·크기와 정확히 같아야 한다 */
+  uploadUrl: string
+  /** 업로드 후 조회할 주소. 탁송 제출의 documentUrl 로 보내야 하는 값이 이쪽이다 */
+  fileUrl: string
+  expiresAt: string
+}
+
 /** POST /api/deals/{dealId}/transport */
 export interface TransportSubmitRequest {
   /** 업로드 API 로 먼저 올리고 받은 조회 주소 */

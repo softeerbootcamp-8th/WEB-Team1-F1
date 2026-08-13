@@ -1,6 +1,8 @@
 import { axiosInstance } from '@/lib/axios'
+import { putPreparedFile, type PreparedUploadFile } from '@/lib/upload'
 import type {
   DealDetail,
+  DealDocumentUpload,
   DealSlice,
   DeliveryConfirmRequest,
   TransportSubmitRequest,
@@ -33,6 +35,27 @@ export async function fetchDealDetail(dealId: number): Promise<DealDetail> {
 /** 구매자가 구매를 확정한다 */
 export async function confirmPurchase(dealId: number): Promise<void> {
   await axiosInstance.post(`/api/deals/${dealId}/confirmation`)
+}
+
+/**
+ * 판매 서류 한 건을 올리고 탁송 제출에 쓸 조회 주소를 받는다.
+ *
+ * 공용 발급(`/api/uploads/presigned`)이 아니라 거래 아래의 경로다. 공용 쪽은 차량 평가 경로라
+ * 평가사만 부를 수 있고, 서류를 낼 자격은 역할이 아니라 "이 거래에서 지금 움직일 판매자인가"라
+ * 거래가 판정한다. 상대 차례면 403, 끝난 거래면 409 다.
+ */
+export async function uploadDealDocument(
+  dealId: number,
+  prepared: PreparedUploadFile,
+): Promise<string> {
+  const { data } = await axiosInstance.post<DealDocumentUpload>(
+    `/api/deals/${dealId}/documents/presigned`,
+    { contentType: prepared.contentType, contentLength: prepared.file.size },
+  )
+
+  await putPreparedFile(prepared, data.uploadUrl)
+
+  return data.fileUrl
 }
 
 /** 판매자가 서류와 탁송 일정을 낸다 */

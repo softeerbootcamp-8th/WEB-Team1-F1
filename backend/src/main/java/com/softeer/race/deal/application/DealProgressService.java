@@ -111,7 +111,7 @@ public class DealProgressService {
      */
     public void cancel(long userId, long dealId) {
         Deal deal = find(dealId);
-        DealSide side = sideOf(deal, userId);
+        DealSide side = deal.sideOf(userId);
 
         deal.cancel(side == DealSide.BUYER
                 ? CancellationReason.BUYER_CANCELLED
@@ -134,7 +134,7 @@ public class DealProgressService {
         Deal deal = find(dealId);
         DealSide turn = deal.getStatus().waitingFor();
 
-        if (turn != null && sideOf(deal, userId) != turn) {
+        if (turn != null && deal.sideOf(userId) != turn) {
             throw new BusinessException(DealErrorCode.NOT_PARTICIPANT);
         }
 
@@ -156,21 +156,6 @@ public class DealProgressService {
     private Deal find(long dealId) {
         return dealRepository.findById(dealId)
                 .orElseThrow(() -> new BusinessException(DealErrorCode.NOT_FOUND));
-    }
-
-    /**
-     * 남의 거래는 조회와 같은 이유로 없는 것과 같게 답한다 — 권한 없음으로 갈리면
-     * 그 번호의 거래가 존재한다는 사실이 새어 나간다
-     */
-    private DealSide sideOf(Deal deal, long userId) {
-        if (deal.getBuyer().getId() == userId) {
-            return DealSide.BUYER;
-        }
-        if (deal.getSeller().getId() == userId) {
-            return DealSide.SELLER;
-        }
-
-        throw new BusinessException(DealErrorCode.NOT_FOUND);
     }
 
     private LocalDateTime now() {
