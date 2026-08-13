@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Countdown } from '@/components/common/countdown'
+import { useCountdown } from '@/hooks/use-countdown'
 import { StartAlertButton } from '@/features/auctions/components/start-alert-button'
 import { CarPhotos } from '@/features/auction-room/components/car-detail'
 import { KeywordBadges } from '@/features/auction-room/components/keyword-badges'
@@ -70,6 +71,13 @@ export function AuctionPreviewDialog({
   const [error, setError] = useState<string | null>(null)
   /** 실제로 받아온 것이 무엇인지. 넘겨받은 단계가 낡았으면 여기서 갈린다 */
   const [loaded, setLoaded] = useState<PreviewStatus>(status)
+  /**
+   * 서버 시각 - 브라우저 시계. 목록이 잰 값으로 시작해 상세 응답으로 다시 잰다.
+   *
+   * 목록의 값은 첫 페이지를 받던 순간의 것이라 창을 오래 열어 두면 낡는다. 시계 차이는
+   * 경매마다 다른 값이 아니므로 다른 경매를 열어도 되돌리지 않는다.
+   */
+  const [clockOffset, setClockOffset] = useState(offsetMs)
 
   useEffect(() => {
     if (auctionId === null) return
@@ -83,6 +91,7 @@ export function AuctionPreviewDialog({
       if (!alive) return
       setDetail(data)
       setLoaded(as)
+      setClockOffset(new Date(data.serverTime).getTime() - Date.now())
     }
 
     if (status === 'ENDED') {
@@ -124,11 +133,21 @@ export function AuctionPreviewDialog({
     }
   }, [auctionId, status, navigate])
 
+  const openAt = (detail as RoomOpeningView | null)?.openAt ?? card?.openAt
+  const { isElapsed } = useCountdown(openAt ?? '', 1000, clockOffset)
+
+  // 개장 시각이 지나면 여기는 담당하는 단계가 아니다. 미리보기는 입장할 수 없는 두 단계
+  // 전용이고, 방이 열린 뒤의 판정은 방 화면이 이어받는다
+  useEffect(() => {
+    if (auctionId === null || loaded !== 'NOT_OPEN' || !isElapsed) return
+
+    navigate(`/auctions/${auctionId}`)
+  }, [auctionId, loaded, isElapsed, navigate])
+
   const result = loaded === 'ENDED' ? (detail as RoomResultView | null) : null
   const vehicle = detail?.vehicle
   const model = vehicle?.model ?? card?.model
   const startPrice = detail?.startPrice ?? card?.startPrice
-  const openAt = (detail as RoomOpeningView | null)?.openAt ?? card?.openAt
   const startAt = (detail as RoomOpeningView | null)?.startAt ?? card?.startAt
 
   // 헤더가 쓰는 것과 같은 값을 기준으로 잡는다. 유찰이면 낙찰가가 없어 시작가로 내려간다
@@ -167,7 +186,7 @@ export function AuctionPreviewDialog({
                 {openAt && (
                   <Countdown
                     targetIso={openAt}
-                    offsetMs={offsetMs}
+                    offsetMs={clockOffset}
                     className="mt-0.5 block text-3xl font-bold"
                   />
                 )}
