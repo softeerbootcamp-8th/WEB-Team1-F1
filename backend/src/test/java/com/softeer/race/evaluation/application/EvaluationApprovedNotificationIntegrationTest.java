@@ -37,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 시나리오
  * <ol>
- *   <li>제출이 커밋되면 판매자 알림함에 등록 안내 한 건이 쌓이고, 링크가 그 신청을 가리킨다</li>
+ *   <li>제출이 커밋되면 판매자 알림함에 승인 안내 한 건이 쌓이고, 링크가 그 신청 상세를 가리킨다</li>
  *   <li>제출한 평가사에게는 가지 않는다</li>
  *   <li>제출이 롤백되면 알림도 남지 않는다</li>
  *   <li>재제출하면 한 건이 더 쌓인다</li>
@@ -80,7 +80,7 @@ class EvaluationApprovedNotificationIntegrationTest extends IntegrationTestSuppo
     }
 
     @Test
-    @DisplayName("시나리오 1 : 제출이 커밋되면 판매자에게 등록 안내 알림이 쌓인다")
+    @DisplayName("시나리오 1 : 제출이 커밋되면 판매자에게 승인 안내 알림이 쌓인다")
     void scenario1_NotifiesSeller() throws Exception {
         // when
         submit(DOCUMENT_URL).andExpect(status().isOk());
@@ -95,10 +95,10 @@ class EvaluationApprovedNotificationIntegrationTest extends IntegrationTestSuppo
         assertThat(approved.message()).isEqualTo(EVAL_APPROVED.defaultMessage());
         assertThat(approved.read()).isFalse();
 
-        // then 3 : 목적지가 결과 화면이 아니라 등록 화면이고, 그 신청을 달고 간다.
-        //          참조가 빠지면 화면이 어느 차량을 등록할지 알 수 없다
+        // then 3 : 등록 여부를 정하기 전에 평가 결과를 볼 수 있도록 그 신청 상세로 보낸다.
+        //          상세의 등록 버튼이 다음 행동을 이어 주고, 반려 알림과도 목적지가 같아진다
         assertThat(approved.referenceId()).isEqualTo(EVALUATION_ID);
-        assertThat(approved.link()).isEqualTo("/sell/auction-post?evaluationId=" + EVALUATION_ID);
+        assertThat(approved.link()).isEqualTo("/mypage/evaluations/" + EVALUATION_ID);
 
         // then 4 : 배지가 바로 맞아야 한다
         assertThat(notificationRepository.countUnread(SELLER_ID)).isEqualTo(1);

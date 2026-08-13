@@ -16,11 +16,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.mysql.MySQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -50,8 +53,14 @@ public abstract class IntegrationTestSupport {
             .withEnv("TZ", "Asia/Seoul")
             .withUrlParam("characterEncoding", "UTF-8");
 
+    // 개발용 compose 와 같은 태그, 그쪽과 같이 비밀번호를 걸지 않는다
+    private static final int REDIS_PORT = 6379;
+    private static final GenericContainer REDIS = new GenericContainer(DockerImageName.parse("redis:8-alpine"))
+            .withExposedPorts(REDIS_PORT);
+
     static {
         MYSQL.start();
+        REDIS.start();
     }
 
     @DynamicPropertySource
@@ -61,8 +70,19 @@ public abstract class IntegrationTestSupport {
         registry.add("spring.datasource.password", MYSQL::getPassword);
     }
 
+    // 이걸 걸지 않으면 auto-config 의 기본값인 개발자 노트북의 localhost:6379 로 붙는다
+    // 노출 포트는 호스트에서 임의 포트로 매핑되므로 6379 를 그대로 쓰지 않는다
+    @DynamicPropertySource
+    static void redis(DynamicPropertyRegistry registry) {
+        registry.add("spring.data.redis.host", REDIS::getHost);
+        registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(REDIS_PORT));
+    }
+
     @Autowired
     protected JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private RedisConnectionFactory redisConnectionFactory;
 
     @Autowired
     protected MockMvc mockMvc;
@@ -94,6 +114,15 @@ public abstract class IntegrationTestSupport {
 
     protected void fixClockAt(LocalDateTime now) {
         TestClock.INSTANCE.fixAt(now);
+    }
+
+    // 컨테이너가 스위트 전체에서 하나라 지우지 않으면 앞 테스트가 넣은 키가 다음 테스트에 남는다
+    // 테이블과 달리 스키마가 없어 지울 대상을 물어볼 곳이 없다, 통째로 비운다
+    @AfterEach
+    void clearRedis() {
+        try (RedisConnection connection = redisConnectionFactory.getConnection()) {
+            connection.serverCommands().flushDb();
+        }
     }
 
     // 테스트 전이 아니라 후에 지운다

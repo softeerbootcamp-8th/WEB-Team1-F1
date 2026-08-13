@@ -19,10 +19,7 @@ export function MyAssignmentsPage() {
     <main className="mx-auto max-w-7xl px-6 py-12" aria-label="내 담당 방문견적">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-5">
         <div>
-          <p className="text-muted-foreground text-sm tracking-[0.15em] uppercase">
-            My Assignments
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold md:text-4xl">내 담당 목록</h1>
+          <h1 className="text-3xl font-semibold md:text-4xl">내 담당 목록</h1>
           <p className="text-muted-foreground mt-3">
             판매자와 일정을 협의한 뒤 현장에서 진단 결과를 등록해 주세요.
           </p>

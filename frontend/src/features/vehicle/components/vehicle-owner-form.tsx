@@ -39,7 +39,7 @@ export function VehicleOwnerForm({
 
   return (
     <form
-      className="space-y-7"
+      className="mx-auto w-full max-w-sm space-y-7"
       onSubmit={(event) => {
         event.preventDefault()
         onSubmit({
@@ -69,39 +69,39 @@ export function VehicleOwnerForm({
         </HelpPopover>
       </div>
       <div className="space-y-3">
-        <Label className="text-lg" htmlFor={`${actionLabel}-owner-name`}>
-          이름
-        </Label>
-        <Input
-          id={`${actionLabel}-owner-name`}
-          value={ownerName}
-          onChange={(event) => setOwnerName(event.target.value)}
-          placeholder="차량 소유자 이름"
-          className="h-14 px-4 text-lg md:text-lg"
-          autoComplete="name"
-          maxLength={50}
-          required
-        />
-      </div>
-      <div className="space-y-3">
-        <Label className="text-lg" htmlFor={`${actionLabel}-plate-number`}>
-          차량 번호판
+        <Label htmlFor={`${actionLabel}-plate-number`}>
+          차량 번호
         </Label>
         <Input
           id={`${actionLabel}-plate-number`}
           value={plateNumber}
           onChange={(event) => setPlateNumber(event.target.value)}
           placeholder="12가3456"
-          className="h-14 px-4 text-lg font-semibold md:text-lg"
+          className="h-14 px-4 font-semibold"
           autoComplete="off"
           pattern="^\d{2,3}[가-힣]\d{4}$"
+          required
+        />
+      </div>
+      <div className="space-y-3">
+        <Label htmlFor={`${actionLabel}-owner-name`}>
+          소유자명
+        </Label>
+        <Input
+          id={`${actionLabel}-owner-name`}
+          value={ownerName}
+          onChange={(event) => setOwnerName(event.target.value)}
+          placeholder="차량 소유자 이름"
+          className="h-14 px-4"
+          autoComplete="name"
+          maxLength={50}
           required
         />
       </div>
       <Button
         type="submit"
         size="lg"
-        className="h-14 w-full text-lg"
+        className="h-14 w-full"
         disabled={
           isSubmitting ||
           ownerName.trim().length < 1 ||

@@ -4,10 +4,6 @@ import { ClipboardCheck, Gavel, ListChecks, LogOut, User as UserIcon } from 'luc
 
 import { Button } from '@/components/ui/button'
 import {
-  Avatar,
-  AvatarFallback,
-} from '@/components/ui/avatar'
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -118,18 +114,13 @@ export function Header() {
                 <Button
                   variant="ghost"
                   className={cn(
-                    'gap-2 pl-2',
                     isHomeOverlay &&
                       'bg-black/30 text-white transition-none hover:bg-black/45 hover:text-white',
                   )}
                   aria-label="내 계정"
                 >
-                  <Avatar className="size-7">
-                    <AvatarFallback>{user.realName.slice(0, 1)}</AvatarFallback>
-                  </Avatar>
-                  <span className="hidden text-sm font-medium sm:inline">
-                    {user.realName}
-                  </span>
+                  {/* 이름을 좁은 화면에서도 숨기지 않는다. 아바타가 없어 숨기면 빈 버튼만 남는다 */}
+                  <span className="text-sm font-medium">{user.realName}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">

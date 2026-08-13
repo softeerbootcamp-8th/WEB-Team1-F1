@@ -44,7 +44,7 @@ import {
   type VehicleKeyword,
 } from '@/features/quote/types'
 import { getErrorMessage } from '@/lib/axios'
-import { formatKRW } from '@/lib/format'
+import { formatNumericInput, parseNumericInput } from '@/lib/input-format'
 import { cn } from '@/lib/utils'
 import {
   fetchEvaluationDetail,
@@ -105,17 +105,6 @@ function sameValues<T>(left: T[], right: T[]): boolean {
 function normalizeKeywords(keywords: VehicleKeyword[]): VehicleKeyword[] {
   if (!keywords.includes('ACCIDENT_FREE') || !keywords.includes('MINOR_EXCHANGE')) return keywords
   return keywords.filter((keyword) => keyword !== 'MINOR_EXCHANGE')
-}
-
-function formatNumericInput(value: string | number): string {
-  const digits = String(value).replace(/\D/g, '')
-  if (!digits) return ''
-  const normalized = digits.replace(/^0+(?=\d)/, '')
-  return normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-}
-
-function parseNumericInput(value: string): number {
-  return Number(value.replaceAll(',', ''))
 }
 
 function stageMeta(stage: SubmitStage) {
@@ -387,9 +376,6 @@ export function EvaluationResultPage() {
   }
 
   const cannotSubmit = detail.status === 'REJECTED'
-  const pricePreview = parseNumericInput(estimatedPriceManwon) * WON_PER_MANWON
-  const hasPricePreview = Number.isSafeInteger(pricePreview) && pricePreview > 0
-
   return (
     <main className="mx-auto max-w-6xl px-6 py-12" aria-label="평가 결과 작성">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
@@ -398,8 +384,7 @@ export function EvaluationResultPage() {
 
       <header className="mt-6 flex flex-wrap items-end justify-between gap-5">
         <div>
-          <p className="text-muted-foreground text-sm tracking-[0.15em] uppercase">Diagnosis</p>
-          <h1 className="mt-2 text-3xl font-semibold md:text-4xl">평가 결과 작성</h1>
+          <h1 className="text-3xl font-semibold md:text-4xl">평가 결과 작성</h1>
           <p className="text-muted-foreground mt-3">
             {detail.status === 'APPROVED'
               ? '바꾸려는 항목만 수정하고 기존 사진의 순서도 조정할 수 있습니다.'
@@ -457,25 +442,24 @@ export function EvaluationResultPage() {
             <h2 className="text-lg font-semibold">진단 수치</h2>
             <div className="mt-4 grid gap-5 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="evaluation-mileage">실측 주행거리</Label>
+                <Label htmlFor="evaluation-mileage" className="text-lg font-semibold">실측 주행거리</Label>
                 <div className="relative">
                   <Input
                     id="evaluation-mileage"
                     type="text"
                     inputMode="numeric"
                     value={mileage}
-                    onChange={(event) => setMileage(formatNumericInput(event.target.value))}
+                    onChange={(event) => setMileage(formatNumericInput(event.target.value, 6))}
                     placeholder="45,000"
                     maxLength={7}
-                    className="h-24 rounded-2xl px-6 pr-20 text-3xl font-semibold tracking-tight md:text-3xl"
+                    className="h-24 rounded-2xl px-6 pr-20 text-3xl font-semibold tracking-tight placeholder:opacity-40 md:text-3xl"
                     required
                   />
                   <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-6 -translate-y-1/2 text-xl">km</span>
                 </div>
-                <p className="text-muted-foreground px-1 text-sm">최대 999,999km</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="evaluation-price">산정 시세</Label>
+                <Label htmlFor="evaluation-price" className="text-lg font-semibold">산정 시세</Label>
                 <div className="relative">
                   <Input
                     id="evaluation-price"
@@ -485,14 +469,11 @@ export function EvaluationResultPage() {
                     onChange={(event) => setEstimatedPriceManwon(formatNumericInput(event.target.value))}
                     placeholder="2,150"
                     maxLength={15}
-                    className="h-24 rounded-2xl px-6 pr-24 text-3xl font-semibold tracking-tight md:text-3xl"
+                    className="h-24 rounded-2xl px-6 pr-24 text-3xl font-semibold tracking-tight placeholder:opacity-40 md:text-3xl"
                     required
                   />
                   <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-6 -translate-y-1/2 text-xl">만원</span>
                 </div>
-                <p className="text-muted-foreground px-1 text-lg tabular-nums">
-                  {hasPricePreview ? formatKRW(pricePreview) : '원 단위 환산 금액'}
-                </p>
               </div>
             </div>
           </section>

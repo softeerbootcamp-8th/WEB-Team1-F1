@@ -112,12 +112,12 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: IMAGE_TAG,GHCR_TOKEN,GHCR_ACTOR,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD
+          envs: IMAGE_TAG,GHCR_TOKEN,GHCR_ACTOR,DB_HOST,DB_PORT,DB_NAME,DB_USERNAME,DB_PASSWORD,REDIS_HOST,REDIS_PORT
           script: |
             set -euo pipefail
             cd /home/ec2-user/race-backend
 
-            # DB 값은 이 셸의 환경변수로만 존재하고 compose 가 거기서 보간한다
+            # DB·Redis 접속 정보는 이 셸의 환경변수로만 존재하고 compose 가 거기서 보간한다
             # 파일로 떨어뜨리지 않아 서버에 평문 사본이 남지 않는다
             # 예전 배포가 남긴 .env 가 있으면 compose 가 그걸 먼저 읽어 낡은 값으로 뜬다
             rm -f .env
@@ -164,6 +164,10 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          # Redis 는 앱 EC2 가 아니라 VPC 안의 별도 서버다
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          # 등록하지 않으면 빈 값으로 넘어가고 compose 가 기본 포트로 채운다
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
 
   # 세 잡이 어떻게 끝났든 결과를 알린다
   # always() 는 취소된 실행까지 붙잡아 워크플로가 타임아웃까지 매달릴 수 있어 문서가 권하지 않는다

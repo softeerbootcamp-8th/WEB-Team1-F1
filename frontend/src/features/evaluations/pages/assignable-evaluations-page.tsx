@@ -75,10 +75,7 @@ export function AssignableEvaluationsPage() {
     <main className="mx-auto max-w-7xl px-6 py-12" aria-label="배정 대기 방문견적">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-5">
         <div>
-          <p className="text-muted-foreground text-sm tracking-[0.15em] uppercase">
-            Evaluator Queue
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold md:text-4xl">배정 대기 목록</h1>
+          <h1 className="text-3xl font-semibold md:text-4xl">배정 대기 목록</h1>
           <p className="text-muted-foreground mt-3">
             방문일이 가까운 신청부터 표시됩니다. 수락한 평가사에게만 연락처가 공개됩니다.
           </p>
