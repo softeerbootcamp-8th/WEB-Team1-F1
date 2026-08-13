@@ -44,7 +44,6 @@ import {
   type VehicleKeyword,
 } from '@/features/quote/types'
 import { getErrorMessage } from '@/lib/axios'
-import { formatKRW } from '@/lib/format'
 import { formatNumericInput, parseNumericInput } from '@/lib/input-format'
 import { cn } from '@/lib/utils'
 import {
@@ -377,9 +376,6 @@ export function EvaluationResultPage() {
   }
 
   const cannotSubmit = detail.status === 'REJECTED'
-  const pricePreview = parseNumericInput(estimatedPriceManwon) * WON_PER_MANWON
-  const hasPricePreview = Number.isSafeInteger(pricePreview) && pricePreview > 0
-
   return (
     <main className="mx-auto max-w-6xl px-6 py-12" aria-label="평가 결과 작성">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
@@ -446,7 +442,7 @@ export function EvaluationResultPage() {
             <h2 className="text-lg font-semibold">진단 수치</h2>
             <div className="mt-4 grid gap-5 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="evaluation-mileage">실측 주행거리</Label>
+                <Label htmlFor="evaluation-mileage" className="text-lg font-semibold">실측 주행거리</Label>
                 <div className="relative">
                   <Input
                     id="evaluation-mileage"
@@ -461,10 +457,9 @@ export function EvaluationResultPage() {
                   />
                   <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-6 -translate-y-1/2 text-xl">km</span>
                 </div>
-                <p className="text-muted-foreground px-1 text-sm">최대 999,999km</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="evaluation-price">산정 시세</Label>
+                <Label htmlFor="evaluation-price" className="text-lg font-semibold">산정 시세</Label>
                 <div className="relative">
                   <Input
                     id="evaluation-price"
@@ -479,9 +474,6 @@ export function EvaluationResultPage() {
                   />
                   <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-6 -translate-y-1/2 text-xl">만원</span>
                 </div>
-                <p className="text-muted-foreground px-1 text-lg tabular-nums">
-                  {hasPricePreview ? formatKRW(pricePreview) : '원 단위 환산 금액'}
-                </p>
               </div>
             </div>
           </section>
