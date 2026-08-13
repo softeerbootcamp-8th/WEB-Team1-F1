@@ -20,6 +20,7 @@ import {
 import { Countdown } from '@/components/common/countdown'
 import { StartAlertButton } from '@/features/auctions/components/start-alert-button'
 import { CarPhotos } from '@/features/auction-room/components/car-detail'
+import { KeywordBadges } from '@/features/auction-room/components/keyword-badges'
 import { fetchAuctionRoom, fetchRoomOpening, fetchRoomResult } from '@/features/auction-room/api'
 import type { RoomOpeningView, RoomResultView } from '@/features/auction-room/types'
 import { similarFilter, type AuctionVehicleFilter } from '@/features/auctions/filter'
@@ -141,16 +142,19 @@ export function AuctionPreviewDialog({
     <Dialog open={auctionId !== null} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
         <DialogHeader className="flex-row items-start justify-between gap-4 space-y-0 border-b p-5 pr-12 text-left">
-          <div>
+          <div className="space-y-1">
             <DialogTitle className="text-xl">
               {vehicle && `${MANUFACTURER_LABEL[vehicle.manufacturer]} `}
               {model ?? '경매'}
             </DialogTitle>
-            <DialogDescription className="mt-1 text-base">
+            <DialogDescription className="text-base">
               {vehicle
                 ? `${vehicle.modelYear}년 · ${formatMileage(vehicle.mileage)} · ${FUEL_TYPE_LABEL[vehicle.fuelType]}`
                 : '불러오는 중'}
             </DialogDescription>
+
+            {/* 방·결과 화면과 같은 자리다, 화면을 옮겨도 눈이 찾는 곳이 같아야 한다 */}
+            {vehicle && <KeywordBadges keywords={vehicle.keywords} />}
           </div>
 
           <div className="shrink-0 text-right">
@@ -197,8 +201,8 @@ export function AuctionPreviewDialog({
             <dl className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-2 border-t p-4 text-base">
               {loaded === 'NOT_OPEN' ? (
                 <>
-                  {openAt && <Fact label="입장" value={formatClock(openAt)} />}
-                  {startAt && <Fact label="입찰 시작" value={formatClock(startAt)} />}
+                  {openAt && <Fact label="경매방 입장" value={formatClock(openAt)} />}
+                  {startAt && <Fact label="경매 시작" value={formatClock(startAt)} />}
                   {card && <Fact label="마감" value={formatClock(card.endAt)} />}
                 </>
               ) : (
