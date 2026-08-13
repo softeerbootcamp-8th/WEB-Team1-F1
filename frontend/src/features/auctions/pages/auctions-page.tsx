@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { SearchX, TriangleAlert } from 'lucide-react'
 
+import { scrollToTop } from '@/app/scroll-reset'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common/empty-state'
@@ -87,12 +88,26 @@ export function AuctionsPage() {
   const scope = readScope(searchParams)
   const filter = readFilter(searchParams)
 
+  /**
+   * 목록을 갈아끼우는 조건을 주소에 쓰고 화면을 맨 위로 올린다. 조건 패널이 sticky 라 목록
+   * 한참 아래에서도 조건을 바꿀 수 있는데, 카드가 통째로 달라지므로 보던 높이는 새 목록에서
+   * 아무 자리도 가리키지 않는다 — 새 목록이 더 짧으면 브라우저가 스크롤을 끝으로 당겨,
+   * 무엇이 바뀌었는지 보이지 않는 자리에 남는다.
+   *
+   * replace 로 쓰는 것은 히스토리에 쌓지 않기 위해서다. 그래서 {@link useScrollReset} 이
+   * 손대지 않고(미리보기를 닫기만 할 때 튀지 않으려면 그게 맞다), 여기서 직접 올린다.
+   */
+  const applyListParams = (params: URLSearchParams) => {
+    setSearchParams(params, { replace: true })
+    scrollToTop()
+  }
+
   // 탭 전환은 히스토리에 쌓지 않는다. 쌓으면 탭을 옮긴 횟수만큼 뒤로가기를 눌러야 목록을 벗어난다.
   const selectTab = (key: string, value: string, isDefault: boolean) => {
     const next = new URLSearchParams(searchParams)
     if (isDefault) next.delete(key)
     else next.set(key, value.toLowerCase())
-    setSearchParams(next, { replace: true })
+    applyListParams(next)
   }
 
   // 차량 조건도 탭처럼 주소가 원본이다. 경매방을 다녀와도, 주소를 공유해도 같은 조건이 복원된다.
@@ -101,7 +116,7 @@ export function AuctionsPage() {
   const changeVehicleFilter = (next: typeof vehicleFilter) => {
     const params = new URLSearchParams(searchParams)
     writeFilterParams(next, params)
-    setSearchParams(params, { replace: true })
+    applyListParams(params)
   }
 
   // 조건과 상태를 한 번에 지운다. 나눠서 두 번 쓰면 둘 다 지금 주소에서 출발하므로
@@ -110,7 +125,7 @@ export function AuctionsPage() {
     const params = new URLSearchParams(searchParams)
     writeFilterParams(EMPTY_FILTER, params)
     params.delete(STATUS_PARAM)
-    setSearchParams(params, { replace: true })
+    applyListParams(params)
   }
 
   const [editing, setEditing] = useState<AuctionListCard | null>(null)
@@ -155,7 +170,7 @@ export function AuctionsPage() {
     params.delete(STATUS_PARAM)
     params.delete('open')
     params.delete('as')
-    setSearchParams(params, { replace: true })
+    applyListParams(params)
     setPreview(null)
   }
 
@@ -235,8 +250,11 @@ export function AuctionsPage() {
           />
         </aside>
 
-        {/* 범위는 목록의 것이라 목록 열 머리에 둔다. 조건 패널과 나란히 서면 둘 다 필터로 읽힌다. */}
-        <div className="mb-6 lg:col-start-2 lg:row-start-1">
+        {/* 범위는 목록의 것이라 목록 열 머리에 둔다. 조건 패널과 나란히 서면 둘 다 필터로 읽힌다.
+            내려가도 따라오게 고정한다 — 목록 한참 아래에서 범위를 바꾸려고 맨 위까지 되돌아가지
+            않아도 된다. 상단 바 높이에 맞춰 그 바로 밑에 붙인다, 틈을 두면 그 사이로 카드가
+            지나가 보인다. 탭 배경이 반투명이라 카드가 비치지 않게 불투명 배경을 함께 깐다. */}
+        <div className="mb-6 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-(--spacing-header) lg:z-10 lg:bg-background">
           <ScopeTabs
             value={scope}
             onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
