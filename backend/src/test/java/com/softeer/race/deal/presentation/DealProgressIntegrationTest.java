@@ -353,11 +353,7 @@ class DealProgressIntegrationTest extends IntegrationTestSupport {
 
     // 로그인 경로 대신 세션을 직접 심는다, 이 테스트가 볼 것은 인증이 아니라 거래 진행이다
     private void login(User user, String rawToken) {
-        jdbcTemplate.update("""
-                        insert into user_session (id, user_id, expires_at, created_at, updated_at)
-                        values (sha2(?, 256), ?, ?, ?, ?)
-                        """,
-                rawToken, user.getId(), NOW.plusHours(1), NOW, NOW);
+        sessions.seed(rawToken, user.getId(), user.getRole());
     }
 
     private Cookie sessionCookie(String rawToken) {

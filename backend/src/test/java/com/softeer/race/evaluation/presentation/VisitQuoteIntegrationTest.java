@@ -3,7 +3,9 @@ package com.softeer.race.evaluation.presentation;
 import com.jayway.jsonpath.JsonPath;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,6 +84,13 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
     // 고정하지 않은 실제 Clock이다, 방문 날짜를 여기서 상대적으로 만든다
     @Autowired
     private Clock clock;
+
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.visitQuote(sessions);
+    }
 
     @Test
     @DisplayName("시나리오 1 : 방문 정보를 보내면 차량과 배정 대기 상태의 신청이 함께 만들어진다")

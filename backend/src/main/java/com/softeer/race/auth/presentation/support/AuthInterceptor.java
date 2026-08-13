@@ -37,8 +37,8 @@ import java.util.Arrays;
  * GlobalExceptionHandler를 거쳐 다른 API와 같은 ProblemDetail 응답이 된다.
  * 필터는 DispatcherServlet 바깥이라 401 본문을 직접 조립해야 하고 응답 포맷이 이중 관리된다.
  * <p>
- * 리포지토리를 직접 주입하지 않고 SessionService를 경유한다. preHandle은 트랜잭션 밖이므로
- * 트랜잭션 경계를 구조로 강제해 두는 것이다.
+ * 세션 저장소를 직접 주입하지 않고 SessionService를 경유한다. 토큰 해싱과 슬라이딩 연장 판정이
+ * 인증의 일부라, 저장소를 직접 부르는 경로가 생기면 그 규칙이 두 곳으로 흩어진다.
  */
 @Component
 @RequiredArgsConstructor
