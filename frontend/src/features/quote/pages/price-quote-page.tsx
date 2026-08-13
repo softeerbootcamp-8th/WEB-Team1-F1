@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, LoaderCircle, Search } from 'lucide-react'
+import { LoaderCircle, Search } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -70,7 +70,7 @@ export function PriceQuotePage() {
       <header>
         <h1 className="text-3xl font-semibold md:text-4xl lg:text-5xl lg:whitespace-nowrap">
           {vehicle
-            ? '현재 주행거리를 알려주세요.'
+            ? '주행거리 입력'
             : '내 차 정보를 확인해보세요!'}
         </h1>
         <p className="text-muted-foreground mt-3 text-lg leading-8">
@@ -81,27 +81,18 @@ export function PriceQuotePage() {
       </header>
 
       {vehicle && owner ? (
-        <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <aside className="rounded-2xl border p-7 md:p-8">
-            <VehicleSummary vehicle={vehicle} />
-          </aside>
-
-          <section className="min-w-0 self-start rounded-2xl border p-7 md:p-8">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-2"
-              onClick={() => setVehicle(null)}
-            >
-              <ArrowLeft className="size-4" />
-              차량 정보 수정
-            </Button>
-
-            <form className="mt-8 space-y-6" onSubmit={showQuote}>
-              <div className="space-y-2">
-                <Label htmlFor="quote-mileage">현재 주행거리</Label>
-                <div className="relative">
+        <section className="mt-12 rounded-2xl border p-7 md:p-8">
+          <VehicleSummary
+            vehicle={vehicle}
+            balancedRows
+            childrenClassName="grid h-full grid-rows-2"
+          >
+            <form className="contents" onSubmit={showQuote}>
+              <div className="flex items-center gap-4 self-start">
+                <Label htmlFor="quote-mileage" className="shrink-0">
+                  현재 주행거리
+                </Label>
+                <div className="relative flex-1">
                   <Input
                     id="quote-mileage"
                     type="text"
@@ -117,15 +108,12 @@ export function PriceQuotePage() {
                     km
                   </span>
                 </div>
-                <p className="text-muted-foreground text-xs">
-                  현재 계기판에 표시된 주행거리를 입력해 주세요.
-                </p>
               </div>
 
               <Button
                 type="submit"
                 size="lg"
-                className="w-full"
+                className="w-full self-end"
                 disabled={isEstimating || !isMileageValid}
               >
                 {isEstimating ? (
@@ -136,8 +124,8 @@ export function PriceQuotePage() {
                 예상 시세 조회하기
               </Button>
             </form>
-          </section>
-        </div>
+          </VehicleSummary>
+        </section>
       ) : (
         <div className="mx-auto mt-12 w-full max-w-5xl rounded-2xl border p-7 md:px-12 md:py-10 lg:px-16">
           <VehicleOwnerForm
