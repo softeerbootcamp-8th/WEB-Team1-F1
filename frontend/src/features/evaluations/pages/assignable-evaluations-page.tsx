@@ -28,17 +28,19 @@ import { FUEL_TYPE_LABEL, MANUFACTURER_LABEL, TRANSMISSION_LABEL } from '@/featu
 import { getErrorMessage } from '@/lib/axios'
 import { formatDateTime } from '@/lib/format'
 import { assignEvaluation, fetchAssignableEvaluations } from '../api'
+import {
+  ASSIGNABLE_EVALUATIONS_QUERY_KEY,
+  MY_ASSIGNMENTS_QUERY_KEY,
+} from '../query-keys'
 import type { EvaluationAssignment } from '../types'
 import { formatPhone, formatVisitDate, getEvaluationErrorCode } from '../utils'
-
-const ASSIGNABLE_QUERY_KEY = ['evaluations', 'assignable'] as const
 
 export function AssignableEvaluationsPage() {
   const queryClient = useQueryClient()
   const [assignment, setAssignment] = useState<EvaluationAssignment | null>(null)
 
   const query = useQuery({
-    queryKey: ASSIGNABLE_QUERY_KEY,
+    queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY,
     queryFn: fetchAssignableEvaluations,
   })
 
@@ -46,8 +48,8 @@ export function AssignableEvaluationsPage() {
     mutationFn: assignEvaluation,
     onSuccess: (data) => {
       setAssignment(data)
-      void queryClient.invalidateQueries({ queryKey: ASSIGNABLE_QUERY_KEY })
-      void queryClient.invalidateQueries({ queryKey: ['evaluations', 'my-assignments'] })
+      void queryClient.invalidateQueries({ queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY })
+      void queryClient.invalidateQueries({ queryKey: MY_ASSIGNMENTS_QUERY_KEY })
     },
     onError: (error) => {
       const code = getEvaluationErrorCode(error)
@@ -55,14 +57,14 @@ export function AssignableEvaluationsPage() {
         toast.info('이미 마감됐습니다', {
           description: '다른 평가사가 먼저 수락해 목록을 새로고침했습니다.',
         })
-        void queryClient.invalidateQueries({ queryKey: ASSIGNABLE_QUERY_KEY })
+        void queryClient.invalidateQueries({ queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY })
         return
       }
       if (code === 'EVALUATION_NOT_ASSIGNABLE') {
         toast.info('수락할 수 없는 신청입니다', {
           description: '신청 상태가 변경되어 목록을 새로고침했습니다.',
         })
-        void queryClient.invalidateQueries({ queryKey: ASSIGNABLE_QUERY_KEY })
+        void queryClient.invalidateQueries({ queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY })
         return
       }
       toast.error(getErrorMessage(error, '방문견적을 수락하지 못했습니다'))
