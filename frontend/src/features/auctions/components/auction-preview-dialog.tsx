@@ -235,7 +235,7 @@ export function AuctionPreviewDialog({
                       <Fact label="시작가" value={formatKRW(startPrice)} />
                     )}
                     <FactDivider />
-                    <Fact label="입찰" value={`${result?.bidCount ?? 0}건`} />
+                    <Fact label="총 입찰" value={`${result?.bidCount ?? 0}건`} />
                     <FactDivider />
                     <Fact label="상승률" value={riseRate(result)} />
                   </>
