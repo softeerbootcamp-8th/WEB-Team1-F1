@@ -70,10 +70,10 @@ export function DemoVehicleHelp() {
           <thead className="text-muted-foreground">
             <tr>
               <th scope="col" className="py-1 font-medium">
-                이름
+                차량 번호
               </th>
               <th scope="col" className="py-1 font-medium">
-                차량 번호
+                이름
               </th>
               <th scope="col" className="py-1 font-medium">
                 차량
@@ -83,10 +83,10 @@ export function DemoVehicleHelp() {
           <tbody>
             {data.map((vehicle) => (
               <tr key={vehicle.plateNumber} className="border-t">
-                <td className="py-1.5 whitespace-nowrap">{vehicle.ownerName}</td>
                 <td className="py-1.5 font-semibold whitespace-nowrap tabular-nums">
                   {vehicle.plateNumber}
                 </td>
+                <td className="py-1.5 whitespace-nowrap">{vehicle.ownerName}</td>
                 <td className="py-1.5">
                   {MANUFACTURER_LABEL[vehicle.manufacturer]} {vehicle.model}
                   <span className="text-muted-foreground">
