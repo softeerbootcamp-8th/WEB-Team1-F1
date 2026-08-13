@@ -54,7 +54,7 @@ export function QuoteResultPage() {
       </header>
 
       <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-stretch">
-        <div className="bg-muted aspect-[16/10] overflow-hidden rounded-2xl border lg:aspect-auto">
+        <div className="aspect-[16/10] overflow-hidden rounded-2xl border lg:aspect-auto">
           <CarThumb
             src={quote.mainImageUrl ?? undefined}
             alt={quote.model}
