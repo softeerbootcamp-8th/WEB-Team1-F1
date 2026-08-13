@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
+import { fetchAuctionList } from '@/features/auctions/api'
 import type { AuctionListCard, AuctionListPage } from '@/features/auctions/types'
 
 import { useAuctionList } from './use-auction-list'
@@ -79,5 +80,29 @@ describe('useAuctionList 의 탭 복귀 갱신', () => {
     await waitFor(() => expect(result.current.cards).toHaveLength(4))
     // 목록이 이미 있는 갱신은 스켈레톤을 띄우지 않는다
     expect(result.current.isLoading).toBe(false)
+  })
+})
+
+// 앞의 테스트와 캐시를 나눠 쓰지 않도록 다른 필터로 연다, 목록 캐시는 모듈에 남는다
+describe('useAuctionList 의 되돌아온 진입 갱신', () => {
+  it('경매방에 다녀온 사이 밀린 마감 시각을 스켈레톤 없이 맞춘다', async () => {
+    const first = renderHook(() => useAuctionList({ scope: 'ALL', filter: 'LIVE' }), { wrapper })
+    await waitFor(() => expect(first.result.current.cards).toHaveLength(2))
+    expect(first.result.current.cards[0].endAt).toBe('2026-08-03T12:30:00.000Z')
+
+    // 경매방으로 들어가며 목록이 내려간다, 이 사이의 입찰은 구독이 닫혀 있어 닿지 않는다
+    first.unmount()
+
+    // 그사이 마감 임박 입찰이 마감을 30초 밀었다
+    const extended = { ...card(1), endAt: '2026-08-03T12:30:30.000Z' }
+    vi.mocked(fetchAuctionList).mockResolvedValueOnce(page([extended, card(2)], false))
+
+    const again = renderHook(() => useAuctionList({ scope: 'ALL', filter: 'LIVE' }), { wrapper })
+
+    // 캐시에서 이어 그리므로 첫 프레임부터 카드가 있고 스켈레톤은 없다
+    expect(again.result.current.isLoading).toBe(false)
+    expect(again.result.current.cards).toHaveLength(2)
+
+    await waitFor(() => expect(again.result.current.cards[0].endAt).toBe(extended.endAt))
   })
 })
