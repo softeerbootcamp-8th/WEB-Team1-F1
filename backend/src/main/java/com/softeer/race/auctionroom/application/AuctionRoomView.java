@@ -1,6 +1,5 @@
 package com.softeer.race.auctionroom.application;
 
-import com.softeer.race.auctionroom.domain.VehicleSummary;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
 
 import java.util.List;
@@ -22,7 +21,7 @@ public record AuctionRoomView(
                               List<String> imageUrls, List<VehicleKeyword> keywords) {
         return new AuctionRoomView(
                 RoomState.of(result, connectedCount),
-                result.detail().vehicle(imageUrls, keywords),
+                VehicleSummary.of(result.detail(), imageUrls, keywords),
                 result.detail().isWonBy(viewerId),
                 result.detail().isSoldBy(viewerId),
                 result.recentBids().stream().map(bid -> RecentBidView.of(bid, viewerId)).toList());

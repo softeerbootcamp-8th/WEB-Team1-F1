@@ -1,7 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
 import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
-import com.softeer.race.auctionroom.domain.VehicleSummary;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
 
 import java.time.LocalDateTime;
@@ -26,7 +25,7 @@ public record RoomOpening(
                           List<VehicleKeyword> keywords, LocalDateTime now) {
         return new RoomOpening(
                 detail.auctionId(),
-                detail.vehicle(imageUrls, keywords),
+                VehicleSummary.of(detail, imageUrls, keywords),
                 detail.startPrice(),
                 detail.roomOpenAt(),
                 detail.startTime(),

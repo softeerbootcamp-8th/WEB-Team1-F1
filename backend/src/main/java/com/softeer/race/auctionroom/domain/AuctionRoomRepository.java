@@ -16,6 +16,7 @@ public interface AuctionRoomRepository extends Repository<Auction, Long> {
     /**
      * 방 화면에 필요한 값만 뽑는 조회, 삭제된 경매글의 방은 없는 것으로 본다
      */
+    // 번호판을 뽑지 않는다, 경매에 필요하지 않고 차량을 특정할 수 있다
     @Query("""
             select new com.softeer.race.auctionroom.domain.AuctionRoomDetail(
                 a.id, a.status, a.startPrice, a.currentPrice, a.roomOpenAt, a.startTime, a.currentEndTime,

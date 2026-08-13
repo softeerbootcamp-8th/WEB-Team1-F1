@@ -76,6 +76,9 @@ class RoomOpeningIntegrationTest extends IntegrationTestSupport {
         response.andExpectAll(
                 jsonPath("$.vehicle.manufacturer").value("HYUNDAI"),
                 jsonPath("$.vehicle.model").value("더 뉴 셀토스"),
+                // 연식과 주행거리는 둘 다 int 라 자리가 바뀌어도 컴파일된다, 값으로 갈라 둔다
+                jsonPath("$.vehicle.modelYear").value(2022),
+                jsonPath("$.vehicle.mileage").value(35000),
                 jsonPath("$.vehicle.imageUrls.length()").value(2),
                 jsonPath("$.vehicle.imageUrls[0]").value("https://cdn.race.dev/seltos-1.jpg"),
                 jsonPath("$.vehicle.diagnosticReportUrl")

@@ -4,10 +4,8 @@ import com.softeer.race.auction.domain.AuctionStatus;
 import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
-import com.softeer.race.vehicle.domain.VehicleKeyword;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -87,14 +85,6 @@ public record AuctionRoomDetail(
      */
     public LocalDateTime resultViewingEndsAt() {
         return RoomPhase.resultViewingEndsAt(currentEndTime);
-    }
-
-    /**
-     * 화면에 보일 차량 요약
-     */
-    public VehicleSummary vehicle(List<String> imageUrls, List<VehicleKeyword> keywords) {
-        return new VehicleSummary(manufacturer, model, modelYear, mileage, fuelType,
-                keywords, imageUrls, diagnosticReportUrl);
     }
 
     /**
