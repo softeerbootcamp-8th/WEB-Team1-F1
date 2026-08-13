@@ -1,6 +1,8 @@
-import { Link, Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useParams } from 'react-router-dom'
 
 import { useScrollReset } from '@/app/scroll-reset'
+import { EvaluatorRestrictedOutlet } from '@/app/evaluator-restricted-outlet'
+import { EvaluatorOnlyOutlet } from '@/app/evaluator-only-outlet'
 import { AppLayout } from '@/components/layout/app-layout'
 import { EmptyState } from '@/components/common/empty-state'
 import { Button } from '@/components/ui/button'
@@ -22,6 +24,7 @@ import { AssignableEvaluationsPage } from '@/features/evaluations/pages/assignab
 import { MyAssignmentsPage } from '@/features/evaluations/pages/my-assignments-page'
 import { EvaluationResultPage } from '@/features/evaluations/pages/evaluation-result-page'
 import { MyRequestDetailPage } from '@/features/evaluations/pages/my-request-detail-page'
+import { EvaluatorHomePage } from '@/features/evaluations/pages/evaluator-home-page'
 import { useAuth } from '@/features/auth/auth-context'
 
 export function AppRouter() {
@@ -37,17 +40,19 @@ export function AppRouter() {
 
       {/* 기본 레이아웃(헤더/푸터) */}
       <Route element={<AppLayout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/quote" element={<PriceQuotePage />} />
-        <Route path="/quote/result" element={<QuoteResultPage />} />
+        <Route path="/" element={<RoleHome />} />
         <Route path="/auctions" element={<AuctionsPage />} />
         <Route path="/auctions/:id" element={<AuctionRoomPage />} />
         {/* 결과는 방과 다른 액자다. 단계를 보지 않으므로 방이 닫힌 뒤에도 이 주소로 남는다 */}
         <Route path="/auctions/:id/result" element={<AuctionResultPage />} />
-        <Route path="/evaluations/assignable" element={<AssignableEvaluationsPage />} />
-        <Route path="/evaluations/my" element={<MyAssignmentsPage />} />
-        <Route path="/evaluations/:evaluationId/result" element={<EvaluationResultPage />} />
-        <Route element={<SellerOnlyRoute />}>
+        <Route element={<EvaluatorOnlyRoute />}>
+          <Route path="/evaluations/assignable" element={<AssignableEvaluationsPage />} />
+          <Route path="/evaluations/my" element={<MyAssignmentsPage />} />
+          <Route path="/evaluations/:evaluationId/result" element={<EvaluationResultPage />} />
+        </Route>
+        <Route element={<EvaluatorRestrictedRoute />}>
+          <Route path="/quote" element={<PriceQuotePage />} />
+          <Route path="/quote/result" element={<QuoteResultPage />} />
           <Route path="/sell" element={<SellPage />} />
           <Route path="/sell/evaluator" element={<EvaluatorConnectionPage />} />
           <Route path="/sell/auction-post" element={<AuctionPostPage />} />
@@ -74,13 +79,25 @@ export function AppRouter() {
   )
 }
 
-/** 평가사는 판매자용 화면에 직접 URL로도 들어갈 수 없다. */
-function SellerOnlyRoute() {
+/** 같은 홈 주소에서 로그인한 역할에 맞는 첫 화면을 고른다. */
+function RoleHome() {
   const { user } = useAuth()
 
-  return user?.role === 'EVALUATOR'
-    ? <Navigate to="/evaluations/assignable" replace />
-    : <Outlet />
+  return user?.role === 'EVALUATOR' ? <EvaluatorHomePage /> : <HomePage />
+}
+
+/** 평가사는 판매·시세·마이페이지에 직접 URL로도 들어갈 수 없다. */
+function EvaluatorRestrictedRoute() {
+  const { user } = useAuth()
+
+  return <EvaluatorRestrictedOutlet role={user?.role ?? null} />
+}
+
+/** 배정·진단 화면은 평가사만 접근한다. */
+function EvaluatorOnlyRoute() {
+  const { user } = useAuth()
+
+  return <EvaluatorOnlyOutlet role={user?.role ?? null} />
 }
 
 /** 옛 거래 상세 주소를 새 자리로 넘긴다. 번호를 그대로 물고 가야 알림이 가리키던 거래에 닿는다 */

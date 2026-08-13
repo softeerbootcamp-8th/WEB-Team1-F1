@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { SearchX, TriangleAlert } from 'lucide-react'
 
@@ -14,6 +14,7 @@ import { AuctionEditDialog } from '@/features/auctions/components/auction-edit-d
 import { AuctionFilterPanel } from '@/features/auctions/components/auction-filter-panel'
 import { MyAuctionActions } from '@/features/auctions/components/my-auction-actions'
 import { ScopeTabs } from '@/features/auctions/components/scope-tabs'
+import { auctionScopeForRole, canViewMyAuctions } from '@/features/auctions/access'
 import {
   EMPTY_FILTER,
   hasActiveFilter,
@@ -82,12 +83,21 @@ function emptyMessage(scope: AuctionListScope, filter: Filter) {
 }
 
 export function AuctionsPage() {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth()
 
   const [searchParams, setSearchParams] = useSearchParams()
-  const scope = readScope(searchParams)
+  const requestedScope = readScope(searchParams)
+  const scope = auctionScopeForRole(requestedScope, user?.role ?? null)
   const filter = readFilter(searchParams)
 
+  // 평가사가 주소로 scope=mine을 넣어도 금지된 API를 부르지 않고 주소도 실제 화면과 맞춘다.
+  useEffect(() => {
+    if (requestedScope === scope) return
+
+    const next = new URLSearchParams(searchParams)
+    next.delete(SCOPE_PARAM)
+    setSearchParams(next, { replace: true })
+  }, [requestedScope, scope, searchParams, setSearchParams])
   /**
    * 목록을 갈아끼우는 조건을 주소에 쓰고 화면을 맨 위로 올린다. 조건 패널이 sticky 라 목록
    * 한참 아래에서도 조건을 바꿀 수 있는데, 카드가 통째로 달라지므로 보던 높이는 새 목록에서
@@ -253,12 +263,14 @@ export function AuctionsPage() {
             내려가도 따라오게 고정한다 — 목록 한참 아래에서 범위를 바꾸려고 맨 위까지 되돌아가지
             않아도 된다. 상단 바 높이에 맞춰 그 바로 밑에 붙인다, 틈을 두면 그 사이로 카드가
             지나가 보인다. 탭 배경이 반투명이라 카드가 비치지 않게 불투명 배경을 함께 깐다. */}
-        <div className="mb-6 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-(--spacing-header) lg:z-10 lg:bg-background">
-          <ScopeTabs
-            value={scope}
-            onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
-          />
-        </div>
+        {canViewMyAuctions(user?.role ?? null) && (
+          <div className="mb-6 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-(--spacing-header) lg:z-10 lg:bg-background">
+            <ScopeTabs
+              value={scope}
+              onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
+            />
+          </div>
+        )}
 
         <div className="lg:col-start-2 lg:row-start-2">
       {needsLogin ? (
