@@ -33,11 +33,13 @@ export function CarDetail({ vehicle }: CarDetailProps) {
     <div className="space-y-5">
       <CarPhotos model={vehicle.model} imageUrls={vehicle.imageUrls} />
 
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
+      {/* 라벨 폭을 고정해 값의 시작선을 맞춘다. 칸마다 테두리를 두르면 값 길이가 제각각이라
+          칸이 넘치는데, 이 블록이 들어가는 자리는 화면이 넓어질수록 오히려 좁아진다 */}
+      <dl className="grid gap-x-10 gap-y-3 sm:grid-cols-2">
         {specs.map((s) => (
-          <div key={s.label} className="bg-card p-4">
-            <dt className="text-muted-foreground text-sm">{s.label}</dt>
-            <dd className="tabular mt-1 text-lg font-semibold">{s.value}</dd>
+          <div key={s.label} className="flex items-baseline gap-4">
+            <dt className="text-muted-foreground w-20 shrink-0">{s.label}</dt>
+            <dd className="tabular font-semibold">{s.value}</dd>
           </div>
         ))}
       </dl>
