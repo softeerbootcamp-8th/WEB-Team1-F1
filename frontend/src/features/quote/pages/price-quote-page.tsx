@@ -71,7 +71,7 @@ export function PriceQuotePage() {
         <h1 className="text-3xl font-semibold md:text-4xl lg:text-5xl lg:whitespace-nowrap">
           {vehicle
             ? '주행거리 입력'
-            : '내 차 정보를 확인해보세요!'}
+            : '내 차량 시세 정보를 확인해 보세요'}
         </h1>
         <p className="text-muted-foreground mt-3 text-lg leading-8">
           {vehicle
