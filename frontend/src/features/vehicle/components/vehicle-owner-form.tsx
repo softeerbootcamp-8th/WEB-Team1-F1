@@ -40,23 +40,8 @@ export function VehicleOwnerForm({
       }}
     >
       <div className="space-y-3">
-        <Label className="text-lg" htmlFor={`${actionLabel}-owner-name`}>
-          이름
-        </Label>
-        <Input
-          id={`${actionLabel}-owner-name`}
-          value={ownerName}
-          onChange={(event) => setOwnerName(event.target.value)}
-          placeholder="차량 소유자 이름"
-          className="h-14 px-4 text-lg md:text-lg"
-          autoComplete="name"
-          maxLength={50}
-          required
-        />
-      </div>
-      <div className="space-y-3">
         <Label className="text-lg" htmlFor={`${actionLabel}-plate-number`}>
-          차량 번호판
+          차량 번호
         </Label>
         <Input
           id={`${actionLabel}-plate-number`}
@@ -66,6 +51,21 @@ export function VehicleOwnerForm({
           className="h-14 px-4 text-lg font-semibold md:text-lg"
           autoComplete="off"
           pattern="^\d{2,3}[가-힣]\d{4}$"
+          required
+        />
+      </div>
+      <div className="space-y-3">
+        <Label className="text-lg" htmlFor={`${actionLabel}-owner-name`}>
+          소유자명
+        </Label>
+        <Input
+          id={`${actionLabel}-owner-name`}
+          value={ownerName}
+          onChange={(event) => setOwnerName(event.target.value)}
+          placeholder="차량 소유자 이름"
+          className="h-14 px-4 text-lg md:text-lg"
+          autoComplete="name"
+          maxLength={50}
           required
         />
       </div>
