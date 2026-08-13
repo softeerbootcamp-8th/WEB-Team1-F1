@@ -12,7 +12,7 @@ interface VehicleSummaryProps {
 
 export function VehicleSummary({ vehicle }: VehicleSummaryProps) {
   return (
-    <div className="bg-muted/50 rounded-xl p-5">
+    <div>
       {vehicle.mainImageUrl && (
         <img
           src={vehicle.mainImageUrl}
@@ -33,7 +33,7 @@ export function VehicleSummary({ vehicle }: VehicleSummaryProps) {
       <p className="text-muted-foreground tabular mt-1 text-sm">
         {vehicle.plateNumber}
       </p>
-      <dl className="mt-5 grid grid-cols-3 gap-4 text-sm">
+      <dl className="bg-muted/50 mt-5 grid grid-cols-3 gap-4 rounded-xl p-4 text-sm">
         <div>
           <dt className="text-muted-foreground">연식</dt>
           <dd className="mt-1 font-medium">{vehicle.modelYear}년</dd>
