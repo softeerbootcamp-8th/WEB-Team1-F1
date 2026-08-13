@@ -61,13 +61,10 @@ export function SellPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-14" aria-label="내 차 팔기">
       <header>
-        <p className="text-muted-foreground text-sm tracking-[0.18em] uppercase">
-          Sell with RACE
-        </p>
-        <h1 className="mt-4 text-3xl font-semibold md:text-4xl lg:text-5xl lg:whitespace-nowrap">
+        <h1 className="text-3xl font-semibold md:text-4xl lg:text-5xl lg:whitespace-nowrap">
           차량 정보로 판매 준비를 시작하세요.
         </h1>
-        <p className="text-muted-foreground mt-4 text-lg leading-8">
+        <p className="text-muted-foreground mt-3 text-lg leading-8">
           차량 정보를 확인한 뒤 평가사 방문견적 신청으로 이어집니다.
         </p>
       </header>

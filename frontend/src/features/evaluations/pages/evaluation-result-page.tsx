@@ -388,8 +388,7 @@ export function EvaluationResultPage() {
 
       <header className="mt-6 flex flex-wrap items-end justify-between gap-5">
         <div>
-          <p className="text-muted-foreground text-sm tracking-[0.15em] uppercase">Diagnosis</p>
-          <h1 className="mt-2 text-3xl font-semibold md:text-4xl">평가 결과 작성</h1>
+          <h1 className="text-3xl font-semibold md:text-4xl">평가 결과 작성</h1>
           <p className="text-muted-foreground mt-3">
             {detail.status === 'APPROVED'
               ? '바꾸려는 항목만 수정하고 기존 사진의 순서도 조정할 수 있습니다.'
