@@ -151,6 +151,21 @@ export function applyAudienceEvent(
 }
 
 /**
+ * 첫 페이지를 다시 읽어 온 결과를 지금 목록에 얹은 새 배열.
+ *
+ * 치환하지 않는다, 이어 읽어 둔 뒷 페이지가 함께 사라지면 목록이 짧아져 보던 자리를 잃는다.
+ * 같은 경매는 새 값으로 덮고, 첫 페이지에 없던 카드는 순서를 지켜 뒤에 남긴다 — 정렬축에서
+ * 첫 페이지보다 뒤인 카드들이라 그 자리가 맞고, 그룹 배치는 arrangeCards 가 다시 판정한다.
+ */
+export function mergeFirstPage(
+  cards: AuctionListCard[],
+  firstPage: AuctionListCard[],
+): AuctionListCard[] {
+  const incoming = new Set(firstPage.map((it) => it.auctionId))
+  return [...firstPage, ...cards.filter((it) => !incoming.has(it.auctionId))]
+}
+
+/**
  * 수정 가능 여부. 서버는 경매방이 열리기 전(now < roomOpenAt)만 허용하고,
  * 그 구간이 곧 입장 전 단계다. 방이 열린 뒤 요청은 서버가 거부한다.
  */
