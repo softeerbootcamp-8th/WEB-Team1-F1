@@ -251,8 +251,15 @@ export function DealDetailPage() {
 
       {/* 확정 전까지는 양쪽 누구든 그만둘 수 있다. 내 차례가 아니어도 빠질 수 있어야 한다 */}
       {!cancelled && deal.status !== 'CONFIRMED' && (
-        <div className="mt-8 border-t pt-6">
-          <Button variant="ghost" size="sm" onClick={cancel} disabled={isCancelling}>
+        <div className="mt-8">
+          <Button
+            variant="outline"
+            className="text-destructive border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
+            onClick={cancel}
+            disabled={isCancelling}
+          >
+            {isCancelling && <LoaderCircle className="animate-spin" />}
+            <CircleX />
             거래 그만두기
           </Button>
         </div>
