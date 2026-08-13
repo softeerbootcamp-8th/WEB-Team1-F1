@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type CSSProperties } from 'react'
+import { useEffect, useRef, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
@@ -12,11 +12,7 @@ import {
 
 import { Button } from '@/components/ui/button'
 import { CinematicCarBackdrop } from '@/components/common/cinematic-car-backdrop'
-import { AuctionCard } from '@/features/auctions/components/auction-card'
-import { useAuctionList } from '@/features/auctions/use-auction-list'
 import { useScrollReveal } from '@/hooks/use-scroll-reveal'
-import { useServerClock } from '@/hooks/use-server-clock'
-import { arrangeCards } from '@/lib/auction'
 
 const FEATURES = [
   {
@@ -78,16 +74,6 @@ export function HomePage() {
       window.cancelAnimationFrame(animationFrame)
     }
   }, [])
-
-  // 진행중만 서버에서 걸러 받는다. 첫 페이지에 진행중이 없으면 빈 손이던 문제가 사라진다.
-  const { cards, offsetMs } = useAuctionList({ scope: 'ALL', filter: 'LIVE' })
-  const nowMs = useServerClock(offsetMs)
-
-  // 진행중만 받아 오지만 화면을 열어 둔 사이 마감될 수 있다. 끝난 카드는 여기서 빠진다.
-  const liveAuctions = useMemo(
-    () => arrangeCards(cards, nowMs, 'LIVE').slice(0, 3),
-    [cards, nowMs],
-  )
 
   return (
     <main ref={mainRef} aria-label="RACE 홈" className="home-page">
@@ -226,44 +212,6 @@ export function HomePage() {
             })}
           </div>
         </div>
-      </section>
-
-      <section id="live-auctions" className="mx-auto max-w-7xl px-6 py-24 lg:py-32">
-        <div
-          className="mb-10 flex flex-wrap items-end justify-between gap-5"
-          data-reveal
-        >
-          <div>
-            <p className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-              <span className="bg-live size-2 rounded-full motion-safe:animate-live-pulse" />
-              실시간 경매
-            </p>
-            <h2 className="mt-3 text-3xl font-semibold md:text-5xl">
-              지금 입찰 중인 차량
-            </h2>
-          </div>
-          <Button variant="outline" asChild>
-            <Link to="/auctions">
-              경매 전체 보기
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        </div>
-        <ul className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {liveAuctions.map((auction, index) => (
-            <li
-              key={auction.auctionId}
-              data-reveal
-              style={
-                {
-                  '--reveal-delay': `${index * 90}ms`,
-                } as CSSProperties
-              }
-            >
-              <AuctionCard auction={auction} nowMs={nowMs} offsetMs={offsetMs} />
-            </li>
-          ))}
-        </ul>
       </section>
     </main>
   )
