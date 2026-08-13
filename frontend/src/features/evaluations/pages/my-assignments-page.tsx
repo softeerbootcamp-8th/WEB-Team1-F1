@@ -70,7 +70,7 @@ export function MyAssignmentsPage() {
                 action={
                   evaluation.status === 'REJECTED' ? (
                     <Button className="w-full" disabled>
-                      반려되어 종료됨
+                      반려 처리됨
                     </Button>
                   ) : evaluation.auctionStatus ? (
                     <Button className="w-full" disabled>

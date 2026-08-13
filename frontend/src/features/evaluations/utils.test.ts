@@ -8,12 +8,16 @@ import {
 } from './utils'
 
 describe('평가 상태 표시', () => {
-  it('평가사에게 배정 상태 대신 진단 전으로 표시한다', () => {
-    expect(getEvaluationStatusMeta('REQUESTED', true, 'evaluator').label).toBe('진단 전')
+  it('평가사에게 업무 처리 기준의 상태명을 표시한다', () => {
+    expect(getEvaluationStatusMeta('REQUESTED', true, 'evaluator').label).toBe('평가 수락')
+    expect(getEvaluationStatusMeta('APPROVED', true, 'evaluator').label).toBe('승인 처리')
+    expect(getEvaluationStatusMeta('REJECTED', true, 'evaluator').label).toBe('반려 처리')
   })
 
-  it('판매자에게는 평가사 배정 상태를 표시한다', () => {
+  it('판매자에게는 신청 진행 기준의 상태명을 표시한다', () => {
     expect(getEvaluationStatusMeta('REQUESTED', true, 'seller').label).toBe('평가사 배정됨')
+    expect(getEvaluationStatusMeta('APPROVED', true, 'seller').label).toBe('진단 완료')
+    expect(getEvaluationStatusMeta('REJECTED', true, 'seller').label).toBe('반려')
   })
 })
 

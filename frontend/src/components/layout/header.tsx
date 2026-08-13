@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { ClipboardCheck, ListChecks, LogOut, User as UserIcon } from 'lucide-react'
+import { ClipboardCheck, Gavel, ListChecks, LogOut, User as UserIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -33,6 +33,7 @@ const EVALUATOR_NAV = [
   { to: '/', label: '홈', end: true },
   { to: '/evaluations/assignable', label: '배정 대기' },
   { to: '/evaluations/my', label: '내 담당' },
+  { to: '/auctions', label: '경매 목록' },
 ]
 
 export function Header() {
@@ -42,10 +43,11 @@ export function Header() {
   const [isPastHeroTop, setIsPastHeroTop] = useState(false)
   const navigation = user?.role === 'EVALUATOR' ? EVALUATOR_NAV : NAV
   const isHome = pathname === '/'
-  const isHomeOverlay = isHome && !isPastHeroTop
+  const hasHomeHero = isHome
+  const isHomeOverlay = hasHomeHero && !isPastHeroTop
 
   useEffect(() => {
-    if (!isHome) {
+    if (!hasHomeHero) {
       setIsPastHeroTop(false)
       return
     }
@@ -56,7 +58,7 @@ export function Header() {
     window.addEventListener('scroll', updateHeader, { passive: true })
 
     return () => window.removeEventListener('scroll', updateHeader)
-  }, [isHome])
+  }, [hasHomeHero])
 
   const handleLogout = async () => {
     try {
@@ -70,7 +72,7 @@ export function Header() {
     <header
       className={cn(
         'top-0 z-40 w-full transition-[background-color,border-color,box-shadow] duration-500',
-        isHome ? 'fixed' : 'bg-background/95 sticky border-b',
+        hasHomeHero ? 'fixed' : 'bg-background/95 sticky border-b',
         isHomeOverlay
           ? 'border-transparent bg-transparent text-white'
           : 'bg-background/95 text-foreground shadow-[0_1px_0_rgb(0_0_0/0.08)]',
@@ -147,6 +149,10 @@ export function Header() {
                     <DropdownMenuItem onClick={() => navigate('/evaluations/my')}>
                       <ClipboardCheck className="size-4" />
                       내 담당 목록
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/auctions')}>
+                      <Gavel className="size-4" />
+                      경매 목록
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>

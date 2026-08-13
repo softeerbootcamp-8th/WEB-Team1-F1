@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { SearchX, TriangleAlert } from 'lucide-react'
 
@@ -13,6 +13,7 @@ import { AuctionEditDialog } from '@/features/auctions/components/auction-edit-d
 import { AuctionFilterPanel } from '@/features/auctions/components/auction-filter-panel'
 import { MyAuctionActions } from '@/features/auctions/components/my-auction-actions'
 import { ScopeTabs } from '@/features/auctions/components/scope-tabs'
+import { auctionScopeForRole, canViewMyAuctions } from '@/features/auctions/access'
 import {
   EMPTY_FILTER,
   hasActiveFilter,
@@ -81,11 +82,21 @@ function emptyMessage(scope: AuctionListScope, filter: Filter) {
 }
 
 export function AuctionsPage() {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth()
 
   const [searchParams, setSearchParams] = useSearchParams()
-  const scope = readScope(searchParams)
+  const requestedScope = readScope(searchParams)
+  const scope = auctionScopeForRole(requestedScope, user?.role ?? null)
   const filter = readFilter(searchParams)
+
+  // 평가사가 주소로 scope=mine을 넣어도 금지된 API를 부르지 않고 주소도 실제 화면과 맞춘다.
+  useEffect(() => {
+    if (requestedScope === scope) return
+
+    const next = new URLSearchParams(searchParams)
+    next.delete(SCOPE_PARAM)
+    setSearchParams(next, { replace: true })
+  }, [requestedScope, scope, searchParams, setSearchParams])
 
   // 탭 전환은 히스토리에 쌓지 않는다. 쌓으면 탭을 옮긴 횟수만큼 뒤로가기를 눌러야 목록을 벗어난다.
   const selectTab = (key: string, value: string, isDefault: boolean) => {
@@ -236,12 +247,14 @@ export function AuctionsPage() {
         </aside>
 
         {/* 범위는 목록의 것이라 목록 열 머리에 둔다. 조건 패널과 나란히 서면 둘 다 필터로 읽힌다. */}
-        <div className="mb-6 lg:col-start-2 lg:row-start-1">
-          <ScopeTabs
-            value={scope}
-            onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
-          />
-        </div>
+        {canViewMyAuctions(user?.role ?? null) && (
+          <div className="mb-6 lg:col-start-2 lg:row-start-1">
+            <ScopeTabs
+              value={scope}
+              onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
+            />
+          </div>
+        )}
 
         <div className="lg:col-start-2 lg:row-start-2">
       {needsLogin ? (

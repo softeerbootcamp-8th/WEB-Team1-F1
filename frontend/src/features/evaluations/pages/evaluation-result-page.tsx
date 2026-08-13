@@ -407,8 +407,8 @@ export function EvaluationResultPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {detail.status === 'APPROVED' && <Badge variant="success">제출 완료 · 수정 가능</Badge>}
-          {detail.status === 'REJECTED' && <Badge variant="destructive">반려된 신청</Badge>}
+          {detail.status === 'APPROVED' && <Badge variant="success">승인 처리 · 수정 가능</Badge>}
+          {detail.status === 'REJECTED' && <Badge variant="destructive">반려 처리된 신청</Badge>}
         </div>
       </header>
 

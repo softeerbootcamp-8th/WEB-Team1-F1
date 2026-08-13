@@ -31,13 +31,19 @@ export function getEvaluationStatusMeta(
   viewer: 'seller' | 'evaluator' = 'seller',
 ) {
   if (status === 'APPROVED') {
-    return { label: '진단 완료', className: 'bg-success/10 text-success border-success/20' }
+    return {
+      label: viewer === 'evaluator' ? '승인 처리' : '진단 완료',
+      className: 'bg-success/10 text-success border-success/20',
+    }
   }
   if (status === 'REJECTED') {
-    return { label: '반려', className: 'bg-destructive/10 text-destructive border-destructive/20' }
+    return {
+      label: viewer === 'evaluator' ? '반려 처리' : '반려',
+      className: 'bg-destructive/10 text-destructive border-destructive/20',
+    }
   }
   if (viewer === 'evaluator') {
-    return { label: '진단 전', className: 'bg-deal-active/10 text-deal-active border-deal-active/20' }
+    return { label: '평가 수락', className: 'bg-deal-active/10 text-deal-active border-deal-active/20' }
   }
   if (assigned) {
     return { label: '평가사 배정됨', className: 'bg-deal-active/10 text-deal-active border-deal-active/20' }
