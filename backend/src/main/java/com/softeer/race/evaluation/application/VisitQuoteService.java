@@ -3,12 +3,14 @@ package com.softeer.race.evaluation.application;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.command.VisitQuoteCommand;
 import com.softeer.race.evaluation.application.dto.info.VisitQuoteInfo;
+import com.softeer.race.evaluation.application.dto.info.VisitQuotePrecheckInfo;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
-import com.softeer.race.evaluation.domain.EvaluationStatus;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
+import com.softeer.race.vehicle.application.dto.command.VehicleLookupCommand;
+import com.softeer.race.vehicle.application.dto.info.VehicleLookupInfo;
 import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleLookup;
 import com.softeer.race.vehicle.domain.VehicleRepository;
@@ -46,6 +48,23 @@ public class VisitQuoteService {
     private final Clock clock;
 
     /**
+     * 차량 확인 뒤 예약 화면으로 이동해도 되는지 확인한다.
+     * <p>
+     * 공개 엔드포인트에서 쓰므로 소유자명까지 맞는 차량인지 먼저 확인한 뒤 중복 여부를 조회한다.
+     * 순서를 뒤집으면 번호판만 대입해 진행 중인 방문견적의 존재를 알아낼 수 있다.
+     */
+    public VisitQuotePrecheckInfo precheck(VehicleLookupCommand command) {
+        VehicleSpec spec = vehicleLookup.find(command.plateNumber(), command.ownerName())
+                .orElseThrow(() -> new BusinessException(EvaluationErrorCode.VEHICLE_NOT_FOUND));
+
+        boolean hasInProgressVisitQuote =
+                evaluationRepository.existsBlockingVisitQuoteByPlateNumber(spec.plateNumber());
+
+        return new VisitQuotePrecheckInfo(
+                VehicleLookupInfo.from(spec), hasInProgressVisitQuote);
+    }
+
+    /**
      * 번호판으로 제원을 조회해 차량을 등록하고, 배정 대기 상태의 평가 요청을 만든다.
      */
     @Transactional
@@ -58,8 +77,7 @@ public class VisitQuoteService {
         // 락을 걸 대상 행도 없다(막아야 하는 것은 아직 없는 행이다). 저빈도 쓰기이고 배정 단계에서
         // 사람이 걸러낼 수 있어 수용한다. 정말 막아야 하면 vehicle 위가 아닌 "번호판" 단위의
         // 별도 테이블에 unique를 걸어 접수 슬롯을 선점하는 구조가 필요하다
-        if (evaluationRepository.existsByVehiclePlateNumberAndStatusIn(
-                command.plateNumber(), EvaluationStatus.inProgress())) {
+        if (evaluationRepository.existsBlockingVisitQuoteByPlateNumber(command.plateNumber())) {
             throw new BusinessException(EvaluationErrorCode.DUPLICATE_REQUEST);
         }
 

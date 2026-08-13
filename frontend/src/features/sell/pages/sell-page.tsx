@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import { isAxiosError } from 'axios'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import { lookupVehicle } from '@/features/vehicle/api'
+import { precheckVisitQuote } from '@/features/sell/api'
 import {
   VehicleOwnerForm,
   type VehicleOwnerValues,
@@ -19,27 +20,38 @@ export function SellPage() {
   const { state } = useLocation()
   const prefill = state as SellPageState | null
   const [isLookingUp, setIsLookingUp] = useState(false)
+  const [duplicateMessage, setDuplicateMessage] = useState<string | null>(null)
 
   const reserveVisitQuote = async (values: VehicleOwnerValues) => {
-    const existingVehicle =
-      prefill?.ownerName === values.ownerName &&
-      prefill.plateNumber === values.plateNumber &&
-      prefill.vehicle?.plateNumber === values.plateNumber
-        ? prefill.vehicle
-        : null
-
-    if (existingVehicle) {
-      navigate('/sell/evaluator', {
-        state: { ...values, vehicle: existingVehicle },
-      })
-      return
-    }
-
+    setDuplicateMessage(null)
     setIsLookingUp(true)
     try {
-      const vehicle = await lookupVehicle(values)
+      const { vehicle, hasInProgressVisitQuote } =
+        await precheckVisitQuote(values)
+
+      if (hasInProgressVisitQuote) {
+        const message =
+          '이미 진행 중인 방문견적이 있는 차량입니다. 기존 신청이 종료된 후 다시 신청해 주세요.'
+        setDuplicateMessage(message)
+        toast.error(message)
+        return
+      }
+
       navigate('/sell/evaluator', { state: { ...values, vehicle } })
     } catch (error) {
+      if (isAxiosError(error) && error.response?.status === 401) {
+        toast.error('방문견적을 확인하려면 로그인이 필요합니다')
+        navigate('/login', {
+          state: {
+            returnTo: {
+              pathname: '/sell',
+              state: values,
+            },
+          },
+        })
+        return
+      }
+
       toast.error(getErrorMessage(error, '차량 정보를 확인하지 못했습니다'))
     } finally {
       setIsLookingUp(false)
@@ -67,6 +79,11 @@ export function SellPage() {
           isSubmitting={isLookingUp}
           onSubmit={reserveVisitQuote}
         />
+        {duplicateMessage && (
+          <p className="text-destructive mt-4 text-sm" role="alert">
+            {duplicateMessage}
+          </p>
+        )}
       </div>
     </main>
   )
