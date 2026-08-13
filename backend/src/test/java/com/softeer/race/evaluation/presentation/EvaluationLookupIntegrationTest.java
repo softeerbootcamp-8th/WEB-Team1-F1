@@ -175,7 +175,7 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.submittedAt").exists())
                 .andExpect(jsonPath("$.keywords.length()").value(2))
                 .andExpect(jsonPath("$.keywords[0]").value("ACCIDENT_FREE"))
-                .andExpect(jsonPath("$.keywords[1]").value("NO_LEAK"));
+                .andExpect(jsonPath("$.keywords[1]").value("UNDERBODY_INTACT"));
     }
 
     @Test
@@ -259,7 +259,7 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
                           "estimatedPrice": 21500000,
                           "imageUrls": ["%s"],
                           "diagnosticReportUrl": "%s",
-                          "keywords": ["ACCIDENT_FREE", "NO_LEAK"]
+                          "keywords": ["ACCIDENT_FREE", "UNDERBODY_INTACT"]
                         }
                         """.formatted(IMAGE_URL, DOCUMENT_URL)));
     }

@@ -91,7 +91,7 @@ public record EvaluationDetailResponse(
         LocalDateTime submittedAt,
 
         @Schema(description = "평가사가 매긴 키워드. 진단 전이거나 매긴 것이 없으면 빈 배열입니다",
-                example = "[\"ACCIDENT_FREE\", \"NO_LEAK\", \"GOOD_TIRE\"]")
+                example = "[\"ACCIDENT_FREE\", \"UNDERBODY_INTACT\", \"GOOD_TIRE\"]")
         List<VehicleKeyword> keywords,
 
         @Schema(description = "반려 사유. status가 REJECTED일 때만 채워집니다",

@@ -33,7 +33,7 @@ public record AuctionCardResponse(
         @Schema(description = "주행거리(km)", example = "35000")
         Integer mileage,
 
-        @Schema(description = "평가사가 진단에서 확인한 키워드, 표시 순서대로, 없으면 빈 배열", example = "[\"ACCIDENT_FREE\", \"NO_LEAK\"]")
+        @Schema(description = "평가사가 진단에서 확인한 키워드, 표시 순서대로, 없으면 빈 배열", example = "[\"ACCIDENT_FREE\", \"UNDERBODY_INTACT\"]")
         List<VehicleKeyword> keywords,
 
         @Schema(description = "시작가(원)", example = "10000000")

@@ -77,7 +77,7 @@ public record EvaluationResultPatchRequest(
                 수정 뒤의 키워드 전부. 빈 배열을 보내면 매겨 둔 키워드가 모두 지워집니다.
                 생략하면 키워드를 건드리지 않습니다.
                 """,
-                example = "[\"ACCIDENT_FREE\", \"NO_LEAK\"]")
+                example = "[\"ACCIDENT_FREE\", \"UNDERBODY_INTACT\"]")
         @Size(max = EvaluationResultSubmitRequest.MAX_KEYWORD_COUNT,
                 message = "키워드는 " + EvaluationResultSubmitRequest.MAX_KEYWORD_COUNT
                         + "개까지 매길 수 있습니다.")

@@ -123,7 +123,7 @@ class EvaluationResultConcurrencyIntegrationTest extends IntegrationTestSupport 
                           "estimatedPrice": 21500000,
                           "imageUrls": ["%s"],
                           "diagnosticReportUrl": "%s",
-                          "keywords": ["ACCIDENT_FREE", "NO_LEAK"]
+                          "keywords": ["ACCIDENT_FREE", "UNDERBODY_INTACT"]
                         }
                         """.formatted(IMAGE_URL, documentUrl)));
     }

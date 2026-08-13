@@ -126,7 +126,7 @@ class AuctionListIntegrationTest extends IntegrationTestSupport {
 
         // then 2-1 : 키워드는 저장 순서(GOOD_TIRE 부터)가 아니라 선언 순서다
         response.andExpect(jsonPath("$.content[0].keywords")
-                .value(org.hamcrest.Matchers.contains("ACCIDENT_FREE", "NO_LEAK", "GOOD_TIRE")));
+                .value(org.hamcrest.Matchers.contains("ACCIDENT_FREE", "UNDERBODY_INTACT", "GOOD_TIRE")));
 
         // then 3 : 남은 초가 아니라 절대 시각을 준다. 카운트다운은 화면이 돌린다
         response.andExpect(jsonPath("$.content[0].openAt").value("2026-08-03T11:20:00"))

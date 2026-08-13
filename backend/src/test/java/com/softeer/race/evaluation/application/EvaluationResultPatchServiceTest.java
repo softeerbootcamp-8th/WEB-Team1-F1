@@ -88,7 +88,7 @@ class EvaluationResultPatchServiceTest {
     private static final String NEW_DOCUMENT_URL = "https://cdn.race.dev/documents/2026/08/d.pdf";
 
     private static final List<VehicleKeyword> KEYWORDS =
-            List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK);
+            List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.UNDERBODY_INTACT);
 
     @Mock
     private EvaluationRepository evaluationRepository;
