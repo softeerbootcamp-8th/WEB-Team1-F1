@@ -37,13 +37,10 @@ export function QuoteResultPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-14" aria-label="시세 조회 결과">
       <header className="max-w-2xl">
-        <p className="text-muted-foreground text-sm tracking-[0.18em] uppercase">
-          Price Check
-        </p>
-        <h1 className="mt-4 text-4xl font-semibold md:text-5xl">
+        <h1 className="text-4xl font-semibold md:text-5xl">
           예상 시세를 확인해 보세요.
         </h1>
-        <p className="text-muted-foreground mt-4 leading-7">
+        <p className="text-muted-foreground mt-3 leading-7">
           실제 경매가는 평가 결과에 따라 달라질 수 있어요.
         </p>
       </header>

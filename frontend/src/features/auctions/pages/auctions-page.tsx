@@ -227,9 +227,8 @@ export function AuctionsPage() {
     // 조건 패널과 목록이 나란히 서는 화면이라 다른 페이지보다 넓게 쓴다.
     <main aria-label="경매 목록" className="mx-auto max-w-[100rem] px-6 py-12">
       <header className="mb-8">
-        <p className="text-muted-foreground text-sm">LIVE AUCTIONS</p>
-        <h1 className="mt-2 text-3xl font-semibold md:text-4xl">경매 목록</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-3xl font-semibold md:text-4xl">경매 목록</h1>
+        <p className="text-muted-foreground mt-3">
           평가가 완료된 차량의 실시간 가격 형성 과정을 확인하세요.
         </p>
       </header>

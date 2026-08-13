@@ -196,10 +196,7 @@ function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicle }) {
       </Button>
 
       <header className="mt-6 max-w-2xl">
-        <p className="text-muted-foreground text-sm tracking-[0.18em] uppercase">
-          Register Auction
-        </p>
-        <h1 className="mt-3 text-2xl font-semibold md:text-3xl">
+        <h1 className="text-2xl font-semibold md:text-3xl">
           경매 시작 시간을 정해주세요.
         </h1>
         <p className="text-muted-foreground mt-3 text-sm leading-6">
