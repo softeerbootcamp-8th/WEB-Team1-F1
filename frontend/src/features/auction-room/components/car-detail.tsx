@@ -11,6 +11,7 @@ import {
   type CarouselApi,
 } from '@/components/ui/carousel'
 import { CarThumb } from '@/components/common/car-thumb'
+import { SpecList } from '@/components/common/spec-list'
 import { cn } from '@/lib/utils'
 import { formatMileage } from '@/lib/format'
 import { FUEL_TYPE_LABEL, MANUFACTURER_LABEL } from '@/features/quote/types'
@@ -18,31 +19,27 @@ import type { RoomVehicle } from '@/features/auction-room/types'
 
 interface CarDetailProps {
   vehicle: RoomVehicle
+  /** 제원 뒤에 이어 붙일 값, 결과 화면의 유찰이 시작가와 마감을 여기로 내려보낸다 */
+  extraSpecs?: { label: string; value: string }[]
 }
 
 /** 차량 상세 — 사진 캐러셀 + 스펙 표 + 진단서 링크. 방의 모든 단계가 이 블록을 같은 자리에 쓴다. */
-export function CarDetail({ vehicle }: CarDetailProps) {
+export function CarDetail({ vehicle, extraSpecs = [] }: CarDetailProps) {
   const specs: { label: string; value: string }[] = [
     { label: '제조사', value: MANUFACTURER_LABEL[vehicle.manufacturer] },
     { label: '연식', value: `${vehicle.modelYear}년` },
     { label: '주행거리', value: formatMileage(vehicle.mileage) },
     { label: '연료', value: FUEL_TYPE_LABEL[vehicle.fuelType] },
+    ...extraSpecs,
   ]
 
   return (
     <div className="space-y-5">
       <CarPhotos model={vehicle.model} imageUrls={vehicle.imageUrls} />
 
-      {/* 라벨 폭을 고정해 값의 시작선을 맞춘다. 칸마다 테두리를 두르면 값 길이가 제각각이라
-          칸이 넘치는데, 이 블록이 들어가는 자리는 화면이 넓어질수록 오히려 좁아진다 */}
-      <dl className="grid gap-x-10 gap-y-3 sm:grid-cols-2">
-        {specs.map((s) => (
-          <div key={s.label} className="flex items-baseline gap-4">
-            <dt className="text-muted-foreground w-20 shrink-0">{s.label}</dt>
-            <dd className="tabular font-semibold">{s.value}</dd>
-          </div>
-        ))}
-      </dl>
+      {/* 칸마다 테두리를 두르면 값 길이가 제각각이라 칸이 넘치는데, 이 블록이 들어가는 자리는
+          화면이 넓어질수록 오히려 좁아진다. 결과 화면의 값 묶음도 같은 표를 쓴다 */}
+      <SpecList items={specs} />
 
       {/* 새 탭으로 연다, 방 위에 띄우면 읽는 동안 현재가와 남은 시간이 가려진다 */}
       <Button asChild variant="outline" className="w-full">

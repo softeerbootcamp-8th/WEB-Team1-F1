@@ -4,10 +4,11 @@ import { CircleAlert, Clock, Gavel, Trophy } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/empty-state'
+import { SpecList } from '@/components/common/spec-list'
 import { similarFilter, toFilterParams } from '@/features/auctions/filter'
 import { useAuth } from '@/features/auth/auth-context'
-import { MANUFACTURER_LABEL } from '@/features/quote/types'
-import { formatClock, formatDuration, formatKRW } from '@/lib/format'
+import { FUEL_TYPE_LABEL, MANUFACTURER_LABEL } from '@/features/quote/types'
+import { formatClock, formatDuration, formatKRW, formatMileage } from '@/lib/format'
 import { useCountdown } from '@/hooks/use-countdown'
 import type { RoomResultView } from '@/features/auction-room/types'
 
@@ -116,21 +117,16 @@ function UnsoldBody({ result }: { result: RoomResultView }) {
     <>
       <Headline result={result} />
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1.75fr_1fr]">
-        <CarDetail vehicle={result.vehicle} />
-
-        <dl className="bg-border grid auto-rows-fr grid-cols-1 gap-px self-start overflow-hidden rounded-xl border">
-          <div className="bg-card px-5 py-4">
-            <dt className="text-muted-foreground text-sm">시작가</dt>
-            <dd className="tabular mt-1 text-2xl font-semibold">
-              {formatKRW(result.startPrice)}
-            </dd>
-          </div>
-          <div className="bg-card px-5 py-4">
-            <dt className="text-muted-foreground text-sm">마감</dt>
-            <dd className="tabular mt-1 text-2xl font-semibold">{formatClock(result.endAt)}</dd>
-          </div>
-        </dl>
+      {/* 곡선이 없어 옆에 세울 것이 없다, 낙찰의 두 열을 흉내내면 오른쪽이 빈 자리로 남는다.
+          시작가와 마감은 따로 상자를 갖지 않고 차량 제원 뒤에 이어 붙는다 */}
+      <div className="mx-auto mt-6 max-w-3xl">
+        <CarDetail
+          vehicle={result.vehicle}
+          extraSpecs={[
+            { label: '시작가', value: formatKRW(result.startPrice) },
+            { label: '경매 마감', value: formatClock(result.endAt) },
+          ]}
+        />
       </div>
     </>
   )
@@ -354,23 +350,23 @@ function WinningCard({ result }: { result: RoomResultView }) {
 }
 
 function FactGrid({ result }: { result: RoomResultView }) {
+  // 낙찰 화면에는 차량이 따로 실리지 않는다, 어떤 차가 이 값에 팔렸는지를 같은 표에서 읽게 둔다
   const facts = [
-    { label: '입찰', value: `${result.bidCount}건`, icon: Gavel },
+    { label: '제조사', value: MANUFACTURER_LABEL[result.vehicle.manufacturer] },
+    { label: '연식', value: `${result.vehicle.modelYear}년` },
+    { label: '주행거리', value: formatMileage(result.vehicle.mileage) },
+    { label: '연료', value: FUEL_TYPE_LABEL[result.vehicle.fuelType] },
+    { label: '입찰', value: `${result.bidCount}건` },
     { label: '참여자', value: `${result.bidderCount}명` },
     { label: '연장', value: `${result.extensionCount}회` },
-    { label: '마감', value: formatClock(result.endAt) },
+    { label: '경매 마감', value: formatClock(result.endAt) },
   ]
 
   return (
-    // 남는 높이를 이 표가 가져간다, 네 칸이 같은 키로 늘어야 2×2 로 읽힌다
-    <dl className="bg-border grid flex-1 auto-rows-fr grid-cols-2 gap-px overflow-hidden rounded-xl border">
-      {facts.map((fact) => (
-        <div key={fact.label} className="bg-card flex flex-col justify-center px-5 py-4">
-          <dt className="text-muted-foreground text-sm">{fact.label}</dt>
-          <dd className="tabular mt-1 text-2xl font-semibold">{fact.value}</dd>
-        </div>
-      ))}
-    </dl>
+    // 남는 높이를 이 상자가 가져간다, 줄이 몇 개든 상자 가운데에 서게 둔다
+    <section className="flex flex-1 flex-col justify-center rounded-xl border p-6">
+      <SpecList items={facts} />
+    </section>
   )
 }
 
