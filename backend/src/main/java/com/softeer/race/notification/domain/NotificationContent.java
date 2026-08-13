@@ -7,6 +7,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Objects;
 
+import static com.softeer.race.notification.domain.NotificationType.EVAL_REQUESTED;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_ENDED;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_FAILED;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_SOLD;
@@ -38,6 +39,13 @@ public record NotificationContent(NotificationType type, String message) {
             throw new IllegalArgumentException(
                     "알림 문구가 너무 깁니다, 길이 " + message.length());
         }
+    }
+
+    public static NotificationContent evaluationRequested(
+            String plateNumber, String vehicleModel) {
+        return new NotificationContent(EVAL_REQUESTED,
+                "%s %s 차량의 방문견적 신청이 접수되었습니다."
+                        .formatted(text(plateNumber), text(vehicleModel)));
     }
 
     public static NotificationContent defaultOf(NotificationType type) {
