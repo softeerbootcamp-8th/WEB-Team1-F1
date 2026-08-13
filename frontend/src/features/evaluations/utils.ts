@@ -57,3 +57,31 @@ export function getAuctionStatusMeta(status: EvaluationAuctionStatus) {
   }
   return { label: '유찰', className: 'bg-muted text-muted-foreground border-border' }
 }
+
+/**
+ * 이 차량을 지금 (재)출품할 수 있는지. 서버 `AuctionService.ACTIVE_STATUSES` 와 같은 기준이다 —
+ * 예정 · 진행 중 · 낙찰 종료는 막고, 유찰만 재출품을 연다.
+ *
+ * 상태는 상세 응답이 아니라 신청 목록에서 온다. 출품 버튼과 등록 화면 가드가 이 함수 하나를
+ * 같이 써야 두 곳의 기준이 갈라지지 않는다.
+ *
+ * 상태를 모를 때(목록을 아직 못 읽었거나 조회에 실패했을 때)도 true 다. 화면은 최종 방어선이
+ * 아니라 헛걸음을 줄이는 자리이고, 여기서 막으면 목록 조회 실패가 곧 출품 불가가 된다.
+ * 실제 중복은 서버가 409 AUCTION_ALREADY_EXISTS 로 돌려보낸다.
+ */
+export function canRegisterAuction(
+  status: EvaluationAuctionStatus | null | undefined,
+): boolean {
+  return status == null || status === 'FAILED'
+}
+
+/** 출품을 막는 이유. 판매자가 "왜 등록 버튼이 없는가"를 화면에서 바로 알 수 있어야 한다. */
+export function getAuctionBlockReason(status: EvaluationAuctionStatus): string {
+  if (status === 'SCHEDULED') {
+    return '경매 시작을 기다리는 중입니다. 시작 전이라면 경매 목록의 "나의 경매"에서 시작가와 시각을 수정할 수 있어요.'
+  }
+  if (status === 'IN_PROGRESS') {
+    return '경매가 진행 중입니다. 마감되면 결과를 확인할 수 있어요.'
+  }
+  return '낙찰이 끝난 차량입니다.'
+}
