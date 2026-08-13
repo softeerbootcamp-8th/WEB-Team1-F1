@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, LoaderCircle, UserRoundSearch } from 'lucide-react'
+import { ArrowLeft, LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/common/empty-state'
@@ -19,6 +19,7 @@ import type { VehicleOwnerValues } from '@/features/vehicle/components/vehicle-o
 import { VehicleSummary } from '@/features/vehicle/components/vehicle-summary'
 import type { VehicleLookupResponse } from '@/features/vehicle/types'
 import { getErrorMessage } from '@/lib/axios'
+import { formatPhoneInput, parsePhoneInput } from '@/lib/input-format'
 
 const CONTACT_PHONE_PATTERN = /^01\d{8,9}$/
 const VISIT_QUOTE_FIELDS: (keyof VisitQuoteRequest)[] = [
@@ -98,7 +99,7 @@ export function EvaluatorConnectionPage() {
     pageState?.draft?.visitAddress ?? '',
   )
   const [contactPhone, setContactPhone] = useState(
-    pageState?.draft?.contactPhone ?? '',
+    formatPhoneInput(pageState?.draft?.contactPhone ?? ''),
   )
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [result, setResult] = useState<VisitQuoteResponse | null>(null)
@@ -253,7 +254,7 @@ export function EvaluatorConnectionPage() {
       ownerName: ownerName.trim(),
       visitAddress: visitAddress.trim(),
       visitDate: formatLocalDate(visitDate),
-      contactPhone,
+      contactPhone: parsePhoneInput(contactPhone),
     })
   }
 
@@ -270,22 +271,23 @@ export function EvaluatorConnectionPage() {
         </Button>
       )}
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_0.8fr]">
-        <section className="min-w-0 rounded-2xl border p-7 md:p-10">
-          <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-full">
-            <UserRoundSearch className="size-6" />
-          </div>
-          <p className="text-muted-foreground mt-8 text-sm">방문견적</p>
+      <header className="mt-6 max-w-2xl">
+        <h1 className="text-3xl font-semibold md:text-4xl lg:text-5xl">
+          {requestComplete
+            ? '방문견적 신청이 접수됐어요.'
+            : '평가사 방문 정보를 입력해 주세요.'}
+        </h1>
+      </header>
 
+      <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+        <aside className="rounded-2xl border p-7 md:p-8">
+          <VehicleSummary vehicle={vehicle!} />
+        </aside>
+
+        <section className="min-w-0 self-start rounded-2xl border p-7 md:p-8">
           {requestComplete ? (
             <>
-              <h1 className="mt-2 text-3xl font-semibold">
-                방문견적 신청이 접수됐어요.
-              </h1>
-              <p className="text-muted-foreground mt-3 leading-6" aria-live="polite">
-                입력하신 방문 희망 날짜와 주소로 신청이 완료되었습니다.
-              </p>
-              <dl className="bg-muted/50 mt-8 space-y-4 rounded-xl p-5 text-sm">
+              <dl className="space-y-5 text-sm" aria-live="polite">
                 <div>
                   <dt className="text-muted-foreground">방문 희망 날짜</dt>
                   <dd className="mt-1 font-medium">{formatVisitDate(result.visitDate)}</dd>
@@ -297,13 +299,7 @@ export function EvaluatorConnectionPage() {
               </dl>
             </>
           ) : (
-            <>
-              <h1 className="mt-2 text-3xl font-semibold">
-                평가사 방문 정보를
-                <br />
-                입력해 주세요.
-              </h1>
-              <form className="mt-8 space-y-6" onSubmit={submit}>
+              <form className="space-y-6" onSubmit={submit}>
                 <div>
                   <Label htmlFor="visit-date">방문 희망 날짜</Label>
                   <Input
@@ -363,15 +359,15 @@ export function EvaluatorConnectionPage() {
                     autoComplete="tel-national"
                     value={contactPhone}
                     onChange={(event) => {
-                      setContactPhone(event.target.value.replace(/\D/g, '').slice(0, 11))
+                      setContactPhone(formatPhoneInput(event.target.value))
                       setFieldErrors((current) => ({
                         ...current,
                         contactPhone: undefined,
                       }))
                     }}
-                    placeholder="'-' 없이 숫자만"
-                    pattern="^01\d{8,9}$"
-                    maxLength={11}
+                    placeholder="010-1234-5678"
+                    pattern="^01\d-\d{3,4}-\d{4}$"
+                    maxLength={13}
                     aria-invalid={Boolean(fieldErrors.contactPhone)}
                     required
                   />
@@ -396,7 +392,7 @@ export function EvaluatorConnectionPage() {
                     mutation.isPending ||
                     !visitDate ||
                     !visitAddress.trim() ||
-                    !CONTACT_PHONE_PATTERN.test(contactPhone)
+                    !CONTACT_PHONE_PATTERN.test(parsePhoneInput(contactPhone))
                   }
                 >
                   {mutation.isPending && (
@@ -405,34 +401,8 @@ export function EvaluatorConnectionPage() {
                   예약하기
                 </Button>
               </form>
-            </>
           )}
         </section>
-
-        <div className="rounded-2xl border p-7 md:p-8">
-          <VehicleSummary vehicle={vehicle!} />
-
-          <ol className="mt-8 space-y-4 text-sm" aria-live="polite">
-            <li className="flex items-center gap-3">
-              <Check className="text-success size-4" />
-              차량 소유 정보 입력 완료
-            </li>
-            <li
-              className={
-                requestComplete
-                  ? 'flex items-center gap-3'
-                  : 'text-muted-foreground flex items-center gap-3'
-              }
-            >
-              {requestComplete ? (
-                <Check className="text-success size-4" />
-              ) : (
-                <span className="size-4 rounded-full border" />
-              )}
-              방문견적 신청 접수
-            </li>
-          </ol>
-        </div>
       </div>
     </main>
   )

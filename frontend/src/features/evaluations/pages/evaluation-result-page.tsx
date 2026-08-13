@@ -45,6 +45,7 @@ import {
 } from '@/features/quote/types'
 import { getErrorMessage } from '@/lib/axios'
 import { formatKRW } from '@/lib/format'
+import { formatNumericInput, parseNumericInput } from '@/lib/input-format'
 import { cn } from '@/lib/utils'
 import {
   fetchEvaluationDetail,
@@ -105,17 +106,6 @@ function sameValues<T>(left: T[], right: T[]): boolean {
 function normalizeKeywords(keywords: VehicleKeyword[]): VehicleKeyword[] {
   if (!keywords.includes('ACCIDENT_FREE') || !keywords.includes('MINOR_EXCHANGE')) return keywords
   return keywords.filter((keyword) => keyword !== 'MINOR_EXCHANGE')
-}
-
-function formatNumericInput(value: string | number): string {
-  const digits = String(value).replace(/\D/g, '')
-  if (!digits) return ''
-  const normalized = digits.replace(/^0+(?=\d)/, '')
-  return normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-}
-
-function parseNumericInput(value: string): number {
-  return Number(value.replaceAll(',', ''))
 }
 
 function stageMeta(stage: SubmitStage) {
@@ -464,10 +454,10 @@ export function EvaluationResultPage() {
                     type="text"
                     inputMode="numeric"
                     value={mileage}
-                    onChange={(event) => setMileage(formatNumericInput(event.target.value))}
+                    onChange={(event) => setMileage(formatNumericInput(event.target.value, 6))}
                     placeholder="45,000"
                     maxLength={7}
-                    className="h-24 rounded-2xl px-6 pr-20 text-3xl font-semibold tracking-tight md:text-3xl"
+                    className="h-24 rounded-2xl px-6 pr-20 text-3xl font-semibold tracking-tight placeholder:opacity-40 md:text-3xl"
                     required
                   />
                   <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-6 -translate-y-1/2 text-xl">km</span>
@@ -485,7 +475,7 @@ export function EvaluationResultPage() {
                     onChange={(event) => setEstimatedPriceManwon(formatNumericInput(event.target.value))}
                     placeholder="2,150"
                     maxLength={15}
-                    className="h-24 rounded-2xl px-6 pr-24 text-3xl font-semibold tracking-tight md:text-3xl"
+                    className="h-24 rounded-2xl px-6 pr-24 text-3xl font-semibold tracking-tight placeholder:opacity-40 md:text-3xl"
                     required
                   />
                   <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-6 -translate-y-1/2 text-xl">만원</span>

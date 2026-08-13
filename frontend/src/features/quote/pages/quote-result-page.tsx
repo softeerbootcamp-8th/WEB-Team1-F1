@@ -3,13 +3,9 @@ import { Home, Search, Tag } from 'lucide-react'
 
 import { EmptyState } from '@/components/common/empty-state'
 import { Button } from '@/components/ui/button'
-import { formatKRW, formatMileage } from '@/lib/format'
-import {
-  FUEL_TYPE_LABEL,
-  MANUFACTURER_LABEL,
-  TRANSMISSION_LABEL,
-  type QuoteResult,
-} from '@/features/quote/types'
+import { VehicleSummary } from '@/features/vehicle/components/vehicle-summary'
+import { formatKRW } from '@/lib/format'
+import { type QuoteResult } from '@/features/quote/types'
 
 interface QuoteResultState {
   quote: QuoteResult
@@ -52,67 +48,30 @@ export function QuoteResultPage() {
         </p>
       </header>
 
-      <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_0.8fr]">
-        <div className="min-w-0 rounded-2xl border p-7">
-          {quote.mainImageUrl && (
-            <img
-              src={quote.mainImageUrl}
-              alt={quote.model}
-              className="mb-6 aspect-video w-full rounded-xl object-cover"
-            />
-          )}
-          <p className="text-muted-foreground text-sm">
-            {MANUFACTURER_LABEL[quote.manufacturer]}
-          </p>
-          <p className="mt-1 text-2xl font-semibold">{quote.model}</p>
-          <p className="text-muted-foreground tabular mt-1 text-sm">
-            {quote.plateNumber}
-          </p>
+      <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+        <aside className="rounded-2xl border p-7 md:p-8">
+          <VehicleSummary vehicle={quote} />
+        </aside>
 
-          <dl className="mt-8 grid grid-cols-2 gap-y-5 text-sm">
-            <div>
-              <dt className="text-muted-foreground">연식</dt>
-              <dd className="tabular mt-1 font-medium">{quote.modelYear}년</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">주행거리</dt>
-              <dd className="tabular mt-1 font-medium">
-                {formatMileage(quote.mileage)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">연료</dt>
-              <dd className="mt-1 font-medium">{FUEL_TYPE_LABEL[quote.fuelType]}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">변속기</dt>
-              <dd className="mt-1 font-medium">
-                {TRANSMISSION_LABEL[quote.transmission]}
-              </dd>
-            </div>
-          </dl>
-        </div>
-
-        <section className="bg-foreground text-background flex min-h-72 flex-col justify-center rounded-2xl p-8">
-          <p className="text-background/55 text-sm">예상 시세</p>
-          <p className="tabular mt-3 text-4xl font-semibold">
+        <section className="self-start rounded-2xl border p-7 md:p-8">
+          <p className="text-muted-foreground text-sm">예상 시세</p>
+          <p className="tabular mt-3 text-3xl font-semibold">
             {formatKRW(quote.estimatedPrice)}
           </p>
-          <p className="text-background/55 mt-3 text-sm">{quote.plateNumber}</p>
-          <p className="text-background/55 mt-2 text-xs">
+          <p className="text-muted-foreground mt-3 text-xs leading-5">
             실제 경매가는 평가 결과에 따라 달라질 수 있습니다.
           </p>
         </section>
       </div>
 
-      <div className="mt-10 flex gap-3">
-        <Button asChild variant="outline" size="lg" className="flex-1">
+      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.8fr]">
+        <Button asChild variant="outline" size="lg" className="w-full">
           <Link to="/">
             <Home className="size-4" />
             홈으로 돌아가기
           </Link>
         </Button>
-        <Button asChild size="lg" className="flex-1">
+        <Button asChild size="lg" className="w-full">
           <Link
             to="/sell"
             state={{
