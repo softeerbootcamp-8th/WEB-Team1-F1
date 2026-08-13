@@ -184,7 +184,7 @@ export function MyRequestDetailPage() {
           {isDiagnosed && (blockedStatus ? (
             <section className="rounded-2xl border p-6 md:p-8">
               <h2 className="text-xl font-semibold">이미 경매에 등록된 차량입니다</h2>
-              <p className="text-muted-foreground mt-2 text-sm">{getAuctionBlockReason(blockedStatus)}</p>
+              <p className="text-muted-foreground mt-2 text-sm whitespace-nowrap">{getAuctionBlockReason(blockedStatus)}</p>
               <Button asChild variant="outline" className="mt-5"><Link to="/auctions?scope=MINE"><Gavel />나의 경매 보기</Link></Button>
             </section>
           ) : (
