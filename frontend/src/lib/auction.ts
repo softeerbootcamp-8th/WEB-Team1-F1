@@ -16,9 +16,19 @@ export function incrementForPrice(
   price: number,
   bands: BidIncrementBand[],
 ): number | null {
+  return bandForPrice(price, bands)?.increment ?? null
+}
+
+/**
+ * 그 가격을 담당하는 구간. 도움말 표에서 현재 가격이 속한 줄을 강조할 때 쓴다.
+ * 판정을 여기 하나로 두어야 패널이 안내하는 상승가와 표에서 강조된 줄이 어긋나지 않는다.
+ */
+export function bandForPrice(
+  price: number,
+  bands: BidIncrementBand[],
+): BidIncrementBand | null {
   const sorted = [...bands].sort((a, b) => a.minPrice - b.minPrice)
-  const band = [...sorted].reverse().find((b) => b.minPrice <= price)
-  return band?.increment ?? null
+  return [...sorted].reverse().find((band) => band.minPrice <= price) ?? null
 }
 
 /** 소프트 클로즈 임계 — 남은 시간이 이 값 이하이면 마감 임박 */
