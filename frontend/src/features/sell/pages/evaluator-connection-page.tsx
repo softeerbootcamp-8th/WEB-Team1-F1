@@ -19,6 +19,7 @@ import type { VehicleOwnerValues } from '@/features/vehicle/components/vehicle-o
 import { VehicleSummary } from '@/features/vehicle/components/vehicle-summary'
 import type { VehicleLookupResponse } from '@/features/vehicle/types'
 import { getErrorMessage } from '@/lib/axios'
+import { formatPhoneInput, parsePhoneInput } from '@/lib/input-format'
 
 const CONTACT_PHONE_PATTERN = /^01\d{8,9}$/
 const VISIT_QUOTE_FIELDS: (keyof VisitQuoteRequest)[] = [
@@ -98,7 +99,7 @@ export function EvaluatorConnectionPage() {
     pageState?.draft?.visitAddress ?? '',
   )
   const [contactPhone, setContactPhone] = useState(
-    pageState?.draft?.contactPhone ?? '',
+    formatPhoneInput(pageState?.draft?.contactPhone ?? ''),
   )
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [result, setResult] = useState<VisitQuoteResponse | null>(null)
@@ -253,7 +254,7 @@ export function EvaluatorConnectionPage() {
       ownerName: ownerName.trim(),
       visitAddress: visitAddress.trim(),
       visitDate: formatLocalDate(visitDate),
-      contactPhone,
+      contactPhone: parsePhoneInput(contactPhone),
     })
   }
 
@@ -363,15 +364,15 @@ export function EvaluatorConnectionPage() {
                     autoComplete="tel-national"
                     value={contactPhone}
                     onChange={(event) => {
-                      setContactPhone(event.target.value.replace(/\D/g, '').slice(0, 11))
+                      setContactPhone(formatPhoneInput(event.target.value))
                       setFieldErrors((current) => ({
                         ...current,
                         contactPhone: undefined,
                       }))
                     }}
-                    placeholder="'-' 없이 숫자만"
-                    pattern="^01\d{8,9}$"
-                    maxLength={11}
+                    placeholder="010-1234-5678"
+                    pattern="^01\d-\d{3,4}-\d{4}$"
+                    maxLength={13}
                     aria-invalid={Boolean(fieldErrors.contactPhone)}
                     required
                   />
@@ -396,7 +397,7 @@ export function EvaluatorConnectionPage() {
                     mutation.isPending ||
                     !visitDate ||
                     !visitAddress.trim() ||
-                    !CONTACT_PHONE_PATTERN.test(contactPhone)
+                    !CONTACT_PHONE_PATTERN.test(parsePhoneInput(contactPhone))
                   }
                 >
                   {mutation.isPending && (

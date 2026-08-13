@@ -15,6 +15,12 @@ import {
 } from '@/components/ui/select'
 import { getErrorMessage } from '@/lib/axios'
 import {
+  formatPhoneInput,
+  getCaretPosition,
+  onlyDigits,
+  parsePhoneInput,
+} from '@/lib/input-format'
+import {
   prepareDealerLicenseFile,
   uploadDealerLicense,
   type PreparedDealerLicenseFile,
@@ -31,38 +37,7 @@ const INITIAL_FORM = {
   realName: '',
 }
 
-const onlyDigits = (value: string) => value.replace(/\D/g, '')
-
 const EMAIL_DOMAINS = ['naver.com', 'gmail.com', 'daum.net', 'kakao.com'] as const
-
-function formatPhoneNumber(value: string) {
-  const digits = onlyDigits(value).slice(0, 11)
-
-  if (digits.length <= 3) return digits
-  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`
-  if (digits.length <= 10) {
-    return `${digits.slice(0, 3)}-${digits.slice(3, -4)}-${digits.slice(-4)}`
-  }
-  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
-}
-
-function getPhoneCaretPosition(value: string, digitCount: number) {
-  if (digitCount === 0) return 0
-
-  let seenDigits = 0
-  let position = value.length
-
-  for (let index = 0; index < value.length; index += 1) {
-    if (/\d/.test(value[index])) seenDigits += 1
-    if (seenDigits === digitCount) {
-      position = index + 1
-      break
-    }
-  }
-
-  while (position < value.length && /\D/.test(value[position])) position += 1
-  return position
-}
 
 export function SignupPage() {
   const { login } = useAuth()
@@ -88,7 +63,7 @@ export function SignupPage() {
     setIsSubmitting(true)
     try {
       const email = `${emailLocal.trim()}@${emailDomain.trim()}`
-      const phone = phoneInputRef.current?.value ?? ''
+      const phone = parsePhoneInput(phoneInputRef.current?.value ?? '')
       let licenseKey: string | undefined
       if (role === 'DEALER') {
         if (!dealerLicense) {
@@ -322,8 +297,8 @@ export function SignupPage() {
               const digitsBeforeCaret = onlyDigits(
                 e.currentTarget.value.slice(0, selectionStart),
               ).length
-              const nextPhone = formatPhoneNumber(e.currentTarget.value)
-              const caretPosition = getPhoneCaretPosition(nextPhone, digitsBeforeCaret)
+              const nextPhone = formatPhoneInput(e.currentTarget.value)
+              const caretPosition = getCaretPosition(nextPhone, digitsBeforeCaret)
 
               e.currentTarget.value = nextPhone
               e.currentTarget.setSelectionRange(caretPosition, caretPosition)

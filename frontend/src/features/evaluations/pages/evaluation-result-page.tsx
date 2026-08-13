@@ -45,6 +45,7 @@ import {
 } from '@/features/quote/types'
 import { getErrorMessage } from '@/lib/axios'
 import { formatKRW } from '@/lib/format'
+import { formatNumericInput, parseNumericInput } from '@/lib/input-format'
 import { cn } from '@/lib/utils'
 import {
   fetchEvaluationDetail,
@@ -105,17 +106,6 @@ function sameValues<T>(left: T[], right: T[]): boolean {
 function normalizeKeywords(keywords: VehicleKeyword[]): VehicleKeyword[] {
   if (!keywords.includes('ACCIDENT_FREE') || !keywords.includes('MINOR_EXCHANGE')) return keywords
   return keywords.filter((keyword) => keyword !== 'MINOR_EXCHANGE')
-}
-
-function formatNumericInput(value: string | number): string {
-  const digits = String(value).replace(/\D/g, '')
-  if (!digits) return ''
-  const normalized = digits.replace(/^0+(?=\d)/, '')
-  return normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-}
-
-function parseNumericInput(value: string): number {
-  return Number(value.replaceAll(',', ''))
 }
 
 function stageMeta(stage: SubmitStage) {
@@ -464,7 +454,7 @@ export function EvaluationResultPage() {
                     type="text"
                     inputMode="numeric"
                     value={mileage}
-                    onChange={(event) => setMileage(formatNumericInput(event.target.value))}
+                    onChange={(event) => setMileage(formatNumericInput(event.target.value, 6))}
                     placeholder="45,000"
                     maxLength={7}
                     className="h-24 rounded-2xl px-6 pr-20 text-3xl font-semibold tracking-tight md:text-3xl"

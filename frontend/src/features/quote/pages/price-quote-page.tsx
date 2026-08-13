@@ -15,6 +15,7 @@ import {
 import { VehicleSummary } from '@/features/vehicle/components/vehicle-summary'
 import type { VehicleLookupResponse } from '@/features/vehicle/types'
 import { getErrorMessage } from '@/lib/axios'
+import { formatNumericInput, parseNumericInput } from '@/lib/input-format'
 
 export function PriceQuotePage() {
   const navigate = useNavigate()
@@ -24,7 +25,7 @@ export function PriceQuotePage() {
   const [isLookingUp, setIsLookingUp] = useState(false)
   const [isEstimating, setIsEstimating] = useState(false)
 
-  const mileageNumber = Number(mileage)
+  const mileageNumber = parseNumericInput(mileage)
   const isMileageValid =
     mileage.length > 0 &&
     Number.isInteger(mileageNumber) &&
@@ -102,14 +103,12 @@ export function PriceQuotePage() {
                 <div className="relative">
                   <Input
                     id="quote-mileage"
-                    type="number"
+                    type="text"
                     inputMode="numeric"
                     value={mileage}
-                    onChange={(event) => setMileage(event.target.value)}
-                    placeholder="45000"
-                    min={0}
-                    max={999999}
-                    step={1}
+                    onChange={(event) => setMileage(formatNumericInput(event.target.value, 6))}
+                    placeholder="45,000"
+                    maxLength={7}
                     className="pr-12 tabular"
                     required
                   />
