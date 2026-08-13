@@ -45,15 +45,19 @@ public class AuctionRoomService {
      */
     @Transactional(readOnly = true)
     public RoomOpening readOpening(long auctionId) {
-        RoomOpening opening = auctionRoomReader.findOpening(auctionId)
+        AuctionRoomDetail detail = auctionRoomReader.findDetail(auctionId)
                 .orElseThrow(() -> new BusinessException(AUCTION_ROOM_NOT_FOUND));
 
+        LocalDateTime now = LocalDateTime.now(clock);
+
         // 이미 열린 방에는 안내할 것이 없다, 화면은 방 조회로 옮겨간다
-        opening.phase().openingRejection().ifPresent(errorCode -> {
+        // 조립보다 먼저 묻는다, 안내는 열리지 않은 방에만 뜻이 있으므로 거절될 요청에는 만들 것이 없다
+        detail.phaseAt(now).openingRejection().ifPresent(errorCode -> {
             throw new BusinessException(errorCode);
         });
 
-        return opening;
+        return RoomOpening.of(detail, auctionRoomReader.findPhotoUrls(auctionId),
+                auctionRoomReader.findKeywords(detail.vehicleId()), now);
     }
 
     /**
