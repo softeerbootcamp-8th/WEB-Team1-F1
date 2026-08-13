@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Home, Search, Tag } from 'lucide-react'
 
 import { EmptyState } from '@/components/common/empty-state'
+import { CarThumb } from '@/components/common/car-thumb'
 import { Button } from '@/components/ui/button'
 import { formatKRW, formatMileage } from '@/lib/format'
 import {
@@ -52,60 +53,65 @@ export function QuoteResultPage() {
         </p>
       </header>
 
-      <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_0.8fr]">
-        <div className="min-w-0 rounded-2xl border p-7">
-          {quote.mainImageUrl && (
-            <img
-              src={quote.mainImageUrl}
-              alt={quote.model}
-              className="mb-6 aspect-video w-full rounded-xl object-cover"
-            />
-          )}
-          <p className="text-muted-foreground text-sm">
-            {MANUFACTURER_LABEL[quote.manufacturer]}
-          </p>
-          <p className="mt-1 text-2xl font-semibold">{quote.model}</p>
-          <p className="text-muted-foreground tabular mt-1 text-sm">
-            {quote.plateNumber}
-          </p>
+      <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-stretch">
+        <div className="bg-muted aspect-[16/10] overflow-hidden rounded-2xl border lg:aspect-auto">
+          <CarThumb
+            src={quote.mainImageUrl ?? undefined}
+            alt={quote.model}
+            loading="eager"
+            className="object-contain"
+          />
+        </div>
 
-          <dl className="mt-8 grid grid-cols-2 gap-y-5 text-sm">
+        <section className="flex flex-col rounded-2xl border p-7 md:p-8">
+          <div className="border-b pb-7">
+            <p className="text-muted-foreground text-sm">예상 시세</p>
+            <p className="tabular mt-2 text-3xl font-semibold">
+              {formatKRW(quote.estimatedPrice)}
+            </p>
+            <p className="text-muted-foreground mt-3 text-xs leading-5">
+              실제 경매가는 평가 결과에 따라 달라질 수 있습니다.
+            </p>
+          </div>
+
+          <div className="mt-7">
+            <p className="text-muted-foreground text-sm">
+              {MANUFACTURER_LABEL[quote.manufacturer]}
+            </p>
+            <h2 className="mt-1 text-2xl font-semibold">{quote.model}</h2>
+            <p className="text-muted-foreground tabular mt-1 text-sm">
+              {quote.plateNumber}
+            </p>
+          </div>
+
+          <dl className="bg-muted/50 mt-7 grid grid-cols-2 gap-y-6 rounded-xl p-5">
             <div>
-              <dt className="text-muted-foreground">연식</dt>
-              <dd className="tabular mt-1 font-medium">{quote.modelYear}년</dd>
+              <dt className="text-muted-foreground text-sm">연식</dt>
+              <dd className="tabular mt-1 font-semibold">{quote.modelYear}년</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">주행거리</dt>
-              <dd className="tabular mt-1 font-medium">
+              <dt className="text-muted-foreground text-sm">주행거리</dt>
+              <dd className="tabular mt-1 font-semibold">
                 {formatMileage(quote.mileage)}
               </dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">연료</dt>
-              <dd className="mt-1 font-medium">{FUEL_TYPE_LABEL[quote.fuelType]}</dd>
+              <dt className="text-muted-foreground text-sm">연료</dt>
+              <dd className="mt-1 font-semibold">
+                {FUEL_TYPE_LABEL[quote.fuelType]}
+              </dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">변속기</dt>
-              <dd className="mt-1 font-medium">
+              <dt className="text-muted-foreground text-sm">변속기</dt>
+              <dd className="mt-1 font-semibold">
                 {TRANSMISSION_LABEL[quote.transmission]}
               </dd>
             </div>
           </dl>
-        </div>
-
-        <section className="bg-foreground text-background flex min-h-72 flex-col justify-center rounded-2xl p-8">
-          <p className="text-background/55 text-sm">예상 시세</p>
-          <p className="tabular mt-3 text-4xl font-semibold">
-            {formatKRW(quote.estimatedPrice)}
-          </p>
-          <p className="text-background/55 mt-3 text-sm">{quote.plateNumber}</p>
-          <p className="text-background/55 mt-2 text-xs">
-            실제 경매가는 평가 결과에 따라 달라질 수 있습니다.
-          </p>
         </section>
       </div>
 
-      <div className="mt-10 flex gap-3">
+      <div className="mt-8 flex gap-3">
         <Button asChild variant="outline" size="lg" className="flex-1">
           <Link to="/">
             <Home className="size-4" />
