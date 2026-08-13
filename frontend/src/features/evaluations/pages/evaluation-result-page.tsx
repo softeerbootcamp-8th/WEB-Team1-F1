@@ -452,7 +452,7 @@ export function EvaluationResultPage() {
                     onChange={(event) => setMileage(formatNumericInput(event.target.value, 6))}
                     placeholder="45,000"
                     maxLength={7}
-                    className="h-24 rounded-2xl px-6 pr-20 text-3xl font-semibold tracking-tight placeholder:opacity-40 md:text-3xl"
+                    className="h-16 rounded-2xl px-6 pr-20 text-2xl font-semibold tracking-tight placeholder:opacity-40 md:text-2xl"
                     required
                   />
                   <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-6 -translate-y-1/2 text-xl">km</span>
@@ -469,7 +469,7 @@ export function EvaluationResultPage() {
                     onChange={(event) => setEstimatedPriceManwon(formatNumericInput(event.target.value))}
                     placeholder="2,150"
                     maxLength={15}
-                    className="h-24 rounded-2xl px-6 pr-24 text-3xl font-semibold tracking-tight placeholder:opacity-40 md:text-3xl"
+                    className="h-16 rounded-2xl px-6 pr-24 text-2xl font-semibold tracking-tight placeholder:opacity-40 md:text-2xl"
                     required
                   />
                   <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-6 -translate-y-1/2 text-xl">만원</span>
