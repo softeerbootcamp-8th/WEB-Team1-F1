@@ -9,7 +9,13 @@ import com.softeer.race.common.presentation.GlobalExceptionHandler;
 import com.softeer.race.evaluation.application.VisitQuoteService;
 import com.softeer.race.evaluation.application.dto.command.VisitQuoteCommand;
 import com.softeer.race.evaluation.application.dto.info.VisitQuoteInfo;
+import com.softeer.race.evaluation.application.dto.info.VisitQuotePrecheckInfo;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
+import com.softeer.race.vehicle.application.dto.command.VehicleLookupCommand;
+import com.softeer.race.vehicle.application.dto.info.VehicleLookupInfo;
+import com.softeer.race.vehicle.domain.FuelType;
+import com.softeer.race.vehicle.domain.Manufacturer;
+import com.softeer.race.vehicle.domain.Transmission;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,6 +65,55 @@ class VisitQuoteControllerTest {
     void before() {
         given(sessionService.authenticate(any()))
                 .willReturn(new AuthenticatedUser(SELLER_ID, Role.GENERAL));
+    }
+
+    @Test
+    @DisplayName("사전 확인은 로그인한 사용자에게 차량과 진행 중 신청 여부를 준다")
+    void precheck() throws Exception {
+        given(visitQuoteService.precheck(any(VehicleLookupCommand.class))).willReturn(
+                new VisitQuotePrecheckInfo(
+                        new VehicleLookupInfo(PLATE_NUMBER, Manufacturer.HYUNDAI,
+                                "그랜저 IG", 2021, FuelType.GASOLINE,
+                                Transmission.AUTOMATIC, null),
+                        true));
+
+        mockMvc.perform(post("/api/visit-quotes/precheck")
+                        .cookie(sessionCookie())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(precheckBody()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.vehicle.plateNumber").value(PLATE_NUMBER))
+                .andExpect(jsonPath("$.vehicle.model").value("그랜저 IG"))
+                .andExpect(jsonPath("$.hasInProgressVisitQuote").value(true));
+    }
+
+    @Test
+    @DisplayName("사전 확인은 로그인이 없으면 401을 반환한다")
+    void precheckRequiresAuthentication() throws Exception {
+        given(sessionService.authenticate(any()))
+                .willThrow(new BusinessException(com.softeer.race.auth.exception.AuthErrorCode.UNAUTHENTICATED));
+
+        mockMvc.perform(post("/api/visit-quotes/precheck")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(precheckBody()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
+
+        then(visitQuoteService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("사전 확인의 번호판과 소유자명이 비어 있으면 400을 반환한다")
+    void precheckRejectsBlankFields() throws Exception {
+        mockMvc.perform(post("/api/visit-quotes/precheck")
+                        .cookie(sessionCookie())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"plateNumber": "", "ownerName": ""}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.errors[*].field", hasItems("plateNumber", "ownerName")));
     }
 
     @Test
@@ -196,6 +251,12 @@ class VisitQuoteControllerTest {
 
     private static String validRequest() {
         return body(PLATE_NUMBER, OWNER_NAME, VISIT_ADDRESS, "2026-08-20", "01012345678");
+    }
+
+    private static String precheckBody() {
+        return """
+                {"plateNumber": "12가3456", "ownerName": "김민수"}
+                """;
     }
 
     private static String body(String plateNumber, String ownerName, String visitAddress,

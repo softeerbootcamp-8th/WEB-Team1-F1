@@ -3,6 +3,7 @@ import { Eye, Gavel } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/common/empty-state'
+import { HelpPopover } from '@/components/common/help-popover'
 import { MANUFACTURER_LABEL } from '@/features/quote/types'
 import { useAuth } from '@/features/auth/auth-context'
 
@@ -10,13 +11,18 @@ import { useAuctionRoom } from '../use-auction-room'
 import { PriceBoard } from '../components/price-board'
 import { BidPanel } from '../components/bid-panel'
 import { BidLedger } from '../components/bid-ledger'
+import { BidIncrementHelp } from '../components/bid-increment-help'
 import { WaitingRoom } from '../components/waiting-room'
 import { CarDetail } from '../components/car-detail'
 import { BackLink } from '../components/back-link'
 import { KeywordBadges } from '../components/keyword-badges'
 import { RoomStateBanner, RoomStateBar } from '../components/room-state-banner'
 import type { RoomStateMode } from '../components/room-state-banner'
-import type { AuctionRoomView, RoomVehicle } from '../types'
+import type {
+  AuctionRoomView,
+  BidIncrementBand,
+  RoomVehicle,
+} from '../types'
 
 export function AuctionRoomPage() {
   const { id } = useParams()
@@ -112,6 +118,7 @@ function RoomContent({ auctionId }: { auctionId: number }) {
   const {
     room,
     entry,
+    bands,
     increment,
     nextMin,
     flashKey,
@@ -163,6 +170,7 @@ function RoomContent({ auctionId }: { auctionId: number }) {
       {room.phase === 'LIVE' && (
         <LiveRoom
           room={room}
+          bands={bands}
           increment={increment}
           nextMin={nextMin}
           flashKey={flashKey}
@@ -178,6 +186,7 @@ function RoomContent({ auctionId }: { auctionId: number }) {
 /** 진행중 룸 레이아웃 (좌: 시세판/차량, 우: 입찰/호가창) */
 function LiveRoom({
   room,
+  bands,
   increment,
   nextMin,
   flashKey,
@@ -186,6 +195,8 @@ function LiveRoom({
   placeBid,
 }: {
   room: AuctionRoomView
+  /** 도움말 표가 쓰는 구간표 원본. 패널이 쓰는 increment 와 같은 출처다 */
+  bands: BidIncrementBand[]
   // 구간표를 받기 전에는 상승가를 정할 수 없다, 그대로 입찰 패널까지 넘긴다
   increment: number | null
   nextMin: number | null
@@ -236,6 +247,7 @@ function LiveRoom({
             </div>
           </dl>
 
+          {/* 도움말은 패널이 어느 갈래를 그리든 상자 바닥에 남아야 해서 밖에서 넣어 준다 */}
           <BidPanel
             currentPrice={room.currentPrice}
             increment={increment}
@@ -244,6 +256,15 @@ function LiveRoom({
             endAt={room.endAt}
             clockOffset={clockOffset}
             onBid={placeBid}
+            help={
+              <HelpPopover
+                label="가격 구간별 최소 상승 금액 보기"
+                align="start"
+                contentClassName="w-80"
+              >
+                <BidIncrementHelp bands={bands} currentPrice={room.currentPrice} />
+              </HelpPopover>
+            }
           />
         </div>
       </div>

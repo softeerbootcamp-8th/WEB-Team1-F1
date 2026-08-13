@@ -19,6 +19,14 @@ export function keepScrollOnEnter(pathname: string) {
 }
 
 /**
+ * 화면을 맨 위로 올린다. html에 scroll-behavior: smooth가 걸려 있어 instant를 명시한다 —
+ * 그대로 두면 아래에서 위로 흘러올라가, 갈아탄 게 아니라 같은 화면이 움직이는 것처럼 보인다.
+ */
+export function scrollToTop() {
+  window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+}
+
+/**
  * 이동한 뒤 화면을 맨 위로 올린다.
  *
  * SPA는 주소와 컴포넌트만 갈리고 문서의 스크롤은 그대로 남는다. 그래서 홈 하단에서 카드를
@@ -43,8 +51,6 @@ export function useScrollReset() {
 
     if (keep || navigationType !== 'PUSH') return
 
-    // html에 scroll-behavior: smooth가 걸려 있다. 그대로 두면 새 화면이 아래에서 위로
-    // 흘러올라가, 이동한 게 아니라 같은 화면이 움직이는 것처럼 보인다
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    scrollToTop()
   }, [key, pathname, navigationType])
 }

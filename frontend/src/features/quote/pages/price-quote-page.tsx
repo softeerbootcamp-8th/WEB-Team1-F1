@@ -15,6 +15,7 @@ import {
 import { VehicleSummary } from '@/features/vehicle/components/vehicle-summary'
 import type { VehicleLookupResponse } from '@/features/vehicle/types'
 import { getErrorMessage } from '@/lib/axios'
+import { formatNumericInput, parseNumericInput } from '@/lib/input-format'
 
 export function PriceQuotePage() {
   const navigate = useNavigate()
@@ -24,7 +25,7 @@ export function PriceQuotePage() {
   const [isLookingUp, setIsLookingUp] = useState(false)
   const [isEstimating, setIsEstimating] = useState(false)
 
-  const mileageNumber = Number(mileage)
+  const mileageNumber = parseNumericInput(mileage)
   const isMileageValid =
     mileage.length > 0 &&
     Number.isInteger(mileageNumber) &&
@@ -67,15 +68,12 @@ export function PriceQuotePage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-14" aria-label="내 차 시세 조회">
       <header>
-        <p className="text-muted-foreground text-sm tracking-[0.18em] uppercase">
-          Price Check
-        </p>
-        <h1 className="mt-4 text-3xl font-semibold md:text-4xl lg:text-5xl lg:whitespace-nowrap">
+        <h1 className="text-3xl font-semibold md:text-4xl lg:text-5xl lg:whitespace-nowrap">
           {vehicle
             ? '현재 주행거리를 알려주세요.'
             : '내 차 정보를 확인해보세요!'}
         </h1>
-        <p className="text-muted-foreground mt-4 text-lg leading-8">
+        <p className="text-muted-foreground mt-3 text-lg leading-8">
           {vehicle
             ? '확인된 차량에 현재 주행거리를 반영해 예상 시세를 계산합니다.'
             : '차량 소유자 이름과 번호판으로 차량 정보를 먼저 확인합니다.'}
@@ -83,8 +81,12 @@ export function PriceQuotePage() {
       </header>
 
       {vehicle && owner ? (
-        <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_0.8fr]">
-          <section className="min-w-0 rounded-2xl border p-7 md:p-8">
+        <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+          <aside className="rounded-2xl border p-7 md:p-8">
+            <VehicleSummary vehicle={vehicle} />
+          </aside>
+
+          <section className="min-w-0 self-start rounded-2xl border p-7 md:p-8">
             <Button
               type="button"
               variant="ghost"
@@ -102,14 +104,12 @@ export function PriceQuotePage() {
                 <div className="relative">
                   <Input
                     id="quote-mileage"
-                    type="number"
+                    type="text"
                     inputMode="numeric"
                     value={mileage}
-                    onChange={(event) => setMileage(event.target.value)}
-                    placeholder="45000"
-                    min={0}
-                    max={999999}
-                    step={1}
+                    onChange={(event) => setMileage(formatNumericInput(event.target.value, 6))}
+                    placeholder="45,000"
+                    maxLength={7}
                     className="pr-12 tabular"
                     required
                   />
@@ -137,13 +137,9 @@ export function PriceQuotePage() {
               </Button>
             </form>
           </section>
-
-          <aside className="rounded-2xl border p-7 md:p-8">
-            <VehicleSummary vehicle={vehicle} />
-          </aside>
         </div>
       ) : (
-        <div className="mx-auto mt-12 max-w-2xl rounded-2xl border p-7 md:p-9">
+        <div className="mx-auto mt-12 w-full max-w-5xl rounded-2xl border p-7 md:px-12 md:py-10 lg:px-16">
           <VehicleOwnerForm
             actionLabel="차량 정보 확인"
             actionIcon={Search}

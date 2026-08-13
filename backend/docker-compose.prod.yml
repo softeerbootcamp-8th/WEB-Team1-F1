@@ -13,10 +13,21 @@ services:
       DB_NAME: ${DB_NAME:?배포 스크립트가 DB_NAME 을 내려주지 않았다}
       DB_USERNAME: ${DB_USERNAME:?배포 스크립트가 DB_USERNAME 을 내려주지 않았다}
       DB_PASSWORD: ${DB_PASSWORD:?배포 스크립트가 DB_PASSWORD 를 내려주지 않았다}
+      # VPC 안의 별도 Redis 서버다, 앱과 같은 박스에 띄우지 않아 여기 서비스로는 없다
+      # 비밀번호를 쓰지 않는다, 접근 통제는 전적으로 보안 그룹이 맡는다 —
+      # 6379 를 이 앱 EC2 에만 열어 두는 것이 유일한 방어선이라 그 규칙을 넓히면 그대로 무방비가 된다
+      REDIS_HOST: ${REDIS_HOST:?배포 스크립트가 REDIS_HOST 를 내려주지 않았다}
+      # 포트는 사실상 표준값이라 기본값을 둔다, DB 와 달리 secret 을 하나 더 관리하지 않는다
+      REDIS_PORT: ${REDIS_PORT:-6379}
     ports:
       - "8080:8080"
     # up --wait 가 이 판정을 기다린다, 없으면 앱이 부팅 중 죽어도 배포가 성공으로 보고된다
     # show-details 가 never 라 본문은 상태 문자열뿐이고, DB 연결이 끊기면 DOWN 이 된다
+    #
+    # Redis 도 여기에 포함된다 — starter 를 넣은 순간 actuator 에 health indicator 가 자동으로 붙어,
+    # 접속 정보가 틀렸거나 서버가 죽어 있으면 배포가 롤백된다.
+    # 설정이 잘못된 채로 초록이 되는 것보다 낫다고 보고 켠 채로 둔다.
+    # Redis 없이도 서비스가 돌아야 하는 상황이면 management.health.redis.enabled 를 false 로 끈다
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
       interval: 10s

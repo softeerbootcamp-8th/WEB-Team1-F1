@@ -25,7 +25,15 @@ import {
 import { getErrorMessage } from '@/lib/axios'
 import { formatDateTime, formatKRW, formatMileage } from '@/lib/format'
 import { fetchEvaluationDetail } from '../api'
-import { formatPhone, formatVisitDate, getEvaluationStatusMeta } from '../utils'
+import { useVehicleAuctionStatus } from '../use-vehicle-auction-status'
+import {
+  canRegisterAuction,
+  formatPhone,
+  formatVisitDate,
+  getAuctionBlockReason,
+  getAuctionStatusMeta,
+  getEvaluationStatusMeta,
+} from '../utils'
 
 export function MyRequestDetailPage() {
   const { evaluationId: evaluationIdParam } = useParams()
@@ -36,6 +44,11 @@ export function MyRequestDetailPage() {
     queryFn: () => fetchEvaluationDetail(evaluationId),
     enabled: Number.isInteger(evaluationId) && evaluationId > 0,
   })
+  // 상세 응답에는 경매 상태가 없다. 출품 버튼을 여닫을 근거는 목록에서 온다
+  const { auctionStatus, isLoading: isAuctionStatusLoading } = useVehicleAuctionStatus(
+    evaluationId,
+    Number.isInteger(evaluationId) && evaluationId > 0,
+  )
 
   if (!Number.isInteger(evaluationId) || evaluationId <= 0) {
     return <main className="mx-auto max-w-3xl px-6 py-24"><EmptyState title="잘못된 방문견적 번호입니다" action={<Button asChild><Link to="/mypage">마이페이지</Link></Button>} /></main>
@@ -62,8 +75,14 @@ export function MyRequestDetailPage() {
   const status = getEvaluationStatusMeta(detail.status, assigned)
   const isDiagnosed = detail.status === 'APPROVED'
 
+  const auctionMeta = auctionStatus ? getAuctionStatusMeta(auctionStatus) : null
+  // 재출품을 막는 상태만 남긴다. null 이면 출품할 수 있다는 뜻이라 아래에서 분기 하나로 쓴다
+  const blockedStatus =
+    auctionStatus && !canRegisterAuction(auctionStatus) ? auctionStatus : null
+  const isRelisting = auctionStatus === 'FAILED'
+
   const postAuction = () => {
-    if (!isDiagnosed || detail.estimatedPrice === null) return
+    if (!isDiagnosed || detail.estimatedPrice === null || blockedStatus) return
     navigate(`/sell/auction-post?evaluationId=${detail.evaluationId}`)
   }
 
@@ -80,7 +99,10 @@ export function MyRequestDetailPage() {
           </h1>
           <p className="text-muted-foreground mt-2">{detail.modelYear}년식 · {detail.plateNumber}</p>
         </div>
-        <Badge variant="outline" className={status.className}>{status.label}</Badge>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline" className={status.className}>{status.label}</Badge>
+          {auctionMeta && <Badge variant="outline" className={auctionMeta.className}>{auctionMeta.label}</Badge>}
+        </div>
       </header>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[0.78fr_1.22fr]">
@@ -157,12 +179,28 @@ export function MyRequestDetailPage() {
             </CardContent>
           </Card>
 
-          {isDiagnosed && (
-            <section className="bg-foreground text-background flex flex-wrap items-center justify-between gap-5 rounded-2xl p-6 md:p-8">
-              <div><h2 className="text-xl font-semibold">이 차량을 경매에 출품할까요?</h2><p className="text-background/60 mt-2 text-sm">산정 시세를 시작가 기본값으로 이어갑니다.</p></div>
-              <Button size="lg" variant="secondary" onClick={postAuction}><Gavel />경매 등록하기</Button>
+          {/* 이미 출품된 차량은 등록 화면으로 보내 봐야 서버가 409로 돌려보낸다.
+              절차를 다 밟은 뒤에 실패를 알리지 않도록 여기서 길을 닫고 이유를 적는다. */}
+          {isDiagnosed && (blockedStatus ? (
+            <section className="rounded-2xl border p-6 md:p-8">
+              <h2 className="text-xl font-semibold">이미 경매에 등록된 차량입니다</h2>
+              <p className="text-muted-foreground mt-2 text-sm">{getAuctionBlockReason(blockedStatus)}</p>
+              <Button asChild variant="outline" className="mt-5"><Link to="/auctions?scope=MINE"><Gavel />나의 경매 보기</Link></Button>
             </section>
-          )}
+          ) : (
+            <section className="bg-foreground text-background flex flex-wrap items-center justify-between gap-5 rounded-2xl p-6 md:p-8">
+              <div>
+                <h2 className="text-xl font-semibold">{isRelisting ? '이 차량을 다시 출품할까요?' : '이 차량을 경매에 출품할까요?'}</h2>
+                <p className="text-background/60 mt-2 text-sm">{isRelisting ? '유찰된 차량은 시작가를 조정해 다시 등록할 수 있어요.' : '산정 시세를 시작가 기본값으로 이어갑니다.'}</p>
+              </div>
+              {/* 상태를 아직 모르는 동안은 누를 수 없다. 눌러서 등록 화면까지 갔다가
+                  거기서 막히면 지금 고치려는 헛걸음이 그대로 반복된다 */}
+              <Button size="lg" variant="secondary" onClick={postAuction} disabled={isAuctionStatusLoading}>
+                {isAuctionStatusLoading ? <LoaderCircle className="animate-spin" /> : <Gavel />}
+                {isRelisting ? '다시 등록하기' : '경매 등록하기'}
+              </Button>
+            </section>
+          ))}
         </div>
       </div>
     </main>

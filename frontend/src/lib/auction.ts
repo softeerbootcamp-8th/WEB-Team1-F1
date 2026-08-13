@@ -16,9 +16,19 @@ export function incrementForPrice(
   price: number,
   bands: BidIncrementBand[],
 ): number | null {
+  return bandForPrice(price, bands)?.increment ?? null
+}
+
+/**
+ * 그 가격을 담당하는 구간. 도움말 표에서 현재 가격이 속한 줄을 강조할 때 쓴다.
+ * 판정을 여기 하나로 두어야 패널이 안내하는 상승가와 표에서 강조된 줄이 어긋나지 않는다.
+ */
+export function bandForPrice(
+  price: number,
+  bands: BidIncrementBand[],
+): BidIncrementBand | null {
   const sorted = [...bands].sort((a, b) => a.minPrice - b.minPrice)
-  const band = [...sorted].reverse().find((b) => b.minPrice <= price)
-  return band?.increment ?? null
+  return [...sorted].reverse().find((band) => band.minPrice <= price) ?? null
 }
 
 /** 소프트 클로즈 임계 — 남은 시간이 이 값 이하이면 마감 임박 */
@@ -148,6 +158,21 @@ export function applyAudienceEvent(
   const next = [...cards]
   next[index] = { ...next[index], connectedCount }
   return next
+}
+
+/**
+ * 첫 페이지를 다시 읽어 온 결과를 지금 목록에 얹은 새 배열.
+ *
+ * 치환하지 않는다, 이어 읽어 둔 뒷 페이지가 함께 사라지면 목록이 짧아져 보던 자리를 잃는다.
+ * 같은 경매는 새 값으로 덮고, 첫 페이지에 없던 카드는 순서를 지켜 뒤에 남긴다 — 정렬축에서
+ * 첫 페이지보다 뒤인 카드들이라 그 자리가 맞고, 그룹 배치는 arrangeCards 가 다시 판정한다.
+ */
+export function mergeFirstPage(
+  cards: AuctionListCard[],
+  firstPage: AuctionListCard[],
+): AuctionListCard[] {
+  const incoming = new Set(firstPage.map((it) => it.auctionId))
+  return [...firstPage, ...cards.filter((it) => !incoming.has(it.auctionId))]
 }
 
 /**

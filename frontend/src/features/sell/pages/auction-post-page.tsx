@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Gavel, LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
@@ -10,6 +10,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/features/auth/auth-context'
 import { fetchEvaluationDetail } from '@/features/evaluations/api'
+import {
+  MY_REQUESTS_QUERY_KEY,
+  useVehicleAuctionStatus,
+} from '@/features/evaluations/use-vehicle-auction-status'
+import {
+  canRegisterAuction,
+  getAuctionBlockReason,
+} from '@/features/evaluations/utils'
 import type { FuelType, Manufacturer, Transmission } from '@/features/quote/types'
 import { MANUFACTURER_LABEL } from '@/features/quote/types'
 import { createAuction } from '@/features/sell/api'
@@ -69,8 +77,16 @@ export function AuctionPostPage() {
     queryFn: () => fetchEvaluationDetail(evaluationId),
     enabled: user != null && hasEvaluationId,
   })
+  // 등록 화면은 상세에서만 열리는 것이 아니다. 주소를 그대로 들고 다시 들어올 수 있어
+  // 여기서도 경매 상태를 확인한다 — 상세의 버튼을 닫는 것만으로는 이 경로가 남는다
+  const { auctionStatus, isLoading: isAuctionStatusLoading } = useVehicleAuctionStatus(
+    evaluationId,
+    user != null && hasEvaluationId,
+  )
+  const blockedStatus =
+    auctionStatus && !canRegisterAuction(auctionStatus) ? auctionStatus : null
 
-  if (user != null && hasEvaluationId && isLoading) {
+  if (user != null && hasEvaluationId && (isLoading || isAuctionStatusLoading)) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center">
         <LoaderCircle
@@ -102,11 +118,29 @@ export function AuctionPostPage() {
     )
   }
 
+  // 시작가와 시각을 다 채운 뒤 서버의 409로 실패를 알게 되던 자리다. 폼을 열기 전에 막는다
+  if (blockedStatus) {
+    return (
+      <main className="mx-auto max-w-3xl px-6 py-24">
+        <EmptyState
+          title="이미 경매에 등록된 차량입니다"
+          description={getAuctionBlockReason(blockedStatus)}
+          action={
+            <Button asChild>
+              <Link to="/auctions?scope=MINE">나의 경매 보기</Link>
+            </Button>
+          }
+        />
+      </main>
+    )
+  }
+
   return <AuctionPostForm key={evaluationId} vehicle={vehicle} />
 }
 
 function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicle }) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [startAt, setStartAt] = useState<Date | null>(null)
   // 시작가는 만원 단위로만 받는다. AuctionEditDialog와 같은 방식이다 — 원 단위로 받아 검증하는
   // 대신 입력 단위를 만원으로 두면 1,232만 4,341원 같은 시작가가 애초에 만들어지지 않는다.
@@ -137,6 +171,9 @@ function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicle }) {
       })
     },
     onSuccess: (result) => {
+      // 신청 목록이 경매 상태의 출처다. staleTime(30초) 안에 마이페이지로 돌아오면 방금
+      // 출품한 차량이 아직 미출품으로 보이고, 등록 버튼도 그대로 열려 있다
+      void queryClient.invalidateQueries({ queryKey: MY_REQUESTS_QUERY_KEY })
       toast.success('경매가 등록되었습니다')
       navigate('/sell/result', { replace: true, state: result })
     },
@@ -159,10 +196,7 @@ function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicle }) {
       </Button>
 
       <header className="mt-6 max-w-2xl">
-        <p className="text-muted-foreground text-sm tracking-[0.18em] uppercase">
-          Register Auction
-        </p>
-        <h1 className="mt-3 text-2xl font-semibold md:text-3xl">
+        <h1 className="text-2xl font-semibold md:text-3xl">
           경매 시작 시간을 정해주세요.
         </h1>
         <p className="text-muted-foreground mt-3 text-sm leading-6">

@@ -189,8 +189,8 @@ class NotificationIntegrationTest extends IntegrationTestSupport {
 
         list(null)
                 .andExpect(status().isOk())
-                // 참조를 경로가 아니라 질의로 붙이는 종류도 조립은 서버가 한다
-                .andExpect(jsonPath("$.content[0].link").value("/sell/auction-post?evaluationId=9"))
+                // 승인도 반려와 같은 신청 상세에서 결과를 먼저 확인한다
+                .andExpect(jsonPath("$.content[0].link").value("/mypage/evaluations/9"))
                 // 낙찰은 경매방이 아니라 거래로 보낸다
                 .andExpect(jsonPath("$.content[1].link").value("/mypage/deals/7"))
                 .andExpect(jsonPath("$.content[2].link").value("/auctions/5"))

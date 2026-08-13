@@ -201,7 +201,11 @@ export function useNotifications() {
 
         // 지금 화면이 이미 같은 사건을 보여 주면 팝업만 생략한다. 위에서 목록과 배지는 먼저
         // 반영했으므로 기록은 남는다. 경매·거래 id나 query가 다르면 다른 대상이라 그대로 띄운다.
-        if (notification.link !== currentTargetRef.current) {
+        // 배정 대기 목록은 실시간으로 다시 읽지 않으므로 그 화면에 있어도 새 신청 안내는 보여 준다.
+        if (
+          notification.type === 'EVAL_REQUESTED' ||
+          notification.link !== currentTargetRef.current
+        ) {
           showNotificationToast(notification, () => openRef.current(notification))
         }
       },

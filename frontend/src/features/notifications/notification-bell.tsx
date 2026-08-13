@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/lib/format'
 import { useAuth } from '@/features/auth/auth-context'
+import { BellIcon } from './bell-icon'
 import { NOTIFICATION_ICON } from './notification-icon'
 import { useNotifications } from './use-notifications'
 
@@ -48,7 +49,7 @@ export function NotificationBell({
           )}
           aria-label={`알림 ${unreadCount}건`}
         >
-          <Bell className="size-5" aria-hidden />
+          <BellIcon className="size-5" />
           {unreadCount > 0 && (
             <span className="bg-live text-primary-foreground tabular absolute top-0.5 right-0.5 flex min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold">
               {badge}

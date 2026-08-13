@@ -12,16 +12,33 @@ import org.springframework.data.repository.query.Param;
 public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
 
     /**
-     * 같은 차량으로 진행 중인 신청이 있는지. 판정 기준이 번호판 문자열인 이유는 vehicle 행이
-     * 신청마다 새로 생기기 때문이다 — {@code Vehicle.plateNumber}에 unique 제약이 없고, 같은 차를
-     * 반복 출품할 수 있어야 해서 앞으로도 붙일 수 없다. vehicle_id로 묶으면 방금 만든 차량만
-     * 보게 되어 중복이 전부 통과한다.
+     * 같은 번호판으로 새 방문견적을 막아야 하는 신청이 있는지.
      * <p>
-     * 신청자를 조건에 넣지 않는다. 같은 차를 두 사람이 동시에 신청하는 것도 막아야 하고,
-     * 평가사가 한 차량에 두 번 방문하는 일이 없어야 한다.
+     * REQUESTED는 방문견적이 진행 중이므로 항상 막는다. APPROVED는 진단 뒤 출품 흐름이 남아 있어
+     * 기본적으로 막되, 해당 차량의 경매가 낙찰 종료(ENDED)됐다면 판매 흐름 전체가 끝난 것이므로
+     * 다시 신청할 수 있다. 유찰(FAILED)은 같은 진단 차량으로 재출품할 수 있어 새 방문견적을 막는다.
+     * <p>
+     * 판정 기준은 vehicle_id가 아니라 번호판이다. 방문견적을 신청할 때마다 vehicle 행이 새로 생기고,
+     * 같은 차는 판매가 끝난 뒤 다시 등록될 수 있어 번호판에 unique 제약을 둘 수 없기 때문이다.
      */
-    boolean existsByVehiclePlateNumberAndStatusIn(String plateNumber,
-                                                  Collection<EvaluationStatus> statuses);
+    @Query("""
+            select count(e) > 0
+            from Evaluation e
+            where e.vehicle.plateNumber = :plateNumber
+                and (
+                    e.status = com.softeer.race.evaluation.domain.EvaluationStatus.REQUESTED
+                    or (
+                        e.status = com.softeer.race.evaluation.domain.EvaluationStatus.APPROVED
+                        and not exists (
+                            select a.id
+                            from Auction a
+                            where a.post.vehicle = e.vehicle
+                                and a.status = com.softeer.race.auction.domain.AuctionStatus.ENDED
+                        )
+                    )
+                )
+            """)
+    boolean existsBlockingVisitQuoteByPlateNumber(@Param("plateNumber") String plateNumber);
 
     /**
      * 아직 아무도 수락하지 않은 신청들. 방문일이 임박한 순서로 나온다.

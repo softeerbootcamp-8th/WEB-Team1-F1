@@ -32,15 +32,6 @@ class AuctionRoomReader {
                 .map(this::readWith);
     }
 
-    // 개장 전 방에는 호가도 집계도 없다, 상세만 한 번 읽는다
-    @Transactional(readOnly = true)
-    public Optional<RoomOpening> findOpening(long auctionId) {
-        return auctionRoomRepository.findDetailById(auctionId)
-                .map(detail -> RoomOpening.of(detail,
-                        auctionRoomRepository.findPhotoUrls(auctionId),
-                        findKeywords(detail.vehicleId()), LocalDateTime.now(clock)));
-    }
-
     // 목록이 부르는 것을 그대로 부른다, 표시 순서까지 그쪽에서 정해져 온다
     @Transactional(readOnly = true)
     public List<VehicleKeyword> findKeywords(long vehicleId) {

@@ -13,6 +13,7 @@ import {
   canEditAuction,
   incrementForPrice,
   listGroupAt,
+  mergeFirstPage,
 } from './auction'
 
 // 서버 시드와 같은 모양. 값 자체는 계약이 아니라 구간을 고르는 규칙만 본다
@@ -232,6 +233,24 @@ describe('applyAudienceEvent', () => {
   it('목록에 없는 경매면 아무 일도 없다', () => {
     // 서버는 사람이 있는 모든 방의 수를 보낸다, 내 페이지에 없는 경매의 이벤트가 계속 들어온다
     expect(applyAudienceEvent(page, 999, 5)).toBe(page)
+  })
+})
+
+describe('mergeFirstPage', () => {
+  it('같은 경매는 다시 읽어 온 값으로 덮는다', () => {
+    const updated = { ...page[1], currentPrice: 12_000_000 }
+    const next = mergeFirstPage(page, [page[0], updated])
+
+    expect(next[1]).toBe(updated)
+    expect(ids(next)).toEqual([1, 2, 3, 4, 5, 6])
+  })
+
+  it('첫 페이지에 없던 카드는 순서를 지켜 뒤에 남는다', () => {
+    // 이어 보기로 읽어 둔 뒷 페이지다. 첫 페이지만 다시 읽었다고 사라져서는 안 된다
+    const tail = [card(7, '11:00:00', '11:20:00'), card(8, '10:50:00', '11:10:00')]
+    const next = mergeFirstPage([...page, ...tail], page.slice(0, 3))
+
+    expect(ids(next)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
   })
 })
 

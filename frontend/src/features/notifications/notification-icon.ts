@@ -5,6 +5,7 @@ import {
   CheckCheck,
   CircleOff,
   CircleX,
+  ClipboardList,
   FileUp,
   Gavel,
   HandCoins,
@@ -23,6 +24,7 @@ import type { NotificationType } from '@/types/domain'
  * 새 종류가 아무 표시 없이 조용히 나가므로, 규칙이 아니라 타입으로 막는다.
  */
 export const NOTIFICATION_ICON: Record<NotificationType, LucideIcon> = {
+  EVAL_REQUESTED: ClipboardList,
   EVAL_APPROVED: CheckCheck,
   EVAL_REJECTED: CircleX,
   AUCTION_STARTED: AlarmClock,
