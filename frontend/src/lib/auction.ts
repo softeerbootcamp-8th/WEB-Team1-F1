@@ -65,6 +65,10 @@ export function badgeStatusAt(card: AuctionListCard, nowMs: number): AuctionBadg
   return 'ENDED'
 }
 
+export function hasWinningPrice(card: AuctionListCard): boolean {
+  return card.currentPrice > card.startPrice
+}
+
 /** 화면의 상태 탭을 목록 API의 filter 값으로. 서버는 "예정"을 PENDING이라 부른다. */
 export function statusToListGroup(status: AuctionStatus): AuctionListGroup {
   return status === 'SCHEDULED' ? 'PENDING' : status

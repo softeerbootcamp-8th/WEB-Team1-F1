@@ -11,6 +11,7 @@ import {
   badgeStatusAt,
   canDeleteAuction,
   canEditAuction,
+  hasWinningPrice,
   incrementForPrice,
   listGroupAt,
   mergeFirstPage,
@@ -112,6 +113,18 @@ const page: AuctionListCard[] = [
   card(5, '11:35:00', '11:55:00'),
   card(6, '11:10:00', '11:30:00'),
 ]
+
+describe('hasWinningPrice', () => {
+  it('입찰이 한 건이라도 들어왔으면 현재가가 시작가보다 높다', () => {
+    expect(hasWinningPrice({ ...card(1, '11:00:00', '11:30:00'), currentPrice: 10_010_000 })).toBe(
+      true,
+    )
+  })
+
+  it('아무도 부르지 않으면 현재가가 시작가에 머문다', () => {
+    expect(hasWinningPrice(card(1, '11:00:00', '11:30:00'))).toBe(false)
+  })
+})
 
 describe('badgeStatusAt', () => {
   // 방 개설은 시작 30분 전이다
