@@ -7,6 +7,9 @@ import com.softeer.race.evaluation.application.dto.info.VisitQuotePrecheckInfo;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
+import com.softeer.race.notification.application.NotificationPublisher;
+import com.softeer.race.notification.domain.NotificationContent;
+import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
 import com.softeer.race.vehicle.application.dto.command.VehicleLookupCommand;
@@ -45,6 +48,7 @@ public class VisitQuoteService {
     private final UserRepository userRepository;
     private final VehicleRepository vehicleRepository;
     private final EvaluationRepository evaluationRepository;
+    private final NotificationPublisher notificationPublisher;
     private final Clock clock;
 
     /**
@@ -110,7 +114,23 @@ public class VisitQuoteService {
                 command.visitAddress(), command.contactPhone(), today);
 
         vehicleRepository.save(vehicle);
+        Evaluation saved = evaluationRepository.save(evaluation);
 
-        return VisitQuoteInfo.from(evaluationRepository.save(evaluation));
+        notifyEvaluators(saved.getId(), vehicle);
+
+        return VisitQuoteInfo.from(saved);
+    }
+
+    /**
+     * 접수된 신청을 신청 당시의 평가사 전원에게 알린다. 평가사가 없으면 아무 일도 하지 않는다.
+     */
+    private void notifyEvaluators(long evaluationId, Vehicle vehicle) {
+        // 문구는 수신자와 무관하게 같아 한 번만 조립한다
+        NotificationContent content = NotificationContent.evaluationRequested(
+                vehicle.getPlateNumber(), vehicle.getModel());
+
+        for (long evaluatorId : userRepository.findIdsByRole(Role.EVALUATOR)) {
+            notificationPublisher.publishContent(evaluatorId, content, evaluationId);
+        }
     }
 }
