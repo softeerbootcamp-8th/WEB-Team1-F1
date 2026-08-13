@@ -79,7 +79,7 @@ public record EvaluationResultSubmitRequest(
      * VehicleKeyword.values().length 로 쓸 수 없다. 애노테이션 인자는 컴파일 타임 상수여야 한다.
      * 그래서 둘이 어긋나지 않는지는 테스트가 지킨다.
      */
-    static final int MAX_KEYWORD_COUNT = 7;
+    static final int MAX_KEYWORD_COUNT = 6;
 
     /**
      * 평가사 식별자를 인자로 받는다. 본문으로 받으면 남의 이름을 대고 제출할 수 있어,
