@@ -37,7 +37,9 @@ export function NotificationBell({
   const badge = unreadCount > MAX_BADGE_COUNT ? `${MAX_BADGE_COUNT}+` : unreadCount
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    // 알림함은 현재 화면을 보조하는 메뉴다. modal 이면 Radix 가 body 스크롤바를 제거해
+    // 스크롤바 폭을 차지하는 환경에서 헤더와 본문이 좌우로 흔들린다.
+    <DropdownMenu modal={false} open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
