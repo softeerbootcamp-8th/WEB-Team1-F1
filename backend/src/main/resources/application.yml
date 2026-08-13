@@ -7,6 +7,15 @@ spring:
     username: ${DB_USERNAME:race}
     password: ${DB_PASSWORD:race}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      # 로컬은 docker-compose.yml 의 redis, 배포는 VPC 안의 별도 서버다
+      # 배포 값은 compose 가 배포 스크립트의 환경변수에서 보간해 넣어 준다
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      # 기본값은 무한 대기가 아니라 lettuce 의 60s 다, 응답이 늦는 것과 죽은 것을 그때까지 구분하지 못한다
+      # 요청 스레드가 물고 늘어지는 시간이라 짧게 끊는다
+      timeout: 2s
   jpa:
     # 켜 두면 요청이 끝날 때까지 영속성 컨텍스트가 열려 있고 커넥션도 그동안 잡힌다
     # 경매방 구독은 응답이 끝나지 않는 요청이라 연결 하나가 커넥션 하나를 수십 분 쥔다
