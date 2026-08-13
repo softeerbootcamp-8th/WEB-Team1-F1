@@ -20,6 +20,7 @@ import {
 import { Countdown } from '@/components/common/countdown'
 import { useCountdown } from '@/hooks/use-countdown'
 import { StartAlertButton } from '@/features/auctions/components/start-alert-button'
+import { useAuth } from '@/features/auth/auth-context'
 import { CarPhotos } from '@/features/auction-room/components/car-detail'
 import { KeywordBadges } from '@/features/auction-room/components/keyword-badges'
 import { fetchAuctionRoom, fetchRoomOpening, fetchRoomResult } from '@/features/auction-room/api'
@@ -67,6 +68,7 @@ export function AuctionPreviewDialog({
   onSimilar,
 }: AuctionPreviewDialogProps) {
   const navigate = useNavigate()
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
   const [detail, setDetail] = useState<RoomOpeningView | RoomResultView | null>(null)
   const [error, setError] = useState<string | null>(null)
   /** 실제로 받아온 것이 무엇인지. 넘겨받은 단계가 낡았으면 여기서 갈린다 */
@@ -86,6 +88,14 @@ export function AuctionPreviewDialog({
     setDetail(null)
     setError(null)
     setLoaded(status)
+
+    // 상세 응답은 로그인한 회원에게만 내려온다. 비로그인 요청을 먼저 보내면 401이
+    // 일반적인 조회 실패처럼 보여, 왜 못 보는지와 다음 행동이 모두 사라진다.
+    if (isAuthLoading || !isAuthenticated) {
+      return () => {
+        alive = false
+      }
+    }
 
     const settle = (data: RoomOpeningView | RoomResultView, as: PreviewStatus) => {
       if (!alive) return
@@ -131,7 +141,7 @@ export function AuctionPreviewDialog({
     return () => {
       alive = false
     }
-  }, [auctionId, status, navigate])
+  }, [auctionId, status, navigate, isAuthenticated, isAuthLoading])
 
   const openAt = (detail as RoomOpeningView | null)?.openAt ?? card?.openAt
   const { isElapsed } = useCountdown(openAt ?? '', 1000, clockOffset)
@@ -205,7 +215,11 @@ export function AuctionPreviewDialog({
           </div>
         </DialogHeader>
 
-        {error ? (
+        {isAuthLoading ? (
+          <p className="text-muted-foreground p-10 text-center text-base">로그인 상태를 확인하고 있습니다</p>
+        ) : !isAuthenticated ? (
+          <p className="text-muted-foreground p-10 text-center text-base">로그인이 필요합니다.</p>
+        ) : error ? (
           <p className="text-muted-foreground p-10 text-center text-base">{error}</p>
         ) : (
           <>
