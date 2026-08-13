@@ -62,7 +62,7 @@ class NotificationContentTest {
 
         assertThat(content.type()).isEqualTo(NotificationType.EVAL_REQUESTED);
         assertThat(content.message())
-                .isEqualTo("12가3456 아반떼 CN7 차량의 방문견적 신청이 접수되었습니다.");
+                .isEqualTo("12가3456 아반떼 CN7 차량의 방문 진단 신청이 접수되었습니다.");
     }
 
     @Test

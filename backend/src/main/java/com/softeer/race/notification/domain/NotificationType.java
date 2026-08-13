@@ -9,7 +9,7 @@ package com.softeer.race.notification.domain;
  */
 public enum NotificationType {
     // 평가사 전원에게 가는 알림. 목적지가 배정 대기 목록이고 referenceId 는 링크에 쓰이지 않는다
-    EVAL_REQUESTED("새 방문견적 신청이 접수되었습니다.", "/evaluations/assignable"),
+    EVAL_REQUESTED("새 방문 진단 신청이 접수되었습니다.", "/evaluations/assignable"),
 
     // 승인 알림은 판매자가 평가 결과를 확인하고 등록 여부를 정할 수 있도록 신청 상세로 보낸다.
     // 참조가 차량이 아니라 신청 건인 이유는 #144 참고 — 신청 상세 하나로 시세까지 채워진다

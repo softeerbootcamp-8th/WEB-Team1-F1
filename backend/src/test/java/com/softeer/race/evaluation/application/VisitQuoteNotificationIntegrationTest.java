@@ -120,7 +120,7 @@ class VisitQuoteNotificationIntegrationTest extends IntegrationTestSupport {
 
         // then 2 : 어느 차량의 신청인지 문구로 가려진다
         assertThat(notification.message())
-                .isEqualTo("%s %s 차량의 방문견적 신청이 접수되었습니다."
+                .isEqualTo("%s %s 차량의 방문 진단 신청이 접수되었습니다."
                         .formatted(PLATE_NUMBER, MODEL));
 
         // then 3 : 담당이 정해지기 전이라 개별 상세가 아니라 배정 대기 목록으로 보낸다.
@@ -248,9 +248,9 @@ class VisitQuoteNotificationIntegrationTest extends IntegrationTestSupport {
                 .containsExactlyInAnyOrder(first.evaluationId(), second.evaluationId());
         assertThat(notifications).extracting(NotificationRow::message)
                 .containsExactlyInAnyOrder(
-                        "%s %s 차량의 방문견적 신청이 접수되었습니다."
+                        "%s %s 차량의 방문 진단 신청이 접수되었습니다."
                                 .formatted(PLATE_NUMBER, MODEL),
-                        "%s %s 차량의 방문견적 신청이 접수되었습니다."
+                        "%s %s 차량의 방문 진단 신청이 접수되었습니다."
                                 .formatted(OTHER_PLATE_NUMBER, OTHER_MODEL));
     }
 

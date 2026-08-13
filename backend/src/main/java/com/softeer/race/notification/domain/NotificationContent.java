@@ -44,7 +44,7 @@ public record NotificationContent(NotificationType type, String message) {
     public static NotificationContent evaluationRequested(
             String plateNumber, String vehicleModel) {
         return new NotificationContent(EVAL_REQUESTED,
-                "%s %s 차량의 방문견적 신청이 접수되었습니다."
+                "%s %s 차량의 방문 진단 신청이 접수되었습니다."
                         .formatted(text(plateNumber), text(vehicleModel)));
     }
 
