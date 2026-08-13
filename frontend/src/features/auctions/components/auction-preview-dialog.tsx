@@ -159,14 +159,14 @@ export function AuctionPreviewDialog({
 
   return (
     <Dialog open={auctionId !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="flex-row items-start justify-between gap-4 space-y-0 border-b p-5 pr-12 text-left">
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogHeader className="flex-row items-start justify-between gap-4 space-y-0 border-b p-5 pr-12 pb-3 text-left">
           <div className="space-y-1">
-            <DialogTitle className="text-xl">
+            <DialogTitle className="text-2xl">
               {vehicle && `${MANUFACTURER_LABEL[vehicle.manufacturer]} `}
               {model ?? '경매'}
             </DialogTitle>
-            <DialogDescription className="text-base">
+            <DialogDescription className="text-lg">
               {vehicle
                 ? `${vehicle.modelYear}년 · ${formatMileage(vehicle.mileage)} · ${FUEL_TYPE_LABEL[vehicle.fuelType]}`
                 : '불러오는 중'}
@@ -213,42 +213,46 @@ export function AuctionPreviewDialog({
             <CarPhotos
               model={model ?? ''}
               imageUrls={vehicle?.imageUrls ?? (card?.thumbnailUrl ? [card.thumbnailUrl] : [''])}
-              aspectClassName="aspect-[16/9]"
+              aspectClassName="aspect-[4/3] md:aspect-[5/2]"
               className="p-4"
             />
 
-            <dl className="text-muted-foreground flex flex-wrap gap-x-6 gap-y-2 border-t p-4 text-base">
-              {loaded === 'NOT_OPEN' ? (
-                <>
-                  {openAt && <Fact label="경매방 입장" value={formatClock(openAt)} />}
-                  {startAt && <Fact label="경매 시작" value={formatClock(startAt)} />}
-                  {card && <Fact label="마감" value={formatClock(card.endAt)} />}
-                </>
-              ) : (
-                <>
-                  {startPrice !== undefined && (
-                    <Fact label="시작가" value={formatKRW(startPrice)} />
-                  )}
-                  <Fact label="입찰" value={`${result?.bidCount ?? 0}건`} />
-                  <Fact label="상승률" value={riseRate(result)} />
-                </>
-              )}
-            </dl>
+            {/* 진단서는 사실 하나가 아니라 나가는 문이라 오른쪽 끝에 둔다, 줄이 좁으면 밑으로 접힌다 */}
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t px-4 py-2.5 text-base">
+              {/* 두 단계 모두 값이 셋이라 같은 자리에 세운다, 미리보기를 옮겨 봐도 눈이 같은 곳을 읽는다 */}
+              <dl className="text-muted-foreground flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                {loaded === 'NOT_OPEN' ? (
+                  <>
+                    {openAt && <Fact label="경매방 입장" value={formatClock(openAt)} />}
+                    <FactDivider />
+                    {startAt && <Fact label="경매 시작" value={formatClock(startAt)} />}
+                    <FactDivider />
+                    {card && <Fact label="마감" value={formatClock(card.endAt)} />}
+                  </>
+                ) : (
+                  <>
+                    {startPrice !== undefined && (
+                      <Fact label="시작가" value={formatKRW(startPrice)} />
+                    )}
+                    <FactDivider />
+                    <Fact label="입찰" value={`${result?.bidCount ?? 0}건`} />
+                    <FactDivider />
+                    <Fact label="상승률" value={riseRate(result)} />
+                  </>
+                )}
+              </dl>
 
-            {vehicle && (
-              <a
-                href={vehicle.diagnosticReportUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:bg-muted/60 flex items-center justify-between border-t p-4 text-base"
-              >
-                <span className="flex items-center gap-2">
-                  <FileText className="size-4" />
-                  진단서 보기
-                </span>
-                <SquareArrowOutUpRight className="text-muted-foreground size-4" />
-              </a>
-            )}
+              {vehicle && (
+                // 새 탭으로 연다, 미리보기 위에 띄우면 읽는 동안 남은 시간이 가려진다
+                <Button asChild variant="outline" size="sm">
+                  <a href={vehicle.diagnosticReportUrl} target="_blank" rel="noreferrer">
+                    <FileText />
+                    진단서 보기
+                    <SquareArrowOutUpRight className="text-muted-foreground" />
+                  </a>
+                </Button>
+              )}
+            </div>
 
             {/* 오른쪽은 액션 자리다. 입장 전에는 개장 알림 받기가 여기 들어온다 */}
             <div className="bg-muted/40 flex min-h-18 items-center justify-between gap-4 border-t p-4">
@@ -295,11 +299,22 @@ export function AuctionPreviewDialog({
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2">
-      <dt>{label}</dt>
+    <div className="flex items-baseline gap-1.5 whitespace-nowrap">
+      <dt className="text-sm">{label}</dt>
       <dd className="text-foreground tabular font-semibold">{value}</dd>
     </div>
   )
+}
+
+/**
+ * 값 사이를 가르는 세로선.
+ *
+ * 값 셋을 균등한 칸에 나눠 담지 않는다. 그러면 선이 칸 경계에 서서, 값 길이가 다를 때
+ * 선 양옆 여백이 달라 보인다. 값과 선을 한 줄에 늘어놓고 남는 공간을 똑같이 나누면
+ * 선이 두 값 사이 한가운데에 선다.
+ */
+function FactDivider() {
+  return <div className="bg-border hidden h-4 w-px shrink-0 sm:block" aria-hidden />
 }
 
 /** 시작가 대비 낙찰가 상승률. 유찰이면 오른 값이 없다 */
