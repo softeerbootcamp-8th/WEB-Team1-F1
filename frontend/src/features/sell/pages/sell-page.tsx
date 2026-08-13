@@ -60,7 +60,7 @@ export function SellPage() {
         </p>
       </header>
 
-      <div className="mx-auto mt-12 max-w-2xl rounded-2xl border p-7 md:p-9">
+      <div className="mx-auto mt-12 w-full max-w-5xl rounded-2xl border p-7 md:px-12 md:py-10 lg:px-16">
         <VehicleOwnerForm
           actionLabel="방문견적 예약하기"
           initialValues={prefill ?? undefined}
