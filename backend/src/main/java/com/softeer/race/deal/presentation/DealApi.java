@@ -1,12 +1,15 @@
 package com.softeer.race.deal.presentation;
 
 import com.softeer.race.auth.domain.AuthenticatedUser;
+import com.softeer.race.deal.presentation.request.DealDocumentUploadRequest;
 import com.softeer.race.deal.presentation.request.DeliveryConfirmRequest;
 import com.softeer.race.deal.presentation.request.TransportSubmitRequest;
 import com.softeer.race.deal.presentation.response.DealDetailResponse;
+import com.softeer.race.deal.presentation.response.DealDocumentUploadResponse;
 import com.softeer.race.deal.presentation.response.DealSliceResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 
@@ -41,6 +44,33 @@ public interface DealApi {
 
             @Parameter(description = "거래 식별자", example = "12")
             Long dealId);
+
+    @Operation(summary = "판매 서류 업로드 주소 발급",
+            description = """
+                    판매자가 이 거래의 서류 PDF 를 저장소에 직접 올릴 서명된 주소를 발급한다.
+                    파일은 이 API 로 보내지 않는다.
+
+                    1. 올릴 파일의 형식과 크기를 보내 uploadUrl 을 받는다.
+                    2. 받은 uploadUrl 로 파일을 PUT 한다. Content-Type 헤더와 파일 크기가 1번에서
+                       보낸 값과 정확히 같아야 하며, 다르면 업로드가 거부된다.
+                    3. 함께 받은 fileUrl 을 서류·탁송 일정 제출의 documentUrl 로 보낸다.
+
+                    application/pdf 만 20MB 까지 받는다. 발급 자격은 역할이 아니라 거래가 판정하므로
+                    이 거래의 판매자이면서 판매자 차례일 때만 발급된다.
+                    """)
+    @ApiResponse(responseCode = "200", description = "업로드 주소와 조회 주소를 발급한다.")
+    @ApiResponse(responseCode = "400", description = "PDF 가 아니거나 크기가 허용 범위를 벗어났다.")
+    @ApiResponse(responseCode = "403",
+            description = "구매자이거나, 아직 구매자 차례여서 서류를 낼 단계가 아니다.")
+    @ApiResponse(responseCode = "404", description = "없는 거래이거나 당사자가 아니다.")
+    @ApiResponse(responseCode = "409", description = "확정·취소되어 서류를 낼 수 없는 거래다.")
+    ResponseEntity<DealDocumentUploadResponse> issueDocumentUpload(
+            AuthenticatedUser authenticatedUser,
+
+            @Parameter(description = "거래 식별자", example = "12")
+            Long dealId,
+
+            DealDocumentUploadRequest request);
 
     @Operation(summary = "서류·탁송 일정 제출",
             description = "판매자가 서류 PDF 주소와 탁송 일시·장소를 낸다. 파일은 업로드 API 로 "
