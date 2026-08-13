@@ -84,8 +84,12 @@ export function PriceQuotePage() {
       </header>
 
       {vehicle && owner ? (
-        <div className="mt-12 grid gap-8 lg:grid-cols-[1fr_0.8fr]">
-          <section className="min-w-0 rounded-2xl border p-7 md:p-8">
+        <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+          <aside className="rounded-2xl border p-7 md:p-8">
+            <VehicleSummary vehicle={vehicle} />
+          </aside>
+
+          <section className="min-w-0 self-start rounded-2xl border p-7 md:p-8">
             <Button
               type="button"
               variant="ghost"
@@ -136,10 +140,6 @@ export function PriceQuotePage() {
               </Button>
             </form>
           </section>
-
-          <aside className="rounded-2xl border p-7 md:p-8">
-            <VehicleSummary vehicle={vehicle} />
-          </aside>
         </div>
       ) : (
         <div className="mx-auto mt-12 w-full max-w-5xl rounded-2xl border p-7 md:px-12 md:py-10 lg:px-16">
