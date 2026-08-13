@@ -1,7 +1,7 @@
 package com.softeer.race.auctionroom.application;
 
 import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
-import com.softeer.race.auctionroom.domain.BidStats;
+import com.softeer.race.auctionroom.domain.BidCounts;
 import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 
@@ -21,7 +21,7 @@ public record RoomState(
         LocalDateTime endAt,
         LocalDateTime serverTime,
         int connectedCount,
-        BidStats stats,
+        BidCounts bidCounts,
         MaskedName winnerName,
         List<RoomStateBid> recentBids
 ) {
@@ -43,7 +43,7 @@ public record RoomState(
                 detail.currentEndTime(),
                 result.serverTime(),
                 result.phase().allowsConnection() ? openSubscriptions : 0,
-                result.stats(),
+                result.bidCounts(),
                 detail.winnerName().orElse(null),
                 result.recentBids().stream().map(RoomStateBid::from).toList());
     }

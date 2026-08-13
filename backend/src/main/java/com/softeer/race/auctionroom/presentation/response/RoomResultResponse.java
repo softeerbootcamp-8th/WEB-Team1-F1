@@ -33,7 +33,7 @@ public record RoomResultResponse(
         boolean sellerIsMine,
 
         @Schema(description = "조회한 사람의 성적, 입찰한 적이 없으면 키는 있고 값이 null 이다")
-        MyBidResponse myBid,
+        MyStandingResponse myStanding,
 
         @Schema(description = "끝날 때까지 들어온 입찰 건수", example = "4")
         long bidCount,
@@ -72,9 +72,9 @@ public record RoomResultResponse(
                 view.winningPrice(),
                 WinnerResponse.from(view),
                 view.sellerIsMine(),
-                MyBidResponse.from(view),
-                view.stats().bidCount(),
-                view.stats().bidderCount(),
+                MyStandingResponse.from(view),
+                view.bidCounts().bidCount(),
+                view.bidCounts().bidderCount(),
                 view.extensionCount(),
                 view.startAt(),
                 view.endAt(),

@@ -1,7 +1,7 @@
 package com.softeer.race.auctionroom.application;
 
 import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
-import com.softeer.race.auctionroom.domain.BidStats;
+import com.softeer.race.auctionroom.domain.BidCounts;
 import com.softeer.race.auctionroom.domain.RecentBid;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 
@@ -13,7 +13,7 @@ import java.util.List;
  */
 record RoomQueryResult(
         AuctionRoomDetail detail,
-        BidStats stats,
+        BidCounts bidCounts,
         List<RecentBid> recentBids,
         LocalDateTime serverTime
 ) {

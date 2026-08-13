@@ -71,8 +71,8 @@ public record AuctionRoomResponse(
                 state.endAt(),
                 state.serverTime(),
                 state.connectedCount(),
-                state.stats().bidderCount(),
-                state.stats().bidCount(),
+                state.bidCounts().bidderCount(),
+                state.bidCounts().bidCount(),
                 WinnerResponse.from(view),
                 view.sellerIsMine(),
                 view.recentBids().stream().map(RecentBidResponse::from).toList());

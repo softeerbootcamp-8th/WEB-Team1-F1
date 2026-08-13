@@ -71,8 +71,8 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
         RoomState last = watcher.lastState();
 
         assertThat(last.currentPrice()).isEqualTo(BID_AMOUNT);
-        assertThat(last.stats().bidCount()).isEqualTo(1);
-        assertThat(last.stats().bidderCount()).isEqualTo(1);
+        assertThat(last.bidCounts().bidCount()).isEqualTo(1);
+        assertThat(last.bidCounts().bidderCount()).isEqualTo(1);
     }
 
     @Test

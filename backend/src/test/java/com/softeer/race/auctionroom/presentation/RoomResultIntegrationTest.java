@@ -169,28 +169,28 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         getResult(endedAuctionId, loginAs(winner)).andExpectAll(
                 jsonPath("$.winner.mine").value(true),
                 jsonPath("$.sellerIsMine").value(false),
-                jsonPath("$.myBid.amount").value(24000000),
-                jsonPath("$.myBid.rank").value(1));
+                jsonPath("$.myStanding.highestAmount").value(24000000),
+                jsonPath("$.myStanding.rank").value(1));
 
         // then 2 : 탈락자는 두 번 넣었으므로 높은 쪽이 오고, 위에 한 사람이 있어 2등이다
         // 입찰자 수와 짝지어 "2명 중 2번째" 가 된다
         getResult(endedAuctionId, loginAs(loser)).andExpectAll(
                 jsonPath("$.winner.mine").value(false),
-                jsonPath("$.myBid.amount").value(23000000),
-                jsonPath("$.myBid.rank").value(2),
+                jsonPath("$.myStanding.highestAmount").value(23000000),
+                jsonPath("$.myStanding.rank").value(2),
                 jsonPath("$.bidderCount").value(2));
 
         // then 3 : 판매자는 입찰한 적이 없어 성적이 없고, 대신 파는 사람으로 판정된다
         getResult(endedAuctionId, loginAs(seller)).andExpectAll(
                 jsonPath("$.sellerIsMine").value(true),
                 jsonPath("$.winner.mine").value(false),
-                jsonPath("$.myBid").value(nullValue()));
+                jsonPath("$.myStanding").value(nullValue()));
 
         // then 4 : 구경꾼은 어느 쪽도 아니다, 성적 자리가 필드마다 null 이 아니라 통째로 비어 있다
         getResult(endedAuctionId, loginAs(onlooker)).andExpectAll(
                 jsonPath("$.sellerIsMine").value(false),
                 jsonPath("$.winner.mine").value(false),
-                jsonPath("$.myBid").value(nullValue()));
+                jsonPath("$.myStanding").value(nullValue()));
     }
 
     // 화면은 시작가에서 낙찰가까지 오른 과정을 선으로 그리고 내 입찰만 다른 색으로 찍는다

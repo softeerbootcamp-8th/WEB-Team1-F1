@@ -72,7 +72,7 @@ public class AuctionRoomService {
         AuctionOutcome outcome = detail.outcome()
                 .orElseThrow(() -> new BusinessException(AUCTION_NOT_ENDED));
 
-        return RoomResultView.of(detail, outcome, auctionRoomReader.findStats(auctionId), viewerId,
+        return RoomResultView.of(detail, outcome, auctionRoomReader.findBidCounts(auctionId), viewerId,
                 auctionRoomReader.findStanding(auctionId, viewerId).orElse(null),
                 auctionRoomReader.findPriceCurve(auctionId),
                 auctionRoomReader.findPhotoUrls(auctionId),

@@ -61,8 +61,8 @@ public record RoomStateResponse(
                 state.endAt(),
                 state.serverTime(),
                 state.connectedCount(),
-                state.stats().bidderCount(),
-                state.stats().bidCount(),
+                state.bidCounts().bidderCount(),
+                state.bidCounts().bidCount(),
                 RoomStateWinnerResponse.from(state),
                 state.recentBids().stream().map(RoomStateBidResponse::from).toList());
     }

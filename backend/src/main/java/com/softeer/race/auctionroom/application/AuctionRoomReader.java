@@ -58,8 +58,8 @@ class AuctionRoomReader {
     }
 
     @Transactional(readOnly = true)
-    public BidStats findStats(long auctionId) {
-        return roomBidRepository.findStats(auctionId);
+    public BidCounts findBidCounts(long auctionId) {
+        return roomBidRepository.findBidCounts(auctionId);
     }
 
     @Transactional(readOnly = true)
@@ -71,16 +71,16 @@ class AuctionRoomReader {
     @Transactional(readOnly = true)
     public Optional<BidderStanding> findStanding(long auctionId, long viewerId) {
         return Optional.ofNullable(roomBidRepository.findTopAmount(auctionId, viewerId))
-                .map(topBid -> BidderStanding.of(
-                        topBid, roomBidRepository.countBiddersAbove(auctionId, topBid)));
+                .map(highestAmount -> BidderStanding.of(
+                        highestAmount, roomBidRepository.countBiddersAbove(auctionId, highestAmount)));
     }
 
     private RoomQueryResult readWith(AuctionRoomDetail detail) {
         LocalDateTime now = LocalDateTime.now(clock);
 
-        BidStats stats = roomBidRepository.findStats(detail.auctionId());
+        BidCounts bidCounts = roomBidRepository.findBidCounts(detail.auctionId());
         List<RecentBid> recentBids = roomBidRepository.findRecentBids(detail.auctionId(), Limit.of(RECENT_BID_LIMIT));
 
-        return new RoomQueryResult(detail, stats, recentBids, now);
+        return new RoomQueryResult(detail, bidCounts, recentBids, now);
     }
 }

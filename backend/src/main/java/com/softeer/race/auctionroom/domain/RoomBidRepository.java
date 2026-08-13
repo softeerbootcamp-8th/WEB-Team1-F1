@@ -17,11 +17,11 @@ public interface RoomBidRepository extends Repository<Bid, Long> {
      * 입찰 건수와 입찰자 수, 한 사람이 여러 번 넣으면 건수만 늘어난다
      */
     @Query("""
-            select new com.softeer.race.auctionroom.domain.BidStats(count(b), count(distinct b.bidder.id))
+            select new com.softeer.race.auctionroom.domain.BidCounts(count(b), count(distinct b.bidder.id))
             from Bid b
             where b.auction.id = :auctionId
             """)
-    BidStats findStats(@Param("auctionId") long auctionId);
+    BidCounts findBidCounts(@Param("auctionId") long auctionId);
 
     /**
      * 그 사람이 이 경매에 넣은 가장 높은 입찰가, 한 번도 넣지 않았으면 없다
