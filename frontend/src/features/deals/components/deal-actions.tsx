@@ -6,8 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getErrorMessage } from '@/lib/axios'
-import { prepareDocumentFile, uploadPreparedFiles } from '@/lib/upload'
-import { confirmDelivery, confirmPurchase, submitTransport } from '../api'
+import { prepareDocumentFile } from '@/lib/upload'
+import {
+  confirmDelivery,
+  confirmPurchase,
+  submitTransport,
+  uploadDealDocument,
+} from '../api'
 import type { DealDetail } from '../types'
 
 interface DealActionsProps {
@@ -83,8 +88,8 @@ function SubmitTransport({ deal, onDone }: DealActionsProps) {
     try {
       // 파일은 서버를 거치지 않는다. 발급받은 주소로 브라우저가 S3 에 직접 올리고,
       // 거래에는 조회 주소만 넘긴다
-      const prepared = prepareDocumentFile(file)
-      const [documentUrl] = await uploadPreparedFiles([prepared])
+      const prepared = prepareDocumentFile(file, '판매 서류')
+      const documentUrl = await uploadDealDocument(deal.dealId, prepared)
 
       await submitTransport(deal.dealId, {
         documentUrl,
