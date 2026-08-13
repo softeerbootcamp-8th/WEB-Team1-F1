@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Eye, Gauge } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { CarThumb } from '@/components/common/car-thumb'
 import { StatusBadge } from '@/components/common/status-badge'
@@ -10,7 +9,8 @@ import { Countdown } from '@/components/common/countdown'
 import { formatManwon, formatMileage } from '@/lib/format'
 import { badgeStatusAt } from '@/lib/auction'
 import type { AuctionBadgeStatus } from '@/types/domain'
-import { MANUFACTURER_LABEL, VEHICLE_KEYWORD_LABEL } from '@/features/quote/types'
+import { VehicleKeywordBadge } from '@/features/quote/components/vehicle-keyword-badge'
+import { MANUFACTURER_LABEL } from '@/features/quote/types'
 import type {
   AuctionListCard as AuctionListCardModel,
   RoomPhase,
@@ -132,9 +132,7 @@ export function AuctionCard({
             좁은 폭에서 넘치는 만큼은 overflow-hidden 이 잘라 두 줄로 넘어가지 않는다 */}
         <div className="flex h-6 flex-nowrap gap-1 overflow-hidden">
           {auction.keywords.slice(0, KEYWORD_DISPLAY_LIMIT).map((keyword) => (
-            <Badge key={keyword} variant="secondary">
-              {VEHICLE_KEYWORD_LABEL[keyword]}
-            </Badge>
+            <VehicleKeywordBadge key={keyword} keyword={keyword} />
           ))}
         </div>
 

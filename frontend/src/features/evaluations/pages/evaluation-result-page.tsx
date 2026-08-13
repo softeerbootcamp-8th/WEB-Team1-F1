@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowUp,
   CarFront,
+  CircleCheckBig,
   ExternalLink,
   FileCheck2,
   FileText,
@@ -392,8 +393,19 @@ export function EvaluationResultPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {detail.status === 'APPROVED' && <Badge variant="success">승인 처리 · 수정 가능</Badge>}
-          {detail.status === 'REJECTED' && <Badge variant="destructive">반려 처리된 신청</Badge>}
+          {detail.status === 'APPROVED' && (
+            <Badge
+              variant="success"
+              className="rounded-md px-5 py-3 text-base font-bold shadow-sm md:px-6 md:py-4 md:text-lg [&>svg]:size-5 md:[&>svg]:size-6"
+            >
+              <CircleCheckBig />차량 진단 완료 · 수정 가능
+            </Badge>
+          )}
+          {detail.status === 'REJECTED' && (
+            <Badge variant="destructive" className="rounded-md px-4 py-2 text-sm font-semibold">
+              진단 반려된 신청
+            </Badge>
+          )}
         </div>
       </header>
 

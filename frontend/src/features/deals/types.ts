@@ -137,9 +137,9 @@ export function dealGuide(status: DealStatus, actionRequired: boolean): string {
   }
 
   const mine: Record<Exclude<DealStatus, 'CONFIRMED' | 'CANCELLED'>, string> = {
-    BUYER_CONFIRM_PENDING: '구매를 확정해 주세요!',
-    SELLER_SUBMIT_PENDING: '판매 서류와 탁송 일정을 입력해 주세요!',
-    BUYER_SCHEDULE_PENDING: '탁송 정보를 확인하고 인도 일정을 입력해 주세요!',
+    BUYER_CONFIRM_PENDING: '구매 확정 필요',
+    SELLER_SUBMIT_PENDING: '서류·탁송 등록 필요',
+    BUYER_SCHEDULE_PENDING: '인도 일정 입력 필요',
   }
   const theirs: Record<Exclude<DealStatus, 'CONFIRMED' | 'CANCELLED'>, string> = {
     BUYER_CONFIRM_PENDING: '구매자의 구매 확정을 기다리고 있습니다.',

@@ -22,7 +22,15 @@ function renderRoute(role: UserRole | null, path: string) {
 }
 
 describe('평가사 제한 경로', () => {
-  it.each(['/mypage/deals/1', '/sell', '/sell/auction-post', '/quote/result', '/deals/1'])(
+  it.each([
+    '/mypage/deals/1',
+    '/mypage/sales',
+    '/mypage/purchases',
+    '/sell',
+    '/sell/auction-post',
+    '/quote/result',
+    '/deals/1',
+  ])(
     '평가사가 %s 주소를 직접 입력해도 홈으로 보낸다',
     (path) => {
       renderRoute('EVALUATOR', path)

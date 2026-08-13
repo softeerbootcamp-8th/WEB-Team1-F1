@@ -60,7 +60,7 @@ function ConfirmPurchase({ deal, onDone }: DealActionsProps) {
   }
 
   return (
-    <ActionBox title="구매를 확정하시겠습니까?">
+    <ActionBox title="확정 전 확인해 주세요">
       <p className="text-muted-foreground text-sm">
         확정하면 판매자가 서류와 탁송 일정을 준비합니다. 확정 전까지는 취소할 수 있습니다.
       </p>
@@ -109,7 +109,7 @@ function SubmitTransport({ deal, onDone }: DealActionsProps) {
   }
 
   return (
-    <ActionBox title="서류와 탁송 일정을 등록해 주세요">
+    <ActionBox title="판매 서류와 출차 정보">
       <div className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="document">판매 서류 (PDF, 20MB 이하)</Label>
@@ -185,7 +185,7 @@ function ConfirmDelivery({ deal, onDone }: DealActionsProps) {
   const earliest = deal.transportAt?.slice(0, 16)
 
   return (
-    <ActionBox title="인도 일정을 정해 주세요">
+    <ActionBox title="차량을 받을 날짜와 장소">
       <p className="text-muted-foreground text-sm">
         판매자가 등록한 출차 일정 이후로 정해야 합니다. 등록하면 거래가 확정됩니다.
       </p>
@@ -223,8 +223,8 @@ function ConfirmDelivery({ deal, onDone }: DealActionsProps) {
 
 function ActionBox({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border-primary/40 bg-card mt-8 rounded-lg border p-6" aria-label="할 일">
-      <h2 className="font-semibold">{title}</h2>
+    <section className="border-deal-active/20 bg-deal-active/5 mt-8 rounded-xl border p-6" aria-label="할 일">
+      <h2 className="text-lg font-semibold">{title}</h2>
       <div className="mt-3">{children}</div>
     </section>
   )
