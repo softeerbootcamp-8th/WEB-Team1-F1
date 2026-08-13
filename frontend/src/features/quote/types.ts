@@ -38,7 +38,6 @@ export interface QuoteResult {
   modelYear: number
   mileage: number
   fuelType: FuelType
-  transmission: Transmission
   mainImageUrl: string | null
   estimatedPrice: number
 }

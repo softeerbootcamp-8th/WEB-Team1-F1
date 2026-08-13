@@ -71,7 +71,7 @@ class QuoteIntegrationTest extends IntegrationTestSupport {
                 // 신고한 주행거리를 그대로 되돌려준다, 화면이 "이 값으로 계산된 시세"임을 보여야 한다
                 .andExpect(jsonPath("$.mileage").value(DEFAULT_MILEAGE))
                 .andExpect(jsonPath("$.fuelType").value("GASOLINE"))
-                .andExpect(jsonPath("$.transmission").value("AUTOMATIC"))
+                .andExpect(jsonPath("$.transmission").doesNotExist())
                 .andExpect(jsonPath("$.mainImageUrl")
                         .value("https://cdn.race.dev/vehicles/grandeur-ig.jpg"));
     }

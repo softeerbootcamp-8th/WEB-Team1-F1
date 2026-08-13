@@ -69,7 +69,6 @@ export function QuoteResultPage() {
                     model: quote.model,
                     modelYear: quote.modelYear,
                     fuelType: quote.fuelType,
-                    transmission: quote.transmission,
                     mainImageUrl: quote.mainImageUrl,
                   },
                 }}
