@@ -291,7 +291,7 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         // then : 자원이 없는 게 아니라 아직 만들어지지 않았다, 유찰이라고 답하면 거짓말이 된다
         response.andExpectAll(
                 status().isConflict(),
-                jsonPath("$.code").value("AUCTION_NOT_ENDED"));
+                jsonPath("$.code").value("ROOM_RESULT_NOT_READY"));
     }
 
     private String loginAs(User user) {

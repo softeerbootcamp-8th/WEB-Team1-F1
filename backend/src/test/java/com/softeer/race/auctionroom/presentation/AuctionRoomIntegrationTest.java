@@ -190,7 +190,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
         // then : 도달할 수 없는 자원이므로 단계를 알리지 않고 404 다
         response.andExpectAll(
                 status().isNotFound(),
-                jsonPath("$.code").value("AUCTION_ROOM_NOT_FOUND"));
+                jsonPath("$.code").value("ROOM_NOT_FOUND"));
     }
 
     @Test

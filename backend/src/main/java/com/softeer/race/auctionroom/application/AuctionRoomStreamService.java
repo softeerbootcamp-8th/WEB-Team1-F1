@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.AUCTION_ROOM_NOT_FOUND;
+import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_NOT_FOUND;
 
 /**
  * 경매방 현황을 열려 있는 구독으로 흘려보내는 서비스
@@ -36,7 +36,7 @@ public class AuctionRoomStreamService {
     public void subscribe(long auctionId, RoomSubscriber subscriber) {
         // 연결을 열어 두지 않는 단계의 구독이 채널에 남지 않도록 등록 전에 판정한다
         RoomQueryResult result = auctionRoomReader.find(auctionId)
-                .orElseThrow(() -> new BusinessException(AUCTION_ROOM_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
 
         result.phase().streamRejection().ifPresent(errorCode -> {
             throw new BusinessException(errorCode);

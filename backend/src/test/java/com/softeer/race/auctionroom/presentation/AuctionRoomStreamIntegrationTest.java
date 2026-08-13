@@ -151,7 +151,7 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
         // then : 열 연결이 없으므로 404 다, 채널에도 아무 흔적이 남지 않는다
         response.andExpectAll(
                 status().isNotFound(),
-                jsonPath("$.code").value("AUCTION_ROOM_NOT_FOUND"));
+                jsonPath("$.code").value("ROOM_NOT_FOUND"));
     }
 
     @Test

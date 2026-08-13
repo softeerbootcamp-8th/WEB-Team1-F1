@@ -26,7 +26,7 @@ public class AuctionRoomService {
     @Transactional(readOnly = true)
     public AuctionRoomView enterRoom(long auctionId, long userId) {
         RoomQueryResult result = auctionRoomReader.find(auctionId)
-                .orElseThrow(() -> new BusinessException(AUCTION_ROOM_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
 
         // 열리지 않은 방과 끝난 방은 여기서 걸린다,
         // 화면은 사유를 보고 개장 안내나 결과로 옮겨간다
@@ -46,7 +46,7 @@ public class AuctionRoomService {
     @Transactional(readOnly = true)
     public RoomOpening readOpening(long auctionId) {
         AuctionRoomDetail detail = auctionRoomReader.findDetail(auctionId)
-                .orElseThrow(() -> new BusinessException(AUCTION_ROOM_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
 
         LocalDateTime now = LocalDateTime.now(clock);
 
@@ -66,11 +66,11 @@ public class AuctionRoomService {
     @Transactional(readOnly = true)
     public RoomResultView readResult(long auctionId, long viewerId) {
         AuctionRoomDetail detail = auctionRoomReader.findDetail(auctionId)
-                .orElseThrow(() -> new BusinessException(AUCTION_ROOM_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
 
         // 확정 전에 답하면 낙찰된 경매를 유찰이라 말하게 된다, 집계도 여기서 걸러 읽지 않는다
         AuctionOutcome outcome = detail.outcome()
-                .orElseThrow(() -> new BusinessException(AUCTION_NOT_ENDED));
+                .orElseThrow(() -> new BusinessException(ROOM_RESULT_NOT_READY));
 
         return RoomResultView.of(detail, outcome, auctionRoomReader.findBidCounts(auctionId), viewerId,
                 auctionRoomReader.findStanding(auctionId, viewerId).orElse(null),

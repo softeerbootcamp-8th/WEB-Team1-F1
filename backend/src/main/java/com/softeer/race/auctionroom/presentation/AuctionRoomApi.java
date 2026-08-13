@@ -61,7 +61,7 @@ public interface AuctionRoomApi {
     @ApiResponse(responseCode = "401", description = "세션 쿠키가 없거나 만료된 경우입니다.")
     @ApiResponse(responseCode = "404", description = "없는 경매이거나 경매글이 삭제된 경우입니다.")
     @ApiResponse(responseCode = "409",
-            description = "아직 낙찰자가 확정되지 않은 경매입니다(AUCTION_NOT_ENDED).")
+            description = "아직 낙찰자가 확정되지 않은 경매입니다(ROOM_RESULT_NOT_READY).")
     ResponseEntity<RoomResultResponse> readResult(
             @Parameter(description = "경매 식별자", example = "1") long auctionId,
 
