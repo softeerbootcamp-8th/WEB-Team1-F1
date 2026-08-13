@@ -59,19 +59,19 @@ export function AuctionFilterPanel({
   return (
     <section aria-label="경매 필터" className="rounded-xl border p-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">필터</h2>
+        <h2 className="text-xl font-semibold">필터</h2>
         {activeCount > 0 && (
           <button
             type="button"
-            className="text-muted-foreground hover:text-foreground text-sm"
+            className="text-muted-foreground hover:text-foreground text-base"
             onClick={onReset}
           >
-            초기화 ({activeCount})
+            초기화
           </button>
         )}
       </div>
 
-      <Group label="상태">
+      <Group label="경매 상태">
         <div className="flex flex-wrap gap-2">
           {STATUSES.map((item) => (
             <Chip
@@ -180,7 +180,7 @@ interface GroupProps {
 function Group({ label, divided, children }: GroupProps) {
   return (
     <div className={cn('mt-5', divided && 'mt-5 border-t pt-5')}>
-      {label && <p className="mb-3 text-sm font-semibold">{label}</p>}
+      {label && <p className="mb-3 text-base font-semibold">{label}</p>}
       {children}
     </div>
   )
@@ -200,7 +200,7 @@ function Chip({ selected, onClick, children }: ChipProps) {
       aria-pressed={selected}
       onClick={onClick}
       className={cn(
-        'h-9 rounded-full border px-4 text-sm whitespace-nowrap transition-colors',
+        'h-10 rounded-full border px-4 text-base whitespace-nowrap transition-colors',
         selected
           ? 'border-foreground bg-foreground text-background font-medium'
           : 'border-input text-foreground hover:border-foreground/60 hover:bg-accent',
@@ -220,7 +220,7 @@ function BrandRow({ selected, onClick, children }: ChipProps) {
       aria-checked={selected}
       onClick={onClick}
       className={cn(
-        'w-full truncate rounded-lg px-3 py-2.5 text-left text-sm transition-colors',
+        'w-full truncate rounded-lg px-3 py-2.5 text-left text-base transition-colors',
         selected ? 'bg-accent font-semibold' : 'hover:bg-accent/60',
       )}
     >
@@ -251,8 +251,8 @@ function Range({ label, bounds, min, max, format, onCommit }: RangeProps) {
   return (
     <div className="mb-5 last:mb-0">
       <div className="mb-2 flex items-baseline justify-between gap-2">
-        <span className="text-sm font-semibold">{label}</span>
-        <span className="text-muted-foreground text-sm">{format(range)}</span>
+        <span className="text-base font-semibold">{label}</span>
+        <span className="text-muted-foreground text-base">{format(range)}</span>
       </div>
       <Slider
         aria-label={label}

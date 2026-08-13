@@ -209,7 +209,7 @@ export function AuctionsPage() {
   })
 
   return (
-    // 조건 패널과 목록이 나란히 서는 화면이라 다른 페이지보다 넓게 쓴다. 상단 바·푸터와 같은 폭이다.
+    // 조건 패널과 목록이 나란히 서는 화면이라 다른 페이지보다 넓게 쓴다.
     <main aria-label="경매 목록" className="mx-auto max-w-[100rem] px-6 py-12">
       <header className="mb-8">
         <p className="text-muted-foreground text-sm">LIVE AUCTIONS</p>
@@ -220,10 +220,10 @@ export function AuctionsPage() {
       </header>
 
       {/* 조건은 목록 옆에 세워 둔다. 좁은 화면에서는 붙일 자리가 없어 목록 위로 접힌다. */}
-      <div className="lg:grid lg:grid-cols-[23rem_1fr] lg:items-start lg:gap-8">
-        {/* 상단 바(65px)가 sticky 라 그 아래에 세운다. 패널이 화면보다 길어 스스로 스크롤해야
-            아래쪽 조건에 손이 닿는다. */}
-        <aside className="mb-6 lg:sticky lg:top-20 lg:mb-0 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+      <div className="lg:grid lg:grid-cols-[23rem_1fr] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-8">
+        {/* 패널 윗변은 범위 탭이 아니라 카드 첫 줄에 맞춘다. 격자 둘째 줄에 놓으면 탭 높이를 재지 않아도 맞는다.
+            상단 바(65px)가 sticky 라 그 아래에 세우고, 패널이 화면보다 길면 스스로 스크롤한다. */}
+        <aside className="mb-6 lg:col-start-1 lg:row-start-2 lg:sticky lg:top-20 lg:mb-0 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
           <AuctionFilterPanel
             value={vehicleFilter}
             onChange={changeVehicleFilter}
@@ -235,15 +235,15 @@ export function AuctionsPage() {
           />
         </aside>
 
-        <div>
-          {/* 범위는 목록의 것이라 목록 열 머리에 둔다. 조건 패널과 나란히 서면 둘 다 필터로 읽힌다. */}
-          <div className="mb-6">
-            <ScopeTabs
-              value={scope}
-              onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
-            />
-          </div>
+        {/* 범위는 목록의 것이라 목록 열 머리에 둔다. 조건 패널과 나란히 서면 둘 다 필터로 읽힌다. */}
+        <div className="mb-6 lg:col-start-2 lg:row-start-1">
+          <ScopeTabs
+            value={scope}
+            onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
+          />
+        </div>
 
+        <div className="lg:col-start-2 lg:row-start-2">
       {needsLogin ? (
         <EmptyState
           title="로그인이 필요합니다"
