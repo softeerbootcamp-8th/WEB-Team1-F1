@@ -2,15 +2,10 @@ import { Link, useLocation } from 'react-router-dom'
 import { Home, Search, Tag } from 'lucide-react'
 
 import { EmptyState } from '@/components/common/empty-state'
-import { CarThumb } from '@/components/common/car-thumb'
 import { Button } from '@/components/ui/button'
-import { formatKRW, formatMileage } from '@/lib/format'
-import {
-  FUEL_TYPE_LABEL,
-  MANUFACTURER_LABEL,
-  TRANSMISSION_LABEL,
-  type QuoteResult,
-} from '@/features/quote/types'
+import { VehicleSummary } from '@/features/vehicle/components/vehicle-summary'
+import { formatKRW } from '@/lib/format'
+import { type QuoteResult } from '@/features/quote/types'
 
 interface QuoteResultState {
   quote: QuoteResult
@@ -53,72 +48,30 @@ export function QuoteResultPage() {
         </p>
       </header>
 
-      <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-stretch">
-        <div className="aspect-[16/10] overflow-hidden rounded-2xl border lg:aspect-auto">
-          <CarThumb
-            src={quote.mainImageUrl ?? undefined}
-            alt={quote.model}
-            loading="eager"
-            className="object-contain"
-          />
-        </div>
+      <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+        <aside className="rounded-2xl border p-7 md:p-8">
+          <VehicleSummary vehicle={quote} />
+        </aside>
 
-        <section className="flex flex-col rounded-2xl border p-7 md:p-8">
-          <div className="border-b pb-7">
-            <p className="text-muted-foreground text-sm">예상 시세</p>
-            <p className="tabular mt-2 text-3xl font-semibold">
-              {formatKRW(quote.estimatedPrice)}
-            </p>
-            <p className="text-muted-foreground mt-3 text-xs leading-5">
-              실제 경매가는 평가 결과에 따라 달라질 수 있습니다.
-            </p>
-          </div>
-
-          <div className="mt-7">
-            <p className="text-muted-foreground text-sm">
-              {MANUFACTURER_LABEL[quote.manufacturer]}
-            </p>
-            <h2 className="mt-1 text-2xl font-semibold">{quote.model}</h2>
-            <p className="text-muted-foreground tabular mt-1 text-sm">
-              {quote.plateNumber}
-            </p>
-          </div>
-
-          <dl className="bg-muted/50 mt-7 grid grid-cols-2 gap-y-6 rounded-xl p-5">
-            <div>
-              <dt className="text-muted-foreground text-sm">연식</dt>
-              <dd className="tabular mt-1 font-semibold">{quote.modelYear}년</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground text-sm">주행거리</dt>
-              <dd className="tabular mt-1 font-semibold">
-                {formatMileage(quote.mileage)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground text-sm">연료</dt>
-              <dd className="mt-1 font-semibold">
-                {FUEL_TYPE_LABEL[quote.fuelType]}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground text-sm">변속기</dt>
-              <dd className="mt-1 font-semibold">
-                {TRANSMISSION_LABEL[quote.transmission]}
-              </dd>
-            </div>
-          </dl>
+        <section className="self-start rounded-2xl border p-7 md:p-8">
+          <p className="text-muted-foreground text-sm">예상 시세</p>
+          <p className="tabular mt-3 text-3xl font-semibold">
+            {formatKRW(quote.estimatedPrice)}
+          </p>
+          <p className="text-muted-foreground mt-3 text-xs leading-5">
+            실제 경매가는 평가 결과에 따라 달라질 수 있습니다.
+          </p>
         </section>
       </div>
 
-      <div className="mt-8 flex gap-3">
-        <Button asChild variant="outline" size="lg" className="flex-1">
+      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.8fr]">
+        <Button asChild variant="outline" size="lg" className="w-full">
           <Link to="/">
             <Home className="size-4" />
             홈으로 돌아가기
           </Link>
         </Button>
-        <Button asChild size="lg" className="flex-1">
+        <Button asChild size="lg" className="w-full">
           <Link
             to="/sell"
             state={{
