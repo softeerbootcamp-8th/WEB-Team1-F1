@@ -5,7 +5,6 @@ import com.softeer.race.auction.application.AuctionStarter;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.auth.config.AuthProperties;
 import com.softeer.race.auth.domain.SessionStore;
-import com.softeer.race.auth.domain.SessionTokenGenerator;
 import com.softeer.race.auctionpost.domain.AuctionPostRepository;
 import com.softeer.race.bid.domain.BidRepository;
 import com.softeer.race.support.seed.AuctionRoomSeeder;
@@ -108,10 +107,9 @@ public abstract class IntegrationTestSupport {
                        AuctionStarter auctionStarter,
                        AuctionCloser auctionCloser,
                        SessionStore sessionStore,
-                       SessionTokenGenerator sessionTokenGenerator,
                        AuthProperties authProperties) {
         users = new UserSeeder(userRepository);
-        sessions = new SessionSeeder(sessionStore, sessionTokenGenerator, authProperties.session().ttl());
+        sessions = new SessionSeeder(sessionStore, authProperties.session().ttl());
         rooms = new AuctionRoomSeeder(vehicleRepository, vehicleImageRepository, vehicleKeywordTagRepository,
                 auctionPostRepository, auctionRepository, bidRepository, auctionStarter, auctionCloser);
     }

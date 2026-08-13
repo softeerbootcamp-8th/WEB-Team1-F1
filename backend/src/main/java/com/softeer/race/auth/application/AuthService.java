@@ -42,8 +42,8 @@ public class AuthService {
         return new LoginInfo(sessionService.issue(user), AuthUserInfo.from(user));
     }
 
-    public void logout(String rawToken) {
-        sessionService.revoke(rawToken);
+    public void logout(String token) {
+        sessionService.revoke(token);
     }
 
     @Transactional(readOnly = true)

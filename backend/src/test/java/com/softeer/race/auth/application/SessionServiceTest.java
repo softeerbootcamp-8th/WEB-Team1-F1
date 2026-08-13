@@ -31,8 +31,7 @@ class SessionServiceTest {
     private static final Duration TTL = Duration.ofMinutes(30);
     private static final Duration RENEW_THRESHOLD = Duration.ofMinutes(15);
 
-    private static final String RAW_TOKEN = "raw-session-token";
-    private static final String HASHED_TOKEN = "hashed-session-token";
+    private static final String TOKEN = "session-token";
     private static final long USER_ID = 7L;
     private static final AuthenticatedUser AUTHENTICATED_USER =
             new AuthenticatedUser(USER_ID, Role.EVALUATOR);
@@ -53,18 +52,16 @@ class SessionServiceTest {
                 new AuthProperties(new AuthProperties.Session(TTL, RENEW_THRESHOLD), null, null));
     }
 
-    // 저장소에는 해시만 남는다는 결정의 회귀 방지선, 원문이 저장되면 저장소 유출로 전원 세션이 탈취된다
+    // 회원의 역할이 발급 시점에 세션으로 복사된다, 인증이 회원을 다시 읽지 않는 근거다
     @Test
-    @DisplayName("발급하면 원문 토큰을 반환하고 저장되는 키는 해시다")
-    void issueStoresHashedTokenAndReturnsRawToken() {
-        when(sessionTokenGenerator.generate()).thenReturn(RAW_TOKEN);
-        when(sessionTokenGenerator.hash(RAW_TOKEN)).thenReturn(HASHED_TOKEN);
+    @DisplayName("발급하면 그 토큰을 키로 회원의 id와 역할이 저장된다")
+    void issueStoresAuthenticatedUserUnderToken() {
+        when(sessionTokenGenerator.generate()).thenReturn(TOKEN);
 
         String issued = sessionService.issue(user());
 
-        assertThat(issued).isEqualTo(RAW_TOKEN);
-        verify(sessionStore).save(HASHED_TOKEN, AUTHENTICATED_USER, TTL);
-        verify(sessionStore, never()).save(RAW_TOKEN, AUTHENTICATED_USER, TTL);
+        assertThat(issued).isEqualTo(TOKEN);
+        verify(sessionStore).save(TOKEN, AUTHENTICATED_USER, TTL);
     }
 
     @Test
@@ -72,7 +69,7 @@ class SessionServiceTest {
     void authenticateReturnsSessionOwner() {
         givenStoredSession(TTL);
 
-        AuthenticatedUser authenticatedUser = sessionService.authenticate(RAW_TOKEN);
+        AuthenticatedUser authenticatedUser = sessionService.authenticate(TOKEN);
 
         assertThat(authenticatedUser).isEqualTo(AUTHENTICATED_USER);
     }
@@ -83,7 +80,7 @@ class SessionServiceTest {
     void authenticateDoesNotExtendWhenRemainingTimeExceedsThreshold() {
         givenStoredSession(RENEW_THRESHOLD.plusSeconds(1));
 
-        sessionService.authenticate(RAW_TOKEN);
+        sessionService.authenticate(TOKEN);
 
         verify(sessionStore, never()).extend(any(), any());
     }
@@ -94,9 +91,9 @@ class SessionServiceTest {
     void authenticateExtendsAtExactThreshold() {
         givenStoredSession(RENEW_THRESHOLD);
 
-        sessionService.authenticate(RAW_TOKEN);
+        sessionService.authenticate(TOKEN);
 
-        verify(sessionStore).extend(HASHED_TOKEN, TTL);
+        verify(sessionStore).extend(TOKEN, TTL);
     }
 
     // 남은 시간에 더하는 방식이면 자주 접속한 세션의 수명이 무한히 늘어난다
@@ -105,24 +102,23 @@ class SessionServiceTest {
     void authenticateExtendsWithAbsoluteTtl() {
         givenStoredSession(Duration.ofMinutes(10));
 
-        sessionService.authenticate(RAW_TOKEN);
+        sessionService.authenticate(TOKEN);
 
-        verify(sessionStore).extend(HASHED_TOKEN, TTL);
+        verify(sessionStore).extend(TOKEN, TTL);
     }
 
     // 만료된 세션은 저장소가 스스로 지워 없는 세션과 구분되지 않는다
     @Test
     @DisplayName("저장소에 없는 토큰이면 미인증 예외를 던진다")
     void authenticateRejectsUnknownToken() {
-        when(sessionTokenGenerator.hash(RAW_TOKEN)).thenReturn(HASHED_TOKEN);
-        when(sessionStore.find(HASHED_TOKEN)).thenReturn(Optional.empty());
+        when(sessionStore.find(TOKEN)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> sessionService.authenticate(RAW_TOKEN))
+        assertThatThrownBy(() -> sessionService.authenticate(TOKEN))
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(UNAUTHENTICATED));
     }
 
-    // 쿠키 없는 요청마다 해싱과 조회를 하면 비인증 트래픽이 그대로 저장소 부하가 된다
+    // 쿠키 없는 요청마다 조회를 하면 비인증 트래픽이 그대로 저장소 부하가 된다
     @Test
     @DisplayName("토큰이 비어 있으면 조회 없이 미인증 예외를 던진다")
     void authenticateRejectsBlankTokenWithoutLookup() {
@@ -130,18 +126,15 @@ class SessionServiceTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(UNAUTHENTICATED));
 
-        verify(sessionTokenGenerator, never()).hash(any());
         verify(sessionStore, never()).find(any());
     }
 
     @Test
-    @DisplayName("폐기는 해시로 삭제한다")
-    void revokeDeletesByHashedToken() {
-        when(sessionTokenGenerator.hash(RAW_TOKEN)).thenReturn(HASHED_TOKEN);
+    @DisplayName("폐기는 토큰으로 삭제한다")
+    void revokeDeletesByToken() {
+        sessionService.revoke(TOKEN);
 
-        sessionService.revoke(RAW_TOKEN);
-
-        verify(sessionStore).delete(HASHED_TOKEN);
+        verify(sessionStore).delete(TOKEN);
     }
 
     @Test
@@ -160,8 +153,7 @@ class SessionServiceTest {
     }
 
     private void givenStoredSession(Duration remaining) {
-        when(sessionTokenGenerator.hash(RAW_TOKEN)).thenReturn(HASHED_TOKEN);
-        when(sessionStore.find(HASHED_TOKEN)).thenReturn(Optional.of(AUTHENTICATED_USER));
-        when(sessionStore.timeToLive(HASHED_TOKEN)).thenReturn(remaining);
+        when(sessionStore.find(TOKEN)).thenReturn(Optional.of(AUTHENTICATED_USER));
+        when(sessionStore.timeToLive(TOKEN)).thenReturn(remaining);
     }
 }

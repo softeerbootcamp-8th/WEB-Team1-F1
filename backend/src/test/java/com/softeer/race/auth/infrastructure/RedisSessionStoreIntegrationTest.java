@@ -22,8 +22,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 @DisplayName("Redis 세션 저장소 통합 테스트")
 class RedisSessionStoreIntegrationTest extends IntegrationTestSupport {
 
-    private static final String HASHED_TOKEN = "0".repeat(64);
-    private static final String KEY = "session:" + HASHED_TOKEN;
+    private static final String TOKEN = "session-token";
+    private static final String KEY = "session:" + TOKEN;
     private static final Duration TTL = Duration.ofMinutes(30);
     private static final AuthenticatedUser DEALER = new AuthenticatedUser(42L, Role.DEALER);
 
@@ -36,18 +36,18 @@ class RedisSessionStoreIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("저장한 주체가 역할까지 그대로 돌아온다")
     void savesAndFinds() {
-        sessionStore.save(HASHED_TOKEN, DEALER, TTL);
+        sessionStore.save(TOKEN, DEALER, TTL);
 
-        assertThat(sessionStore.find(HASHED_TOKEN)).contains(DEALER);
+        assertThat(sessionStore.find(TOKEN)).contains(DEALER);
     }
 
     // 만료를 지우는 작업 없이 저장소가 스스로 회수한다는 결정의 회귀 방지선
     @Test
     @DisplayName("저장에는 수명이 함께 걸린다")
     void savesWithTimeToLive() {
-        sessionStore.save(HASHED_TOKEN, DEALER, TTL);
+        sessionStore.save(TOKEN, DEALER, TTL);
 
-        assertThat(sessionStore.timeToLive(HASHED_TOKEN))
+        assertThat(sessionStore.timeToLive(TOKEN))
                 .isGreaterThan(TTL.minusMinutes(1))
                 .isLessThanOrEqualTo(TTL);
     }
@@ -55,28 +55,28 @@ class RedisSessionStoreIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("없는 세션은 빈 값이고 남은 수명도 0이다")
     void missingSessionHasNoValueAndNoTimeToLive() {
-        assertThat(sessionStore.find(HASHED_TOKEN)).isEmpty();
-        assertThat(sessionStore.timeToLive(HASHED_TOKEN)).isZero();
+        assertThat(sessionStore.find(TOKEN)).isEmpty();
+        assertThat(sessionStore.timeToLive(TOKEN)).isZero();
     }
 
     // 조회와 연장 사이에 만료되면 없는 키에 연장이 나간다, 그때 빈 세션이 생기면 인증이 뚫린다
     @Test
     @DisplayName("없는 세션에 수명을 다시 잡아도 세션이 되살아나지 않는다")
     void extendDoesNotResurrectMissingSession() {
-        sessionStore.extend(HASHED_TOKEN, TTL);
+        sessionStore.extend(TOKEN, TTL);
 
-        assertThat(sessionStore.find(HASHED_TOKEN)).isEmpty();
+        assertThat(sessionStore.find(TOKEN)).isEmpty();
         assertThat(redisTemplate.hasKey(KEY)).isFalse();
     }
 
     @Test
     @DisplayName("연장은 남은 수명에 더하지 않고 지금부터 다시 잡는다")
     void extendResetsTimeToLive() {
-        sessionStore.save(HASHED_TOKEN, DEALER, Duration.ofMinutes(10));
+        sessionStore.save(TOKEN, DEALER, Duration.ofMinutes(10));
 
-        sessionStore.extend(HASHED_TOKEN, TTL);
+        sessionStore.extend(TOKEN, TTL);
 
-        assertThat(sessionStore.timeToLive(HASHED_TOKEN))
+        assertThat(sessionStore.timeToLive(TOKEN))
                 .isGreaterThan(TTL.minusMinutes(1))
                 .isLessThanOrEqualTo(TTL);
     }
@@ -87,12 +87,12 @@ class RedisSessionStoreIntegrationTest extends IntegrationTestSupport {
     void unreadableValueIsTreatedAsMissing() {
         redisTemplate.opsForValue().set(KEY, "42:CHAIRMAN");
 
-        assertThat(sessionStore.find(HASHED_TOKEN)).isEmpty();
+        assertThat(sessionStore.find(TOKEN)).isEmpty();
     }
 
     @Test
     @DisplayName("없는 세션을 지워도 예외를 던지지 않는다")
     void deleteIsIdempotent() {
-        assertThatCode(() -> sessionStore.delete(HASHED_TOKEN)).doesNotThrowAnyException();
+        assertThatCode(() -> sessionStore.delete(TOKEN)).doesNotThrowAnyException();
     }
 }

@@ -12,7 +12,7 @@ import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-/** 세션의 발급 · 검증 · 폐기. 세션 저장 형태(해시)를 아는 유일한 지점이다. */
+/** 세션의 발급 · 검증 · 폐기 */
 @Service
 @RequiredArgsConstructor
 public class SessionService {
@@ -21,14 +21,14 @@ public class SessionService {
     private final SessionTokenGenerator sessionTokenGenerator;
     private final AuthProperties authProperties;
 
-    /** 쿠키에 담을 원문 토큰을 반환한다. 저장소에는 해시만 남아 원문을 되돌릴 수 없다. */
+    /** 쿠키에 담을 토큰을 반환한다. 그 토큰이 그대로 저장소의 키다. */
     public String issue(User user) {
-        String rawToken = sessionTokenGenerator.generate();
+        String token = sessionTokenGenerator.generate();
         sessionStore.save(
-                sessionTokenGenerator.hash(rawToken),
+                token,
                 new AuthenticatedUser(user.getId(), user.getRole()),
                 authProperties.session().ttl());
-        return rawToken;
+        return token;
     }
 
     /**
@@ -41,28 +41,27 @@ public class SessionService {
      * 묶여 요청 빈도와 무관해지는 대신, 체감 유휴 타임아웃은 정확히 ttl이 아니라
      * {@code [ttl - renewThreshold, ttl]} 구간이 된다.
      */
-    public AuthenticatedUser authenticate(String rawToken) {
-        if (rawToken == null || rawToken.isBlank()) {
+    public AuthenticatedUser authenticate(String token) {
+        if (token == null || token.isBlank()) {
             throw new BusinessException(UNAUTHENTICATED);
         }
 
-        String hashedToken = sessionTokenGenerator.hash(rawToken);
-        AuthenticatedUser authenticatedUser = sessionStore.find(hashedToken)
+        AuthenticatedUser authenticatedUser = sessionStore.find(token)
                 .orElseThrow(() -> new BusinessException(UNAUTHENTICATED));
 
         Duration renewThreshold = authProperties.session().renewThreshold();
-        if (sessionStore.timeToLive(hashedToken).compareTo(renewThreshold) <= 0) {
-            sessionStore.extend(hashedToken, authProperties.session().ttl());
+        if (sessionStore.timeToLive(token).compareTo(renewThreshold) <= 0) {
+            sessionStore.extend(token, authProperties.session().ttl());
         }
 
         return authenticatedUser;
     }
 
     /** 없는 토큰이어도 예외를 던지지 않는다. 로그아웃은 멱등해야 한다. */
-    public void revoke(String rawToken) {
-        if (rawToken == null || rawToken.isBlank()) {
+    public void revoke(String token) {
+        if (token == null || token.isBlank()) {
             return;
         }
-        sessionStore.delete(sessionTokenGenerator.hash(rawToken));
+        sessionStore.delete(token);
     }
 }

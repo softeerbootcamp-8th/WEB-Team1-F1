@@ -26,8 +26,8 @@ public class SessionCookieFactory {
 
     private final AuthProperties authProperties;
 
-    public ResponseCookie create(String rawToken) {
-        return builder(rawToken).build();
+    public ResponseCookie create(String token) {
+        return builder(token).build();
     }
 
     public ResponseCookie expire() {

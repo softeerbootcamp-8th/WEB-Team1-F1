@@ -8,7 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.softeer.race.auth.domain.SessionTokenGenerator;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.support.seed.SessionFixture;
@@ -32,7 +31,7 @@ import org.springframework.test.web.servlet.ResultActions;
  * 로그인으로 받은 쿠키가 실제로 인증에 쓰이고, 로그아웃 후에는 같은 쿠키가 거부된다
  * <p>
  * 2. 저장 형태
- * 쿠키에는 원문, 저장소 키에는 SHA-256 해시
+ * 쿠키 값이 그대로 저장소 키가 되고, 값에는 회원의 id와 역할이 담긴다
  * <p>
  * 3. 만료
  * 상태 플래그도 만료 시각 비교도 아니고 저장소의 TTL 로 판정. 만료된 세션은 저장소에서 사라져
@@ -62,9 +61,6 @@ class AuthIntegrationTest extends IntegrationTestSupport {
     // 시계를 고정하지 않는다. 세션의 수명은 서버 Clock 이 아니라 저장소의 TTL 로 흐른다
     @Autowired
     private StringRedisTemplate redisTemplate;
-
-    @Autowired
-    private SessionTokenGenerator sessionTokenGenerator;
 
     @BeforeEach
     void seedSessions() {
@@ -101,20 +97,17 @@ class AuthIntegrationTest extends IntegrationTestSupport {
         assertThat(sessions.find(sessionCookie.getValue())).isEmpty();
     }
 
-    // 저장소가 통째로 유출돼도 그것만으로는 세션을 탈취할 수 없어야 한다
     // 저장 형태 자체가 검증 대상이라 이 시나리오만 예외적으로 키를 직접 들여다본다
+    // 역할이 값에 복사된다는 것이 인증 경로가 회원을 다시 읽지 않는 근거다
     @Test
-    @DisplayName("시나리오 2 : 쿠키에는 원문이 담기고 저장소 키에는 그 해시가 담긴다")
-    void scenario2_SessionTokenIsStoredAsHash() throws Exception {
+    @DisplayName("시나리오 2 : 쿠키 값이 그대로 저장소 키가 되고 값에는 회원의 id와 역할이 담긴다")
+    void scenario2_SessionIsStoredUnderCookieValue() throws Exception {
         // when : 로그인
         Cookie sessionCookie = login();
-        String rawToken = sessionCookie.getValue();
 
-        // then 1 : 쿠키 값을 그대로 키로 쓰는 항목은 없다
-        assertThat(redisTemplate.hasKey("session:" + rawToken)).isFalse();
-
-        // then 2 : 해시로는 찾힌다
-        assertThat(redisTemplate.hasKey("session:" + sessionTokenGenerator.hash(rawToken))).isTrue();
+        // then
+        assertThat(redisTemplate.opsForValue().get("session:" + sessionCookie.getValue()))
+                .isEqualTo(USER_ID + ":" + Role.GENERAL);
     }
 
     // 만료된 세션은 저장소가 스스로 지운다, 그래서 없는 세션과 같은 코드로 거부된다

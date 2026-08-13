@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * <p>
  * 키와 값의 형태를 아는 유일한 지점이다.
  * <pre>
- * session:{토큰 해시} -> "{userId}:{ROLE}"      예) session:9f86d0... -> "42:DEALER"
+ * session:{세션 토큰} -> "{userId}:{ROLE}"      예) session:kfd9s...Qw -> "42:DEALER"
  * </pre>
  * JSON이나 Hash가 아니라 구분자 하나짜리 문자열인 이유는 필드가 둘뿐이기 때문이다. Hash로 두면
  * 읽기가 HGETALL, 수명 조회가 별도 명령이 되는데 얻는 것이 없다.
@@ -34,19 +34,19 @@ public class RedisSessionStore implements SessionStore {
     private final StringRedisTemplate redisTemplate;
 
     @Override
-    public void save(String hashedToken, AuthenticatedUser authenticatedUser, Duration ttl) {
-        redisTemplate.opsForValue().set(key(hashedToken), serialize(authenticatedUser), ttl);
+    public void save(String token, AuthenticatedUser authenticatedUser, Duration ttl) {
+        redisTemplate.opsForValue().set(key(token), serialize(authenticatedUser), ttl);
     }
 
     @Override
-    public Optional<AuthenticatedUser> find(String hashedToken) {
-        return Optional.ofNullable(redisTemplate.opsForValue().get(key(hashedToken)))
+    public Optional<AuthenticatedUser> find(String token) {
+        return Optional.ofNullable(redisTemplate.opsForValue().get(key(token)))
                 .flatMap(RedisSessionStore::deserialize);
     }
 
     @Override
-    public Duration timeToLive(String hashedToken) {
-        Long seconds = redisTemplate.getExpire(key(hashedToken), TimeUnit.SECONDS);
+    public Duration timeToLive(String token) {
+        Long seconds = redisTemplate.getExpire(key(token), TimeUnit.SECONDS);
         // 키가 없으면 -2, 수명이 걸려 있지 않으면 -1이다. 저장이 항상 TTL을 걸므로 -1은 나오지 않고,
         // -2는 조회와 이 호출 사이에 만료된 경우다. 남은 시간 0으로 보면 뒤이어 연장을 시도하지만
         // 없는 키의 EXPIRE 는 아무 일도 하지 않으므로 세션이 되살아나지는 않는다
@@ -54,17 +54,17 @@ public class RedisSessionStore implements SessionStore {
     }
 
     @Override
-    public void extend(String hashedToken, Duration ttl) {
-        redisTemplate.expire(key(hashedToken), ttl);
+    public void extend(String token, Duration ttl) {
+        redisTemplate.expire(key(token), ttl);
     }
 
     @Override
-    public void delete(String hashedToken) {
-        redisTemplate.delete(key(hashedToken));
+    public void delete(String token) {
+        redisTemplate.delete(key(token));
     }
 
-    private static String key(String hashedToken) {
-        return KEY_PREFIX + hashedToken;
+    private static String key(String token) {
+        return KEY_PREFIX + token;
     }
 
     private static String serialize(AuthenticatedUser authenticatedUser) {
