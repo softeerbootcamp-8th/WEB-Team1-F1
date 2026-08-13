@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Minus, Plus } from 'lucide-react'
 import { toast } from 'sonner'
@@ -19,6 +19,8 @@ interface BidPanelProps {
   nextMin: number | null
   /** 조회한 사람이 이 차를 내놓은 사람인지, 서버가 판정해 준다 */
   sellerIsMine: boolean
+  /** 상자 바닥 왼쪽에 서는 도움말, 갈래를 타지 않게 밖에서 받는다 */
+  help?: ReactNode
   /** 서버가 정한 마감 시각, 마감 임박 입찰로 밀리면 새 값이 온다 */
   endAt: string
   /** 서버 시각 - 브라우저 시계 */
@@ -44,6 +46,7 @@ export function BidPanel({
   currentPrice,
   increment,
   nextMin,
+  help,
   sellerIsMine,
   endAt,
   clockOffset,
@@ -55,61 +58,77 @@ export function BidPanel({
   // 조기 반환 앞에 둔다, 뒤에 두면 로그인 상태가 바뀔 때 훅 수가 달라진다
   useCountdown(endAt, 1000, clockOffset)
 
-  if (!isAuthenticated || !user) {
-    return (
-      <div className="rounded-xl border p-5 text-center">
-        <p className="text-muted-foreground mb-3 text-sm">
-          입찰하려면 로그인이 필요합니다.
+  // 상자는 갈래마다 다시 그리지 않고 여기서 한 번 그린다. 기준가와 도움말이 상자 바닥에
+  // 붙는데, 갈래 안쪽에 두면 로그인 전이나 마감 뒤에는 그 둘이 사라진다
+  return (
+    <div className="rounded-xl border p-5">
+      {body()}
+
+      <div className="text-muted-foreground mt-3 flex items-center justify-between gap-3 text-xs">
+        {help}
+        <p>
+          현재가 {formatKRW(currentPrice)} · 최소 입찰가{' '}
+          <span className="text-foreground tabular font-medium">
+            {nextMin === null ? '—' : formatKRW(nextMin)}
+          </span>
         </p>
-        <Button asChild className="w-full">
-          <Link to="/login">로그인하고 입찰하기</Link>
-        </Button>
       </div>
-    )
-  }
+    </div>
+  )
 
-  // 이 둘은 기다린다고 열리지 않는다. 잠긴 폼을 남기면 절대 입찰하지 않을 사람에게
-  // 호가 단위와 최소 입찰가를 계속 안내하게 된다
-  const block = bidBlockOf(user.role, sellerIsMine)
-  if (block !== null) {
-    return <BidBlocked {...BLOCK_NOTICE[block]} />
-  }
+  function body() {
+    if (!isAuthenticated || !user) {
+      return (
+        <div className="text-center">
+          <p className="text-muted-foreground mb-3 text-sm">
+            입찰하려면 로그인이 필요합니다.
+          </p>
+          <Button asChild className="w-full">
+            <Link to="/login">로그인하고 입찰하기</Link>
+          </Button>
+        </div>
+      )
+    }
 
-  // 마감 뒤에는 서버가 어떤 입찰도 받지 않는다, 화면이 폼을 열어 두면 눌러서 실패를 받게 된다
-  if (!acceptsBidAt(endAt, Date.now() + clockOffset)) {
-    return (
-      <BidBlocked title="입찰이 마감됐습니다" description="곧 결과 화면으로 넘어갑니다." />
-    )
-  }
+    // 이 둘은 기다린다고 열리지 않는다. 잠긴 폼을 남기면 절대 입찰하지 않을 사람에게
+    // 호가 단위와 최소 입찰가를 계속 안내하게 된다
+    const block = bidBlockOf(user.role, sellerIsMine)
+    if (block !== null) {
+      return <BidBlocked {...BLOCK_NOTICE[block]} />
+    }
 
-  // 호가 단위를 모르면 얼마를 낼 수 있는지 안내할 수 없다. 0으로 대체하면
-  // 올리지 않아도 되는 입찰을 안내하게 되고 그 입찰은 서버가 거부한다.
-  if (increment === null || nextMin === null) {
-    return (
-      <div className="rounded-xl border p-5 text-center">
-        <p className="text-muted-foreground text-sm">
+    // 마감 뒤에는 서버가 어떤 입찰도 받지 않는다, 화면이 폼을 열어 두면 눌러서 실패를 받게 된다
+    if (!acceptsBidAt(endAt, Date.now() + clockOffset)) {
+      return (
+        <BidBlocked title="입찰이 마감됐습니다" description="곧 결과 화면으로 넘어갑니다." />
+      )
+    }
+
+    // 호가 단위를 모르면 얼마를 낼 수 있는지 안내할 수 없다. 0으로 대체하면
+    // 올리지 않아도 되는 입찰을 안내하게 되고 그 입찰은 서버가 거부한다.
+    if (increment === null || nextMin === null) {
+      return (
+        <p className="text-muted-foreground text-center text-sm">
           호가 단위를 불러오는 중입니다.
         </p>
-      </div>
+      )
+    }
+
+    return (
+      <BidForm
+        increment={increment}
+        nextMin={nextMin}
+        endAt={endAt}
+        clockOffset={clockOffset}
+        onBid={onBid}
+      />
     )
   }
-
-  return (
-    <BidForm
-      currentPrice={currentPrice}
-      increment={increment}
-      nextMin={nextMin}
-      endAt={endAt}
-      clockOffset={clockOffset}
-      onBid={onBid}
-    />
-  )
 }
 
-// 입찰 폼과 같은 상자를 쓴다, 자리도 테두리도 그대로라 이 사람만 레이아웃이 달라지지 않는다
 function BidBlocked({ title, description }: { title: string; description: string }) {
   return (
-    <div className="rounded-xl border p-5 text-center">
+    <div className="text-center">
       <p className="text-sm font-semibold">{title}</p>
       <p className="text-muted-foreground mt-1 text-sm">{description}</p>
     </div>
@@ -118,14 +137,12 @@ function BidBlocked({ title, description }: { title: string; description: string
 
 // 값이 확정된 뒤에만 마운트된다, 덕분에 훅이 nullable 을 다루지 않는다
 function BidForm({
-  currentPrice,
   increment,
   nextMin,
   endAt,
   clockOffset,
   onBid,
 }: {
-  currentPrice: number
   increment: number
   nextMin: number
   endAt: string
@@ -158,13 +175,8 @@ function BidForm({
   }
 
   return (
-    <div className="rounded-xl border p-5">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-semibold">입찰하기</span>
-        <span className="text-muted-foreground text-xs">
-          호가 단위 <span className="tabular">{formatManwon(increment)}원</span>
-        </span>
-      </div>
+    <div>
+      <div className="mb-3 text-sm font-semibold">입찰하기</div>
 
       <div className="flex items-center overflow-hidden rounded-md border">
         <Button
@@ -178,8 +190,9 @@ function BidForm({
         >
           <Minus className="size-4" />
         </Button>
+        {/* 한 번 누를 때 오르내리는 폭을 버튼 사이에 둔다, 고른 금액은 입찰 버튼이 들고 있다 */}
         <div className="tabular border-x flex-1 py-2.5 text-center text-sm font-medium">
-          {formatKRW(increment)}
+          {formatManwon(increment)}원
         </div>
         <Button
           type="button"
@@ -193,26 +206,17 @@ function BidForm({
         </Button>
       </div>
 
-      <div className="tabular mt-3 rounded-md border py-3 text-center text-xl font-semibold">
-        {formatKRW(amount)}
-      </div>
-
-      <p className="text-muted-foreground mt-2 text-xs">
-        현재가 {formatKRW(currentPrice)} · 최소 입찰가{' '}
-        <span className="text-foreground tabular font-medium">
-          {formatKRW(nextMin)}
-        </span>
-      </p>
-
+      {/* 누르면 얼마가 나가는지를 버튼이 들고 있다, 확인과 실행이 한자리다 */}
       <Button
         type="button"
         size="lg"
-        className="mt-4 w-full"
+        className="tabular mt-3 w-full"
         disabled={isSubmitting || amount < nextMin}
         onClick={submit}
       >
-        입찰
+        {formatKRW(amount)} 입찰
       </Button>
+
     </div>
   )
 }

@@ -32,7 +32,8 @@ describe('BidPanel', () => {
   it('마감 전에는 입찰 버튼을 보여준다', () => {
     renderPanel(new Date(NOW + 60_000).toISOString())
 
-    expect(screen.getByRole('button', { name: '입찰' })).toBeTruthy()
+    // 버튼이 고른 금액을 이름에 달고 있다, 마감 전에 폼이 열렸는지만 보므로 끝말로 잡는다
+    expect(screen.getByRole('button', { name: /원 입찰$/ })).toBeTruthy()
   })
 
   // 서버가 거절할 요청을 화면이 먼저 막는다, 누를 수 있는 버튼을 눌러 실패를 받게 두지 않는다
@@ -40,6 +41,6 @@ describe('BidPanel', () => {
     renderPanel(new Date(NOW - 1_000).toISOString())
 
     expect(screen.getByText('입찰이 마감됐습니다')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: '입찰' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /원 입찰$/ })).toBeNull()
   })
 })

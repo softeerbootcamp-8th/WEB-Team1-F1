@@ -247,18 +247,7 @@ function LiveRoom({
             </div>
           </dl>
 
-          {/* 도움말을 패널 밖에 둔다. 패널은 비로그인·평가사·판매자·마감·구간표 없음에서
-              각각 다른 화면으로 갈리는데, 안에 넣으면 그 갈래마다 도움말이 사라진다 */}
-          <div className="flex items-center justify-between pl-1">
-            <h2 className="text-sm font-semibold">입찰</h2>
-            <HelpPopover
-              label="가격 구간별 최소 상승 금액 보기"
-              contentClassName="w-80"
-            >
-              <BidIncrementHelp bands={bands} currentPrice={room.currentPrice} />
-            </HelpPopover>
-          </div>
-
+          {/* 도움말은 패널이 어느 갈래를 그리든 상자 바닥에 남아야 해서 밖에서 넣어 준다 */}
           <BidPanel
             currentPrice={room.currentPrice}
             increment={increment}
@@ -267,6 +256,15 @@ function LiveRoom({
             endAt={room.endAt}
             clockOffset={clockOffset}
             onBid={placeBid}
+            help={
+              <HelpPopover
+                label="가격 구간별 최소 상승 금액 보기"
+                align="start"
+                contentClassName="w-80"
+              >
+                <BidIncrementHelp bands={bands} currentPrice={room.currentPrice} />
+              </HelpPopover>
+            }
           />
         </div>
       </div>
