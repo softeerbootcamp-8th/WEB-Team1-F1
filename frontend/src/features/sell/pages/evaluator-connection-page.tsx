@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, LoaderCircle, UserRoundSearch } from 'lucide-react'
+import { ArrowLeft, LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/common/empty-state'
@@ -271,22 +271,23 @@ export function EvaluatorConnectionPage() {
         </Button>
       )}
 
-      <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_0.8fr]">
-        <section className="min-w-0 rounded-2xl border p-7 md:p-10">
-          <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-full">
-            <UserRoundSearch className="size-6" />
-          </div>
-          <p className="text-muted-foreground mt-8 text-sm">방문견적</p>
+      <header className="mt-6 max-w-2xl">
+        <h1 className="text-3xl font-semibold md:text-4xl lg:text-5xl">
+          {requestComplete
+            ? '방문견적 신청이 접수됐어요.'
+            : '평가사 방문 정보를 입력해 주세요.'}
+        </h1>
+      </header>
 
+      <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+        <aside className="rounded-2xl border p-7 md:p-8">
+          <VehicleSummary vehicle={vehicle!} />
+        </aside>
+
+        <section className="min-w-0 self-start rounded-2xl border p-7 md:p-8">
           {requestComplete ? (
             <>
-              <h1 className="mt-2 text-3xl font-semibold">
-                방문견적 신청이 접수됐어요.
-              </h1>
-              <p className="text-muted-foreground mt-3 leading-6" aria-live="polite">
-                입력하신 방문 희망 날짜와 주소로 신청이 완료되었습니다.
-              </p>
-              <dl className="bg-muted/50 mt-8 space-y-4 rounded-xl p-5 text-sm">
+              <dl className="space-y-5 text-sm" aria-live="polite">
                 <div>
                   <dt className="text-muted-foreground">방문 희망 날짜</dt>
                   <dd className="mt-1 font-medium">{formatVisitDate(result.visitDate)}</dd>
@@ -298,13 +299,7 @@ export function EvaluatorConnectionPage() {
               </dl>
             </>
           ) : (
-            <>
-              <h1 className="mt-2 text-3xl font-semibold">
-                평가사 방문 정보를
-                <br />
-                입력해 주세요.
-              </h1>
-              <form className="mt-8 space-y-6" onSubmit={submit}>
+              <form className="space-y-6" onSubmit={submit}>
                 <div>
                   <Label htmlFor="visit-date">방문 희망 날짜</Label>
                   <Input
@@ -406,34 +401,8 @@ export function EvaluatorConnectionPage() {
                   예약하기
                 </Button>
               </form>
-            </>
           )}
         </section>
-
-        <div className="rounded-2xl border p-7 md:p-8">
-          <VehicleSummary vehicle={vehicle!} />
-
-          <ol className="mt-8 space-y-4 text-sm" aria-live="polite">
-            <li className="flex items-center gap-3">
-              <Check className="text-success size-4" />
-              차량 소유 정보 입력 완료
-            </li>
-            <li
-              className={
-                requestComplete
-                  ? 'flex items-center gap-3'
-                  : 'text-muted-foreground flex items-center gap-3'
-              }
-            >
-              {requestComplete ? (
-                <Check className="text-success size-4" />
-              ) : (
-                <span className="size-4 rounded-full border" />
-              )}
-              방문견적 신청 접수
-            </li>
-          </ol>
-        </div>
       </div>
     </main>
   )
