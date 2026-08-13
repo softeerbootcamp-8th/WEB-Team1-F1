@@ -237,6 +237,17 @@
     scrollbar-gutter: stable;
   }
 
+  /*
+   * Dialog 가 열리면 react-remove-scroll 이 없앤 스크롤바 폭만큼 body margin 을 더한다.
+   * html 이 이미 stable gutter 를 예약한 브라우저에서는 같은 폭을 두 번 보정하므로,
+   * 모달의 스크롤 잠금은 유지하되 라이브러리의 중복 margin 만 무효화한다.
+   */
+  @supports (scrollbar-gutter: stable) {
+    html body[data-scroll-locked] {
+      margin-right: 0 !important;
+    }
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
