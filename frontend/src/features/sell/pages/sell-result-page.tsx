@@ -32,7 +32,7 @@ export function SellResultPage() {
     <main className="mx-auto max-w-5xl px-6 py-14" aria-label="판매 신청 결과">
       <header className="max-w-2xl">
         <h1 className="text-4xl font-semibold md:text-5xl">
-          경매가 등록됐어요!
+          경매가 등록됐어요
         </h1>
         <p className="text-muted-foreground mt-3 leading-7">
           아래 시각에 맞춰 경매방이 열려요. 시작 30분 전부터 입장할 수 있어요.
