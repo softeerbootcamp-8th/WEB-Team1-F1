@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   CalendarDays,
   CarFront,
-  CircleCheckBig,
   FileText,
   Gavel,
   LoaderCircle,
@@ -32,9 +31,10 @@ import {
   formatPhone,
   formatVisitDate,
   getAuctionBlockReason,
-  getAuctionStatusMeta,
   getEvaluationStatusMeta,
 } from '../utils'
+
+const COMPACT_STATUS_BADGE_CLASS = 'h-10 rounded-md px-3 text-sm font-semibold'
 
 export function MyRequestDetailPage() {
   const { evaluationId: evaluationIdParam } = useParams()
@@ -76,7 +76,6 @@ export function MyRequestDetailPage() {
   const status = getEvaluationStatusMeta(detail.status, assigned)
   const isDiagnosed = detail.status === 'APPROVED'
 
-  const auctionMeta = auctionStatus ? getAuctionStatusMeta(auctionStatus) : null
   // 재출품을 막는 상태만 남긴다. null 이면 출품할 수 있다는 뜻이라 아래에서 분기 하나로 쓴다
   const blockedStatus =
     auctionStatus && !canRegisterAuction(auctionStatus) ? auctionStatus : null
@@ -100,17 +99,13 @@ export function MyRequestDetailPage() {
           </h1>
           <p className="text-muted-foreground mt-2">{detail.modelYear}년식 · {detail.plateNumber}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex max-w-full flex-wrap justify-end gap-2">
           <Badge
             variant="outline"
-            className={isDiagnosed
-              ? `rounded-md px-5 py-3 text-base font-bold shadow-sm md:px-6 md:py-4 md:text-lg [&>svg]:size-5 md:[&>svg]:size-6 ${status.className}`
-              : `rounded-md px-3 py-1.5 text-sm font-semibold ${status.className}`}
+            className={`${COMPACT_STATUS_BADGE_CLASS} ${status.className}`}
           >
-            {isDiagnosed && <CircleCheckBig />}
             {status.label}
           </Badge>
-          {auctionMeta && <Badge variant="outline" className={`rounded-full px-3 py-1 text-sm font-semibold ${auctionMeta.className}`}>{auctionMeta.label}</Badge>}
         </div>
       </header>
 
@@ -200,7 +195,7 @@ export function MyRequestDetailPage() {
           {isDiagnosed && (blockedStatus ? (
             <section className="rounded-2xl border p-6 md:p-8">
               <h2 className="text-xl font-semibold">이미 경매에 등록된 차량입니다</h2>
-              <p className="text-muted-foreground mt-2 text-sm">{getAuctionBlockReason(blockedStatus)}</p>
+              <p className="text-muted-foreground mt-2 text-sm whitespace-nowrap">{getAuctionBlockReason(blockedStatus)}</p>
               <Button asChild variant="outline" className="mt-5"><Link to="/auctions?scope=MINE"><Gavel />나의 경매 보기</Link></Button>
             </section>
           ) : (

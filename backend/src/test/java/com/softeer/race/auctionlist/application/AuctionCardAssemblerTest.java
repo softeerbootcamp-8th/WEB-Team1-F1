@@ -58,10 +58,10 @@ class AuctionCardAssemblerTest {
         AuctionListRow live = row(1L, NOW.minusMinutes(10), NOW.plusMinutes(10));
 
         AuctionCardInfo card = assembler.assemble(live, NOW, Map.of(
-                live.vehicleId(), List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK)));
+                live.vehicleId(), List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.UNDERBODY_INTACT)));
 
         assertThat(card.keywords())
-                .containsExactly(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK);
+                .containsExactly(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.UNDERBODY_INTACT);
     }
 
     @Test

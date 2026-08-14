@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Search, Tag } from 'lucide-react'
+import { Search, Tag } from 'lucide-react'
 
 import { EmptyState } from '@/components/common/empty-state'
 import { Button } from '@/components/ui/button'
@@ -45,51 +45,41 @@ export function QuoteResultPage() {
         </p>
       </header>
 
-      <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-        <aside className="rounded-2xl border p-7 md:p-8">
-          <VehicleSummary vehicle={quote} />
-        </aside>
-
-        <section className="self-start rounded-2xl border p-7 md:p-8">
-          <p className="text-muted-foreground text-sm">예상 시세</p>
-          <p className="tabular mt-3 text-3xl font-semibold">
-            {formatKRW(quote.estimatedPrice)}
-          </p>
-          <p className="text-muted-foreground mt-3 text-xs leading-5">
-            실제 경매가는 평가 결과에 따라 달라질 수 있습니다.
-          </p>
-        </section>
-      </div>
-
-      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.8fr]">
-        <Button asChild variant="outline" size="lg" className="w-full">
-          <Link to="/">
-            <Home className="size-4" />
-            홈으로 돌아가기
-          </Link>
-        </Button>
-        <Button asChild size="lg" className="w-full">
-          <Link
-            to="/sell"
-            state={{
-              ownerName: data.ownerName,
-              plateNumber: quote.plateNumber,
-              vehicle: {
-                plateNumber: quote.plateNumber,
-                manufacturer: quote.manufacturer,
-                model: quote.model,
-                modelYear: quote.modelYear,
-                fuelType: quote.fuelType,
-                transmission: quote.transmission,
-                mainImageUrl: quote.mainImageUrl,
-              },
-            }}
-          >
-            <Tag className="size-4" />
-            내 차 팔기
-          </Link>
-        </Button>
-      </div>
+      <section className="mt-12 rounded-2xl border p-7 md:p-8">
+        <VehicleSummary vehicle={quote}>
+          <div>
+            <div className="flex items-baseline justify-between gap-4">
+              <p className="text-muted-foreground text-sm">예상 시세</p>
+              <p className="tabular text-3xl font-semibold">
+                {formatKRW(quote.estimatedPrice)}
+              </p>
+            </div>
+            <p className="text-muted-foreground mt-3 text-right text-xs leading-5">
+              실제 경매가는 평가 결과에 따라 달라질 수 있습니다.
+            </p>
+            <Button asChild size="lg" className="mt-6 w-full">
+              <Link
+                to="/sell"
+                state={{
+                  ownerName: data.ownerName,
+                  plateNumber: quote.plateNumber,
+                  vehicle: {
+                    plateNumber: quote.plateNumber,
+                    manufacturer: quote.manufacturer,
+                    model: quote.model,
+                    modelYear: quote.modelYear,
+                    fuelType: quote.fuelType,
+                    mainImageUrl: quote.mainImageUrl,
+                  },
+                }}
+              >
+                <Tag className="size-4" />
+                내 차 팔기
+              </Link>
+            </Button>
+          </div>
+        </VehicleSummary>
+      </section>
     </main>
   )
 }

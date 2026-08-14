@@ -86,6 +86,8 @@ describe('데모 차량 도움말', () => {
     const rows = await screen.findAllByRole('row')
     const plates = rows.slice(1).map((row) => row.textContent)
 
+    expect(rows[0].textContent).toBe('차량 번호이름차량')
+    expect(rows[1].textContent).toBe('11나1111나나나기아 K8 2023년')
     expect(plates[0]).toContain('11나1111')
     expect(plates[0]).toContain('기아 K8')
     expect(plates[1]).toContain('21가2101')

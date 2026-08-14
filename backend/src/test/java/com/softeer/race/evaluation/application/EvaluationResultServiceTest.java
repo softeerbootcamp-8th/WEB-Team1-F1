@@ -82,7 +82,7 @@ class EvaluationResultServiceTest {
     private static final String REJECT_REASON = "번호판이 등록된 차량과 일치하지 않습니다.";
 
     private static final List<VehicleKeyword> KEYWORDS =
-            List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK);
+            List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.UNDERBODY_INTACT);
 
     @Mock
     private EvaluationRepository evaluationRepository;

@@ -3,7 +3,6 @@ package com.softeer.race.quote.presentation.response;
 import com.softeer.race.quote.application.dto.info.QuoteInfo;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
-import com.softeer.race.vehicle.domain.Transmission;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
@@ -33,9 +32,6 @@ public record QuoteResponse(
         @Schema(description = "연료", example = "GASOLINE")
         FuelType fuelType,
 
-        @Schema(description = "변속기", example = "AUTOMATIC")
-        Transmission transmission,
-
         @Schema(description = "대표 이미지 URL, 없는 차량은 null",
                 example = "https://cdn.race.dev/vehicles/grandeur-ig.jpg")
         String mainImageUrl,
@@ -52,7 +48,6 @@ public record QuoteResponse(
                 info.modelYear(),
                 info.mileage(),
                 info.fuelType(),
-                info.transmission(),
                 info.mainImageUrl(),
                 info.estimatedPrice());
     }

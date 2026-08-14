@@ -38,7 +38,6 @@ export interface QuoteResult {
   modelYear: number
   mileage: number
   fuelType: FuelType
-  transmission: Transmission
   mainImageUrl: string | null
   estimatedPrice: number
 }
@@ -86,7 +85,6 @@ export const TRANSMISSION_LABEL: Record<Transmission, string> = {
 export type VehicleKeyword =
   | 'ACCIDENT_FREE'
   | 'MINOR_EXCHANGE'
-  | 'NO_LEAK'
   | 'NO_DAMAGE'
   | 'UNDERBODY_INTACT'
   | 'GOOD_TIRE'
@@ -95,7 +93,6 @@ export type VehicleKeyword =
 export const VEHICLE_KEYWORD_LABEL: Record<VehicleKeyword, string> = {
   ACCIDENT_FREE: '완전무사고',
   MINOR_EXCHANGE: '단순교환 무사고',
-  NO_LEAK: '누유 없음',
   NO_DAMAGE: '파손 없음',
   UNDERBODY_INTACT: '하부 상태 양호',
   GOOD_TIRE: '타이어 상태 양호',

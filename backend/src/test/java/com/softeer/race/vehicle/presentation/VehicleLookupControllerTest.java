@@ -60,7 +60,7 @@ class VehicleLookupControllerTest {
                 .andExpect(jsonPath("$.model").value("그랜저 IG"))
                 .andExpect(jsonPath("$.modelYear").value(2021))
                 .andExpect(jsonPath("$.fuelType").value("GASOLINE"))
-                .andExpect(jsonPath("$.transmission").value("AUTOMATIC"))
+                .andExpect(jsonPath("$.transmission").doesNotExist())
                 .andExpect(jsonPath("$.mainImageUrl").value(IMAGE_URL))
                 // 기준가는 예상 시세와 나란히 놓이면 감가율이 역산된다
                 .andExpect(jsonPath("$.basePrice").doesNotExist())
