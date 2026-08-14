@@ -90,6 +90,17 @@ describe('BidPanel', () => {
     expect(screen.queryByText(/최소 입찰가/)).toBeNull()
   })
 
+  it('상한에 닿으면 입찰가를 더 올릴 수 없다', () => {
+    renderPanel(new Date(NOW + 60_000).toISOString(), {
+      increment: 100_000,
+      nextMin: 999_999_950_000,
+    })
+
+    expect(screen.getByRole('button', { name: '입찰가 높이기' }).hasAttribute('disabled')).toBe(
+      true,
+    )
+  })
+
   // 로그인이나 다음 경매로 열릴 수 있는 갈래라 바닥 줄을 남긴다
   it('마감된 경매에는 최소 입찰가 안내를 남긴다', () => {
     renderPanel(new Date(NOW - 1_000).toISOString())

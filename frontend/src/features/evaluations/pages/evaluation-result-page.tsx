@@ -46,6 +46,7 @@ import {
 } from '@/features/quote/types'
 import { getErrorMessage } from '@/lib/axios'
 import { formatNumericInput, parseNumericInput } from '@/lib/input-format'
+import { withinManwonCap } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import {
   fetchEvaluationDetail,
@@ -473,9 +474,11 @@ export function EvaluationResultPage() {
                     type="text"
                     inputMode="numeric"
                     value={estimatedPriceManwon}
-                    onChange={(event) => setEstimatedPriceManwon(formatNumericInput(event.target.value))}
+                    onChange={(event) => {
+                      const next = formatNumericInput(event.target.value)
+                      if (withinManwonCap(next)) setEstimatedPriceManwon(next)
+                    }}
                     placeholder="2,150"
-                    maxLength={15}
                     className="h-16 rounded-2xl px-6 pr-24 text-2xl font-semibold tracking-tight placeholder:opacity-40 md:text-2xl"
                     required
                   />

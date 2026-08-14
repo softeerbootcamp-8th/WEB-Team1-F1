@@ -1,10 +1,13 @@
 package com.softeer.race.vehicle.domain;
 
+import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.user.domain.User;
+import com.softeer.race.vehicle.exception.VehicleErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 @DisplayName("차량 생성")
@@ -103,6 +106,27 @@ class VehicleTest {
         assertThat(vehicle.getMainPhotoUrl()).isEqualTo("https://www.f1race.site/images/b.jpg");
         assertThat(vehicle.getDiagnosticReportUrl())
                 .isEqualTo("https://www.f1race.site/documents/b.pdf");
+    }
+
+    @Test
+    @DisplayName("예상 시세가 상한을 넘으면 차량을 만들 수 없다")
+    void rejectsEstimatedPriceAboveCap() {
+        assertThatThrownBy(() -> Vehicle.create(mock(User.class), pendingSpec(),
+                45_000, 1_000_000_000_001L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(thrown -> ((BusinessException) thrown).errorCode())
+                .isEqualTo(VehicleErrorCode.INVALID_ESTIMATED_PRICE);
+    }
+
+    @Test
+    @DisplayName("예상 시세가 상한을 넘으면 고쳐 적을 수 없다")
+    void rejectsRevisedEstimatedPriceAboveCap() {
+        Vehicle vehicle = Vehicle.create(mock(User.class), pendingSpec(), 45_000, 23_200_000L);
+
+        assertThatThrownBy(() -> vehicle.reviseEstimatedPrice(1_000_000_000_001L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(thrown -> ((BusinessException) thrown).errorCode())
+                .isEqualTo(VehicleErrorCode.INVALID_ESTIMATED_PRICE);
     }
 
     private static VehicleSpec pendingSpec() {

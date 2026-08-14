@@ -1,6 +1,7 @@
 package com.softeer.race.bid.presentation.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Positive;
 
 @Schema(description = "입찰 요청")
@@ -11,6 +12,7 @@ public record BidPlaceRequest(
         @Schema(description = "입찰 금액, 첫 입찰은 시작가 이상이고 이후는 현재가에 최저 상승가를 더한 배수여야 한다",
                 example = "24850000")
         @Positive(message = "입찰 금액은 0보다 커야 합니다.")
+        @Max(value = 1_000_000_000_000L, message = "입찰 금액은 1조원을 넘을 수 없습니다.")
         long amount
 ) {
 }

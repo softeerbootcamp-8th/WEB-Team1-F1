@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { formatKRW, formatManwon } from '@/lib/format'
+import { MAX_AMOUNT } from '@/lib/money'
 import { getErrorCode, getErrorMessage } from '@/lib/axios'
 import { useAuth } from '@/features/auth/auth-context'
 import { useCountdown } from '@/hooks/use-countdown'
@@ -223,7 +224,8 @@ function BidForm({
           variant="ghost"
           size="icon"
           className="h-11 rounded-none"
-          onClick={() => changeAmount(amount + increment)}
+          disabled={amount + increment > MAX_AMOUNT}
+          onClick={() => setAmount((prev) => prev + increment)}
           aria-label="입찰가 높이기"
         >
           <Plus className="size-4" />
