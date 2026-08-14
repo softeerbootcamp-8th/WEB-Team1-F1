@@ -22,6 +22,13 @@ export function viewerStandingOf(result: RoomResultView): ViewerStanding {
   return 'ONLOOKER'
 }
 
+/** 낙찰 결과에서 보는 사람의 거래 목록으로 보낸다. 판매·구매 탭을 섞지 않는다. */
+export function dealListPathOf(standing: ViewerStanding): string | null {
+  if (standing === 'SELLER') return '/mypage/sales'
+  if (standing === 'WON') return '/mypage/purchases'
+  return null
+}
+
 /** 그리기 좌표는 0에서 1 사이로 낸다. 실제 크기는 그리는 쪽이 정한다 */
 export interface CurvePoint {
   x: number

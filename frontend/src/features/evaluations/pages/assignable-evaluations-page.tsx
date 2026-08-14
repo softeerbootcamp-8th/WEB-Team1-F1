@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CalendarDays,
   CheckCircle2,
+  Clock3,
   LoaderCircle,
   MapPin,
   Phone,
@@ -111,11 +112,11 @@ export function AssignableEvaluationsPage() {
         <ul className="space-y-3">
           {evaluations.map((evaluation) => (
             <li key={evaluation.evaluationId}>
-              <Card className="gap-0 py-0">
-                <CardContent className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <h2 className="text-lg font-semibold">
+              <Card className="gap-0 overflow-hidden border-border/80 py-0 shadow-sm transition-[border-color,box-shadow] hover:border-foreground/15 hover:shadow-md">
+                <CardContent className="grid p-0 lg:grid-cols-[minmax(0,1fr)_13rem]">
+                  <div className="min-w-0 p-5 sm:p-6">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <h2 className="text-xl font-semibold">
                         {MANUFACTURER_LABEL[evaluation.manufacturer]} {evaluation.model}
                       </h2>
                     </div>
@@ -126,24 +127,29 @@ export function AssignableEvaluationsPage() {
                       {TRANSMISSION_LABEL[evaluation.transmission]}
                     </p>
 
-                    <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-[1fr_1.4fr_auto]">
-                      <div className="flex min-w-0 gap-2.5">
-                        <CalendarDays className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                        <strong>{formatVisitDate(evaluation.visitDate)}</strong>
-                      </div>
-                      <div className="flex min-w-0 gap-2.5">
-                        <MapPin className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                        <span className="break-words">{evaluation.visitAddress}</span>
-                      </div>
-                      <p className="text-muted-foreground text-xs md:col-span-2 xl:col-span-1 xl:self-center xl:text-right">
-                        {formatDateTime(evaluation.requestedAt)} 접수
-                      </p>
+                    <div className="mt-5 grid divide-y border-t pt-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                      <AssignmentMeta
+                        icon={CalendarDays}
+                        label="방문 희망일"
+                        value={formatVisitDate(evaluation.visitDate)}
+                        emphasis
+                      />
+                      <AssignmentMeta
+                        icon={MapPin}
+                        label="방문 위치"
+                        value={evaluation.visitAddress}
+                      />
+                      <AssignmentMeta
+                        icon={Clock3}
+                        label="신청 날짜"
+                        value={formatDateTime(evaluation.requestedAt)}
+                      />
                     </div>
                   </div>
 
-                  <div className="shrink-0 lg:border-l lg:pl-6">
+                  <div className="flex items-center border-t p-5 lg:border-t-0 lg:border-l">
                     <Button
-                      className="w-full lg:w-40"
+                      className="h-11 w-full"
                       disabled={mutation.isPending}
                       onClick={() => mutation.mutate(evaluation.evaluationId)}
                     >
@@ -207,5 +213,29 @@ export function AssignableEvaluationsPage() {
         </DialogContent>
       </Dialog>
     </main>
+  )
+}
+
+function AssignmentMeta({
+  icon: Icon,
+  label,
+  value,
+  emphasis = false,
+}: {
+  icon: typeof CalendarDays
+  label: string
+  value: string
+  emphasis?: boolean
+}) {
+  return (
+    <div className="min-w-0 py-3 first:pt-0 last:pb-0 sm:px-4 sm:py-0 sm:first:pl-0 sm:last:pr-0">
+      <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
+        <Icon className="size-3.5" />
+        {label}
+      </p>
+      <p className={`mt-2 break-words text-sm leading-5 ${emphasis ? 'font-semibold' : 'font-medium'}`}>
+        {value}
+      </p>
+    </div>
   )
 }
