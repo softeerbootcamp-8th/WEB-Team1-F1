@@ -14,6 +14,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
+    boolean existsByPhone(String phone);
+
     // 알림 발행이 식별자만 받으므로 엔티티를 읽지 않는다
     @Query("select u.id from User u where u.role = :role")
     List<Long> findIdsByRole(@Param("role") Role role);
