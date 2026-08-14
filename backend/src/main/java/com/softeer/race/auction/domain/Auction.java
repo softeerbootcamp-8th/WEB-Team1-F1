@@ -77,6 +77,7 @@ public class Auction extends BaseTimeEntity {
      * 시작 시각으로부터 방 개설 시각과 마감 시각을 계산해 예약 상태의 경매를 만든다
      */
     public static Auction schedule(AuctionPost post, long startPrice, LocalDateTime startTime) {
+        validateStartPrice(startPrice);
         validateStartTime(startTime, post.getPublishedAt());
 
         Auction auction = new Auction();
@@ -89,6 +90,12 @@ public class Auction extends BaseTimeEntity {
         auction.status = AuctionStatus.SCHEDULED;
 
         return auction;
+    }
+
+    private static void validateStartPrice(long startPrice) {
+        if (startPrice > 1_000_000_000_000L) {
+            throw new BusinessException(AuctionErrorCode.INVALID_START_PRICE);
+        }
     }
 
     // 발행 직후 시작하는 경매를 막기 위해, 발행 시각으로부터 최소 리드타임을 요구한다
@@ -217,6 +224,7 @@ public class Auction extends BaseTimeEntity {
         if (!isEditableAt(now)) {
             throw new BusinessException(AuctionErrorCode.AUCTION_ROOM_ALREADY_OPEN);
         }
+        validateStartPrice(startPrice);
         // 리드타임 기준은 발행 시각이 아니라 지금이다. publishedAt은 과거에 고정된 값이라
         // 그대로 쓰면 발행 후 시간이 오래 지난 뒤에는 리드타임 없이 임박한 시각으로도 바꿀 수 있게 된다.
         validateStartTime(startTime, now);
