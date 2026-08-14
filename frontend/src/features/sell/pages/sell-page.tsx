@@ -61,44 +61,50 @@ export function SellPage() {
 
   return (
     <main
-      className="mx-auto h-[calc(100svh-var(--spacing-header))] max-w-5xl overflow-hidden px-6 pt-14 pb-6"
+      className="relative h-[calc(100svh-var(--spacing-header))] overflow-hidden bg-[#101820]"
       aria-label="내 차 팔기"
     >
-      <header>
-        <h1 className="text-3xl font-semibold md:text-4xl">
-          차량 정보로 판매 준비를 시작하세요.
-        </h1>
-      </header>
+      {/* 화면 전체 배경이라 사진은 장식이 된다, alt 를 비운다 */}
+      <img
+        src={sellHero}
+        alt=""
+        aria-hidden
+        fetchPriority="high"
+        className="absolute inset-0 size-full object-cover object-[center_66%]"
+      />
+      {/* 위는 흰 제목, 아래는 흰 카드가 놓이므로 양끝을 눌러 대비를 만든다 */}
+      <div
+        className="absolute inset-0 bg-linear-to-b from-black/45 via-black/10 to-black/40"
+        aria-hidden
+      />
 
-      <div className="relative mt-5 h-[clamp(8rem,20svh,13rem)] overflow-hidden rounded-2xl bg-[#101820]">
-        <img
-          src={sellHero}
-          alt="사막을 달리는 차량"
-          fetchPriority="high"
-          className="size-full object-cover object-[center_66%]"
-        />
-        <div
-          className="pointer-events-none absolute inset-0 bg-linear-to-r from-black/15 via-transparent to-transparent"
-          aria-hidden
-        />
+      <div className="relative mx-auto flex h-full max-w-5xl flex-col px-6 pt-14 pb-[90px]">
+        <header>
+          <h1 className="text-3xl font-semibold text-white md:text-4xl">
+            차량 정보로 판매 준비를 시작하세요.
+          </h1>
+        </header>
+
+        {/* 흰 카드는 제목과 같은 열을 쓴다, 좌우 끝이 제목 블록에 맞도록 컨테이너 폭을 그대로 채운다.
+            입력 열은 465px 로 묶어 두므로 넓어진 만큼은 흰 여백이 된다 */}
+        <section
+          aria-label="판매 차량 확인"
+          className="mt-auto w-full rounded-2xl border border-black/8 bg-white px-[54px] py-6 shadow-[0_24px_60px_rgba(15,23,42,0.45)] md:px-[62px] md:py-8"
+        >
+          <VehicleOwnerForm
+            actionLabel="방문견적 예약하기"
+            initialValues={prefill ?? undefined}
+            isSubmitting={isLookingUp}
+            onSubmit={reserveVisitQuote}
+            className="max-w-[465px]"
+          />
+          {duplicateMessage && (
+            <p className="text-destructive mx-auto mt-4 max-w-[465px] text-sm" role="alert">
+              {duplicateMessage}
+            </p>
+          )}
+        </section>
       </div>
-
-      <section
-        aria-label="판매 차량 확인"
-        className="mx-auto mt-5 w-full max-w-3xl rounded-2xl border border-black/8 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.1)] md:px-12 lg:px-16"
-      >
-        <VehicleOwnerForm
-          actionLabel="방문견적 예약하기"
-          initialValues={prefill ?? undefined}
-          isSubmitting={isLookingUp}
-          onSubmit={reserveVisitQuote}
-        />
-        {duplicateMessage && (
-          <p className="text-destructive mx-auto mt-4 max-w-sm text-sm" role="alert">
-            {duplicateMessage}
-          </p>
-        )}
-      </section>
     </main>
   )
 }
