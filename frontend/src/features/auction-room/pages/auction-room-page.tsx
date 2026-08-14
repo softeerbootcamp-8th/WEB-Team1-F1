@@ -217,8 +217,10 @@ function LiveRoom({
         flashKey={flashKey}
       />
 
-      {/* 차량과 호가창을 갈라 세 칸으로 둔다, 둘이 한 칸을 다투면 입찰 패널이 첫 화면 밖으로 밀린다 */}
-      <div className="grid gap-5 lg:grid-cols-[1.05fr_1fr_360px]">
+      {/* 차량과 호가창을 갈라 세 칸으로 둔다, 둘이 한 칸을 다투면 입찰 패널이 첫 화면 밖으로 밀린다.
+          오른쪽 칸은 세는 값과 입찰 폼만 들어와 넓이가 남았다, 줄여서 사진과 호가창에 넘긴다.
+          가운데 칸은 이름 넉 자에 표식 둘이 다 붙은 줄이 안 접히는 폭에서 멈춘다 */}
+      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr_350px]">
         <CarDetail vehicle={room.vehicle} />
 
         <div className="rounded-xl border p-5">

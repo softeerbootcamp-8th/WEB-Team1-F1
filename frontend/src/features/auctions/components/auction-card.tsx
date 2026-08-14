@@ -7,7 +7,7 @@ import { CarThumb } from '@/components/common/car-thumb'
 import { StatusBadge } from '@/components/common/status-badge'
 import { Countdown } from '@/components/common/countdown'
 import { formatManwon, formatMileage } from '@/lib/format'
-import { badgeStatusAt } from '@/lib/auction'
+import { badgeStatusAt, hasWinningPrice } from '@/lib/auction'
 import type { AuctionBadgeStatus } from '@/types/domain'
 import { VehicleKeywordBadge } from '@/features/quote/components/vehicle-keyword-badge'
 import { MANUFACTURER_LABEL } from '@/features/quote/types'
@@ -60,7 +60,11 @@ export function AuctionCard({
   const isLive = status === 'LIVE'
   // 입장 여부와 상관없이 아직 입찰 전이라 값은 똑같이 시작가를 보여준다
   const isBeforeStart = status === 'NOT_OPEN' || status === 'WAITING'
-  const priceLabel = isLive ? '현재가' : status === 'ENDED' ? '낙찰가' : '시작가'
+  const priceLabel = isLive
+    ? '현재가'
+    : status === 'ENDED' && hasWinningPrice(auction)
+      ? '낙찰가'
+      : '시작가'
   const price = isBeforeStart ? auction.startPrice : auction.currentPrice
 
   const preview =

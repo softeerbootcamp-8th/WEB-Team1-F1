@@ -233,15 +233,17 @@ export function AuctionPreviewDialog({
 
             {/* 진단서는 사실 하나가 아니라 나가는 문이라 오른쪽 끝에 둔다, 줄이 좁으면 밑으로 접힌다 */}
             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t px-4 py-2.5 text-base">
-              {/* 두 단계 모두 값이 셋이라 같은 자리에 세운다, 미리보기를 옮겨 봐도 눈이 같은 곳을 읽는다 */}
-              <dl className="text-muted-foreground flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              {/* 두 단계 모두 값이 셋이라 같은 자리에 세운다, 미리보기를 옮겨 봐도 눈이 같은 곳을 읽는다.
+                  한 줄에 설 때는 표가 자기 상자를 버리고 값들을 바깥 줄에 직접 세운다 — 표가 상자로
+                  남으면 값끼리의 간격만 자기 안에서 정해져, 마지막 값과 진단서 버튼 사이만 좁아진다 */}
+              <dl className="text-muted-foreground flex min-w-0 flex-1 flex-col gap-2 sm:contents">
                 {loaded === 'NOT_OPEN' ? (
                   <>
                     {openAt && <Fact label="경매방 입장" value={formatClock(openAt)} />}
                     <FactDivider />
                     {startAt && <Fact label="경매 시작" value={formatClock(startAt)} />}
                     <FactDivider />
-                    {card && <Fact label="마감" value={formatClock(card.endAt)} />}
+                    {card && <Fact label="경매 마감" value={formatClock(card.endAt)} />}
                   </>
                 ) : (
                   <>
@@ -331,9 +333,10 @@ function FactDivider() {
   return <div className="bg-border hidden h-4 w-px shrink-0 sm:block" aria-hidden />
 }
 
-/** 시작가 대비 낙찰가 상승률. 유찰이면 오른 값이 없다 */
+/** 시작가 대비 낙찰가 상승률. 유찰이면 오르지 않았으므로 옆의 두 값과 같은 꼴로 0을 적는다 */
 function riseRate(result: RoomResultView | null): string {
-  if (result === null || result.winningPrice === null) return '—'
+  if (result === null) return '—'
+  if (result.winningPrice === null) return '0.0%'
   const rate = ((result.winningPrice - result.startPrice) / result.startPrice) * 100
   return `+${rate.toFixed(1)}%`
 }

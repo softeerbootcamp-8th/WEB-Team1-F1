@@ -14,13 +14,18 @@ vi.mock('@/features/auth/auth-context', () => ({
 
 const NOW = Date.now()
 
-function renderPanel(endAt: string) {
+function renderPanel(
+  endAt: string,
+  overrides: { sellerIsMine?: boolean; increment?: number | null; nextMin?: number | null } = {},
+) {
+  const { sellerIsMine = false, increment = 100_000, nextMin = 10_100_000 } = overrides
+
   return render(
     <BidPanel
       currentPrice={10_000_000}
-      increment={100_000}
-      nextMin={10_100_000}
-      sellerIsMine={false}
+      increment={increment}
+      nextMin={nextMin}
+      sellerIsMine={sellerIsMine}
       endAt={endAt}
       clockOffset={0}
       onBid={vi.fn()}
@@ -42,5 +47,28 @@ describe('BidPanel', () => {
 
     expect(screen.getByText('입찰이 마감됐습니다')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /원 입찰$/ })).toBeNull()
+  })
+
+  // 마감과 달리 기다린다고 열리지 않는다, 이 사람에게 호가 단위와 최소 입찰가는 쓸 데가 없다
+  it('자기 차량을 보는 판매자에게는 최소 입찰가 안내까지 감춘다', () => {
+    renderPanel(new Date(NOW + 60_000).toISOString(), { sellerIsMine: true })
+
+    expect(screen.getByText('내가 내놓은 차량입니다')).toBeTruthy()
+    expect(screen.queryByText(/최소 입찰가/)).toBeNull()
+  })
+
+  // 안내할 값이 아직 없다, 빈 자리를 줄표로 채워 보여 주지 않는다
+  it('호가 단위를 받기 전에는 안내 문구만 남긴다', () => {
+    renderPanel(new Date(NOW + 60_000).toISOString(), { increment: null, nextMin: null })
+
+    expect(screen.getByText('호가 단위를 불러오는 중입니다.')).toBeTruthy()
+    expect(screen.queryByText(/최소 입찰가/)).toBeNull()
+  })
+
+  // 로그인이나 다음 경매로 열릴 수 있는 갈래라 바닥 줄을 남긴다
+  it('마감된 경매에는 최소 입찰가 안내를 남긴다', () => {
+    renderPanel(new Date(NOW - 1_000).toISOString())
+
+    expect(screen.getByText(/최소 입찰가/)).toBeTruthy()
   })
 })
