@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { PricePoint, RoomResultView } from '@/features/auction-room/types'
 
-import { curveShapeOf, viewerStandingOf } from './result'
+import { curveShapeOf, dealListPathOf, viewerStandingOf } from './result'
 
 const START_AT = '2026-08-03T10:45:00'
 const END_AT = '2026-08-03T11:05:00'
@@ -81,6 +81,18 @@ describe('viewerStandingOf', () => {
 
     expect(viewerStandingOf(result({ ...unsold, sellerIsMine: true }))).toBe('SELLER')
     expect(viewerStandingOf(result({ ...unsold }))).toBe('ONLOOKER')
+  })
+})
+
+describe('dealListPathOf', () => {
+  it('판매자와 낙찰자를 각자의 거래 내역으로 보낸다', () => {
+    expect(dealListPathOf('SELLER')).toBe('/mypage/sales')
+    expect(dealListPathOf('WON')).toBe('/mypage/purchases')
+  })
+
+  it('거래가 없는 미낙찰 사용자와 구경꾼은 거래 내역 링크가 없다', () => {
+    expect(dealListPathOf('LOST')).toBeNull()
+    expect(dealListPathOf('ONLOOKER')).toBeNull()
   })
 })
 

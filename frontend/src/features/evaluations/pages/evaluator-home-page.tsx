@@ -130,19 +130,19 @@ export function EvaluatorHomePage() {
                 <CardContent className="relative flex flex-1 items-center bg-[#f6f6f4] px-7 py-8">
                   <div className="grid w-full grid-cols-3 gap-4">
                     <StatusCount
-                      label="평가 수락"
+                      label="평가 진행 중"
                       count={summary.pendingCount}
                       loading={assignmentsQuery.isLoading}
                       icon={ClipboardCheck}
                     />
                     <StatusCount
-                      label="승인 처리"
+                      label="차량 진단 완료"
                       count={summary.approvedCount}
                       loading={assignmentsQuery.isLoading}
                       icon={CheckCircle2}
                     />
                     <StatusCount
-                      label="반려 처리"
+                      label="진단 반려"
                       count={summary.rejectedCount}
                       loading={assignmentsQuery.isLoading}
                       icon={XCircle}

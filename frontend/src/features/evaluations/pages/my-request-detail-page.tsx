@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   CalendarDays,
   CarFront,
+  CircleCheckBig,
   FileText,
   Gavel,
   LoaderCircle,
@@ -16,11 +17,11 @@ import { EmptyState } from '@/components/common/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { VehicleKeywordBadge } from '@/features/quote/components/vehicle-keyword-badge'
 import {
   FUEL_TYPE_LABEL,
   MANUFACTURER_LABEL,
   TRANSMISSION_LABEL,
-  VEHICLE_KEYWORD_LABEL,
 } from '@/features/quote/types'
 import { getErrorMessage } from '@/lib/axios'
 import { formatDateTime, formatKRW, formatMileage } from '@/lib/format'
@@ -100,8 +101,16 @@ export function MyRequestDetailPage() {
           <p className="text-muted-foreground mt-2">{detail.modelYear}년식 · {detail.plateNumber}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Badge variant="outline" className={status.className}>{status.label}</Badge>
-          {auctionMeta && <Badge variant="outline" className={auctionMeta.className}>{auctionMeta.label}</Badge>}
+          <Badge
+            variant="outline"
+            className={isDiagnosed
+              ? `rounded-md px-5 py-3 text-base font-bold shadow-sm md:px-6 md:py-4 md:text-lg [&>svg]:size-5 md:[&>svg]:size-6 ${status.className}`
+              : `rounded-md px-3 py-1.5 text-sm font-semibold ${status.className}`}
+          >
+            {isDiagnosed && <CircleCheckBig />}
+            {status.label}
+          </Badge>
+          {auctionMeta && <Badge variant="outline" className={`rounded-full px-3 py-1 text-sm font-semibold ${auctionMeta.className}`}>{auctionMeta.label}</Badge>}
         </div>
       </header>
 
@@ -119,11 +128,18 @@ export function MyRequestDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><UserRound />평가사 배정</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserRound />{isDiagnosed ? '진단 평가사' : '평가사 배정'}
+              </CardTitle>
+            </CardHeader>
             <CardContent className="text-sm">
               {assigned ? (
                 <div className="space-y-3">
-                  <p><strong>{detail.evaluatorName}</strong> 평가사가 방문할 예정입니다.</p>
+                  <p>
+                    <strong>{detail.evaluatorName}</strong> 평가사가{' '}
+                    {isDiagnosed ? '차량 진단을 완료했습니다.' : '방문할 예정입니다.'}
+                  </p>
                   <a className="inline-flex items-center gap-2 font-medium underline-offset-4 hover:underline" href={`tel:${detail.contactPhone}`}><Phone className="size-4" />신청 연락처 {formatPhone(detail.contactPhone)}</a>
                 </div>
               ) : (
@@ -157,7 +173,7 @@ export function MyRequestDetailPage() {
                   <p className="mb-2 text-sm font-medium">차량 상태</p>
                   <div className="flex flex-wrap gap-1.5">
                     {detail.keywords.map((keyword) => (
-                      <Badge key={keyword} variant="secondary">{VEHICLE_KEYWORD_LABEL[keyword]}</Badge>
+                      <VehicleKeywordBadge key={keyword} keyword={keyword} />
                     ))}
                   </div>
                 </div>
@@ -175,7 +191,7 @@ export function MyRequestDetailPage() {
               {isDiagnosed && detail.diagnosticReportUrl && (
                 <Button asChild variant="outline" className="mt-6"><a href={detail.diagnosticReportUrl} target="_blank" rel="noreferrer"><FileText />진단서 PDF 보기</a></Button>
               )}
-              {isDiagnosed && detail.submittedAt && <p className="text-muted-foreground mt-4 text-xs">{formatDateTime(detail.submittedAt)} 진단 완료</p>}
+              {isDiagnosed && detail.submittedAt && <p className="text-muted-foreground mt-4 text-xs">{formatDateTime(detail.submittedAt)} 차량 진단 완료</p>}
             </CardContent>
           </Card>
 

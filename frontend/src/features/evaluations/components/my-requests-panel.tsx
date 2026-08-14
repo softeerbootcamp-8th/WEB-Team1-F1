@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ClipboardList, LoaderCircle } from 'lucide-react'
+import { ArrowRight, ClipboardList, LoaderCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { EmptyState } from '@/components/common/empty-state'
@@ -52,9 +52,13 @@ export function MyRequestsPanel() {
             evaluation={evaluation}
             layout="list"
             action={
-              <Button asChild variant={evaluation.status === 'APPROVED' ? 'default' : 'outline'} className="w-full">
+              <Button
+                asChild
+                className="h-11 w-full"
+              >
                 <Link to={`/mypage/evaluations/${evaluation.evaluationId}`}>
                   {evaluation.status === 'APPROVED' ? '진단 결과 확인' : '신청 상세 보기'}
+                  <ArrowRight />
                 </Link>
               </Button>
             }

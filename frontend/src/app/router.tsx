@@ -64,13 +64,15 @@ export function AppRouter() {
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/mypage/evaluations" element={<MyPage />} />
           <Route path="/mypage/deals" element={<MyPage />} />
+          <Route path="/mypage/sales" element={<MyPage />} />
+          <Route path="/mypage/purchases" element={<MyPage />} />
           <Route path="/mypage/auctions" element={<Navigate to="/mypage/evaluations" replace />} />
           <Route path="/mypage/evaluations/:evaluationId" element={<MyRequestDetailPage />} />
           {/* 알림 딥링크의 목적지. 서버 NotificationType 의 링크와 한 쌍이다 */}
           <Route path="/mypage/deals/:dealId" element={<DealDetailPage />} />
 
           {/* 옛 주소. 어딘가에 복사돼 있을 수 있어 남긴다 */}
-          <Route path="/deals" element={<Navigate to="/mypage/deals" replace />} />
+          <Route path="/deals" element={<Navigate to="/mypage/purchases" replace />} />
           <Route path="/deals/:dealId" element={<LegacyDealRedirect />} />
         </Route>
         <Route path="*" element={<NotFound />} />

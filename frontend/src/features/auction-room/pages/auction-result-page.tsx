@@ -15,7 +15,7 @@ import { BackLink } from '../components/back-link'
 import { CarDetail } from '../components/car-detail'
 import { KeywordBadges } from '../components/keyword-badges'
 import { PriceCurve } from '../components/price-curve'
-import { curveShapeOf, viewerStandingOf } from '../result'
+import { curveShapeOf, dealListPathOf, viewerStandingOf } from '../result'
 import { useAuctionResult } from '../use-auction-result'
 
 /**
@@ -170,6 +170,7 @@ function ViewingBadge({ result }: { result: RoomResultView }) {
 function Headline({ result }: { result: RoomResultView }) {
   const { user } = useAuth()
   const standing = viewerStandingOf(result)
+  const dealListPath = dealListPathOf(standing)
   const unsold = result.outcome === 'UNSOLD'
 
   const gap =
@@ -256,7 +257,7 @@ function Headline({ result }: { result: RoomResultView }) {
             </Button>
           ) : (
             <Button asChild>
-              <Link to="/mypage/deals">거래 진행하기</Link>
+              <Link to={dealListPath!}>거래 진행하기</Link>
             </Button>
           )
         ) : (
@@ -266,7 +267,7 @@ function Headline({ result }: { result: RoomResultView }) {
             </Button>
             {standing === 'WON' && (
               <Button asChild>
-                <Link to="/mypage/deals">거래 진행하기</Link>
+                <Link to={dealListPath!}>거래 진행하기</Link>
               </Button>
             )}
           </>
