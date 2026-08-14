@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { LoaderCircle, Search } from 'lucide-react'
 import { toast } from 'sonner'
 
+import quoteHero from '@/assets/quote-hero-v1.png'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -66,22 +67,29 @@ export function PriceQuotePage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-14" aria-label="내 차 시세 조회">
+    <main
+      className="mx-auto h-[calc(100svh-var(--spacing-header))] max-w-5xl overflow-hidden px-6 pt-14 pb-6"
+      aria-label="내 차 시세 조회"
+    >
       <header>
-        <h1 className="text-3xl font-semibold md:text-4xl lg:text-5xl lg:whitespace-nowrap">
+        <h1 className="text-3xl font-semibold md:text-4xl">
           {vehicle
             ? '주행거리 입력'
             : '내 차량 시세 정보를 확인해 보세요'}
         </h1>
-        <p className="text-muted-foreground mt-3 text-lg leading-8">
-          {vehicle
-            ? '확인된 차량에 현재 주행거리를 반영해 예상 시세를 계산합니다.'
-            : '차량 소유자 이름과 번호판으로 차량 정보를 먼저 확인합니다.'}
-        </p>
       </header>
 
+      <div className="relative mt-5 h-[clamp(8rem,20svh,13rem)] overflow-hidden rounded-2xl bg-slate-200">
+        <img
+          src={quoteHero}
+          alt="도심 교량을 달리는 차량"
+          fetchPriority="high"
+          className="size-full object-cover object-[center_58%]"
+        />
+      </div>
+
       {vehicle && owner ? (
-        <section className="mt-12 rounded-2xl border p-7 md:p-8">
+        <section className="mt-5 rounded-2xl border p-6 shadow-[0_18px_50px_rgba(15,23,42,0.1)] md:p-8">
           <VehicleSummary
             vehicle={vehicle}
             balancedRows
@@ -127,7 +135,7 @@ export function PriceQuotePage() {
           </VehicleSummary>
         </section>
       ) : (
-        <div className="mx-auto mt-12 w-full max-w-5xl rounded-2xl border p-7 md:px-12 md:py-10 lg:px-16">
+        <div className="mx-auto mt-5 w-full max-w-3xl rounded-2xl border p-6 shadow-[0_18px_50px_rgba(15,23,42,0.1)] md:px-12 lg:px-16">
           <VehicleOwnerForm
             actionLabel="차량 정보 확인"
             actionIcon={Search}

@@ -3,6 +3,7 @@ import { isAxiosError } from 'axios'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import sellHero from '@/assets/sell-hero-wide-v2.jpg'
 import { precheckVisitQuote } from '@/features/sell/api'
 import {
   VehicleOwnerForm,
@@ -59,17 +60,33 @@ export function SellPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-14" aria-label="내 차 팔기">
+    <main
+      className="mx-auto h-[calc(100svh-var(--spacing-header))] max-w-5xl overflow-hidden px-6 pt-14 pb-6"
+      aria-label="내 차 팔기"
+    >
       <header>
-        <h1 className="text-3xl font-semibold md:text-4xl lg:text-5xl lg:whitespace-nowrap">
+        <h1 className="text-3xl font-semibold md:text-4xl">
           차량 정보로 판매 준비를 시작하세요.
         </h1>
-        <p className="text-muted-foreground mt-3 text-lg leading-8">
-          차량 정보를 확인한 뒤 평가사 방문견적 신청으로 이어집니다.
-        </p>
       </header>
 
-      <div className="mx-auto mt-12 w-full max-w-5xl rounded-2xl border p-7 md:px-12 md:py-10 lg:px-16">
+      <div className="relative mt-5 h-[clamp(8rem,20svh,13rem)] overflow-hidden rounded-2xl bg-[#101820]">
+        <img
+          src={sellHero}
+          alt="사막을 달리는 차량"
+          fetchPriority="high"
+          className="size-full object-cover object-[center_66%]"
+        />
+        <div
+          className="pointer-events-none absolute inset-0 bg-linear-to-r from-black/15 via-transparent to-transparent"
+          aria-hidden
+        />
+      </div>
+
+      <section
+        aria-label="판매 차량 확인"
+        className="mx-auto mt-5 w-full max-w-3xl rounded-2xl border border-black/8 bg-white p-6 shadow-[0_18px_50px_rgba(15,23,42,0.1)] md:px-12 lg:px-16"
+      >
         <VehicleOwnerForm
           actionLabel="방문견적 예약하기"
           initialValues={prefill ?? undefined}
@@ -77,11 +94,11 @@ export function SellPage() {
           onSubmit={reserveVisitQuote}
         />
         {duplicateMessage && (
-          <p className="text-destructive mt-4 text-sm" role="alert">
+          <p className="text-destructive mx-auto mt-4 max-w-sm text-sm" role="alert">
             {duplicateMessage}
           </p>
         )}
-      </div>
+      </section>
     </main>
   )
 }

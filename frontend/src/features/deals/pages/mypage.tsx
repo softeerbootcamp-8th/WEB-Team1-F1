@@ -59,7 +59,7 @@ export function MyPage() {
   return (
     <main aria-label="마이페이지" className="mx-auto max-w-5xl px-6 py-10">
       <header className="mb-8 flex items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+        <h1 className="text-3xl font-semibold md:text-4xl">
           {user.realName}
         </h1>
         <Badge variant="outline">{ROLE_LABEL[user.role]} 회원</Badge>
@@ -70,7 +70,7 @@ export function MyPage() {
         onValueChange={(next) => navigate(`/mypage/${next}`, { replace: true })}
       >
         <TabsList>
-          <TabsTrigger value="evaluations">진단 신청</TabsTrigger>
+          <TabsTrigger value="evaluations">진단 신청 내역</TabsTrigger>
           <TabsTrigger value="sales">판매 내역</TabsTrigger>
           <TabsTrigger value="purchases">구매 내역</TabsTrigger>
         </TabsList>

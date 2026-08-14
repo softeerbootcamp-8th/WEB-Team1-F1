@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LoaderCircle } from 'lucide-react'
+import { Home, LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/common/empty-state'
@@ -290,6 +290,12 @@ export function EvaluatorConnectionPage() {
                   <dd className="mt-1 font-medium">{result.visitAddress}</dd>
                 </div>
               </dl>
+              <Button asChild variant="outline" size="lg" className="mt-6 w-full">
+                <Link to="/">
+                  <Home className="size-4" />
+                  홈으로 가기
+                </Link>
+              </Button>
             </>
           ) : (
               <form className="contents" onSubmit={submit}>

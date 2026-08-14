@@ -1,16 +1,7 @@
-import { useEffect, useRef, type CSSProperties } from 'react'
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  ArrowRight,
-  BadgeCheck,
-  CarFront,
-  ChartNoAxesCombined,
-  Gavel,
-  Search,
-  ShieldCheck,
-} from 'lucide-react'
+import { ArrowRight, CarFront, Gavel, Search, Trophy } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import { CinematicCarBackdrop } from '@/components/common/cinematic-car-backdrop'
 import { useScrollReveal } from '@/hooks/use-scroll-reveal'
 
@@ -85,95 +76,204 @@ export function HomePage() {
         />
         <div className="absolute inset-0 -z-10 bg-linear-to-r from-black/95 via-black/70 to-black/20 md:via-black/55" />
         <div className="absolute inset-0 -z-10 bg-linear-to-t from-black/80 via-transparent to-black/20" />
-        <div className="relative mx-auto flex min-h-[max(680px,100svh)] max-w-7xl flex-col justify-center px-6 pt-28 pb-24 md:pt-32 md:pb-28">
-          <p className="hero-enter hero-enter-1 mb-7 flex items-center gap-4 text-lg font-semibold text-white/85 md:text-xl">
-            <span className="h-px w-12 bg-white/55" aria-hidden />
-            중고차 실시간 경매
+        <div className="relative mx-auto flex min-h-[max(680px,100svh)] max-w-7xl -translate-y-16 flex-col justify-center px-6 pt-28 pb-24 md:-translate-y-20 md:pt-32 md:pb-28">
+          <p className="hero-enter hero-enter-1 mb-7 flex items-center gap-4 text-xl font-semibold text-white/85 md:text-2xl">
+            Realtime Auction Car Exchange
           </p>
           <h1 className="hero-enter hero-enter-2 max-w-6xl text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.04em] sm:text-5xl md:text-7xl lg:whitespace-nowrap">
-            <span className="block lg:inline">내 차를 경매로</span>{' '}
-            <span className="block lg:inline">팔아보세요</span>
+            <span className="block lg:inline">누구나 사고 팔 수 있는</span>{' '}
+            <span className="block lg:inline">중고차 경매</span>
           </h1>
-          <p className="hero-enter hero-enter-4 mt-7 max-w-xl text-base leading-7 text-white/75 md:text-lg">
-            평가사가 차량 상태를 확인하면 검증된 구매자가 실시간으로
-            입찰합니다. 시세 조회와 판매 신청도 바로 시작할 수 있습니다.
+          <p className="hero-enter hero-enter-4 mt-7 max-w-xl text-lg leading-7 text-white/75 md:text-xl">
+            <span className="block">
+              평가사가 검증한 차량을 모두가 실시간으로 입찰할 수 있습니다.
+            </span>
+            <span className="block">
+              모든 입찰 내역이 투명한 경매를 경험해보세요.
+            </span>
           </p>
-          <div className="hero-enter hero-enter-5 mt-10 flex flex-wrap gap-3">
-            <Button
-              size="xl"
-              variant="secondary"
-              className="home-cta-fill group/cta"
-              asChild
-            >
-              <Link to="/sell">
-                내 차 팔기
-                <ArrowRight className="size-4 transition-transform duration-300 group-hover/cta:translate-x-1" />
-              </Link>
-            </Button>
-            <Button
-              size="xl"
-              variant="outline"
-              className="group/cta border-white/25 bg-black/25 text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white/50 hover:bg-white/10 hover:text-white"
-              asChild
-            >
-              <Link to="/quote">
-                시세 조회
-                <ArrowRight className="size-4 transition-transform duration-300 group-hover/cta:translate-x-1" />
-              </Link>
-            </Button>
-          </div>
         </div>
       </section>
 
-      <section id="why-race" className="bg-[#f0f0ed]">
-        <div className="mx-auto grid max-w-7xl gap-12 px-6 py-24 lg:grid-cols-[0.9fr_1.1fr] lg:py-32">
-          <div data-reveal>
-            <p className="text-muted-foreground text-sm font-medium">
-              판매 과정
-            </p>
-            <h2 className="mt-4 text-3xl leading-tight font-semibold md:text-5xl">
-              차량을 확인하고,
-              <br />
-              입찰로 가격을 정합니다
+      <section
+        id="selling-process"
+        aria-label="RACE 차량 판매 과정"
+        className="bg-[#f3f6f8]"
+      >
+        <div className="mx-auto w-full max-w-7xl px-6 py-20 lg:py-24">
+          <div className="mb-10 max-w-2xl" data-reveal>
+            <h2 className="text-3xl font-semibold md:text-5xl">
+              방문부터 거래까지
             </h2>
           </div>
-          <div className="grid gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-2">
-            <Value
-              icon={BadgeCheck}
-              title="평가사가 직접 확인"
-              description="차량 상태와 핵심 정보를 현장에서 확인합니다."
-              delay={0}
-            />
-            <Value
-              icon={ChartNoAxesCombined}
-              title="입찰로 정해지는 가격"
-              description="검증된 구매자의 입찰로 판매 가격이 결정됩니다."
-              delay={80}
-            />
-            <Value
-              icon={ShieldCheck}
-              title="공개되는 입찰 과정"
-              description="현재가와 입찰 흐름을 같은 기준으로 확인합니다."
-              delay={160}
-            />
-            <Value
-              icon={CarFront}
-              title="낙찰 후 거래까지"
-              description="판매 신청부터 낙찰 이후 거래 단계까지 이어집니다."
-              delay={240}
-            />
+          <div
+            data-reveal
+            className="grid w-full gap-6 md:grid-cols-2 xl:grid-cols-4"
+          >
+          <ProcessCard
+            step="1"
+            title="원하는 곳, 방문 평가"
+            description={
+              <>
+                원하는 일정에 평가사가 방문
+                <br />
+                차량 진단부터 경매 등록까지
+              </>
+            }
+          >
+            <div className="rounded-xl border border-slate-200 bg-white px-5 pt-5 pb-10 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <p className="text-[0.65rem] font-medium tracking-widest text-slate-400">
+                    방문 희망일
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-800">
+                    언제 방문드릴까요?
+                  </p>
+                </div>
+                <span className="flex size-8 items-center justify-center rounded-full bg-[#202225] text-xs text-white">
+                  14
+                </span>
+              </div>
+              <p className="mt-5 text-center text-xs font-semibold text-slate-500">
+                2026년 8월
+              </p>
+              <div className="mt-4 grid grid-cols-7 gap-y-3 text-center text-[0.65rem] text-slate-400">
+                {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
+                  <span key={day}>{day}</span>
+                ))}
+                {[10, 11, 12, 13, 14, 15, 16].map((date) => (
+                  <span
+                    key={date}
+                    className={
+                      date === 14
+                        ? 'mx-auto flex size-7 items-center justify-center rounded-full bg-[#202225] text-white shadow-sm ring-2 ring-[#c8cbce] ring-offset-2'
+                        : 'flex h-7 items-center justify-center text-slate-700'
+                    }
+                  >
+                    {date}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </ProcessCard>
+
+          <ProcessCard
+            step="2"
+            title="20분 실시간 경매"
+            description={
+              <>
+                언제 어디서나 실시간 경매 참여
+                <br />
+                현재가와 호가를 바로 확인
+              </>
+            }
+          >
+            <div className="-mx-2 flex items-center justify-between px-1">
+              <p className="text-sm font-semibold text-slate-800">호가창</p>
+              <p className="text-xs text-slate-400">
+                총 <span className="font-medium text-slate-700">18</span>건 입찰
+              </p>
+            </div>
+            <ul className="-mx-2 mt-3 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              {[
+                ['김*인', '5,230만원', '오전', '11:24'],
+                ['이*민', '5,210만원', '오전', '11:22'],
+                ['박*수', '5,190만원', '오전', '11:20'],
+                ['최*호', '5,170만원', '오전', '11:18'],
+                ['정*우', '5,150만원', '오전', '11:16'],
+              ].map(([name, price, period, time], index) => (
+                <li
+                  key={`${name}-${price}`}
+                  className={`grid grid-cols-[auto_minmax(0,1fr)_2.25rem_auto_1.8rem] items-center gap-1.5 px-2.5 py-2 ${index === 0 ? 'bg-[#eef0ee]' : ''}`}
+                >
+                  <span className="rounded-full border border-slate-200 px-1.5 py-0.5 text-[0.55rem] text-slate-500">
+                    일반
+                  </span>
+                  <span className="truncate text-[0.68rem] font-semibold text-slate-800">
+                    {name}
+                  </span>
+                  <span className="flex justify-end">
+                    {index === 0 && (
+                      <span className="rounded-full bg-[#dfe3df] px-1.5 py-0.5 text-[0.5rem] font-semibold whitespace-nowrap text-[#39413b]">
+                        최고가
+                      </span>
+                    )}
+                  </span>
+                  <strong className="text-right text-[0.68rem] whitespace-nowrap text-slate-900">
+                    {price}
+                  </strong>
+                  <time className="flex flex-col items-end text-[0.52rem] leading-tight text-slate-400 tabular-nums">
+                    <span>{period}</span>
+                    <span>{time}</span>
+                  </time>
+                </li>
+              ))}
+            </ul>
+          </ProcessCard>
+
+          <ProcessCard
+            step="3"
+            title="최고가 자동 낙찰"
+            description={
+              <>
+                판매자 승낙을 기다리지 않고
+                <br />
+                최고 입찰가로 바로 확정
+              </>
+            }
+          >
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <span className="flex size-10 items-center justify-center rounded-full bg-[#202225] text-white">
+                  <Trophy className="size-5" aria-hidden />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-slate-900">
+                    차가 팔렸어요
+                  </p>
+                  <p className="mt-0.5 text-[0.65rem] text-slate-400">
+                    최고 입찰가로 낙찰 완료
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5">
+                <p className="text-[0.65rem] font-medium tracking-widest text-slate-400">
+                  최종 낙찰가
+                </p>
+                <p className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+                  5,230만원
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 rounded-md bg-[#202225] py-3 text-center text-xs font-semibold text-white shadow-sm">
+              거래 진행하기
+            </div>
+          </ProcessCard>
+
+          <article
+            className="flex h-[30rem] flex-col items-center justify-center rounded-xl border border-white/10 bg-linear-to-br from-[#34373a] via-[#181a1c] to-[#050606] px-8 py-10 text-center text-white shadow-[0_20px_50px_rgba(0,0,0,0.2)]"
+            >
+              <span className="text-6xl font-semibold tracking-[-0.05em] text-[#d8dadd]">
+                RACE
+              </span>
+              <h3 className="mt-8 text-2xl leading-tight font-semibold">
+                낙찰 이후 거래까지
+                <br />한 번에 이어집니다
+              </h3>
+              <p className="mt-5 text-base leading-7 text-[#b8bcc1]">
+                평가사 진단 · 등록 · 경매 · 거래
+              </p>
+            </article>
           </div>
         </div>
       </section>
 
-      <section className="bg-[#e4e4e0]">
-        <div className="mx-auto max-w-7xl px-6 py-24 lg:py-32">
-          <div className="mb-12 max-w-2xl" data-reveal>
-            <p className="text-muted-foreground text-sm font-medium">
+      <section className="bg-[#f7f5f0]">
+        <div className="mx-auto w-full max-w-7xl px-6 py-20 lg:py-24">
+          <div className="mb-10 max-w-2xl" data-reveal>
+            <h2 className="text-3xl font-semibold md:text-5xl">
               바로 시작하기
-            </p>
-            <h2 className="mt-4 text-3xl font-semibold md:text-5xl">
-              무엇을 도와드릴까요?
             </h2>
           </div>
           <div className="grid gap-4 lg:grid-cols-3">
@@ -217,28 +317,33 @@ export function HomePage() {
   )
 }
 
-function Value({
-  icon: Icon,
+function ProcessCard({
+  step,
   title,
   description,
-  delay,
+  children,
 }: {
-  icon: typeof ShieldCheck
+  step: string
   title: string
-  description: string
-  delay: number
+  description: ReactNode
+  children: ReactNode
 }) {
   return (
     <article
-      data-reveal
-      style={{ '--reveal-delay': `${delay}ms` } as CSSProperties}
-      className="home-value-card group bg-background p-7"
+      className="flex h-[30rem] flex-col overflow-hidden rounded-xl bg-white px-6 pt-8 shadow-[0_20px_50px_rgba(15,23,42,0.08)]"
     >
-      <Icon className="size-6" />
-      <h3 className="mt-8 text-lg font-semibold">{title}</h3>
-      <p className="text-muted-foreground mt-2 text-sm leading-6 transition-colors duration-500 group-hover:text-white/65">
+      <span className="flex size-7 items-center justify-center rounded bg-[#202225] text-sm font-semibold text-white shadow-sm ring-1 ring-[#5b5f63]">
+        {step}
+      </span>
+      <h3 className="mt-4 min-h-14 text-2xl leading-tight font-semibold tracking-[-0.04em]">
+        {title}
+      </h3>
+      <p className="mt-2 min-h-16 text-sm leading-6 text-slate-700">
         {description}
       </p>
+      <div className="mt-5 h-64 shrink-0 rounded-t-[1.75rem] bg-[#f5f7fa] px-5 pt-7 pb-6">
+        {children}
+      </div>
     </article>
   )
 }

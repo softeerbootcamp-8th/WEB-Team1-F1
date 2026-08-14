@@ -236,12 +236,11 @@ export function AuctionsPage() {
 
   return (
     // 조건 패널과 목록이 나란히 서는 화면이라 다른 페이지보다 넓게 쓴다.
-    <main aria-label="경매 목록" className="mx-auto max-w-[100rem] px-4 py-8 sm:px-6 sm:py-12">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold md:text-4xl">경매 목록</h1>
-        <p className="text-muted-foreground mt-3">
-          평가가 완료된 차량의 실시간 가격 형성 과정을 확인하세요.
-        </p>
+    <main aria-label="경매 목록" className="mx-auto max-w-[100rem] px-4 py-14 sm:px-6">
+      <header className="mb-5">
+        <h1 className="text-3xl font-semibold md:text-4xl">
+          경매 목록
+        </h1>
       </header>
 
       {/* 조건은 목록 옆에 세워 둔다. 좁은 화면에서는 붙일 자리가 없어 목록 위로 접힌다. */}

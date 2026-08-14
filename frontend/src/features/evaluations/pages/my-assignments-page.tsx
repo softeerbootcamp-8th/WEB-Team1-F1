@@ -20,9 +20,6 @@ export function MyAssignmentsPage() {
       <header className="mb-8 flex flex-wrap items-end justify-between gap-5">
         <div>
           <h1 className="text-3xl font-semibold md:text-4xl">내 담당 목록</h1>
-          <p className="text-muted-foreground mt-3">
-            판매자와 일정을 협의한 뒤 현장에서 진단 결과를 등록해 주세요.
-          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching}>
