@@ -58,7 +58,7 @@ export function getAuctionStatusMeta(status: EvaluationAuctionStatus) {
     return { label: '경매 예정', className: 'bg-warning/10 text-warning border-warning/20' }
   }
   if (status === 'IN_PROGRESS') {
-    return { label: '경매 진행 중', className: 'bg-primary/10 text-primary border-primary/20' }
+    return { label: '경매 진행 중', className: 'bg-warning/10 text-warning border-warning/20' }
   }
   if (status === 'ENDED') {
     return { label: '낙찰 완료', className: 'bg-success/10 text-success border-success/20' }
