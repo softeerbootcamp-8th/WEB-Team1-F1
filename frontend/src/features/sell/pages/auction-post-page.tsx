@@ -18,7 +18,7 @@ import {
   canRegisterAuction,
   getAuctionBlockReason,
 } from '@/features/evaluations/utils'
-import type { FuelType, Manufacturer, Transmission } from '@/features/quote/types'
+import type { FuelType, Manufacturer, Transmission, VehicleKeyword } from '@/features/quote/types'
 import { MANUFACTURER_LABEL } from '@/features/quote/types'
 import { createAuction } from '@/features/sell/api'
 import { SchedulePicker } from '@/features/sell/components/schedule-picker'
@@ -43,6 +43,8 @@ interface EvaluatedVehicle {
   transmission: Transmission
   mileage: number | null
   imageUrls: string[]
+  keywords: VehicleKeyword[]
+  diagnosticReportUrl: string | null
 }
 
 function formatStartAt(date: Date) {
@@ -175,7 +177,7 @@ function AuctionPostForm({ vehicle }: { vehicle: EvaluatedVehicle }) {
       // 출품한 차량이 아직 미출품으로 보이고, 등록 버튼도 그대로 열려 있다
       void queryClient.invalidateQueries({ queryKey: MY_REQUESTS_QUERY_KEY })
       toast.success('경매가 등록되었습니다')
-      navigate('/sell/result', { replace: true, state: result })
+      navigate('/sell/result', { replace: true, state: { ...result, vehicle } })
     },
     onError: (error) => {
       toast.error(
