@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AppNotification } from '@/types/domain'
+import { ASSIGNABLE_EVALUATIONS_QUERY_KEY } from '@/features/evaluations/query-keys'
 
 import { useNotifications } from './use-notifications'
 
@@ -57,15 +59,38 @@ const REQUESTED_NOTIFICATION: AppNotification = {
   createdAt: '2026-08-13T10:00:00',
 }
 
+const AUCTION_NOTIFICATION: AppNotification = {
+  id: 42,
+  type: 'AUCTION_STARTED',
+  message: '그랜저 IG 경매가 시작되었습니다.',
+  read: false,
+  link: '/auctions/3',
+  createdAt: '2026-08-13T10:01:00',
+}
+
+function testQueryClient() {
+  return new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+}
+
+function wrapper(initialEntry: string, queryClient: QueryClient) {
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[initialEntry]}>{children}</MemoryRouter>
+    </QueryClientProvider>
+  )
+}
+
 function renderNotifications(initialEntry = '/evaluations/my') {
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <MemoryRouter initialEntries={[initialEntry]}>{children}</MemoryRouter>
+  const queryClient = testQueryClient()
+
+  const hook = renderHook(
+    () => ({ notifications: useNotifications(), location: useLocation() }),
+    { wrapper: wrapper(initialEntry, queryClient) },
   )
 
-  return renderHook(
-    () => ({ notifications: useNotifications(), location: useLocation() }),
-    { wrapper },
-  )
+  return { ...hook, queryClient }
 }
 
 describe('useNotifications 의 새 방문 진단 신청 연동', () => {
@@ -142,6 +167,84 @@ describe('useNotifications 의 새 방문 진단 신청 연동', () => {
       REQUESTED_NOTIFICATION,
       expect.any(Function),
     )
+  })
+
+  it('새 신청 알림이 도착하면 열려 있는 배정 대기 목록을 다시 조회한다', async () => {
+    const fetchAssignable = vi.fn().mockResolvedValue({ evaluations: [] })
+    const queryClient = testQueryClient()
+
+    renderHook(
+      () => {
+        const notifications = useNotifications()
+        useQuery({
+          queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY,
+          queryFn: fetchAssignable,
+        })
+        return notifications
+      },
+      { wrapper: wrapper('/evaluations/assignable', queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(streamHandlers).not.toBeNull()
+      expect(fetchAssignable).toHaveBeenCalledTimes(1)
+    })
+
+    act(() => {
+      streamHandlers?.onNotification({
+        notification: REQUESTED_NOTIFICATION,
+        unreadCount: 1,
+      })
+    })
+
+    await waitFor(() => expect(fetchAssignable).toHaveBeenCalledTimes(2))
+  })
+
+  it('다른 화면에서 받으면 배정 대기 캐시를 오래된 상태로 표시한다', async () => {
+    const { queryClient } = renderNotifications('/evaluations/my')
+    queryClient.setQueryData(ASSIGNABLE_EVALUATIONS_QUERY_KEY, { evaluations: [] })
+
+    await waitFor(() => expect(streamHandlers).not.toBeNull())
+
+    act(() => {
+      streamHandlers?.onNotification({
+        notification: REQUESTED_NOTIFICATION,
+        unreadCount: 1,
+      })
+    })
+
+    expect(queryClient.getQueryState(ASSIGNABLE_EVALUATIONS_QUERY_KEY)?.isInvalidated).toBe(true)
+  })
+
+  it('다른 종류의 알림은 배정 대기 목록을 다시 조회하지 않는다', async () => {
+    const fetchAssignable = vi.fn().mockResolvedValue({ evaluations: [] })
+    const queryClient = testQueryClient()
+
+    renderHook(
+      () => {
+        const notifications = useNotifications()
+        useQuery({
+          queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY,
+          queryFn: fetchAssignable,
+        })
+        return notifications
+      },
+      { wrapper: wrapper('/evaluations/assignable', queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(streamHandlers).not.toBeNull()
+      expect(fetchAssignable).toHaveBeenCalledTimes(1)
+    })
+
+    act(() => {
+      streamHandlers?.onNotification({
+        notification: AUCTION_NOTIFICATION,
+        unreadCount: 1,
+      })
+    })
+
+    expect(fetchAssignable).toHaveBeenCalledTimes(1)
   })
 
   it('실시간 연결이 다시 붙으면 끊긴 사이 저장된 신청 알림을 다시 조회한다', async () => {

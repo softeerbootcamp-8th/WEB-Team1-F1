@@ -23,14 +23,15 @@ import { useAuth } from '@/features/auth/auth-context'
 import { getErrorMessage } from '@/lib/axios'
 import { fetchAssignableEvaluations, fetchMyAssignments } from '../api'
 import { summarizeEvaluatorHome } from '../evaluator-home-summary'
-
-const ASSIGNABLE_QUERY_KEY = ['evaluations', 'assignable'] as const
-const MY_ASSIGNMENTS_QUERY_KEY = ['evaluations', 'my-assignments'] as const
+import {
+  ASSIGNABLE_EVALUATIONS_QUERY_KEY,
+  MY_ASSIGNMENTS_QUERY_KEY,
+} from '../query-keys'
 
 export function EvaluatorHomePage() {
   const { user } = useAuth()
   const assignableQuery = useQuery({
-    queryKey: ASSIGNABLE_QUERY_KEY,
+    queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY,
     queryFn: fetchAssignableEvaluations,
   })
   const assignmentsQuery = useQuery({
