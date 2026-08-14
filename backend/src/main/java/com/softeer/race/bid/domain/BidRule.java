@@ -3,6 +3,7 @@ package com.softeer.race.bid.domain;
 import com.softeer.race.common.exception.BusinessException;
 
 import static com.softeer.race.bid.exception.BidErrorCode.BID_AMOUNT_NOT_ALIGNED;
+import static com.softeer.race.bid.exception.BidErrorCode.BID_AMOUNT_TOO_HIGH;
 import static com.softeer.race.bid.exception.BidErrorCode.BID_AMOUNT_TOO_LOW;
 
 /**
@@ -41,6 +42,10 @@ public record BidRule(
         // 하한이 먼저인 이유는 그게 실제 원인이기 때문이다. +버튼을 덜 누른 사용자에게
         // "단위가 안 맞습니다"를 돌려주면 무엇을 고쳐야 하는지 알 수 없다.
         validateMinimum(amount);
+
+        if (amount > 1_000_000_000_000L) {
+            throw new BusinessException(BID_AMOUNT_TOO_HIGH);
+        }
 
         if ((amount - currentPrice) % increment != 0) {
             throw new BusinessException(BID_AMOUNT_NOT_ALIGNED);
