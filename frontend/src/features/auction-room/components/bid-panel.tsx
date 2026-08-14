@@ -1,11 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Minus, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { formatKRW, formatManwon } from '@/lib/format'
-import { getErrorMessage } from '@/lib/axios'
+import { getErrorCode, getErrorMessage } from '@/lib/axios'
 import { useAuth } from '@/features/auth/auth-context'
 import { useCountdown } from '@/hooks/use-countdown'
 
@@ -121,6 +121,7 @@ export function BidPanel({
 
     return (
       <BidForm
+        currentPrice={currentPrice}
         increment={increment}
         nextMin={nextMin}
         endAt={endAt}
@@ -140,14 +141,19 @@ function BidBlocked({ title, description }: { title: string; description: string
   )
 }
 
+// 금액이 성립하지 않아 떨어진 입찰, 다른 실패와 달리 무엇을 고쳐야 하는지 화면이 말해줄 수 있다
+const AMOUNT_REJECTIONS = new Set(['BID_AMOUNT_TOO_LOW', 'BID_AMOUNT_NOT_ALIGNED'])
+
 // 값이 확정된 뒤에만 마운트된다, 덕분에 훅이 nullable 을 다루지 않는다
 function BidForm({
+  currentPrice,
   increment,
   nextMin,
   endAt,
   clockOffset,
   onBid,
 }: {
+  currentPrice: number
   increment: number
   nextMin: number
   endAt: string
@@ -156,12 +162,18 @@ function BidForm({
 }) {
   const [amount, setAmount] = useState(nextMin)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // 금액 때문에 떨어진 직전 입찰의 서버 문구, 안 떨어졌으면 null
+  const [rejection, setRejection] = useState<string | null>(null)
 
-  // 현재가·호가 단위가 바뀌면(다른 입찰이 성립하거나 구간이 넘어가면) 쌓아둔 +/- 조정값은
-  // 새 단위에 안 맞을 수 있어 그대로 두지 않고 최소 입찰가로 되돌린다.
-  useEffect(() => {
-    setAmount(nextMin)
-  }, [nextMin, increment])
+  // 최소 입찰가가 올라도 amount 를 따라 올리지 않는다, 고른 금액이 손가락 아래에서 바뀌면
+  // 의도한 적 없는 금액이 나간다. 성립 여부는 보내서 서버에게 듣는다
+  // 정렬도 보는 이유는 서버가 현재가 기준 배수까지 보기 때문이다
+  const isOutdated = amount < nextMin || (amount - nextMin) % increment !== 0
+
+  const changeAmount = (next: number) => {
+    setRejection(null)
+    setAmount(next)
+  }
 
   const submit = async () => {
     // 잠금은 1초마다 다시 그려 걸리므로 마지막 1초가 남는다, 보내기 직전에 같은 규칙으로 한 번 더 본다
@@ -171,9 +183,16 @@ function BidForm({
     try {
       await onBid(amount)
       toast.success('입찰 완료', { description: formatKRW(amount) })
-      setAmount(amount + increment)
+      changeAmount(amount + increment)
     } catch (error) {
-      toast.error(getErrorMessage(error, '입찰에 실패했습니다'))
+      const message = getErrorMessage(error, '입찰에 실패했습니다')
+
+      // 금액 문제는 폼 안에서 고칠 수 있다, 사라지는 토스트 대신 폼에 남겨 고칠 값 옆에 둔다
+      if (AMOUNT_REJECTIONS.has(getErrorCode(error) ?? '')) {
+        setRejection(message)
+      } else {
+        toast.error(message)
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -190,7 +209,7 @@ function BidForm({
           size="icon"
           className="h-11 rounded-none"
           disabled={amount <= nextMin}
-          onClick={() => setAmount((prev) => Math.max(nextMin, prev - increment))}
+          onClick={() => changeAmount(Math.max(nextMin, amount - increment))}
           aria-label="입찰가 낮추기"
         >
           <Minus className="size-4" />
@@ -204,24 +223,46 @@ function BidForm({
           variant="ghost"
           size="icon"
           className="h-11 rounded-none"
-          onClick={() => setAmount((prev) => prev + increment)}
+          onClick={() => changeAmount(amount + increment)}
           aria-label="입찰가 높이기"
         >
           <Plus className="size-4" />
         </Button>
       </div>
 
+      {/* 거절 사유를 남긴다. 새 현재가가 도착하기 전이라면 서버 문구를 그대로 보여주고,
+          도착한 뒤에는 그 값으로 무엇이 막았는지와 얼마부터 되는지를 말한다 */}
+      {rejection !== null && (
+        <p className="text-destructive mt-3 text-xs">
+          {isOutdated
+            ? `현재가가 이미 ${formatKRW(currentPrice)}입니다, 최소 입찰가는 ${formatKRW(nextMin)}입니다.`
+            : rejection}
+        </p>
+      )}
+
       {/* 누르면 얼마가 나가는지를 버튼이 들고 있다, 확인과 실행이 한자리다 */}
       <Button
         type="button"
         size="lg"
         className="tabular mt-3 w-full"
-        disabled={isSubmitting || amount < nextMin}
+        disabled={isSubmitting}
         onClick={submit}
       >
         {formatKRW(amount)} 입찰
       </Button>
 
+      {/* 거절당한 뒤에만 낸다. 새 금액을 미리 채워 주지 않고, 오른 금액을 보고 누른 것이 되어야 나간다 */}
+      {rejection !== null && isOutdated && (
+        <Button
+          type="button"
+          size="lg"
+          variant="outline"
+          className="tabular mt-2 w-full"
+          onClick={() => changeAmount(nextMin)}
+        >
+          {formatKRW(nextMin)}으로 맞추기
+        </Button>
+      )}
     </div>
   )
 }
