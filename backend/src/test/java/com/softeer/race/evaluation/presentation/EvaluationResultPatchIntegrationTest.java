@@ -105,7 +105,7 @@ class EvaluationResultPatchIntegrationTest extends IntegrationTestSupport {
         assertThat(vehicle.get("diagnostic_report_url")).isEqualTo(DOCUMENT_URL);
 
         assertThat(imageUrls()).containsExactly(IMAGE_1, IMAGE_2);
-        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "NO_LEAK");
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "UNDERBODY_INTACT");
         assertThat(statusOf(EVALUATION_ID)).isEqualTo("APPROVED");
     }
 
@@ -196,7 +196,7 @@ class EvaluationResultPatchIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.keywords.length()").value(2));
 
         // then : 사진 교체가 키워드 교체를 함께 부르면 평가사가 매긴 것이 사라진다
-        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "NO_LEAK");
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "UNDERBODY_INTACT");
     }
 
     @Test
@@ -274,7 +274,7 @@ class EvaluationResultPatchIntegrationTest extends IntegrationTestSupport {
         assertThat(vehicle.get("main_photo_url")).isEqualTo(IMAGE_1);
         assertThat(vehicle.get("diagnostic_report_url")).isEqualTo(DOCUMENT_URL);
         assertThat(imageUrls()).containsExactly(IMAGE_1, IMAGE_2);
-        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "NO_LEAK");
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "UNDERBODY_INTACT");
     }
 
     @Test

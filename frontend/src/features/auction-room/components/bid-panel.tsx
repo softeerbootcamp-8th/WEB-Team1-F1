@@ -58,21 +58,27 @@ export function BidPanel({
   // 조기 반환 앞에 둔다, 뒤에 두면 로그인 상태가 바뀔 때 훅 수가 달라진다
   useCountdown(endAt, 1000, clockOffset)
 
+  // 폼과 바닥 줄이 같은 판정을 봐야 해서 갈래 밖에서 한 번 구한다
+  const block = user ? bidBlockOf(user.role, sellerIsMine) : null
+
   // 상자는 갈래마다 다시 그리지 않고 여기서 한 번 그린다. 기준가와 도움말이 상자 바닥에
   // 붙는데, 갈래 안쪽에 두면 로그인 전이나 마감 뒤에는 그 둘이 사라진다
   return (
     <div className="rounded-xl border p-5">
       {body()}
 
-      <div className="text-muted-foreground mt-3 flex items-center justify-between gap-3 text-xs">
-        {help}
-        <p>
-          현재가 {formatKRW(currentPrice)} · 최소 입찰가{' '}
-          <span className="text-foreground tabular font-medium">
-            {nextMin === null ? '—' : formatKRW(nextMin)}
-          </span>
-        </p>
-      </div>
+      {/* 로그인 전과 마감 뒤에는 남긴다, 로그인하거나 다음 경매에서 쓸 값이다.
+          입찰이 막힌 사람에게는 열릴 일이 없어 호가 단위와 최소 입찰가가 읽을 이유 없는 값이 된다.
+          최소 입찰가를 모르는 동안에도 감춘다, 도움말이 여는 구간표도 같은 출처라 함께 비어 있다 */}
+      {block === null && nextMin !== null && (
+        <div className="text-muted-foreground mt-3 flex items-center justify-between gap-3 text-xs">
+          {help}
+          <p>
+            현재가 {formatKRW(currentPrice)} · 최소 입찰가{' '}
+            <span className="text-foreground tabular font-medium">{formatKRW(nextMin)}</span>
+          </p>
+        </div>
+      )}
     </div>
   )
 
@@ -92,7 +98,6 @@ export function BidPanel({
 
     // 이 둘은 기다린다고 열리지 않는다. 잠긴 폼을 남기면 절대 입찰하지 않을 사람에게
     // 호가 단위와 최소 입찰가를 계속 안내하게 된다
-    const block = bidBlockOf(user.role, sellerIsMine)
     if (block !== null) {
       return <BidBlocked {...BLOCK_NOTICE[block]} />
     }

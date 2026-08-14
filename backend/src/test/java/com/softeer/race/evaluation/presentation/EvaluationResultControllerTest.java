@@ -69,7 +69,7 @@ class EvaluationResultControllerTest {
               "estimatedPrice": 21500000,
               "imageUrls": ["%s"],
               "diagnosticReportUrl": "%s",
-              "keywords": ["ACCIDENT_FREE", "NO_LEAK"]
+              "keywords": ["ACCIDENT_FREE", "UNDERBODY_INTACT"]
             }
             """.formatted(IMAGE_URL, DOCUMENT_URL);
 
@@ -249,7 +249,7 @@ class EvaluationResultControllerTest {
                 .willReturn(new EvaluationResultInfo(
                         EVALUATION_ID, VEHICLE_ID, "APPROVED", 45_000, 21_500_000L,
                         List.of(IMAGE_URL), DOCUMENT_URL, SUBMITTED_AT,
-                        List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK)));
+                        List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.UNDERBODY_INTACT)));
     }
 
     private EvaluationResultSubmitCommand captureCommand() {

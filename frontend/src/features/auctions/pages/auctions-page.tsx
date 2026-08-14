@@ -12,6 +12,7 @@ import type { PreviewStatus } from '@/features/auctions/components/auction-previ
 import { AuctionDeleteDialog } from '@/features/auctions/components/auction-delete-dialog'
 import { AuctionEditDialog } from '@/features/auctions/components/auction-edit-dialog'
 import { AuctionFilterPanel } from '@/features/auctions/components/auction-filter-panel'
+import { MobileAuctionFilter } from '@/features/auctions/components/mobile-auction-filter'
 import { MyAuctionActions } from '@/features/auctions/components/my-auction-actions'
 import { ScopeTabs } from '@/features/auctions/components/scope-tabs'
 import { auctionScopeForRole, canViewMyAuctions } from '@/features/auctions/access'
@@ -235,19 +236,36 @@ export function AuctionsPage() {
 
   return (
     // 조건 패널과 목록이 나란히 서는 화면이라 다른 페이지보다 넓게 쓴다.
-    <main aria-label="경매 목록" className="mx-auto max-w-[100rem] px-6 py-12">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold md:text-4xl">경매 목록</h1>
-        <p className="text-muted-foreground mt-3">
-          평가가 완료된 차량의 실시간 가격 형성 과정을 확인하세요.
-        </p>
+    <main aria-label="경매 목록" className="mx-auto max-w-[100rem] px-4 py-14 sm:px-6">
+      <header className="mb-5">
+        <h1 className="text-3xl font-semibold md:text-4xl">
+          경매 목록
+        </h1>
       </header>
 
       {/* 조건은 목록 옆에 세워 둔다. 좁은 화면에서는 붙일 자리가 없어 목록 위로 접힌다. */}
       <div className="lg:grid lg:grid-cols-[23rem_1fr] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-8">
+        {/* 범위는 목록의 것이라 목록 열 머리에 둔다. 모바일에서도 필터보다 먼저 범위를 고른다. */}
+        {canViewMyAuctions(user?.role ?? null) && (
+          <div className="mb-6 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-(--spacing-header) lg:z-10 lg:bg-background">
+            <ScopeTabs
+              value={scope}
+              onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
+            />
+          </div>
+        )}
+
+        <MobileAuctionFilter
+          value={vehicleFilter}
+          onChange={changeVehicleFilter}
+          status={filter === 'ALL' ? null : filter}
+          onStatusChange={(next) => selectTab(STATUS_PARAM, next ?? 'ALL', next === null)}
+          onReset={resetFilters}
+        />
+
         {/* 패널 윗변은 범위 탭이 아니라 카드 첫 줄에 맞춘다. 격자 둘째 줄에 놓으면 탭 높이를 재지 않아도 맞는다.
             상단 바(65px)가 sticky 라 그 아래에 세우고, 패널이 화면보다 길면 스스로 스크롤한다. */}
-        <aside className="mb-6 lg:col-start-1 lg:row-start-2 lg:sticky lg:top-20 lg:mb-0 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+        <aside className="hidden lg:col-start-1 lg:row-start-2 lg:block lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
           <AuctionFilterPanel
             value={vehicleFilter}
             onChange={changeVehicleFilter}
@@ -258,19 +276,6 @@ export function AuctionsPage() {
             onReset={resetFilters}
           />
         </aside>
-
-        {/* 범위는 목록의 것이라 목록 열 머리에 둔다. 조건 패널과 나란히 서면 둘 다 필터로 읽힌다.
-            내려가도 따라오게 고정한다 — 목록 한참 아래에서 범위를 바꾸려고 맨 위까지 되돌아가지
-            않아도 된다. 상단 바 높이에 맞춰 그 바로 밑에 붙인다, 틈을 두면 그 사이로 카드가
-            지나가 보인다. 탭 배경이 반투명이라 카드가 비치지 않게 불투명 배경을 함께 깐다. */}
-        {canViewMyAuctions(user?.role ?? null) && (
-          <div className="mb-6 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-(--spacing-header) lg:z-10 lg:bg-background">
-            <ScopeTabs
-              value={scope}
-              onChange={(next) => selectTab(SCOPE_PARAM, next, next === 'ALL')}
-            />
-          </div>
-        )}
 
         <div className="lg:col-start-2 lg:row-start-2">
       {needsLogin ? (

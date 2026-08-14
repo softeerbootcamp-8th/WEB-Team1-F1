@@ -1,5 +1,5 @@
-import { Badge } from '@/components/ui/badge'
-import { VEHICLE_KEYWORD_LABEL, type VehicleKeyword } from '@/features/quote/types'
+import { VehicleKeywordBadge } from '@/features/quote/components/vehicle-keyword-badge'
+import type { VehicleKeyword } from '@/features/quote/types'
 
 /**
  * 차량 제목 아래 키워드 줄. 목록 카드와 같은 자리에 두어 화면을 옮겨도 눈이 찾는 곳이 같다.
@@ -15,9 +15,7 @@ export function KeywordBadges({ keywords }: { keywords: VehicleKeyword[] }) {
   return (
     <div className="flex flex-wrap gap-1">
       {keywords.map((keyword) => (
-        <Badge key={keyword} variant="secondary">
-          {VEHICLE_KEYWORD_LABEL[keyword]}
-        </Badge>
+        <VehicleKeywordBadge key={keyword} keyword={keyword} />
       ))}
     </div>
   )

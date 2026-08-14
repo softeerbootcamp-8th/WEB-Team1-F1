@@ -44,7 +44,7 @@ public record EvaluationResultResponse(
         LocalDateTime submittedAt,
 
         @Schema(description = "매겨진 키워드. 중복이 제거되고 정해진 표시 순서로 정렬돼 나갑니다",
-                example = "[\"ACCIDENT_FREE\", \"NO_LEAK\", \"GOOD_TIRE\"]")
+                example = "[\"ACCIDENT_FREE\", \"UNDERBODY_INTACT\", \"GOOD_TIRE\"]")
         List<VehicleKeyword> keywords
 ) {
 

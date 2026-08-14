@@ -134,7 +134,7 @@ class EvaluationLookupServiceTest {
                 .willReturn(images);
         given(vehicle.getDiagnosticReportUrl()).willReturn(DOCUMENT_URL);
         given(vehicleKeywordService.findByVehicle(vehicle))
-                .willReturn(List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK));
+                .willReturn(List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.UNDERBODY_INTACT));
 
         // when
         EvaluationDetailInfo info = evaluationLookupService.findDetail(EVALUATION_ID, SELLER_ID);
@@ -145,7 +145,7 @@ class EvaluationLookupServiceTest {
         assertThat(info.imageUrls()).containsExactly(IMAGE_URL);
         assertThat(info.diagnosticReportUrl()).isEqualTo(DOCUMENT_URL);
         assertThat(info.keywords())
-                .containsExactly(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK);
+                .containsExactly(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.UNDERBODY_INTACT);
     }
 
     /**

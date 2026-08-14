@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/features/auth/auth-context'
+import { ASSIGNABLE_EVALUATIONS_QUERY_KEY } from '@/features/evaluations/query-keys'
 import type { AppNotification } from '@/types/domain'
 import {
   fetchNotifications,
@@ -54,6 +56,7 @@ export function useNotifications() {
   const userId = user?.id
   const navigate = useNavigate()
   const location = useLocation()
+  const queryClient = useQueryClient()
 
   const [items, setItems] = useState<AppNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -199,9 +202,19 @@ export function useNotifications() {
         countChangedSinceLoad.current = true
         setUnreadCount(count)
 
+        // 알림은 새 신청이 생겼다는 신호만 준다. 카드에 필요한 방문일·주소·차량 정보와
+        // 실제 배정 가능 여부는 목록 API가 진실이므로 행을 조립하지 않고 다시 읽는다.
+        // 활성 목록은 즉시 재조회하고, 다른 화면의 캐시는 stale 상태로 남아 다음 진입 때 갱신된다.
+        if (notification.type === 'EVAL_REQUESTED') {
+          void queryClient.invalidateQueries({
+            queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY,
+            refetchType: 'active',
+          })
+        }
+
         // 지금 화면이 이미 같은 사건을 보여 주면 팝업만 생략한다. 위에서 목록과 배지는 먼저
         // 반영했으므로 기록은 남는다. 경매·거래 id나 query가 다르면 다른 대상이라 그대로 띄운다.
-        // 배정 대기 목록은 실시간으로 다시 읽지 않으므로 그 화면에 있어도 새 신청 안내는 보여 준다.
+        // 배정 대기 목록은 다시 읽더라도 새 행을 사용자가 놓치지 않게 신청 안내를 함께 보여 준다.
         if (
           notification.type === 'EVAL_REQUESTED' ||
           notification.link !== currentTargetRef.current
@@ -251,7 +264,7 @@ export function useNotifications() {
         // 세션이 실제로 만료되면 다음 요청의 401이 인증 상태를 바꾸고 위 비인증 분기가 초기화한다
       },
     })
-  }, [isAuthenticated, userId, loadFirstPage])
+  }, [isAuthenticated, userId, loadFirstPage, queryClient])
 
   const loadMore = useCallback(async () => {
     if (cursor == null || isLoadingMore) return

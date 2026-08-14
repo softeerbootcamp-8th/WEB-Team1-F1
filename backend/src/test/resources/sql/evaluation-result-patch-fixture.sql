@@ -55,4 +55,4 @@ values (700, 700, 'https://cdn.test.local/images/2026/08/11111111-0d47-4a19-9b2f
 -- 제출 때 매긴 키워드. 사진만 고치는 요청이 이걸 지우지 않는지 확인한다
 insert into vehicle_keyword_tag (id, vehicle_id, keyword, created_at, updated_at)
 values (700, 700, 'ACCIDENT_FREE', NOW(6), NOW(6)),
-       (701, 700, 'NO_LEAK', NOW(6), NOW(6));
+       (701, 700, 'UNDERBODY_INTACT', NOW(6), NOW(6));

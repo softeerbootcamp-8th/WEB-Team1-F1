@@ -53,7 +53,7 @@ export function BidLedger({
                     bid.mine ? 'bg-muted' : isTop && 'bg-price-up/8',
                   )}
                 >
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
                     <Badge
                       variant="outline"
                       className="h-5 shrink-0 px-1.5 text-xs font-normal"
@@ -61,15 +61,18 @@ export function BidLedger({
                       {bid.role === 'DEALER' ? '딜러' : bid.role === 'GENERAL' ? '일반' : '평가사'}
                     </Badge>
                     <span className="truncate font-medium">{bid.name}</span>
-                    {bid.mine && (
-                      <span className="text-muted-foreground text-sm">(나)</span>
-                    )}
+                  </div>
+
+                  {/* 표식 둘은 새 입찰마다 붙었다 떨어졌다 한다. 이름 뒤에 두면 이름 길이까지 얹혀
+                      갱신될 때마다 좌우로 뛴다 — 둘 다 붙은 폭으로 금액 바로 앞에 자리를 고정한다 */}
+                  <span className="flex w-[75px] shrink-0 items-center justify-end gap-2">
+                    {bid.mine && <span className="text-muted-foreground text-sm">(나)</span>}
                     {isTop && (
                       <Badge variant="success" className="h-5 shrink-0 px-1.5 text-xs">
                         최고가
                       </Badge>
                     )}
-                  </div>
+                  </span>
                   {/* 금액과 시각은 줄바꿈하지 않는다, 접히면 한 행이 두 줄이 되어 목록이 어긋난다 */}
                   <div className="flex shrink-0 items-center gap-3">
                     <span

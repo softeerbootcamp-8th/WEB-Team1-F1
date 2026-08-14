@@ -42,11 +42,6 @@ public enum VehicleKeyword {
     MINOR_EXCHANGE,
 
     /**
-     * 누유가 없다
-     */
-    NO_LEAK,
-
-    /**
      * 파손된 부위가 없다
      */
     NO_DAMAGE,

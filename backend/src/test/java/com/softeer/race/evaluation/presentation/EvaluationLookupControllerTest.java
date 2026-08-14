@@ -242,7 +242,7 @@ class EvaluationLookupControllerTest {
                 VEHICLE_ID, "12가3456", Manufacturer.HYUNDAI, "그랜저 IG", 2021,
                 FuelType.GASOLINE, Transmission.AUTOMATIC,
                 mileage, estimatedPrice, imageUrls, diagnosticReportUrl, submittedAt,
-                List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK), rejectReason);
+                List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.UNDERBODY_INTACT), rejectReason);
     }
 
     private static Cookie sessionCookie() {

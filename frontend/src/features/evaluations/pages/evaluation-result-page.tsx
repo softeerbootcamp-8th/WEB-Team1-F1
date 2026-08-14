@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowUp,
   CarFront,
+  CircleCheckBig,
   ExternalLink,
   FileCheck2,
   FileText,
@@ -385,15 +386,21 @@ export function EvaluationResultPage() {
       <header className="mt-6 flex flex-wrap items-end justify-between gap-5">
         <div>
           <h1 className="text-3xl font-semibold md:text-4xl">평가 결과 작성</h1>
-          <p className="text-muted-foreground mt-3">
-            {detail.status === 'APPROVED'
-              ? '바꾸려는 항목만 수정하고 기존 사진의 순서도 조정할 수 있습니다.'
-              : '주행거리·시세·사진·진단서와 차량 상태를 한 번에 제출합니다.'}
-          </p>
         </div>
         <div className="flex items-center gap-3">
-          {detail.status === 'APPROVED' && <Badge variant="success">승인 처리 · 수정 가능</Badge>}
-          {detail.status === 'REJECTED' && <Badge variant="destructive">반려 처리된 신청</Badge>}
+          {detail.status === 'APPROVED' && (
+            <Badge
+              variant="success"
+              className="h-10 rounded-md px-3 text-sm font-semibold"
+            >
+              <CircleCheckBig />차량 진단 완료 · 수정 가능
+            </Badge>
+          )}
+          {detail.status === 'REJECTED' && (
+            <Badge variant="destructive" className="rounded-md px-4 py-2 text-sm font-semibold">
+              진단 반려된 신청
+            </Badge>
+          )}
         </div>
       </header>
 
@@ -452,7 +459,7 @@ export function EvaluationResultPage() {
                     onChange={(event) => setMileage(formatNumericInput(event.target.value, 6))}
                     placeholder="45,000"
                     maxLength={7}
-                    className="h-24 rounded-2xl px-6 pr-20 text-3xl font-semibold tracking-tight placeholder:opacity-40 md:text-3xl"
+                    className="h-16 rounded-2xl px-6 pr-20 text-2xl font-semibold tracking-tight placeholder:opacity-40 md:text-2xl"
                     required
                   />
                   <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-6 -translate-y-1/2 text-xl">km</span>
@@ -469,7 +476,7 @@ export function EvaluationResultPage() {
                     onChange={(event) => setEstimatedPriceManwon(formatNumericInput(event.target.value))}
                     placeholder="2,150"
                     maxLength={15}
-                    className="h-24 rounded-2xl px-6 pr-24 text-3xl font-semibold tracking-tight placeholder:opacity-40 md:text-3xl"
+                    className="h-16 rounded-2xl px-6 pr-24 text-2xl font-semibold tracking-tight placeholder:opacity-40 md:text-2xl"
                     required
                   />
                   <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-6 -translate-y-1/2 text-xl">만원</span>

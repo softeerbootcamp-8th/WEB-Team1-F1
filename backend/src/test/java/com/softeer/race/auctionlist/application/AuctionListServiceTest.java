@@ -378,14 +378,14 @@ class AuctionListServiceTest {
         givenGroup(AuctionListGroup.PENDING, List.of());
         givenGroup(AuctionListGroup.ENDED, List.of());
         given(vehicleKeywordService.findByVehicleIds(any()))
-                .willReturn(Map.of(VEHICLE_ID_BASE + 1, List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK)));
+                .willReturn(Map.of(VEHICLE_ID_BASE + 1, List.of(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.UNDERBODY_INTACT)));
 
         // when
         List<AuctionCardInfo> content = auctionListService.list(null, null, NO_FILTER).content();
 
         // then : 진단을 거치지 않은 차량은 null 이 아니라 빈 목록이다. null 처리를 화면에 떠넘기지 않는다
         assertThat(content.get(0).keywords())
-                .containsExactly(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.NO_LEAK);
+                .containsExactly(VehicleKeyword.ACCIDENT_FREE, VehicleKeyword.UNDERBODY_INTACT);
         assertThat(content.get(1).keywords()).isEmpty();
     }
 
