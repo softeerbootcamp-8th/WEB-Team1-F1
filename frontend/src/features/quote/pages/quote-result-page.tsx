@@ -40,9 +40,6 @@ export function QuoteResultPage() {
         <h1 className="text-4xl font-semibold md:text-5xl">
           예상 시세를 확인해 보세요.
         </h1>
-        <p className="text-muted-foreground mt-3 leading-7">
-          실제 경매가는 평가 결과에 따라 달라질 수 있어요.
-        </p>
       </header>
 
       <section className="mt-12 rounded-2xl border p-7 md:p-8">

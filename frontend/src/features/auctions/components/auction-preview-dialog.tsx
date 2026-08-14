@@ -170,8 +170,8 @@ export function AuctionPreviewDialog({
   return (
     <Dialog open={auctionId !== null} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-2xl">
-        <DialogHeader className="flex-row items-start justify-between gap-4 space-y-0 border-b p-5 pr-12 pb-3 text-left">
-          <div className="space-y-1">
+        <DialogHeader className="grid grid-cols-[minmax(0,1fr)_13rem] items-start gap-x-4 gap-y-1 border-b p-5 pr-12 pb-3 text-left">
+          <div className="min-w-0 space-y-1">
             <DialogTitle className="text-2xl">
               {vehicle && `${MANUFACTURER_LABEL[vehicle.manufacturer]} `}
               {model ?? '경매'}
@@ -182,11 +182,9 @@ export function AuctionPreviewDialog({
                 : '불러오는 중'}
             </DialogDescription>
 
-            {/* 방·결과 화면과 같은 자리다, 화면을 옮겨도 눈이 찾는 곳이 같아야 한다 */}
-            {vehicle && <KeywordBadges keywords={vehicle.keywords} />}
           </div>
 
-          <div className="shrink-0 text-right">
+          <div className="w-52 text-right">
             {loaded === 'NOT_OPEN' ? (
               <>
                 <p className="text-muted-foreground flex items-center justify-end gap-1.5 text-base">
@@ -207,12 +205,20 @@ export function AuctionPreviewDialog({
                   <Flag className="size-4" />
                   {result?.outcome === 'UNSOLD' ? '유찰' : '최종 낙찰가'}
                 </p>
-                <p className="text-price-up tabular mt-0.5 text-3xl font-bold">
+                <p className="text-price-up tabular mt-0.5 text-3xl font-bold whitespace-nowrap">
                   {result?.winningPrice == null ? '—' : formatKRW(result.winningPrice)}
                 </p>
               </>
             )}
           </div>
+
+          {/* 시계 아래에서 헤더 전체 폭을 쓴다. 시계 숫자 폭이 바뀌어도 마지막 키워드가
+              다음 줄로 밀리지 않아 미리보기 높이가 매초 흔들리지 않는다. */}
+          {vehicle && (
+            <div className="col-span-2 pt-1">
+              <KeywordBadges keywords={vehicle.keywords} />
+            </div>
+          )}
         </DialogHeader>
 
         {isAuthLoading ? (

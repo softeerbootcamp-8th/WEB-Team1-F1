@@ -79,9 +79,6 @@ export function AssignableEvaluationsPage() {
       <header className="mb-8 flex flex-wrap items-end justify-between gap-5">
         <div>
           <h1 className="text-3xl font-semibold md:text-4xl">배정 대기 목록</h1>
-          <p className="text-muted-foreground mt-3">
-            방문일이 가까운 신청부터 표시됩니다. 수락한 평가사에게만 연락처가 공개됩니다.
-          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching}>
