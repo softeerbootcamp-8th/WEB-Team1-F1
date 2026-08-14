@@ -396,7 +396,7 @@ export function EvaluationResultPage() {
           {detail.status === 'APPROVED' && (
             <Badge
               variant="success"
-              className="rounded-md px-5 py-3 text-base font-bold shadow-sm md:px-6 md:py-4 md:text-lg [&>svg]:size-5 md:[&>svg]:size-6"
+              className="h-10 rounded-md px-3 text-sm font-semibold"
             >
               <CircleCheckBig />차량 진단 완료 · 수정 가능
             </Badge>
