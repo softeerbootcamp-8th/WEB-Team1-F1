@@ -1,7 +1,9 @@
 package com.softeer.race.vehicle.domain;
 
 import com.softeer.race.common.domain.BaseTimeEntity;
+import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.user.domain.User;
+import com.softeer.race.vehicle.exception.VehicleErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -66,6 +68,8 @@ public class Vehicle extends BaseTimeEntity {
     private String diagnosticReportUrl;
 
     private Vehicle(User seller, VehicleSpec spec, Integer mileage, Long estimatedPrice) {
+        validateEstimatedPrice(estimatedPrice);
+
         this.seller = seller;
         this.manufacturer = spec.manufacturer();
         this.model = spec.model();
@@ -138,6 +142,8 @@ public class Vehicle extends BaseTimeEntity {
      */
     public void completeDiagnosis(int mileage, long estimatedPrice,
                                   String mainPhotoUrl, String diagnosticReportUrl) {
+        validateEstimatedPrice(estimatedPrice);
+
         this.mileage = mileage;
         this.estimatedPrice = estimatedPrice;
         this.mainPhotoUrl = mainPhotoUrl;
@@ -167,7 +173,15 @@ public class Vehicle extends BaseTimeEntity {
      * 실물을 보고 사람이 매긴 값이라는 점이 최초 제출과 다르지 않다.
      */
     public void reviseEstimatedPrice(long estimatedPrice) {
+        validateEstimatedPrice(estimatedPrice);
+
         this.estimatedPrice = estimatedPrice;
+    }
+
+    private static void validateEstimatedPrice(Long estimatedPrice) {
+        if (estimatedPrice != null && estimatedPrice > 1_000_000_000_000L) {
+            throw new BusinessException(VehicleErrorCode.INVALID_ESTIMATED_PRICE);
+        }
     }
 
     /**

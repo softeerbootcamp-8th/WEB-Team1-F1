@@ -5,7 +5,9 @@ import org.springframework.http.HttpStatus;
 
 public enum VehicleErrorCode implements ErrorCode {
 
-    /** 우리 서비스에 등록된 vehicle 행이 없다. 외부 원장에 그 차가 없는 것과 다른 원인이다 */
+    /**
+     * 우리 서비스에 등록된 vehicle 행이 없다. 외부 원장에 그 차가 없는 것과 다른 원인이다
+     */
     NOT_FOUND(HttpStatus.NOT_FOUND, "차량을 찾을 수 없습니다."),
 
     /**
@@ -27,7 +29,8 @@ public enum VehicleErrorCode implements ErrorCode {
      * 어떤 키가 존재하는지를 되물어 확인하는 통로가 된다.
      */
     UNMANAGED_IMAGE_URL(HttpStatus.BAD_REQUEST,
-            "이 서비스에서 발급한 이미지 주소가 아닙니다. 업로드 주소 발급 API가 돌려준 이미지 주소를 그대로 보내야 합니다.");
+            "이 서비스에서 발급한 이미지 주소가 아닙니다. 업로드 주소 발급 API가 돌려준 이미지 주소를 그대로 보내야 합니다."),
+    INVALID_ESTIMATED_PRICE(HttpStatus.BAD_REQUEST, "산정 시세는 1조원을 넘을 수 없습니다.");
 
     private final HttpStatus status;
     private final String message;
