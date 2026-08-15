@@ -114,7 +114,21 @@ function RoomNotice({ title, description }: { title: string; description: string
   )
 }
 
+/**
+ * 목록이 실어 준 from(탭·필터 쿼리 포함) 위에 미리보기 딥링크만 얹는다.
+ * from을 버리고 /auctions로 보내면 켜 둔 필터가 풀린다. 값 검증은 {@link BackLink}와 같다.
+ */
+function previewUrl(state: unknown, auctionId: number): string {
+  const from = (state as { from?: string } | null)?.from
+  const base = from?.startsWith('/') && !from.startsWith('//') ? from : '/auctions'
+  const [pathname, search = ''] = base.split('?')
+  const params = new URLSearchParams(search)
+  params.set('open', String(auctionId))
+  return `${pathname}?${params.toString()}`
+}
+
 function RoomContent({ auctionId }: { auctionId: number }) {
+  const location = useLocation()
   const {
     room,
     entry,
@@ -131,13 +145,13 @@ function RoomContent({ auctionId }: { auctionId: number }) {
   // 바로 열었거나, 목록을 오래 열어 둔 사이 방이 닫힌 경우가 여기로 온다.
   // 뒤로가기가 닫힌 방으로 되돌아오지 않도록 히스토리를 남기지 않고 바꾼다.
   if (entry === 'NOT_OPEN_YET') {
-    return <Navigate to={`/auctions?open=${auctionId}`} replace />
+    return <Navigate to={previewUrl(location.state, auctionId)} replace />
   }
 
   // 마감된 경매는 방이 아니라 결과 화면의 일이다. 방 안에서 결과를 그리면 5분이 지나면 사라지고,
   // 목록 미리보기로 보내면 끝난 뒤에도 남는 결과를 지나쳐 버린다
   if (entry === 'CLOSED') {
-    return <Navigate to={`/auctions/${auctionId}/result`} replace />
+    return <Navigate to={`/auctions/${auctionId}/result`} replace state={location.state} />
   }
 
   if (entry === 'SIGNED_OUT') {
