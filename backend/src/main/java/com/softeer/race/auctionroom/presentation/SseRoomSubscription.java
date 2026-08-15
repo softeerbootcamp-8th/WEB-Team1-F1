@@ -8,8 +8,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-// 열린 SSE 응답을 채널이 아는 모양으로 감싼다, 전송 기술을 아는 곳은 여기까지다
+// 열린 SSE 응답을 채널이 아는 모양으로 감싼다, 전송 기술과 이 연결에 마지막으로 보낸 것을 안다
 // equals 를 정의하지 않는다, 연결 하나에 객체 하나라 객체 자체가 식별자다
 @Slf4j
 class SseRoomSubscription implements RoomSubscription {
@@ -23,6 +25,13 @@ class SseRoomSubscription implements RoomSubscription {
 
     // 전송 실패로 내려간 것과 이 연결을 끝낸 것은 다르다, 전자만 보고 끝내면 응답이 만료까지 남는다
     private final AtomicBoolean completed = new AtomicBoolean();
+
+    // 입찰마다 다른 스레드가 같은 구독에 쓴다, 검사와 전송을 함께 묶어야 순서가 잡힌다
+    // 나누면 둘 다 검사를 통과한 뒤 쓰기 순서가 다시 뒤집힌다
+    private final Lock order = new ReentrantLock();
+
+    // 잠금 안에서만 읽고 쓴다
+    private RoomState sent;
 
     SseRoomSubscription(long auctionId, long viewerId, SseEmitter emitter) {
         this.auctionId = auctionId;
@@ -41,6 +50,21 @@ class SseRoomSubscription implements RoomSubscription {
             return;
         }
 
+        order.lock();
+
+        try {
+            if (state.isStalerThan(sent)) {
+                return;
+            }
+
+            write(state);
+            sent = state;
+        } finally {
+            order.unlock();
+        }
+    }
+
+    private void write(RoomState state) {
         try {
             emitter.send(RoomStateResponse.from(state));
         } catch (IOException e) {
