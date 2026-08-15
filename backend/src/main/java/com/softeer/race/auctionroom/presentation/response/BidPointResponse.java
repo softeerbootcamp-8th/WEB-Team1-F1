@@ -1,12 +1,12 @@
 package com.softeer.race.auctionroom.presentation.response;
 
-import com.softeer.race.auctionroom.application.PricePointView;
+import com.softeer.race.auctionroom.application.BidPointView;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
 @Schema(description = "가격이 오른 과정의 점 하나")
-public record PricePointResponse(
+public record BidPointResponse(
         @Schema(description = "그 입찰이 들어온 시각", example = "2026-08-03T18:35:00")
         LocalDateTime at,
 
@@ -20,7 +20,7 @@ public record PricePointResponse(
         boolean extended
 ) {
 
-    static PricePointResponse from(PricePointView view) {
-        return new PricePointResponse(view.at(), view.amount(), view.mine(), view.extended());
+    static BidPointResponse from(BidPointView view) {
+        return new BidPointResponse(view.at(), view.amount(), view.mine(), view.extended());
     }
 }

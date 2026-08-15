@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
- * 경매방의 진행 단계
+ * 경매방의 진행 단계, 방 조회와 스트림과 목록 카드 세 응답에 이 이름 그대로 실린다
  */
 public enum RoomPhase {
     NOT_OPEN,

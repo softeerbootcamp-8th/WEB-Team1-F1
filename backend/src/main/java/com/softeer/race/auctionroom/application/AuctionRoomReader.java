@@ -63,7 +63,7 @@ class AuctionRoomReader {
     }
 
     @Transactional(readOnly = true)
-    public List<PricePoint> findPriceCurve(long auctionId) {
+    public List<BidPoint> findPriceCurve(long auctionId) {
         return roomBidRepository.findPriceCurve(auctionId);
     }
 

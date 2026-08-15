@@ -60,7 +60,7 @@ public record RoomResultResponse(
 
         @Schema(description = "가격이 오른 과정, 시간순 전체이고 유찰이면 빈 배열이다. "
                 + "시작가는 담기지 않으므로 곡선의 첫 점은 첫 입찰이다")
-        List<PricePointResponse> priceCurve
+        List<BidPointResponse> priceCurve
 ) {
 
     public static RoomResultResponse from(RoomResultView view) {
@@ -80,7 +80,7 @@ public record RoomResultResponse(
                 view.endAt(),
                 view.resultViewingEndsAt(),
                 view.serverTime(),
-                view.priceCurve().stream().map(PricePointResponse::from).toList()
+                view.priceCurve().stream().map(BidPointResponse::from).toList()
         );
     }
 }

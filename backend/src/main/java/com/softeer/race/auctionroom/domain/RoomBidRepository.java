@@ -50,13 +50,13 @@ public interface RoomBidRepository extends Repository<Bid, Long> {
      */
     // 호가창과 달리 이름을 읽지 않는다, 스무 건 제한도 없다
     @Query("""
-            select new com.softeer.race.auctionroom.domain.PricePoint(
+            select new com.softeer.race.auctionroom.domain.BidPoint(
                 b.bidder.id, b.amount, b.createdAt)
             from Bid b
             where b.auction.id = :auctionId
             order by b.id
             """)
-    List<PricePoint> findPriceCurve(@Param("auctionId") long auctionId);
+    List<BidPoint> findPriceCurve(@Param("auctionId") long auctionId);
 
     /**
      * 최신순 호가, 이름은 담기는 시점에 마스킹된다
