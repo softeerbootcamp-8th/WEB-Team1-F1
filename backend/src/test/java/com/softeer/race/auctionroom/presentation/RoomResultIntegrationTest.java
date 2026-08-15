@@ -135,7 +135,7 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         // then 6-1 : 서버 시각은 결과값이 아니라 남은 열람 시간을 세는 기준이라 종료 시각과 짝으로 나간다
         // 종료 시각은 연장된 마감에서 다시 계산된다, 원래 마감에 더하면 20초 어긋난다
         response.andExpectAll(
-                jsonPath("$.resultEndAt").value("2026-08-03T18:55:10"),
+                jsonPath("$.resultViewingEndsAt").value("2026-08-03T18:55:10"),
                 jsonPath("$.serverTime").value("2026-08-03T20:45:12"));
 
         // then 7 : 탈락한 사람이 같은 결과를 보면 이름은 같고 본인 표시만 꺼진다

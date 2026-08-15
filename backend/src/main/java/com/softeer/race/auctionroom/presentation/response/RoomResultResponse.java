@@ -52,7 +52,7 @@ public record RoomResultResponse(
 
         @Schema(description = "결과를 볼 수 있는 구간이 끝나는 시각, 마감 뒤 5분이다",
                 example = "2026-08-03T18:55:10")
-        LocalDateTime resultEndAt,
+        LocalDateTime resultViewingEndsAt,
 
         @Schema(description = "응답을 만든 서버 시각(KST), 남은 열람 시간을 세는 기준이다",
                 example = "2026-08-03T18:51:00")
