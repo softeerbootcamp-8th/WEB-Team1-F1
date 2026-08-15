@@ -35,17 +35,17 @@ public class AuctionRoomStreamService {
      */
     public void subscribe(long auctionId, RoomSubscriber subscriber) {
         // 연결을 열어 두지 않는 단계의 구독이 채널에 남지 않도록 등록 전에 판정한다
-        RoomQueryResult result = auctionRoomReader.find(auctionId)
+        RoomSnapshot snapshot = auctionRoomReader.find(auctionId)
                 .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
 
-        result.phase().streamRejection().ifPresent(errorCode -> {
+        snapshot.phase().streamRejection().ifPresent(errorCode -> {
             throw new BusinessException(errorCode);
         });
 
         roomChannel.subscribe(auctionId, subscriber);
 
         // 접속자 수는 메모리에서 오므로 등록한 뒤에 세면 DB 를 다시 읽지 않아도 된다
-        broadcast(result);
+        broadcast(snapshot);
     }
 
     /**
@@ -111,13 +111,13 @@ public class AuctionRoomStreamService {
                 .orElse(false);
     }
 
-    private void broadcast(RoomQueryResult result) {
-        long auctionId = result.detail().auctionId();
+    private void broadcast(RoomSnapshot snapshot) {
+        long auctionId = snapshot.detail().auctionId();
 
-        roomChannel.broadcast(auctionId, RoomState.of(result, roomChannel.countViewers(auctionId)));
+        roomChannel.broadcast(auctionId, RoomState.of(snapshot, roomChannel.countViewers(auctionId)));
 
         // 마감됐다는 마지막 현황까지 받고 나서 끊는다, 이 순서라야 화면이 끊김을 결과로 읽는다
-        if (!result.phase().allowsConnection()) {
+        if (!snapshot.phase().allowsConnection()) {
             roomChannel.closeRoom(auctionId);
         }
     }

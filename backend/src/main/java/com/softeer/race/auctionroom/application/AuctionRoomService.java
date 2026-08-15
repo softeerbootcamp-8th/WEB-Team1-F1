@@ -25,19 +25,19 @@ public class AuctionRoomService {
      */
     @Transactional(readOnly = true)
     public AuctionRoomView enterRoom(long auctionId, long userId) {
-        RoomQueryResult result = auctionRoomReader.find(auctionId)
+        RoomSnapshot snapshot = auctionRoomReader.find(auctionId)
                 .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
 
         // 열리지 않은 방과 끝난 방은 여기서 걸린다,
         // 화면은 사유를 보고 개장 안내나 결과로 옮겨간다
-        result.phase().entryRejection().ifPresent(errorCode -> {
+        snapshot.phase().entryRejection().ifPresent(errorCode -> {
             throw new BusinessException(errorCode);
         });
 
         // 조회는 접속이 아니다, 접속자는 열려 있는 구독으로만 센다
-        return AuctionRoomView.of(userId, result, roomChannel.countViewers(auctionId),
+        return AuctionRoomView.of(userId, snapshot, roomChannel.countViewers(auctionId),
                 auctionRoomReader.findPhotoUrls(auctionId),
-                auctionRoomReader.findKeywords(result.detail().vehicleId()));
+                auctionRoomReader.findKeywords(snapshot.detail().vehicleId()));
     }
 
     /**

@@ -9,9 +9,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 경매방을 한 번 읽어 온 결과, 여기서 조회 응답과 브로드캐스트 현황이 각각 조립된다
+ * 경매방을 한 번에 읽어 찍은 한 시점, 여기서 조회 응답과 브로드캐스트 현황이 각각 조립된다
  */
-record RoomQueryResult(
+record RoomSnapshot(
         AuctionRoomDetail detail,
         BidCounts bidCounts,
         List<RecentBid> recentBids,

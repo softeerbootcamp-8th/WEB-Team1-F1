@@ -27,7 +27,7 @@ class AuctionRoomReader {
 
     // 클래스는 패키지 밖에 안 보이지만 메서드는 public 이어야 한다, 프록시가 public 메서드만 자문한다
     @Transactional(readOnly = true)
-    public Optional<RoomQueryResult> find(long auctionId) {
+    public Optional<RoomSnapshot> find(long auctionId) {
         return auctionRoomRepository.findDetailById(auctionId)
                 .map(this::readWith);
     }
@@ -75,12 +75,12 @@ class AuctionRoomReader {
                         highestAmount, roomBidRepository.countBiddersAbove(auctionId, highestAmount)));
     }
 
-    private RoomQueryResult readWith(AuctionRoomDetail detail) {
+    private RoomSnapshot readWith(AuctionRoomDetail detail) {
         LocalDateTime now = LocalDateTime.now(clock);
 
         BidCounts bidCounts = roomBidRepository.findBidCounts(detail.auctionId());
         List<RecentBid> recentBids = roomBidRepository.findRecentBids(detail.auctionId(), Limit.of(RECENT_BID_LIMIT));
 
-        return new RoomQueryResult(detail, bidCounts, recentBids, now);
+        return new RoomSnapshot(detail, bidCounts, recentBids, now);
     }
 }

@@ -2,8 +2,9 @@ package com.softeer.race.auctionroom.application;
 
 import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
 import com.softeer.race.auctionroom.domain.BidCounts;
-import com.softeer.race.common.domain.MaskedName;
+import com.softeer.race.auctionroom.domain.RecentBid;
 import com.softeer.race.auctionroom.domain.RoomPhase;
+import com.softeer.race.common.domain.MaskedName;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,28 +24,28 @@ public record RoomState(
         int connectedCount,
         BidCounts bidCounts,
         MaskedName winnerName,
-        List<RoomStateBid> recentBids
+        List<RecentBid> recentBids
 ) {
 
     /**
      * 한 번 읽어 온 값과 방에 열려 있는 구독 수로 방 현황을 조립한다
      */
     // 구독 수를 접속자 수로 볼지는 단계가 정한다, 조회와 방송이 여기를 함께 지나므로 판정이 하나로 남는다
-    static RoomState of(RoomQueryResult result, int openSubscriptions) {
-        AuctionRoomDetail detail = result.detail();
+    static RoomState of(RoomSnapshot snapshot, int openSubscriptions) {
+        AuctionRoomDetail detail = snapshot.detail();
 
         return new RoomState(
                 detail.auctionId(),
-                result.phase(),
+                snapshot.phase(),
                 detail.startPrice(),
                 detail.currentPrice(),
                 detail.openAt(),
                 detail.startAt(),
                 detail.endAt(),
-                result.serverTime(),
-                result.phase().allowsConnection() ? openSubscriptions : 0,
-                result.bidCounts(),
+                snapshot.serverTime(),
+                snapshot.phase().allowsConnection() ? openSubscriptions : 0,
+                snapshot.bidCounts(),
                 detail.winnerName().orElse(null),
-                result.recentBids().stream().map(RoomStateBid::from).toList());
+                snapshot.recentBids());
     }
 }
