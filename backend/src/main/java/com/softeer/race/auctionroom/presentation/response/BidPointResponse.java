@@ -8,9 +8,9 @@ import java.time.LocalDateTime;
 @Schema(description = "가격이 오른 과정의 점 하나")
 public record BidPointResponse(
         @Schema(description = "그 입찰이 들어온 시각", example = "2026-08-03T18:35:00")
-        LocalDateTime at,
+        LocalDateTime bidAt,
 
-        @Schema(description = "그때 올라간 금액", example = "21000000")
+        @Schema(description = "그 입찰의 금액", example = "21000000")
         long amount,
 
         @Schema(description = "조회한 사람이 넣은 입찰인지")
@@ -21,6 +21,6 @@ public record BidPointResponse(
 ) {
 
     static BidPointResponse from(BidPointView view) {
-        return new BidPointResponse(view.at(), view.amount(), view.mine(), view.extended());
+        return new BidPointResponse(view.bidAt(), view.amount(), view.mine(), view.extended());
     }
 }

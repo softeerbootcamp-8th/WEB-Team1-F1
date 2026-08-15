@@ -216,7 +216,7 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         response.andExpectAll(
                 jsonPath("$.priceCurve.length()").value(4),
                 jsonPath("$.priceCurve[0].amount").value(21000000),
-                jsonPath("$.priceCurve[0].at").value("2026-08-03T18:35:00"));
+                jsonPath("$.priceCurve[0].bidAt").value("2026-08-03T18:35:00"));
 
         // then 2 : 마지막 점이 곧 낙찰가다, 어긋나면 곡선의 끝과 요약 숫자가 다르게 보인다
         response.andExpect(jsonPath("$.priceCurve[3].amount").value(24000000))

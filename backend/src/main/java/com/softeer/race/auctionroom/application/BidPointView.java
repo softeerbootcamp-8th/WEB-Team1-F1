@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
  * 가격 곡선의 점 하나, 내 입찰인지와 마감을 밀어냈는지까지 판정된 상태
  */
 public record BidPointView(
-        LocalDateTime at,
+        LocalDateTime bidAt,
         long amount,
         boolean mine,
         boolean extended
