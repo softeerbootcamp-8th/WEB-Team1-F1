@@ -29,8 +29,27 @@ export interface AssignableEvaluation {
   requestedAt: string
 }
 
+/**
+ * 직전 페이지가 끝난 지점. 서버가 준 값을 그대로 돌려보낸다.
+ *
+ * 목록 정렬이 방문일 순인데 방문일은 날짜 단위라 같은 값이 페이지 크기를 넘길 만큼 몰린다.
+ * 그래서 신청 ID가 함께 간다 — 한쪽만 보내면 서버가 400으로 막는다.
+ */
+export interface AssignableEvaluationCursor {
+  visitDate: string
+  evaluationId: number
+}
+
 export interface AssignableEvaluationsResponse {
   evaluations: AssignableEvaluation[]
+  hasNext: boolean
+  /** 마지막 페이지면 null */
+  nextCursor: AssignableEvaluationCursor | null
+}
+
+/** 배정 대기 전체 건수. 첫 페이지만 받는 평가사 홈이 이 값으로 건수를 보여준다 */
+export interface AssignableEvaluationCountResponse {
+  count: number
 }
 
 export interface EvaluationAssignment {

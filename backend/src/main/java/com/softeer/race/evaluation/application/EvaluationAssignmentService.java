@@ -1,7 +1,9 @@
 package com.softeer.race.evaluation.application;
 
 import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.evaluation.application.dto.AssignableEvaluationCursor;
 import com.softeer.race.evaluation.application.dto.info.AssignableEvaluationInfo;
+import com.softeer.race.evaluation.application.dto.info.AssignableEvaluationsInfo;
 import com.softeer.race.evaluation.application.dto.info.EvaluationAssignmentInfo;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
@@ -11,6 +13,7 @@ import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,18 +43,55 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class EvaluationAssignmentService {
 
+    /**
+     * 한 번에 내려보내는 신청 수.
+     * <p>
+     * 목록의 한 항목이 차량 제원과 방문 날짜 · 장소를 함께 보여주는 카드라 한 화면에 서너 건이
+     * 들어간다. 20이면 평가사가 몇 번 스크롤할 분량이면서, 그 자리에서 수락되어 사라질 신청까지
+     * 미리 읽어 두는 낭비가 크지 않다.
+     */
+    private static final int PAGE_SIZE = 20;
+
     private final EvaluationRepository evaluationRepository;
     private final UserRepository userRepository;
 
     /**
-     * 아직 아무도 수락하지 않은 신청 목록. 방문일이 임박한 순서다.
+     * 아직 아무도 수락하지 않은 신청 한 페이지. 방문일이 임박한 순서다.
      * <p>
      * 요청자를 받지 않는다. 역할 판정은 핸들러 호출 전에 끝나고 목록 자체는 요청자에 따라 갈리지 않는다.
+     * <p>
+     * 커서가 없으면 첫 페이지다. 잘못된 커서를 첫 페이지로 되돌리는 판단은 여기서 하지 않는다 —
+     * 요청이 성립하는지는 표현 계층이 검증한다.
      */
-    public List<AssignableEvaluationInfo> findAssignable() {
-        return evaluationRepository.findAssignable(EvaluationStatus.REQUESTED).stream()
-                .map(AssignableEvaluationInfo::from)
-                .toList();
+    public AssignableEvaluationsInfo findAssignable(AssignableEvaluationCursor cursor) {
+        AssignableEvaluationCursor start = (cursor != null) ? cursor : AssignableEvaluationCursor.first();
+
+        // 한 건을 더 읽어 다음 페이지가 있는지 본다. 건수를 세는 쿼리를 따로 내는 것보다 싸고,
+        // 세는 시점과 읽는 시점이 갈려 "다음이 있다는데 열면 비어 있는" 상태가 되지 않는다
+        List<AssignableEvaluationInfo> found =
+                evaluationRepository.findAssignable(
+                                EvaluationStatus.REQUESTED, start.visitDate(), start.evaluationId(),
+                                Limit.of(PAGE_SIZE + 1))
+                        .stream()
+                        .map(AssignableEvaluationInfo::from)
+                        .toList();
+
+        boolean hasNext = found.size() > PAGE_SIZE;
+        List<AssignableEvaluationInfo> page = hasNext ? found.subList(0, PAGE_SIZE) : found;
+
+        return new AssignableEvaluationsInfo(page, hasNext, hasNext ? nextCursor(page.getLast()) : null);
+    }
+
+    /**
+     * 배정 대기 중인 전체 건수. 평가사 홈이 목록 없이 이 값만 읽는다.
+     */
+    public long countAssignable() {
+        return evaluationRepository.countAssignable(EvaluationStatus.REQUESTED);
+    }
+
+    // 마지막으로 준 항목이 다음 페이지가 이어 읽을 지점이다. 목록의 정렬과 같은 두 값을 담는다
+    private static AssignableEvaluationCursor nextCursor(AssignableEvaluationInfo last) {
+        return new AssignableEvaluationCursor(last.visitDate(), last.evaluationId());
     }
 
     /**

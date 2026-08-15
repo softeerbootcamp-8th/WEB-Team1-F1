@@ -13,9 +13,11 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -26,6 +28,12 @@ import lombok.NoArgsConstructor;
  */
 @Getter
 @Entity
+// 배정 대기 목록이 status + evaluator_id로 대상을 좁히고 visit_date, id 순으로 끊어 읽는다.
+// 커서 페이징은 이 인덱스가 있어야 페이지당 비용이 일정해진다 — 없으면 페이지마다 전체를 훑고
+// 정렬하므로 신청이 쌓일수록 나누어 조회하는 쪽이 오히려 전량 조회보다 느려진다.
+// 같은 인덱스가 전체 대기 건수를 세는 조회도 테이블을 읽지 않고 처리한다.
+@Table(indexes = @Index(name = "idx_evaluation_assignable",
+        columnList = "status, evaluator_id, visit_date, id"))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Evaluation extends BaseTimeEntity {
 
