@@ -10,7 +10,7 @@ import {
   Phone,
   UserRound,
 } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { EmptyState } from '@/components/common/empty-state'
 import { Badge } from '@/components/ui/badge'
@@ -40,6 +40,15 @@ export function MyRequestDetailPage() {
   const { evaluationId: evaluationIdParam } = useParams()
   const evaluationId = Number(evaluationIdParam)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  /**
+   * 어느 탭에서 들어왔는지. 신청 내역이 진행 중과 종료로 갈려, 돌아갈 곳을 고정하면 종료된
+   * 신청을 열어 본 사람이 매번 진행 중 목록으로 튕긴다.
+   */
+  const listPath = searchParams.get('scope')?.toUpperCase() === 'CLOSED'
+    ? '/mypage/evaluations?scope=CLOSED'
+    : '/mypage/evaluations'
   const query = useQuery({
     queryKey: ['evaluations', 'detail', evaluationId],
     queryFn: () => fetchEvaluationDetail(evaluationId),
@@ -52,7 +61,7 @@ export function MyRequestDetailPage() {
   )
 
   if (!Number.isInteger(evaluationId) || evaluationId <= 0) {
-    return <main className="mx-auto max-w-3xl px-6 py-24"><EmptyState title="잘못된 방문견적 번호입니다" action={<Button asChild><Link to="/mypage">마이페이지</Link></Button>} /></main>
+    return <main className="mx-auto max-w-3xl px-6 py-24"><EmptyState title="잘못된 방문견적 번호입니다" action={<Button asChild><Link to={listPath}>마이페이지</Link></Button>} /></main>
   }
 
   if (query.isLoading) {
@@ -66,7 +75,7 @@ export function MyRequestDetailPage() {
         <EmptyState
           title="방문견적 신청을 찾을 수 없습니다"
           description={getErrorMessage(query.error, '존재하지 않거나 조회 권한이 없는 신청입니다.')}
-          action={<Button asChild><Link to="/mypage">마이페이지</Link></Button>}
+          action={<Button asChild><Link to={listPath}>마이페이지</Link></Button>}
         />
       </main>
     )
@@ -89,7 +98,7 @@ export function MyRequestDetailPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-12" aria-label="내 방문견적 상세">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link to="/mypage"><ArrowLeft />마이페이지</Link>
+        <Link to={listPath}><ArrowLeft />마이페이지</Link>
       </Button>
 
       <header className="mt-6 flex flex-wrap items-start justify-between gap-5">

@@ -13,6 +13,11 @@ interface EvaluationSummaryCardProps {
   action?: React.ReactNode
   layout?: 'card' | 'list'
   viewer?: 'seller' | 'evaluator'
+  /**
+   * 경매 배지 옆에 함께 서는 배지. 목록이 어떤 기준으로 이 카드를 끌어올렸는지 화면이
+   * 설명해야 할 때 쓴다 — 이유 없이 순서만 바뀌면 판매자는 목록이 뒤섞인 것으로 읽는다.
+   */
+  badge?: React.ReactNode
 }
 
 export function EvaluationSummaryCard({
@@ -20,6 +25,7 @@ export function EvaluationSummaryCard({
   action,
   layout = 'card',
   viewer = 'seller',
+  badge,
 }: EvaluationSummaryCardProps) {
   const auctionStatus = evaluation.auctionStatus
     ? viewer === 'evaluator'
@@ -39,6 +45,14 @@ export function EvaluationSummaryCard({
     </Badge>
   ) : null
 
+  const badges =
+    badge || auctionBadge ? (
+      <div className="flex flex-wrap items-center gap-2">
+        {badge}
+        {auctionBadge}
+      </div>
+    ) : null
+
   if (layout === 'list') {
     return (
       <Card className="gap-0 overflow-hidden border-border/80 py-0 shadow-sm transition-[border-color,box-shadow] hover:border-foreground/15 hover:shadow-md">
@@ -48,7 +62,7 @@ export function EvaluationSummaryCard({
               <h2 className="text-xl font-semibold">
                 {MANUFACTURER_LABEL[evaluation.manufacturer]} {evaluation.model}
               </h2>
-              {auctionBadge}
+              {badges}
             </div>
 
             <p className="text-muted-foreground mt-2 text-sm">
@@ -107,7 +121,7 @@ export function EvaluationSummaryCard({
               {evaluation.modelYear}년식 · {evaluation.plateNumber}
             </p>
           </div>
-          {auctionBadge}
+          {badges}
         </div>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
