@@ -4,9 +4,12 @@ import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
 import com.softeer.race.auth.presentation.annotation.RequireRole;
 import com.softeer.race.evaluation.application.EvaluationAssignmentService;
+import com.softeer.race.evaluation.presentation.request.AssignableEvaluationCursorRequest;
+import com.softeer.race.evaluation.presentation.response.AssignableEvaluationCountResponse;
 import com.softeer.race.evaluation.presentation.response.AssignableEvaluationsResponse;
 import com.softeer.race.evaluation.presentation.response.EvaluationAssignmentResponse;
 import com.softeer.race.user.domain.Role;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,10 +33,25 @@ public class EvaluationAssignmentController implements EvaluationAssignmentApi {
     @Override
     @GetMapping("/assignable")
     @RequireRole(Role.EVALUATOR)
-    public ResponseEntity<AssignableEvaluationsResponse> findAssignable() {
+    public ResponseEntity<AssignableEvaluationsResponse> findAssignable(
+            @Valid AssignableEvaluationCursorRequest request) {
 
-        AssignableEvaluationsResponse response =
-                AssignableEvaluationsResponse.from(evaluationAssignmentService.findAssignable());
+        AssignableEvaluationsResponse response = AssignableEvaluationsResponse.from(
+                evaluationAssignmentService.findAssignable(request.toCursor(), request.sortOrDefault()));
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 목록과 나누지 않고 따로 둔다. 이 값을 읽는 평가사 홈은 카드가 아니라 수만 필요하다.
+     */
+    @Override
+    @GetMapping("/assignable/count")
+    @RequireRole(Role.EVALUATOR)
+    public ResponseEntity<AssignableEvaluationCountResponse> countAssignable() {
+
+        AssignableEvaluationCountResponse response =
+                AssignableEvaluationCountResponse.from(evaluationAssignmentService.countAssignable());
 
         return ResponseEntity.ok(response);
     }
