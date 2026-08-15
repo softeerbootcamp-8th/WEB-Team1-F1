@@ -50,10 +50,10 @@ public enum RoomPhase {
     /**
      * 방을 열어 줄 수 없는 사유, 열어 주는 단계에는 없다
      */
-    public Optional<AuctionRoomErrorCode> entryRejection() {
+    public Optional<RoomErrorCode> entryRejection() {
         return switch (this) {
-            case NOT_OPEN -> Optional.of(AuctionRoomErrorCode.ROOM_NOT_OPEN_YET);
-            case CLOSED -> Optional.of(AuctionRoomErrorCode.ROOM_ALREADY_CLOSED);
+            case NOT_OPEN -> Optional.of(RoomErrorCode.ROOM_NOT_OPEN_YET);
+            case CLOSED -> Optional.of(RoomErrorCode.ROOM_ALREADY_CLOSED);
             case WAITING, LIVE, RESULT -> Optional.empty();
         };
     }
@@ -62,11 +62,11 @@ public enum RoomPhase {
      * 구독을 열어 줄 수 없는 사유, 대기와 진행에는 없다
      */
     // 결과 구간만 입장과 갈라진다, 들어와 볼 수는 있지만 더 바뀔 값이 없어 연결은 받지 않는다
-    public Optional<AuctionRoomErrorCode> streamRejection() {
+    public Optional<RoomErrorCode> streamRejection() {
         return switch (this) {
-            case NOT_OPEN -> Optional.of(AuctionRoomErrorCode.ROOM_NOT_OPEN_YET);
-            case RESULT -> Optional.of(AuctionRoomErrorCode.ROOM_STREAM_ENDED);
-            case CLOSED -> Optional.of(AuctionRoomErrorCode.ROOM_ALREADY_CLOSED);
+            case NOT_OPEN -> Optional.of(RoomErrorCode.ROOM_NOT_OPEN_YET);
+            case RESULT -> Optional.of(RoomErrorCode.ROOM_STREAM_ENDED);
+            case CLOSED -> Optional.of(RoomErrorCode.ROOM_ALREADY_CLOSED);
             case WAITING, LIVE -> Optional.empty();
         };
     }
@@ -83,11 +83,11 @@ public enum RoomPhase {
      */
     // 방 입장과 반대 방향의 거절이다, 문마다의 거절 사유를 여기 모아 호출부가 같은 모양으로 읽히게 한다
     // 끝난 방은 열렸다고 답하지 않는다, 그렇게 답하면 화면이 방으로 옮겨가 한 번 더 거절받는다
-    public Optional<AuctionRoomErrorCode> openingRejection() {
+    public Optional<RoomErrorCode> openingRejection() {
         return switch (this) {
             case NOT_OPEN -> Optional.empty();
-            case CLOSED -> Optional.of(AuctionRoomErrorCode.ROOM_ALREADY_CLOSED);
-            case WAITING, LIVE, RESULT -> Optional.of(AuctionRoomErrorCode.ROOM_ALREADY_OPEN);
+            case CLOSED -> Optional.of(RoomErrorCode.ROOM_ALREADY_CLOSED);
+            case WAITING, LIVE, RESULT -> Optional.of(RoomErrorCode.ROOM_ALREADY_OPEN);
         };
     }
 }

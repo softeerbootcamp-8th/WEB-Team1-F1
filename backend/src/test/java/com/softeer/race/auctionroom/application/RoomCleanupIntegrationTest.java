@@ -1,6 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
-import com.softeer.race.auctionroom.domain.AuctionRoomErrorCode;
+import com.softeer.race.auctionroom.domain.RoomErrorCode;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.user.domain.Role;
@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 // 브라우저가 조용히 끊긴 상황은 MockMvc 로 재현되지 않으므로 끊긴 구독을 흉내 낸 것을 채널에 직접 건다
 // 구독은 우리가 관리하지 않는 바깥 연결이라 대역을 세워도 되고, 채널과 DB 는 실물 그대로 쓴다
 @DisplayName("경매방 구독 정리 통합 테스트")
-class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
+class RoomCleanupIntegrationTest extends IntegrationTestSupport {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
 
@@ -30,10 +30,10 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
     private static final long VIEWER_ID = 1L;
 
     @Autowired
-    private AuctionRoomStreamService auctionRoomStreamService;
+    private RoomStreamService roomStreamService;
 
     @Autowired
-    private AuctionRoomService auctionRoomService;
+    private RoomService roomService;
 
     @Autowired
     private RoomChannel roomChannel;
@@ -72,7 +72,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
         gone.disconnect();
 
         // when
-        auctionRoomStreamService.sweepClosedSubscriptions();
+        roomStreamService.sweepClosedSubscriptions();
 
         // then 1 : 남은 사람은 줄어든 접속자 수를 받는다, 다시 조회하지 않았는데 갱신된다
         assertThat(alive.lastState().viewerCount()).isEqualTo(1);
@@ -89,7 +89,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
         subscribe(liveRoom(), alive);
 
         // when
-        auctionRoomStreamService.sweepClosedSubscriptions();
+        roomStreamService.sweepClosedSubscriptions();
 
         // then : 살아 있는지 확인만 하고 끝난다, 주기가 돌 때마다 같은 현황을 다시 밀지 않는다
         // 이 단정이 걷어내기 주기를 짧게 잡을 수 있는 근거다, 방송이 안 나갔다는 것은 DB 도 안 읽었다는 뜻이다
@@ -107,16 +107,16 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
         // when : 결과 구간까지 지나 방이 닫힌 뒤 한쪽이 조용히 사라져 갱신이 돈다
         fixClockAt(NOW.plusMinutes(30));
         gone.disconnect();
-        auctionRoomStreamService.sweepClosedSubscriptions();
+        roomStreamService.sweepClosedSubscriptions();
 
         // then 1 : 연결은 아직 열려 있지만 닫힌 방은 접속자로 세지 않는다
         assertThat(alive.lastState().viewerCount()).isZero();
 
         // then 2 : 같은 순간 새로 들어오려는 사람은 아예 막힌다, 열어 둔 화면과 새 조회가 어긋나지 않는다
-        assertThat(catchThrowable(() -> auctionRoomService.enterRoom(auctionId, VIEWER_ID)))
+        assertThat(catchThrowable(() -> roomService.enterRoom(auctionId, VIEWER_ID)))
                 .isInstanceOf(BusinessException.class)
                 .extracting(thrown -> ((BusinessException) thrown).errorCode())
-                .isEqualTo(AuctionRoomErrorCode.ROOM_ALREADY_CLOSED);
+                .isEqualTo(RoomErrorCode.ROOM_ALREADY_CLOSED);
     }
 
     @Test
@@ -139,7 +139,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
         // when : 두 방에서 한 명씩 사라져 청소가 둘 다 갱신하려 한다
         brokenGone.disconnect();
         healthyGone.disconnect();
-        Throwable thrown = catchThrowable(() -> auctionRoomStreamService.sweepClosedSubscriptions());
+        Throwable thrown = catchThrowable(() -> roomStreamService.sweepClosedSubscriptions());
 
         // then 1 : 한 방이 터져도 청소가 통째로 멈추지 않는다
         assertThat(thrown).isNull();
@@ -156,12 +156,12 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
         subscribe(auctionId, alive);
         subscribe(auctionId, gone);
         gone.disconnect();
-        auctionRoomStreamService.sweepClosedSubscriptions();
+        roomStreamService.sweepClosedSubscriptions();
 
         int receivedAfterSweep = alive.received().size();
 
         // when : 끝난 연결의 해제 콜백이 뒤늦게 돌아온다, 실제 컨테이너에서 나는 그 순서다
-        auctionRoomStreamService.unsubscribe(auctionId, gone);
+        roomStreamService.unsubscribe(auctionId, gone);
 
         // then : 이미 빠진 구독이라 같은 방을 다시 읽지도 보내지도 않는다
         assertThat(alive.received()).hasSize(receivedAfterSweep);
@@ -177,7 +177,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
 
         // when : 마감 후 결과 구간까지 지나 방이 닫힌다
         fixClockAt(NOW.plusMinutes(30));
-        auctionRoomStreamService.disconnectClosedRooms();
+        roomStreamService.disconnectClosedRooms();
 
         // then 1 : 둘 다 서버가 끝냈고 명부에도 남지 않는다
         assertThat(alive.closedByServer).isTrue();
@@ -196,7 +196,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
         subscribe(auctionId, alive);
 
         // when : 같은 주기 작업이 돈다
-        auctionRoomStreamService.disconnectClosedRooms();
+        roomStreamService.disconnectClosedRooms();
 
         // then : 볼 것이 남은 방이라 그대로 둔다
         assertThat(alive.closedByServer).isFalse();

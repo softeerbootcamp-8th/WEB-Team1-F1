@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 서버가 끊은 뒤 응답이 실제로 끝나는지, 두 번째로 디스패처를 통과하며 인증이 이미 나간 응답을 뒤집지 않는지
  */
 @DisplayName("경매방 현황 구독 통합 테스트")
-class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
+class RoomStreamIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private SessionService sessionService;

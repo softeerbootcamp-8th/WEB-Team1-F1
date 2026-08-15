@@ -29,6 +29,6 @@ public interface RoomSubscriber {
     /**
      * 이 구독을 연 사람, 같은 사람이 연 창들을 하나로 묶는 데만 쓴다
      */
-    // 방송에 싣지 않는다, 그것을 지키는 것은 이 주석이 아니라 AuctionRoomStreamIntegrationTest 의 누출 단정이다
+    // 방송에 싣지 않는다, 그것을 지키는 것은 이 주석이 아니라 RoomStreamIntegrationTest 의 누출 단정이다
     long viewerId();
 }

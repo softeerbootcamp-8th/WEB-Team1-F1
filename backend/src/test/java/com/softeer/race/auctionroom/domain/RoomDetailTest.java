@@ -13,14 +13,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 // 결과 응답은 시각이 아니라 확정된 상태를 본다
 // 마감 정각과 스케줄러가 낙찰자를 확정하는 순간 사이에는 낙찰인지 유찰인지 알 수 없다
-class AuctionRoomDetailTest {
+class RoomDetailTest {
 
     private static final LocalDateTime START_AT = LocalDateTime.of(2026, 8, 3, 20, 30);
 
     @Test
     @DisplayName("낙찰된 경매는 낙찰 결과와 최종 낙찰가, 마스킹된 낙찰자를 내놓는다")
     void soldAuctionHasWinnerAndPrice() {
-        AuctionRoomDetail detail = sold(21_000_000L);
+        RoomDetail detail = sold(21_000_000L);
 
         assertThat(detail.outcome()).contains(AuctionOutcome.SOLD);
         assertThat(detail.winningPrice()).contains(21_000_000L);
@@ -31,7 +31,7 @@ class AuctionRoomDetailTest {
     @Test
     @DisplayName("유찰된 경매는 결과가 유찰이고 낙찰가도 낙찰자도 없다")
     void unsoldAuctionHasNeitherPriceNorWinner() {
-        AuctionRoomDetail detail = unsold();
+        RoomDetail detail = unsold();
 
         assertThat(detail.outcome()).contains(AuctionOutcome.UNSOLD);
         assertThat(detail.winningPrice()).isEmpty();
@@ -42,7 +42,7 @@ class AuctionRoomDetailTest {
     @Test
     @DisplayName("파는 사람과 낙찰받은 사람은 따로 판정된다")
     void sellerAndWinnerAreJudgedApart() {
-        AuctionRoomDetail detail = sold(21_000_000L);
+        RoomDetail detail = sold(21_000_000L);
 
         assertThat(detail.isSoldBy(SELLER_ID)).isTrue();
         assertThat(detail.isSoldBy(WINNER_ID)).isFalse();
@@ -82,18 +82,18 @@ class AuctionRoomDetailTest {
     private static final long VEHICLE_ID = 5L;
     private static final long START_PRICE = 10_000_000L;
 
-    private static AuctionRoomDetail sold(long winningPrice) {
+    private static RoomDetail sold(long winningPrice) {
         return detail(AuctionStatus.ENDED, winningPrice, WINNER_ID, "이준호");
     }
 
-    private static AuctionRoomDetail unsold() {
+    private static RoomDetail unsold() {
         return detail(AuctionStatus.FAILED, null, null, null);
     }
 
-    private static AuctionRoomDetail detail(
+    private static RoomDetail detail(
             AuctionStatus status, Long currentPrice, Long winnerId, String winnerRealName) {
 
-        return new AuctionRoomDetail(
+        return new RoomDetail(
                 1L,
                 status,
                 START_PRICE,

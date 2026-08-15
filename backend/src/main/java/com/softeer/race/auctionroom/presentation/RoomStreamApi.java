@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Tag(name = "AuctionRoom", description = "경매방 현황 조회 API")
-public interface AuctionRoomStreamApi {
+public interface RoomStreamApi {
 
     @Operation(summary = "경매방 현황 실시간 구독",
             description = "연결을 열어 둔 채로 방 현황이 바뀔 때마다 현재 상태 전체를 내려줍니다. "

@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 세션 쿠키 없이는 방을 열 수 없고, 본인 표시는 헤더가 아니라 쿠키 주인 기준이다
  */
 @DisplayName("경매방 현황 조회 통합 테스트")
-class AuctionRoomIntegrationTest extends IntegrationTestSupport {
+class RoomIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private SessionService sessionService;

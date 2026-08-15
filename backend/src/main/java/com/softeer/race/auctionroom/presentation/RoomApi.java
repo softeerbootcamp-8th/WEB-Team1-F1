@@ -1,6 +1,6 @@
 package com.softeer.race.auctionroom.presentation;
 
-import com.softeer.race.auctionroom.presentation.response.AuctionRoomResponse;
+import com.softeer.race.auctionroom.presentation.response.RoomResponse;
 import com.softeer.race.auctionroom.presentation.response.RoomOpeningResponse;
 import com.softeer.race.auctionroom.presentation.response.RoomResultResponse;
 import com.softeer.race.auth.domain.AuthenticatedUser;
@@ -11,7 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "AuctionRoom", description = "경매방 현황 조회 API")
-public interface AuctionRoomApi {
+public interface RoomApi {
 
     @Operation(summary = "경매방 현황 조회",
             description = "차량 요약, 현재가, 마감 시각, 최근 호가, 접속자 수를 반환합니다. "
@@ -26,7 +26,7 @@ public interface AuctionRoomApi {
     @ApiResponse(responseCode = "404", description = "없는 경매이거나 경매글이 삭제된 경우입니다.")
     @ApiResponse(responseCode = "409",
             description = "아직 열리지 않았거나(ROOM_NOT_OPEN_YET) 이미 종료된(ROOM_ALREADY_CLOSED) 방입니다.")
-    ResponseEntity<AuctionRoomResponse> enterRoom(
+    ResponseEntity<RoomResponse> enterRoom(
             @Parameter(description = "경매 식별자", example = "1") long auctionId,
 
             // 아규먼트 리졸버가 쿠키에서 채우는 값이라 요청에 실리지 않는다, 감추지 않으면 springdoc 이

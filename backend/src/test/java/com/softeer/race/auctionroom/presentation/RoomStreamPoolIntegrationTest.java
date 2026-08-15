@@ -51,7 +51,7 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "spring.datasource.hikari.connection-timeout=2000"
         })
 @DisplayName("구독 연결과 커넥션 풀 통합 테스트")
-class AuctionRoomStreamPoolIntegrationTest extends IntegrationTestSupport {
+class RoomStreamPoolIntegrationTest extends IntegrationTestSupport {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
 
@@ -183,7 +183,7 @@ class AuctionRoomStreamPoolIntegrationTest extends IntegrationTestSupport {
                         return openStream(auctionId, token);
                     }))
                     .toList()
-                    .forEach(AuctionRoomStreamPoolIntegrationTest::join);
+                    .forEach(RoomStreamPoolIntegrationTest::join);
         }
     }
 

@@ -16,7 +16,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @RequiredArgsConstructor
 class RoomRefreshListener {
 
-    private final AuctionRoomStreamService auctionRoomStreamService;
+    private final RoomStreamService roomStreamService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onBidAccepted(BidAccepted event) {
@@ -35,7 +35,7 @@ class RoomRefreshListener {
 
     private void refresh(long auctionId, String cause) {
         try {
-            auctionRoomStreamService.refresh(auctionId);
+            roomStreamService.refresh(auctionId);
         } catch (Exception e) {
             // 커밋은 이미 끝났다, 여기서 던지면 성공한 일이 호출자에게 실패로 보인다
             log.warn("{} 뒤 경매방 갱신 실패, 경매 {}", cause, auctionId, e);

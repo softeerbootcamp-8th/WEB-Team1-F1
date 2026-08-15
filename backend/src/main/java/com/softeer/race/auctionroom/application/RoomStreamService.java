@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_NOT_FOUND;
+import static com.softeer.race.auctionroom.domain.RoomErrorCode.ROOM_NOT_FOUND;
 
 /**
  * 경매방 현황을 열려 있는 구독으로 흘려보내는 서비스
@@ -16,7 +16,7 @@ import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_NOT_
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AuctionRoomStreamService {
+public class RoomStreamService {
 
     // 알리지 않고 끊긴 사람이 이 시간 안에는 접속자에서 빠진다, 프록시가 유휴 연결을 끊는 것도 이 신호가 막는다
     // 정상 종료는 해제 콜백이 즉시 빼 가므로 이 주기는 조용히 사라진 연결만 줍는 안전망이다
@@ -27,7 +27,7 @@ public class AuctionRoomStreamService {
     // 위와 이유가 달라 값도 따로 간다, 이쪽은 구독이 있는 방마다 단계를 조회하므로 주기를 줄인 만큼 쿼리가 는다
     private static final long DISCONNECT_INTERVAL_MILLIS = 5_000L;
 
-    private final AuctionRoomReader auctionRoomReader;
+    private final RoomReader roomReader;
     private final RoomChannel roomChannel;
 
     /**
@@ -35,7 +35,7 @@ public class AuctionRoomStreamService {
      */
     public void subscribe(long auctionId, RoomSubscriber subscriber) {
         // 연결을 열어 두지 않는 단계의 구독이 채널에 남지 않도록 등록 전에 판정한다
-        RoomSnapshot snapshot = auctionRoomReader.find(auctionId)
+        RoomSnapshot snapshot = roomReader.find(auctionId)
                 .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
 
         snapshot.phase().streamRejection().ifPresent(errorCode -> {
@@ -100,13 +100,13 @@ public class AuctionRoomStreamService {
         }
 
         // 구독이 열려 있는 사이에 경매글이 내려갔다면 보낼 현황이 없다
-        auctionRoomReader.find(auctionId)
+        roomReader.find(auctionId)
                 .ifPresent(this::broadcast);
     }
 
     // 경매글이 내려가 단계를 알 수 없으면 끊을 근거도 없으므로 그대로 둔다
     private boolean connectionsAreOver(long auctionId) {
-        return auctionRoomReader.findPhase(auctionId)
+        return roomReader.findPhase(auctionId)
                 .map(phase -> !phase.allowsConnection())
                 .orElse(false);
     }

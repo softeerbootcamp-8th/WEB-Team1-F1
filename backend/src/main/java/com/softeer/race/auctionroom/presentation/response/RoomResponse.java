@@ -1,6 +1,6 @@
 package com.softeer.race.auctionroom.presentation.response;
 
-import com.softeer.race.auctionroom.application.AuctionRoomView;
+import com.softeer.race.auctionroom.application.RoomView;
 import com.softeer.race.auctionroom.application.RoomState;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Schema(description = "경매방 현황")
-public record AuctionRoomResponse(
+public record RoomResponse(
         @Schema(description = "경매 식별자", example = "1")
         long auctionId,
 
@@ -57,10 +57,10 @@ public record AuctionRoomResponse(
         List<RecentBidResponse> recentBids
 ) {
 
-    public static AuctionRoomResponse from(AuctionRoomView view) {
+    public static RoomResponse from(RoomView view) {
         RoomState state = view.state();
 
-        return new AuctionRoomResponse(
+        return new RoomResponse(
                 state.auctionId(),
                 state.phase(),
                 VehicleResponse.from(view.vehicle()),

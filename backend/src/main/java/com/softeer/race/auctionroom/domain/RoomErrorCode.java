@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 /**
  * 경매방 에러 코드
  */
-public enum AuctionRoomErrorCode implements ErrorCode {
+public enum RoomErrorCode implements ErrorCode {
 
     ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "경매방을 찾을 수 없습니다."),
     ROOM_NOT_OPEN_YET(HttpStatus.CONFLICT, "아직 열리지 않은 경매방입니다."),
@@ -18,7 +18,7 @@ public enum AuctionRoomErrorCode implements ErrorCode {
     private final HttpStatus status;
     private final String message;
 
-    AuctionRoomErrorCode(HttpStatus status, String message) {
+    RoomErrorCode(HttpStatus status, String message) {
         this.status = status;
         this.message = message;
     }

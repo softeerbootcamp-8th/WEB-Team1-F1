@@ -1,6 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
-import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
+import com.softeer.race.auctionroom.domain.RoomDetail;
 import com.softeer.race.auctionroom.domain.BidCounts;
 import com.softeer.race.auctionroom.domain.RecentBid;
 import com.softeer.race.auctionroom.domain.RoomPhase;
@@ -12,7 +12,7 @@ import java.util.List;
  * 경매방을 한 번에 읽어 찍은 한 시점, 여기서 조회 응답과 브로드캐스트 현황이 각각 조립된다
  */
 record RoomSnapshot(
-        AuctionRoomDetail detail,
+        RoomDetail detail,
         BidCounts bidCounts,
         List<RecentBid> recentBids,
         LocalDateTime serverTime

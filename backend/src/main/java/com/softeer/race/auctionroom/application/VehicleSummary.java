@@ -1,6 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
-import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
+import com.softeer.race.auctionroom.domain.RoomDetail;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
@@ -22,7 +22,7 @@ public record VehicleSummary(
 ) {
 
     // 사진과 키워드는 상세와 따로 읽어 오므로 조립하는 쪽에서 받는다
-    static VehicleSummary of(AuctionRoomDetail detail, List<String> imageUrls, List<VehicleKeyword> keywords) {
+    static VehicleSummary of(RoomDetail detail, List<String> imageUrls, List<VehicleKeyword> keywords) {
         return new VehicleSummary(
                 detail.manufacturer(),
                 detail.model(),

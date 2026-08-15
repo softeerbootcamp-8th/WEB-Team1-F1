@@ -1,6 +1,6 @@
 package com.softeer.race.auctionroom.presentation.response;
 
-import com.softeer.race.auctionroom.application.AuctionRoomView;
+import com.softeer.race.auctionroom.application.RoomView;
 import com.softeer.race.auctionroom.application.RoomResultView;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -15,7 +15,7 @@ public record WinnerResponse(
 
     // 낙찰 확정 전에는 낙찰자가 아예 없다, 그 판단을 응답 둘에 흩지 않고 여기 모은다
     // 조회 결과를 그대로 받아 마스킹된 이름이 여기서 처음 문자열로 풀린다
-    static WinnerResponse from(AuctionRoomView view) {
+    static WinnerResponse from(RoomView view) {
         return view.state().winnerName() == null
                 ? null
                 : new WinnerResponse(view.state().winnerName().value(), view.winnerIsMine());

@@ -1,6 +1,6 @@
 package com.softeer.race.auctionroom.presentation;
 
-import com.softeer.race.auctionroom.application.AuctionRoomStreamService;
+import com.softeer.race.auctionroom.application.RoomStreamService;
 import com.softeer.race.auctionroom.application.RoomSubscriber;
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
@@ -21,12 +21,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RestController
 @RequestMapping("/api/auctions")
 @RequiredArgsConstructor
-public class AuctionRoomStreamController implements AuctionRoomStreamApi {
+public class RoomStreamController implements RoomStreamApi {
 
     // 경매 하나의 수명보다 짧게 잡아 오래 붙어 있는 연결을 주기적으로 새로 세운다
     private static final long STREAM_TIMEOUT_MILLIS = Duration.ofMinutes(30).toMillis();
 
-    private final AuctionRoomStreamService auctionRoomStreamService;
+    private final RoomStreamService roomStreamService;
 
     @Override
     @GetMapping(path = "/{auctionId}/room/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -45,7 +45,7 @@ public class AuctionRoomStreamController implements AuctionRoomStreamApi {
         Runnable release = () -> {
             if (released.compareAndSet(false, true)) {
                 // 콜백은 요청 스레드가 아니다, 주입받은 빈으로 불러야 트랜잭션 프록시를 탄다
-                auctionRoomStreamService.unsubscribe(auctionId, subscriber);
+                roomStreamService.unsubscribe(auctionId, subscriber);
             }
         };
 
@@ -57,7 +57,7 @@ public class AuctionRoomStreamController implements AuctionRoomStreamApi {
             release.run();
         });
 
-        auctionRoomStreamService.subscribe(auctionId, subscriber);
+        roomStreamService.subscribe(auctionId, subscriber);
 
         return ResponseEntity.ok(emitter);
     }

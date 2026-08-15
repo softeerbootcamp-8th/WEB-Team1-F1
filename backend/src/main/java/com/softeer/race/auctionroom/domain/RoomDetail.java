@@ -11,7 +11,7 @@ import java.util.Optional;
 /**
  * 경매방 조회와 브로드캐스트가 한 번에 읽어오는 경매·차량·낙찰자
  */
-public record AuctionRoomDetail(
+public record RoomDetail(
         long auctionId,
         AuctionStatus status,
         long startPrice,
@@ -34,7 +34,7 @@ public record AuctionRoomDetail(
 
     // JPQL 이 넘기는 원시 값을 받아 표시가 해소와 마스킹을 한 번에 한다
     // 위 정규 생성자는 실명을 받을 수 없으므로 조회 경로에는 이 생성자만 걸린다
-    public AuctionRoomDetail(long auctionId,
+    public RoomDetail(long auctionId,
                              AuctionStatus status,
                              long startPrice,
                              Long currentPrice,

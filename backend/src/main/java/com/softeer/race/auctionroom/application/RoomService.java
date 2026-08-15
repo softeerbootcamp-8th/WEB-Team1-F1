@@ -1,7 +1,7 @@
 package com.softeer.race.auctionroom.application;
 
 import com.softeer.race.auctionroom.domain.AuctionOutcome;
-import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
+import com.softeer.race.auctionroom.domain.RoomDetail;
 import com.softeer.race.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -10,13 +10,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 
-import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.*;
+import static com.softeer.race.auctionroom.domain.RoomErrorCode.*;
 
 @Service
 @RequiredArgsConstructor
-public class AuctionRoomService {
+public class RoomService {
 
-    private final AuctionRoomReader auctionRoomReader;
+    private final RoomReader roomReader;
     private final RoomChannel roomChannel;
     private final Clock clock;
 
@@ -24,8 +24,8 @@ public class AuctionRoomService {
      * 경매방 현황, 조회한 사람의 입찰과 낙찰 여부까지 판정된 상태
      */
     @Transactional(readOnly = true)
-    public AuctionRoomView enterRoom(long auctionId, long userId) {
-        RoomSnapshot snapshot = auctionRoomReader.find(auctionId)
+    public RoomView enterRoom(long auctionId, long userId) {
+        RoomSnapshot snapshot = roomReader.find(auctionId)
                 .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
 
         // 열리지 않은 방과 끝난 방은 여기서 걸린다,
@@ -35,9 +35,9 @@ public class AuctionRoomService {
         });
 
         // 조회는 접속이 아니다, 접속자는 열려 있는 구독으로만 센다
-        return AuctionRoomView.of(userId, snapshot, roomChannel.countViewers(auctionId),
-                auctionRoomReader.findPhotoUrls(auctionId),
-                auctionRoomReader.findKeywords(snapshot.detail().vehicleId()));
+        return RoomView.of(userId, snapshot, roomChannel.countViewers(auctionId),
+                roomReader.findPhotoUrls(auctionId),
+                roomReader.findKeywords(snapshot.detail().vehicleId()));
     }
 
     /**
@@ -45,7 +45,7 @@ public class AuctionRoomService {
      */
     @Transactional(readOnly = true)
     public RoomOpening readOpening(long auctionId) {
-        AuctionRoomDetail detail = auctionRoomReader.findDetail(auctionId)
+        RoomDetail detail = roomReader.findDetail(auctionId)
                 .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
 
         LocalDateTime now = LocalDateTime.now(clock);
@@ -56,8 +56,8 @@ public class AuctionRoomService {
             throw new BusinessException(errorCode);
         });
 
-        return RoomOpening.of(detail, auctionRoomReader.findPhotoUrls(auctionId),
-                auctionRoomReader.findKeywords(detail.vehicleId()), now);
+        return RoomOpening.of(detail, roomReader.findPhotoUrls(auctionId),
+                roomReader.findKeywords(detail.vehicleId()), now);
     }
 
     /**
@@ -65,17 +65,17 @@ public class AuctionRoomService {
      */
     @Transactional(readOnly = true)
     public RoomResultView readResult(long auctionId, long viewerId) {
-        AuctionRoomDetail detail = auctionRoomReader.findDetail(auctionId)
+        RoomDetail detail = roomReader.findDetail(auctionId)
                 .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
 
         // 확정 전에 답하면 낙찰된 경매를 유찰이라 말하게 된다, 집계도 여기서 걸러 읽지 않는다
         AuctionOutcome outcome = detail.outcome()
                 .orElseThrow(() -> new BusinessException(ROOM_RESULT_NOT_READY));
 
-        return RoomResultView.of(detail, outcome, auctionRoomReader.findBidCounts(auctionId), viewerId,
-                auctionRoomReader.findStanding(auctionId, viewerId).orElse(null),
-                auctionRoomReader.findPriceCurve(auctionId),
-                auctionRoomReader.findPhotoUrls(auctionId),
-                auctionRoomReader.findKeywords(detail.vehicleId()), LocalDateTime.now(clock));
+        return RoomResultView.of(detail, outcome, roomReader.findBidCounts(auctionId), viewerId,
+                roomReader.findStanding(auctionId, viewerId).orElse(null),
+                roomReader.findPriceCurve(auctionId),
+                roomReader.findPhotoUrls(auctionId),
+                roomReader.findKeywords(detail.vehicleId()), LocalDateTime.now(clock));
     }
 }

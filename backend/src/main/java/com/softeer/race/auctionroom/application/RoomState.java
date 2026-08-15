@@ -1,6 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
-import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
+import com.softeer.race.auctionroom.domain.RoomDetail;
 import com.softeer.race.auctionroom.domain.BidCounts;
 import com.softeer.race.auctionroom.domain.RecentBid;
 import com.softeer.race.auctionroom.domain.RoomPhase;
@@ -32,7 +32,7 @@ public record RoomState(
      */
     // 사람 수를 내보낼지는 단계가 정한다, 조회와 방송이 여기를 함께 지나므로 판정이 하나로 남는다
     static RoomState of(RoomSnapshot snapshot, int viewerCount) {
-        AuctionRoomDetail detail = snapshot.detail();
+        RoomDetail detail = snapshot.detail();
 
         return new RoomState(
                 detail.auctionId(),
