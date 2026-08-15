@@ -113,7 +113,7 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
         assertThat(alive.lastState().viewerCount()).isZero();
 
         // then 2 : 같은 순간 새로 들어오려는 사람은 아예 막힌다, 열어 둔 화면과 새 조회가 어긋나지 않는다
-        assertThat(catchThrowable(() -> roomService.enterRoom(auctionId, VIEWER_ID)))
+        assertThat(catchThrowable(() -> roomService.readRoom(auctionId, VIEWER_ID)))
                 .isInstanceOf(BusinessException.class)
                 .extracting(thrown -> ((BusinessException) thrown).errorCode())
                 .isEqualTo(RoomErrorCode.ROOM_ALREADY_CLOSED);

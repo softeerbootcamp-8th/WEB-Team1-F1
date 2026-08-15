@@ -22,12 +22,12 @@ public class RoomController implements RoomApi {
 
     @Override
     @GetMapping("/{auctionId}/room")
-    public ResponseEntity<RoomResponse> enterRoom(
+    public ResponseEntity<RoomResponse> readRoom(
             @PathVariable("auctionId") long auctionId,
             @LoginUser AuthenticatedUser authenticatedUser) {
 
         RoomResponse response =
-                RoomResponse.from(roomService.enterRoom(auctionId, authenticatedUser.id()));
+                RoomResponse.from(roomService.readRoom(auctionId, authenticatedUser.id()));
         return ResponseEntity.ok(response);
     }
 

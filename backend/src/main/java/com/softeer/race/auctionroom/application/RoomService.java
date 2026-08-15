@@ -24,7 +24,7 @@ public class RoomService {
      * 경매방 현황, 조회한 사람의 입찰과 낙찰 여부까지 판정된 상태
      */
     @Transactional(readOnly = true)
-    public RoomView enterRoom(long auctionId, long userId) {
+    public RoomView readRoom(long auctionId, long viewerId) {
         RoomSnapshot snapshot = roomReader.find(auctionId)
                 .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
 
@@ -35,7 +35,7 @@ public class RoomService {
         });
 
         // 조회는 접속이 아니다, 접속자는 열려 있는 구독으로만 센다
-        return RoomView.of(userId, snapshot, roomChannel.viewerCount(auctionId),
+        return RoomView.of(viewerId, snapshot, roomChannel.viewerCount(auctionId),
                 roomReader.findPhotoUrls(auctionId),
                 roomReader.findKeywords(snapshot.detail().vehicleId()));
     }
