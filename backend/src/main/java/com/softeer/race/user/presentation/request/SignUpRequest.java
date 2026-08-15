@@ -36,9 +36,12 @@ public record SignUpRequest(
         @Size(min = 2, max = 30)
         String realName,
 
-        @Schema(description = "휴대전화 번호", example = "010-1234-5678")
+        // 같은 번호가 하이픈 유무로 두 형식이 되면 중복 검사가 무너진다
+        // 저장 형식을 숫자 11자리 하나로 고정해 uk_users_phone이 실제 중복을 잡게 한다
+        @Schema(description = "휴대전화 번호(숫자만)", example = "01012345678")
         @NotBlank
-        @Pattern(regexp = "^01\\d-?\\d{3,4}-?\\d{4}$")
+        @Pattern(regexp = "^010\\d{8}$",
+                message = "휴대전화 번호는 '-' 없이 010으로 시작하는 숫자 11자리로 입력해야 합니다.")
         String phone,
 
         @Schema(description = "회원 유형", example = "GENERAL")

@@ -111,7 +111,9 @@ export function EvaluationSummaryCard({
         </div>
         <div className="flex gap-3">
           <MapPin className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-          <p className="break-words">{evaluation.visitAddress}</p>
+          <p className="line-clamp-2 break-words" title={evaluation.visitAddress}>
+            {evaluation.visitAddress}
+          </p>
         </div>
         <p className="text-muted-foreground pt-1 text-xs">
           {formatDateTime(evaluation.requestedAt)} 접수
@@ -139,7 +141,7 @@ function SummaryMeta({
         <Icon className="size-3.5" />
         {label}
       </p>
-      <p className={`mt-2 break-words text-sm leading-5 ${emphasis ? 'font-semibold' : 'font-medium'}`}>
+      <p className={`mt-2 line-clamp-2 break-words text-sm leading-5 ${emphasis ? 'font-semibold' : 'font-medium'}`} title={value}>
         {value}
       </p>
     </div>

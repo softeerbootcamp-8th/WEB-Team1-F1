@@ -188,7 +188,7 @@ export function AssignableEvaluationsPage() {
               </div>
               <div>
                 <dt className="text-muted-foreground">방문 주소</dt>
-                <dd className="mt-1 font-medium">{assignment.visitAddress}</dd>
+                <dd className="mt-1 break-words font-medium">{assignment.visitAddress}</dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">판매자 연락처</dt>
@@ -232,7 +232,7 @@ function AssignmentMeta({
         <Icon className="size-3.5" />
         {label}
       </p>
-      <p className={`mt-2 break-words text-sm leading-5 ${emphasis ? 'font-semibold' : 'font-medium'}`}>
+      <p className={`mt-2 line-clamp-2 break-words text-sm leading-5 ${emphasis ? 'font-semibold' : 'font-medium'}`} title={value}>
         {value}
       </p>
     </div>

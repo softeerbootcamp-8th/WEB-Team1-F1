@@ -417,7 +417,7 @@ export function EvaluationResultPage() {
               </div>
               <dl className="space-y-4 border-t pt-5">
                 <div><dt className="text-muted-foreground">방문 희망일</dt><dd className="mt-1 font-medium">{formatVisitDate(detail.visitDate)}</dd></div>
-                <div><dt className="text-muted-foreground">방문 주소</dt><dd className="mt-1 font-medium">{detail.visitAddress}</dd></div>
+                <div><dt className="text-muted-foreground">방문 주소</dt><dd className="mt-1 break-words font-medium">{detail.visitAddress}</dd></div>
                 <div><dt className="text-muted-foreground">판매자 연락처</dt><dd className="mt-1"><a className="inline-flex items-center gap-2 font-semibold underline-offset-4 hover:underline" href={`tel:${detail.contactPhone}`}><Phone className="size-4" />{formatPhone(detail.contactPhone)}</a></dd></div>
               </dl>
             </CardContent>
