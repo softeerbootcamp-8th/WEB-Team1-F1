@@ -6,6 +6,7 @@ import com.softeer.race.notification.domain.Notification;
 import com.softeer.race.notification.domain.NotificationRepository;
 import com.softeer.race.notification.domain.NotificationType;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
 import jakarta.servlet.http.Cookie;
@@ -64,6 +65,13 @@ class NotificationIntegrationTest extends IntegrationTestSupport {
     @BeforeEach
     void fixTime() {
         fixClockAt(FIXED_NOW);
+    }
+
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.notification(sessions);
     }
 
     @Test

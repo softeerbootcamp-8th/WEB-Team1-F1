@@ -2,7 +2,10 @@ package com.softeer.race.evaluation.presentation;
 
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
+import com.softeer.race.user.domain.Role;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.jdbc.Sql;
@@ -74,6 +77,13 @@ class EvaluationAssignmentIntegrationTest extends IntegrationTestSupport {
     private static final long SELF_OWNED_EVALUATION = 524L;
 
     private static final String CONTACT_PHONE = "01011112222";
+
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.evaluationAssignment(sessions);
+    }
 
     @Test
     @DisplayName("시나리오 1 : 배정 대기 목록은 아직 수락되지 않은 건만 방문일 임박순으로 돌려준다")
@@ -197,13 +207,21 @@ class EvaluationAssignmentIntegrationTest extends IntegrationTestSupport {
         assertThat(rowOf(WAITING_EVALUATION).get("evaluator_id")).isNull();
     }
 
+    // 역할은 로그인 시점에 세션으로 복사된다. 인증이 회원 조회 없이 세션 하나로 끝나는 대신
+    // 살아 있는 세션은 옛 역할을 계속 들고 다닌다 — 최대 세션 TTL 만큼 늦게 반영된다는 뜻이다
+    // 역할을 바꾸는 API 를 들일 때는 그 회원의 세션을 함께 폐기해야 하고, 이 테스트가 그 자리를 표시한다
     @Test
-    @DisplayName("시나리오 9 : 세션이 살아 있어도 DB 역할 변경은 다음 요청에 즉시 반영된다")
-    void scenario9_RoleChangeTakesEffectOnNextRequest() throws Exception {
+    @DisplayName("시나리오 9 : 역할이 바뀌어도 살아 있는 세션에는 반영되지 않고, 세션을 새로 받아야 반영된다")
+    void scenario9_RoleChangeTakesEffectOnlyWithNewSession() throws Exception {
         assignable(PARK_TOKEN).andExpect(status().isForbidden());
 
         jdbcTemplate.update("update users set role = 'EVALUATOR' where id = ?", PARK_ID);
 
+        // 세션에 담긴 역할은 그대로라 같은 쿠키로는 여전히 막힌다
+        assignable(PARK_TOKEN).andExpect(status().isForbidden());
+
+        // 재로그인과 같은 상태를 만든다, 그때 비로소 바뀐 역할로 인증된다
+        sessions.seed(PARK_TOKEN, PARK_ID, Role.EVALUATOR);
         assignable(PARK_TOKEN).andExpect(status().isOk());
     }
 

@@ -5,6 +5,7 @@ import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.notification.domain.NotificationRepository;
 import com.softeer.race.notification.domain.NotificationRow;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -78,6 +79,13 @@ class BidIntegrationTest extends IntegrationTestSupport {
     @BeforeEach
     void fixClock() {
         fixClockAt(NOW);
+    }
+
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.bidPlace(sessions);
     }
 
     @Test
@@ -192,9 +200,10 @@ class BidIntegrationTest extends IntegrationTestSupport {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
 
+        // 만료된 세션은 저장소에서 이미 사라져 없는 세션과 구분되지 않는다, 같은 코드로 거부된다
         bid(LIVE_AUCTION, EXPIRED_TOKEN, START_PRICE)
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("AUTH_SESSION_EXPIRED"));
+                .andExpect(jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
 
         assertThat(bidCount(LIVE_AUCTION)).isZero();
     }
