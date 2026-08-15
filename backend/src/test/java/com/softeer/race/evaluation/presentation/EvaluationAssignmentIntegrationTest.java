@@ -45,6 +45,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 8. 동시성 — 비관적 잠금이 필요한지를 실제로 확인한다
  * <p>
+ * 9. 나누어 조회 — 커서로 이어 읽는지, 그사이 앞 신청이 수락돼도 다음 신청을 건너뛰지 않는지,
+ * 첫 페이지만 받는 화면이 쓸 전체 건수가 목록과 같은 조건으로 세지는지
+ * <p>
  * <b>{@code @Transactional}을 붙이지 않는다.</b> 동시 수락 시나리오가 별 스레드에서 요청을 보내는데
  * 그 스레드는 테스트 트랜잭션을 물려받지 않아, 롤백 방식으로 두면 심어 둔 데이터를 보지 못한다.
  * 정리는 IntegrationTestSupport 의 {@code @AfterEach}가 한다.
@@ -101,7 +104,10 @@ class EvaluationAssignmentIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.evaluations[0].plateNumber").value("12가3456"))
                 .andExpect(jsonPath("$.evaluations[0].manufacturer").value("HYUNDAI"))
                 .andExpect(jsonPath("$.evaluations[0].modelYear").value(2021))
-                .andExpect(jsonPath("$.evaluations[0].visitAddress").value("서울 성동구 왕십리로 83"));
+                .andExpect(jsonPath("$.evaluations[0].visitAddress").value("서울 성동구 왕십리로 83"))
+                // 픽스처가 페이지 크기보다 적어 한 번에 다 나온다
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.nextCursor").doesNotExist());
     }
 
     /**
@@ -306,10 +312,172 @@ class EvaluationAssignmentIntegrationTest extends IntegrationTestSupport {
         assertThat(rowOf(WAITING_EVALUATION).get("evaluator_id")).isIn(KIM_ID, LEE_ID);
     }
 
+    /**
+     * 커서로 끊어 읽는다. 직전 응답의 nextCursor 를 그대로 돌려보내면 그 다음 자리부터 이어진다.
+     */
+    @Test
+    @DisplayName("시나리오 13 : 커서를 돌려보내면 그 다음 신청부터 이어서 나온다")
+    void scenario13_ResumesFromCursor() throws Exception {
+        // 520 과 521 은 방문일이 같다. 날짜만으로는 이어 읽을 자리를 특정할 수 없어 id 가 함께 간다
+        assignable(KIM_TOKEN, "2026-08-20", WAITING_EVALUATION)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations.length()").value(2))
+                .andExpect(jsonPath("$.evaluations[0].evaluationId").value(SAME_DATE_EVALUATION))
+                .andExpect(jsonPath("$.evaluations[1].evaluationId").value(LATER_EVALUATION));
+
+        // 마지막 자리까지 읽으면 더 나올 것이 없다
+        assignable(KIM_TOKEN, "2026-08-25", LATER_EVALUATION)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations.length()").value(0))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    /**
+     * 커서를 쓰는 이유가 여기 있다. offset 이었다면 앞자리 한 건이 빠지는 순간 다음 페이지의 첫
+     * 신청이 이미 읽은 구간으로 당겨져 아무에게도 보이지 않는다. 커서는 행이 아니라 정렬 키의
+     * 값이라, 커서가 가리키던 신청이 그사이 수락돼 사라져도 이어 읽을 자리가 흔들리지 않는다.
+     */
+    @Test
+    @DisplayName("시나리오 14 : 이어 읽는 사이 앞 신청이 수락돼도 다음 신청을 건너뛰지 않는다")
+    void scenario14_KeepsPositionWhenCursorRowIsTaken() throws Exception {
+        // 첫 페이지의 마지막으로 520 을 읽은 뒤, 그사이 다른 평가사가 520 을 수락해 목록에서 빠진다
+        assign(WAITING_EVALUATION, LEE_TOKEN).andExpect(status().isCreated());
+
+        assignable(KIM_TOKEN, "2026-08-20", WAITING_EVALUATION)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations.length()").value(2))
+                .andExpect(jsonPath("$.evaluations[0].evaluationId").value(SAME_DATE_EVALUATION))
+                .andExpect(jsonPath("$.evaluations[1].evaluationId").value(LATER_EVALUATION));
+    }
+
+    // 한쪽만 온 커서를 조용히 첫 페이지로 돌리면 "더 보기"를 눌렀는데 목록이 처음으로 되감긴다
+    @Test
+    @DisplayName("시나리오 15 : 커서를 한쪽만 보내면 400이다")
+    void scenario15_RejectsPartialCursor() throws Exception {
+        mockMvc.perform(get("/api/evaluations/assignable")
+                        .param("visitDate", "2026-08-20")
+                        .cookie(sessionCookie(KIM_TOKEN)))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/evaluations/assignable")
+                        .param("evaluationId", String.valueOf(WAITING_EVALUATION))
+                        .cookie(sessionCookie(KIM_TOKEN)))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * 평가사 홈이 읽는 값. 목록이 나누어 나가면서 첫 페이지 길이로는 셀 수 없게 됐다.
+     */
+    @Test
+    @DisplayName("시나리오 16 : 배정 대기 건수는 목록과 같은 조건으로 세고 수락하면 줄어든다")
+    void scenario16_CountsWaitingEvaluations() throws Exception {
+        // 평가가 끝난 523 은 빠진다 — 목록과 같은 조건이다
+        count(KIM_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.count").value(3));
+
+        assign(WAITING_EVALUATION, KIM_TOKEN).andExpect(status().isCreated());
+
+        count(KIM_TOKEN).andExpect(jsonPath("$.count").value(2));
+    }
+
+    @Test
+    @DisplayName("시나리오 17 : 건수 조회도 세션과 평가사 역할을 요구한다")
+    void scenario17_CountRequiresEvaluator() throws Exception {
+        mockMvc.perform(get("/api/evaluations/assignable/count"))
+                .andExpect(status().isUnauthorized());
+
+        count(PARK_TOKEN)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
+    }
+
+    /**
+     * 같은 목록을 접수가 최근인 순서로 본다. 방문일 순에서는 새 신청이 목록 중간에 꽂혀
+     * 어디에 생겼는지 찾을 수 없다.
+     */
+    @Test
+    @DisplayName("시나리오 18 : 최신순은 접수가 늦은 신청부터 나온다")
+    void scenario18_SortsByLatest() throws Exception {
+        assignableLatest(KIM_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations.length()").value(3))
+                .andExpect(jsonPath("$.evaluations[0].evaluationId").value(LATER_EVALUATION))
+                .andExpect(jsonPath("$.evaluations[1].evaluationId").value(SAME_DATE_EVALUATION))
+                .andExpect(jsonPath("$.evaluations[2].evaluationId").value(WAITING_EVALUATION));
+    }
+
+    /**
+     * 최신순 커서는 id 하나다. id 는 유일해 동률이 없으므로 가르는 값을 둘 이유가 없다.
+     */
+    @Test
+    @DisplayName("시나리오 19 : 최신순은 id 하나로 이어 읽고 커서에 방문일을 담지 않는다")
+    void scenario19_ResumesFromIdOnlyCursor() throws Exception {
+        assignableLatest(KIM_TOKEN, LATER_EVALUATION)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations.length()").value(2))
+                .andExpect(jsonPath("$.evaluations[0].evaluationId").value(SAME_DATE_EVALUATION))
+                .andExpect(jsonPath("$.evaluations[1].evaluationId").value(WAITING_EVALUATION));
+
+        // 한 페이지에 다 담겨 다음 커서가 없다. 방문일 자리가 비어 나가는 것은 아래에서 확인한다
+        assignableLatest(KIM_TOKEN).andExpect(jsonPath("$.nextCursor").doesNotExist());
+    }
+
+    /**
+     * 정렬을 바꾸면서 이전 커서를 그대로 보내는 경우다. 조용히 이어 읽으면 두 순서가 한 화면에
+     * 섞여 같은 신청이 두 번 나오거나 통째로 빠진다. 정렬마다 커서의 모양이 달라 여기서 걸린다.
+     */
+    @Test
+    @DisplayName("시나리오 20 : 정렬과 커서의 모양이 어긋나면 400이다")
+    void scenario20_RejectsCursorFromOtherSort() throws Exception {
+        // 최신순은 방문일을 쓰지 않는다 — 방문일 순에서 받은 커서를 그대로 보낸 경우다
+        mockMvc.perform(get("/api/evaluations/assignable")
+                        .param("sort", "LATEST")
+                        .param("visitDate", "2026-08-20")
+                        .param("evaluationId", String.valueOf(WAITING_EVALUATION))
+                        .cookie(sessionCookie(KIM_TOKEN)))
+                .andExpect(status().isBadRequest());
+
+        // 반대 방향. 방문일 순은 방문일이 없으면 이어 읽을 자리를 특정할 수 없다
+        mockMvc.perform(get("/api/evaluations/assignable")
+                        .param("sort", "VISIT_DATE")
+                        .param("evaluationId", String.valueOf(LATER_EVALUATION))
+                        .cookie(sessionCookie(KIM_TOKEN)))
+                .andExpect(status().isBadRequest());
+    }
+
     // ================= 요청 =================
 
     private ResultActions assignable(String rawToken) throws Exception {
         return mockMvc.perform(get("/api/evaluations/assignable").cookie(sessionCookie(rawToken)));
+    }
+
+    // 커서를 붙인 목록 조회. 직전 응답의 nextCursor 를 그대로 돌려보내는 형태다
+    private ResultActions assignable(String rawToken, String visitDate, long evaluationId)
+            throws Exception {
+        return mockMvc.perform(get("/api/evaluations/assignable")
+                .param("visitDate", visitDate)
+                .param("evaluationId", String.valueOf(evaluationId))
+                .cookie(sessionCookie(rawToken)));
+    }
+
+    private ResultActions assignableLatest(String rawToken) throws Exception {
+        return mockMvc.perform(get("/api/evaluations/assignable")
+                .param("sort", "LATEST")
+                .cookie(sessionCookie(rawToken)));
+    }
+
+    // 최신순 커서. 방문일 없이 id 하나로 이어 읽는다
+    private ResultActions assignableLatest(String rawToken, long evaluationId) throws Exception {
+        return mockMvc.perform(get("/api/evaluations/assignable")
+                .param("sort", "LATEST")
+                .param("evaluationId", String.valueOf(evaluationId))
+                .cookie(sessionCookie(rawToken)));
+    }
+
+    private ResultActions count(String rawToken) throws Exception {
+        return mockMvc.perform(
+                get("/api/evaluations/assignable/count").cookie(sessionCookie(rawToken)));
     }
 
     private ResultActions assign(long evaluationId, String rawToken) throws Exception {

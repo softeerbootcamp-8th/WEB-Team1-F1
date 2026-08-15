@@ -21,18 +21,20 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { CinematicCarBackdrop } from '@/components/common/cinematic-car-backdrop'
 import { useAuth } from '@/features/auth/auth-context'
 import { getErrorMessage } from '@/lib/axios'
-import { fetchAssignableEvaluations, fetchMyAssignments } from '../api'
+import { fetchAssignableEvaluationCount, fetchMyAssignments } from '../api'
 import { summarizeEvaluatorHome } from '../evaluator-home-summary'
 import {
-  ASSIGNABLE_EVALUATIONS_QUERY_KEY,
+  ASSIGNABLE_EVALUATIONS_COUNT_QUERY_KEY,
   MY_ASSIGNMENTS_QUERY_KEY,
 } from '../query-keys'
 
 export function EvaluatorHomePage() {
   const { user } = useAuth()
   const assignableQuery = useQuery({
-    queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY,
-    queryFn: fetchAssignableEvaluations,
+    // 목록이 아니라 건수만 읽는다. 목록은 나누어 나가므로 첫 페이지 길이로는 전체를 셀 수 없고,
+    // 홈은 애초에 카드가 아니라 수만 보여준다
+    queryKey: ASSIGNABLE_EVALUATIONS_COUNT_QUERY_KEY,
+    queryFn: fetchAssignableEvaluationCount,
   })
   const assignmentsQuery = useQuery({
     queryKey: MY_ASSIGNMENTS_QUERY_KEY,
@@ -40,7 +42,7 @@ export function EvaluatorHomePage() {
   })
   const isError = assignableQuery.isError || assignmentsQuery.isError
   const summary = summarizeEvaluatorHome(
-    assignableQuery.data?.evaluations.length ?? 0,
+    assignableQuery.data?.count ?? 0,
     assignmentsQuery.data?.evaluations ?? [],
   )
 

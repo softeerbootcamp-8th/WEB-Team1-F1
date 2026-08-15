@@ -1,6 +1,9 @@
 package com.softeer.race.evaluation.application;
 
 import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.evaluation.application.dto.AssignableEvaluationCursor;
+import com.softeer.race.evaluation.application.dto.AssignableEvaluationSort;
+import com.softeer.race.evaluation.application.dto.info.AssignableEvaluationsInfo;
 import com.softeer.race.evaluation.application.dto.info.EvaluationAssignmentInfo;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
@@ -16,13 +19,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Limit;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -45,6 +54,9 @@ class EvaluationAssignmentServiceTest {
     private static final String PLATE_NUMBER = "12가3456";
     private static final String VISIT_ADDRESS = "서울 성동구 왕십리로 83";
     private static final String CONTACT_PHONE = "01012345678";
+
+    // 서비스의 PAGE_SIZE 와 같은 값. 경계를 확인하려면 테스트도 그 수를 알아야 한다
+    private static final int PAGE_SIZE = 20;
 
     @Mock
     private EvaluationRepository evaluationRepository;
@@ -119,24 +131,150 @@ class EvaluationAssignmentServiceTest {
     }
 
     @Test
-    @DisplayName("배정 대기 목록은 REQUESTED 상태로만 조회한다")
-    void findAssignable() {
+    @DisplayName("커서가 없으면 어떤 신청보다도 앞선 자리에서 첫 페이지를 읽는다")
+    void findAssignableStartsFromFirstCursor() {
         List<Evaluation> waiting = List.of(requestedWithPlateNumber());
-        given(evaluationRepository.findAssignable(EvaluationStatus.REQUESTED)).willReturn(waiting);
+        given(evaluationRepository.findAssignableByVisitDate(
+                eq(EvaluationStatus.REQUESTED), eq(LocalDate.EPOCH), eq(0L), any(Limit.class)))
+                .willReturn(waiting);
 
-        assertThat(evaluationAssignmentService.findAssignable())
+        AssignableEvaluationsInfo info = evaluationAssignmentService.findAssignable(null, AssignableEvaluationSort.VISIT_DATE);
+
+        assertThat(info.hasNext()).isFalse();
+        assertThat(info.nextCursor()).isNull();
+        assertThat(info.content())
                 .singleElement()
-                .satisfies(info -> {
-                    assertThat(info.plateNumber()).isEqualTo(PLATE_NUMBER);
-                    assertThat(info.visitDate()).isEqualTo(VISIT_DATE);
-                    assertThat(info.visitAddress()).isEqualTo(VISIT_ADDRESS);
+                .satisfies(evaluation -> {
+                    assertThat(evaluation.plateNumber()).isEqualTo(PLATE_NUMBER);
+                    assertThat(evaluation.visitDate()).isEqualTo(VISIT_DATE);
+                    assertThat(evaluation.visitAddress()).isEqualTo(VISIT_ADDRESS);
                 });
+    }
+
+    @Test
+    @DisplayName("커서를 받으면 그 자리 다음부터 읽는다")
+    void findAssignableResumesFromCursor() {
+        AssignableEvaluationCursor cursor = new AssignableEvaluationCursor(VISIT_DATE, EVALUATION_ID);
+        given(evaluationRepository.findAssignableByVisitDate(
+                eq(EvaluationStatus.REQUESTED), eq(VISIT_DATE), eq(EVALUATION_ID), any(Limit.class)))
+                .willReturn(List.of());
+
+        AssignableEvaluationsInfo info = evaluationAssignmentService.findAssignable(cursor, AssignableEvaluationSort.VISIT_DATE);
+
+        assertThat(info.content()).isEmpty();
+        assertThat(info.hasNext()).isFalse();
+    }
+
+    @Test
+    @DisplayName("한 건을 더 읽어 다음 페이지가 있는지 보고, 그 한 건은 돌려주지 않는다")
+    void findAssignableTrimsProbeRow() {
+        // 페이지 크기 + 1 건. 마지막 한 건은 다음 페이지가 있는지 보려고 읽은 것이라 응답에 담기지 않는다
+        List<Evaluation> found = waitingList(PAGE_SIZE + 1);
+        given(evaluationRepository.findAssignableByVisitDate(
+                eq(EvaluationStatus.REQUESTED), eq(LocalDate.EPOCH), eq(0L), any(Limit.class)))
+                .willReturn(found);
+
+        AssignableEvaluationsInfo info = evaluationAssignmentService.findAssignable(null, AssignableEvaluationSort.VISIT_DATE);
+
+        assertThat(info.content()).hasSize(PAGE_SIZE);
+        assertThat(info.hasNext()).isTrue();
+
+        // 커서는 돌려준 마지막 항목이다. 읽고 버린 한 건을 가리키면 그 신청이 통째로 건너뛰어진다
+        assertThat(info.nextCursor())
+                .isEqualTo(new AssignableEvaluationCursor(VISIT_DATE.plusDays(PAGE_SIZE - 1), PAGE_SIZE));
+    }
+
+    @Test
+    @DisplayName("딱 페이지 크기만큼이면 다음 페이지가 없다")
+    void findAssignableEndsWhenExactlyPageSize() {
+        List<Evaluation> found = waitingList(PAGE_SIZE);
+        given(evaluationRepository.findAssignableByVisitDate(
+                eq(EvaluationStatus.REQUESTED), eq(LocalDate.EPOCH), eq(0L), any(Limit.class)))
+                .willReturn(found);
+
+        AssignableEvaluationsInfo info = evaluationAssignmentService.findAssignable(null, AssignableEvaluationSort.VISIT_DATE);
+
+        assertThat(info.content()).hasSize(PAGE_SIZE);
+        assertThat(info.hasNext()).isFalse();
+        assertThat(info.nextCursor()).isNull();
+    }
+
+    @Test
+    @DisplayName("정렬을 주지 않으면 방문일이 임박한 순서로 읽는다")
+    void findAssignableDefaultsToVisitDateSort() {
+        List<Evaluation> waiting = List.of(requestedWithPlateNumber());
+        given(evaluationRepository.findAssignableByVisitDate(
+                eq(EvaluationStatus.REQUESTED), eq(LocalDate.EPOCH), eq(0L), any(Limit.class)))
+                .willReturn(waiting);
+
+        AssignableEvaluationsInfo info = evaluationAssignmentService.findAssignable(null, null);
+
+        assertThat(info.content()).hasSize(1);
+        then(evaluationRepository).should(never())
+                .findAssignableByLatest(any(), anyLong(), any(Limit.class));
+    }
+
+    @Test
+    @DisplayName("최신순은 어떤 신청보다도 뒤에 있는 자리에서 첫 페이지를 읽는다")
+    void findAssignableLatestStartsFromLastCursor() {
+        List<Evaluation> waiting = List.of(requestedWithPlateNumber());
+        given(evaluationRepository.findAssignableByLatest(
+                eq(EvaluationStatus.REQUESTED), eq(Long.MAX_VALUE), any(Limit.class)))
+                .willReturn(waiting);
+
+        AssignableEvaluationsInfo info = evaluationAssignmentService.findAssignable(
+                null, AssignableEvaluationSort.LATEST);
+
+        assertThat(info.content()).hasSize(1);
+        then(evaluationRepository).should(never())
+                .findAssignableByVisitDate(any(), any(), anyLong(), any(Limit.class));
+    }
+
+    @Test
+    @DisplayName("최신순 커서에는 방문일을 담지 않는다")
+    void findAssignableLatestCursorCarriesIdOnly() {
+        List<Evaluation> found = waitingList(PAGE_SIZE + 1);
+        given(evaluationRepository.findAssignableByLatest(
+                eq(EvaluationStatus.REQUESTED), eq(Long.MAX_VALUE), any(Limit.class)))
+                .willReturn(found);
+
+        AssignableEvaluationsInfo info = evaluationAssignmentService.findAssignable(
+                null, AssignableEvaluationSort.LATEST);
+
+        assertThat(info.hasNext()).isTrue();
+
+        // 방문일이 담기면 받는 쪽이 그 값까지 돌려보내야 하는 줄 알게 되고, 그 요청은 400이 된다
+        assertThat(info.nextCursor()).isEqualTo(new AssignableEvaluationCursor(null, PAGE_SIZE));
+    }
+
+    @Test
+    @DisplayName("배정 대기 건수는 REQUESTED 상태로만 센다")
+    void countAssignable() {
+        given(evaluationRepository.countAssignable(EvaluationStatus.REQUESTED)).willReturn(42L);
+
+        assertThat(evaluationAssignmentService.countAssignable()).isEqualTo(42L);
     }
 
     // 역할은 스터빙하지 않는다. 서비스가 읽지 않으므로 두면 UnnecessaryStubbingException 이 된다.
     // 인자로는 남겨 둔다 — 어떤 역할로 시나리오를 세웠는지가 테스트에서 읽혀야 한다
     private User userWithRole(Role role) {
         return mock(User.class, role.name());
+    }
+
+    // 방문일이 하루씩 밀리는 대기 신청들. id 는 1 부터 매겨 커서가 가리키는 자리를 확인할 수 있게 한다
+    private List<Evaluation> waitingList(int size) {
+        return IntStream.rangeClosed(1, size)
+                .mapToObj(order -> waiting(order, VISIT_DATE.plusDays(order - 1)))
+                .toList();
+    }
+
+    // 커서는 id 로 동률을 가르는데, 영속되지 않은 엔티티는 id 가 비어 있어 직접 넣어 준다
+    private Evaluation waiting(long id, LocalDate visitDate) {
+        Evaluation evaluation = Evaluation.request(
+                mock(Vehicle.class), visitDate, VISIT_ADDRESS, CONTACT_PHONE, visitDate.minusDays(16));
+        ReflectionTestUtils.setField(evaluation, "id", id);
+
+        return evaluation;
     }
 
     // 방문일 규칙을 통과해야 하므로 오늘을 방문일보다 앞선 날짜로 넘긴다
