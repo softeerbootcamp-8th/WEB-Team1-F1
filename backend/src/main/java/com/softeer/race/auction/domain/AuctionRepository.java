@@ -106,7 +106,7 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
      */
     @Query("""
             select new com.softeer.race.auction.domain.AuctionEndNotificationContext(
-                v.seller.id, v.model, a.currentPrice)
+                v.seller.id, v.manufacturer, v.model, a.currentPrice)
             from Auction a
             join a.post p
             join p.vehicle v

@@ -113,7 +113,7 @@ public class BidService {
             notificationPublisher.publishContent(
                     previousTopBidderId,
                     NotificationContent.outbid(
-                            preCheck.vehicleModel(),
+                            preCheck.vehicleName().display(),
                             MaskedName.mask(preCheck.bidderRealName()),
                             amount),
                     auctionId);
