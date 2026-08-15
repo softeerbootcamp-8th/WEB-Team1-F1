@@ -54,13 +54,19 @@ public record EvaluationSummaryResponse(
         String visitAddress,
 
         @Schema(description = "접수 시각", example = "2026-08-05T15:30:00")
-        LocalDateTime requestedAt
+        LocalDateTime requestedAt,
+
+        @Schema(description = "진단을 끝낸 시각(승인 · 반려). 아직 진행 중이면 null입니다. "
+                + "평가사 담당 목록의 완료 범위가 이 값의 역순으로 정렬됩니다",
+                example = "2026-08-12T18:05:00",
+                nullable = true)
+        LocalDateTime completedAt
 ) {
 
     public static EvaluationSummaryResponse from(EvaluationSummaryInfo info) {
         return new EvaluationSummaryResponse(
                 info.evaluationId(), info.status(), info.assigned(), info.auctionStatus(), info.plateNumber(),
                 info.manufacturer(), info.model(), info.modelYear(),
-                info.visitDate(), info.visitAddress(), info.requestedAt());
+                info.visitDate(), info.visitAddress(), info.requestedAt(), info.completedAt());
     }
 }

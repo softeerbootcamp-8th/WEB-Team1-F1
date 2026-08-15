@@ -6,6 +6,7 @@ import com.softeer.race.auction.domain.VehicleAuctionStatusRow;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.info.EvaluationDetailInfo;
 import com.softeer.race.evaluation.application.dto.info.EvaluationSummaryInfo;
+import com.softeer.race.evaluation.domain.AssignmentScope;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
@@ -46,10 +47,15 @@ public class EvaluationLookupService {
     }
 
     /**
-     * 평가사가 맡은 신청들. 방문일이 임박한 순으로.
+     * 평가사가 맡은 신청들. 범위가 무엇을 담고 어떤 순서로 나갈지까지 정한다.
+     * <p>
+     * 기본은 진행 중({@code ACTIVE})이다. 끝낸 진단이 목록에 남으면 새로 나갈 건이 그 아래
+     * 묻히는 것이 이 구분을 만든 이유다. 완료된 건은 사라지지 않고 {@code COMPLETED}로 옮겨
+     * 간다 — 승인은 경매 등록 전까지 다시 제출할 수 있어 열어 볼 길이 있어야 한다.
      */
-    public List<EvaluationSummaryInfo> findMyAssignments(long evaluatorId) {
-        return summaries(evaluationRepository.findByEvaluatorId(evaluatorId));
+    public List<EvaluationSummaryInfo> findMyAssignments(long evaluatorId, AssignmentScope scope) {
+        return summaries(evaluationRepository.findByEvaluatorIdAndStatusIn(
+                evaluatorId, scope.statuses(), scope.sort()));
     }
 
     /** 목록의 차량들에 최신 경매 상태를 조회 한 번으로 붙인다. */

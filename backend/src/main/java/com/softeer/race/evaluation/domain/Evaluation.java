@@ -19,6 +19,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,11 +39,24 @@ import lombok.NoArgsConstructor;
 // 최신순 인덱스에 id를 적지 않는다. InnoDB의 보조 인덱스는 PK를 뒤에 달고 있어
 // (status, evaluator_id)만으로 이미 (status, evaluator_id, id) 순서다.
 // 이 인덱스가 전체 대기 건수를 세는 조회도 테이블을 읽지 않고 처리한다.
+//
+// 담당 목록은 세 번째 인덱스를 따로 쓴다. 앞의 둘은 status가 맨 앞이라 "이 평가사의 건들"을
+// 좁히는 데 쓰이지 못한다 — 선행 컬럼이 조건에 없으면 인덱스를 타지 못하기 때문이다.
+//
+// (evaluator_id, status)까지가 담당 목록과 상태별 건수가 함께 쓰는 부분이고, 건수는 이 두
+// 컬럼만 읽으므로 테이블에 닿지 않는다. 뒤의 visit_date, id는 진행 중 목록의 정렬이다 —
+// 그쪽은 status = REQUESTED 하나로 좁혀지므로 인덱스가 이미 정렬된 순서를 그대로 준다.
+//
+// 완료 목록의 updated_at 순은 인덱스로 만들지 않는다. 그쪽은 status가 두 값(APPROVED,
+// REJECTED)이라 각 값 안에서만 정렬돼 있고, 둘을 합친 순서는 어차피 다시 세워야 한다.
+// 한 평가사가 맡은 건수만큼만 정렬하는 것이라 인덱스를 하나 더 얹을 만한 비용이 아니다.
 @Table(indexes = {
         @Index(name = "idx_evaluation_assignable",
                 columnList = "status, evaluator_id, visit_date, id"),
         @Index(name = "idx_evaluation_assignable_latest",
-                columnList = "status, evaluator_id")
+                columnList = "status, evaluator_id"),
+        @Index(name = "idx_evaluation_my_assignments",
+                columnList = "evaluator_id, status, visit_date, id")
 })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Evaluation extends BaseTimeEntity {
@@ -137,6 +151,20 @@ public class Evaluation extends BaseTimeEntity {
      * 판매자를 {@code vehicle.seller}로 찾는 이유는 Evaluation이 신청자를 따로 들고 있지 않아서다.
      * 차량이 신청마다 새로 만들어지므로 그 차량의 소유자가 곧 이 신청의 판매자다.
      */
+    /**
+     * 진단을 끝낸 시각. 아직 진행 중이면 null이다.
+     * <p>
+     * 컬럼을 따로 두지 않고 {@code updatedAt}을 읽는다. 승인 · 반려가 이 행의 마지막 변경이라
+     * (배정은 항상 그 앞에 오고, 결과 재제출은 차량만 바꾼다) 완료된 건에서는 두 값이 같다.
+     * 상태를 함께 보는 이유가 여기 있다 — 진행 중인 건의 {@code updatedAt}은 배정 시각이라
+     * 그대로 내보내면 아직 끝나지 않은 진단에 완료 시각이 붙는다.
+     * <p>
+     * 별도 컬럼은 이 등식이 깨질 때, 즉 완료 뒤에도 평가 행을 바꾸는 흐름이 생길 때 만든다.
+     */
+    public LocalDateTime completedAt() {
+        return EvaluationStatus.diagnosisCompleted().contains(status) ? getUpdatedAt() : null;
+    }
+
     public boolean isViewableBy(long userId) {
         return vehicle.getSeller().getId().equals(userId)
                 || (evaluator != null && evaluator.getId().equals(userId));

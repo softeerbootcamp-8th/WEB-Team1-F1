@@ -4,6 +4,7 @@ import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
 import com.softeer.race.auth.presentation.annotation.RequireRole;
 import com.softeer.race.evaluation.application.EvaluationLookupService;
+import com.softeer.race.evaluation.domain.AssignmentScope;
 import com.softeer.race.evaluation.presentation.response.EvaluationDetailResponse;
 import com.softeer.race.evaluation.presentation.response.EvaluationSummariesResponse;
 import com.softeer.race.user.domain.Role;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -34,14 +36,20 @@ public class EvaluationLookupController implements EvaluationLookupApi {
                 evaluationLookupService.findMyRequests(authenticatedUser.id())));
     }
 
+    /**
+     * 범위를 주지 않으면 진행 중이다. 기본값을 완료 쪽에 둘 이유가 없고, 값을 반드시 요구하면
+     * 목록을 처음 여는 요청까지 무엇을 볼지 골라야 한다({@code AssignableEvaluationCursorRequest}의
+     * sort와 같은 판단이다).
+     */
     @Override
     @GetMapping("/my-assignments")
     @RequireRole(Role.EVALUATOR)
     public ResponseEntity<EvaluationSummariesResponse> findMyAssignments(
-            @LoginUser AuthenticatedUser authenticatedUser) {
+            @LoginUser AuthenticatedUser authenticatedUser,
+            @RequestParam(defaultValue = "ACTIVE") AssignmentScope scope) {
 
         return ResponseEntity.ok(EvaluationSummariesResponse.from(
-                evaluationLookupService.findMyAssignments(authenticatedUser.id())));
+                evaluationLookupService.findMyAssignments(authenticatedUser.id(), scope)));
     }
 
     @Override

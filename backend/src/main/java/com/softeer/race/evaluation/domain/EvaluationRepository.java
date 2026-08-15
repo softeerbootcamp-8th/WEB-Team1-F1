@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -149,17 +150,33 @@ public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
     List<Evaluation> findBySellerId(@Param("sellerId") long sellerId);
 
     /**
-     * 이 평가사가 맡은 신청들. 방문일이 임박한 순이다 — 평가사에게 급한 것은 언제 어디를
-     * 가야 하는가이고, {@link #findAssignable}도 같은 기준으로 정렬한다.
+     * 이 평가사가 맡은 신청들 중 주어진 상태의 것만. 정렬은 호출자가 준다.
+     * <p>
+     * <b>상태로 좁히는 이유.</b> 끝낸 진단이 기본 목록에 남으면 새로 나갈 건이 그 아래 묻힌다.
+     * 어떤 상태를 어떤 순서로 볼지는 {@link AssignmentScope}가 한 자리에서 정하고, 여기는 그
+     * 결정을 받아 실행만 한다 — 목록을 하나 더 열 때 고칠 곳이 이 메서드로 늘지 않는다.
+     * <p>
+     * 정렬을 쿼리에 적지 않고 {@link Sort}로 받는다. 담는 것과 순서가 짝이라 둘을 갈라 두면
+     * 완료 목록이 방문일 순으로 나가는 식의 어긋남이 생긴다. 두 짝을 각각 메서드로 두지 않는
+     * 것은 {@code findAssignableByVisitDate}와 다른 점인데, 그쪽은 커서 비교식까지 달라져
+     * 조회 조건 자체가 갈라졌지만 여기는 where 절이 완전히 같기 때문이다.
+     * <p>
+     * vehicle을 join fetch 한다. 목록의 각 항목이 번호판과 제원을 보여주므로 없으면 건수만큼
+     * 지연 로딩 쿼리가 더 나간다.
+     * <p>
+     * 나누어 읽지 않는다. 한 평가사가 맡는 건수는 배정 대기 전체와 달리 사람 손으로 수락한
+     * 만큼이라, 페이징이 막아 줄 만큼 불어나지 않는다.
      */
     @Query("""
             select e
             from Evaluation e
             join fetch e.vehicle v
             where e.evaluator.id = :evaluatorId
-            order by e.visitDate, e.id
+                and e.status in :statuses
             """)
-    List<Evaluation> findByEvaluatorId(@Param("evaluatorId") long evaluatorId);
+    List<Evaluation> findByEvaluatorIdAndStatusIn(@Param("evaluatorId") long evaluatorId,
+                                                  @Param("statuses") Collection<EvaluationStatus> statuses,
+                                                  Sort sort);
 
     /**
      * 상세 조회용. 차량 제원과 담당 평가사를 함께 보여주므로 둘 다 붙여 읽는다.

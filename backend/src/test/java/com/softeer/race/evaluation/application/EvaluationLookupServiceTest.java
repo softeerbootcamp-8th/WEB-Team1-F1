@@ -5,6 +5,7 @@ import com.softeer.race.auction.domain.AuctionStatus;
 import com.softeer.race.auction.domain.VehicleAuctionStatusRow;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.info.EvaluationDetailInfo;
+import com.softeer.race.evaluation.domain.AssignmentScope;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.domain.EvaluationStatus;
@@ -38,6 +39,7 @@ import static org.mockito.Mockito.mock;
  * 시나리오
  * <ol>
  *   <li>내 신청 목록은 레포지토리가 준 순서를 그대로 옮긴다</li>
+ *   <li>담당 목록은 범위가 정한 상태와 순서로 읽는다</li>
  *   <li>진단이 끝난 상세는 결과 칸이 채워져 나간다</li>
  *   <li>진단 전 상세는 결과 칸이 전부 null이다</li>
  *   <li>열람 권한이 없으면 존재 여부를 감춘 NOT_FOUND</li>
@@ -114,11 +116,30 @@ class EvaluationLookupServiceTest {
     @Test
     @DisplayName("평가 목록이 비면 경매 상태를 조회하지 않는다")
     void emptyAssignmentsSkipAuctionLookup() {
-        given(evaluationRepository.findByEvaluatorId(EVALUATOR_ID)).willReturn(List.of());
+        givenAssignments(AssignmentScope.ACTIVE, List.of());
 
-        assertThat(evaluationLookupService.findMyAssignments(EVALUATOR_ID)).isEmpty();
+        assertThat(evaluationLookupService.findMyAssignments(EVALUATOR_ID, AssignmentScope.ACTIVE))
+                .isEmpty();
 
         then(auctionRepository).shouldHaveNoInteractions();
+    }
+
+    /**
+     * 범위가 정한 상태와 정렬이 그대로 레포지토리에 닿아야 한다. 서비스가 둘 중 하나를 스스로
+     * 정하면 {@link AssignmentScope}에 적힌 근거와 실제 조회가 갈라진다 — 완료 목록이 방문일
+     * 순으로 나가도 아무 데서도 걸리지 않는다.
+     */
+    @Test
+    @DisplayName("담당 목록은 범위가 정한 상태와 순서로 읽는다")
+    void findMyAssignmentsDelegatesScope() {
+        givenAssignments(AssignmentScope.COMPLETED, List.of());
+
+        evaluationLookupService.findMyAssignments(EVALUATOR_ID, AssignmentScope.COMPLETED);
+
+        then(evaluationRepository).should().findByEvaluatorIdAndStatusIn(
+                EVALUATOR_ID,
+                AssignmentScope.COMPLETED.statuses(),
+                AssignmentScope.COMPLETED.sort());
     }
 
     @Test
@@ -204,6 +225,11 @@ class EvaluationLookupServiceTest {
         assertThatThrownBy(() -> evaluationLookupService.findDetail(EVALUATION_ID, SELLER_ID))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.errorCode()).isEqualTo(EvaluationErrorCode.NOT_FOUND));
+    }
+
+    private void givenAssignments(AssignmentScope scope, List<Evaluation> found) {
+        given(evaluationRepository.findByEvaluatorIdAndStatusIn(
+                EVALUATOR_ID, scope.statuses(), scope.sort())).willReturn(found);
     }
 
     private void givenViewableEvaluation() {
