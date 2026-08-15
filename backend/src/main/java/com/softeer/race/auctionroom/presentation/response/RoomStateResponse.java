@@ -37,13 +37,13 @@ public record RoomStateResponse(
         @Schema(description = "지금 방을 보고 있는 사람 수, 한 사람이 창을 여럿 열어도 하나로 센다", example = "12")
         int viewerCount,
 
-        @Schema(description = "지금까지 입찰한 사람 수", example = "4")
-        long bidderCount,
-
         @Schema(description = "지금까지 들어온 입찰 건수, 최근 호가 20건과 달리 전체를 센다", example = "37")
         long bidCount,
 
-        @Schema(description = "낙찰자, 낙찰 확정 전에는 없다")
+        @Schema(description = "지금까지 입찰한 사람 수", example = "4")
+        long bidderCount,
+
+        @Schema(description = "낙찰자, 낙찰 확정 전에는 키는 있고 값이 null 이다")
         RoomStateWinnerResponse winner,
 
         @Schema(description = "최근 호가, 최신순 최대 20건")
@@ -61,9 +61,9 @@ public record RoomStateResponse(
                 state.endAt(),
                 state.serverTime(),
                 state.viewerCount(),
-                state.bidCounts().bidderCount(),
                 state.bidCounts().bidCount(),
-                RoomStateWinnerResponse.from(state),
+                state.bidCounts().bidderCount(),
+                RoomStateWinnerResponse.from(state.winnerName()),
                 state.recentBids().stream().map(RoomStateBidResponse::from).toList());
     }
 }
