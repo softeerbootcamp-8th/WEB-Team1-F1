@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, LoaderCircle } from 'lucide-react'
+import { Home, LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/common/empty-state'
@@ -262,16 +262,7 @@ export function EvaluatorConnectionPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-14" aria-label="평가사 연결">
-      {!requestComplete && (
-        <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to="/sell" state={{ ownerName, plateNumber, vehicle }}>
-            <ArrowLeft className="size-4" />
-            차량 정보 수정
-          </Link>
-        </Button>
-      )}
-
-      <header className="mt-6 max-w-2xl">
+      <header className="max-w-2xl">
         <h1 className="text-3xl font-semibold md:text-4xl lg:text-5xl">
           {requestComplete
             ? '방문견적 신청이 접수됐어요.'
@@ -279,12 +270,14 @@ export function EvaluatorConnectionPage() {
         </h1>
       </header>
 
-      <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-        <aside className="rounded-2xl border p-7 md:p-8">
-          <VehicleSummary vehicle={vehicle!} />
-        </aside>
-
-        <section className="min-w-0 self-start rounded-2xl border p-7 md:p-8">
+      <section className="mt-12 rounded-2xl border p-7 md:p-8">
+        <VehicleSummary
+          vehicle={vehicle!}
+          specsBelowVehicle
+          childrenClassName={
+            requestComplete ? 'pt-0' : 'flex min-h-0 flex-1 flex-col pt-0'
+          }
+        >
           {requestComplete ? (
             <>
               <dl className="space-y-5 text-sm" aria-live="polite">
@@ -294,13 +287,20 @@ export function EvaluatorConnectionPage() {
                 </div>
                 <div>
                   <dt className="text-muted-foreground">방문 주소</dt>
-                  <dd className="mt-1 font-medium">{result.visitAddress}</dd>
+                  <dd className="mt-1 break-words font-medium">{result.visitAddress}</dd>
                 </div>
               </dl>
+              <Button asChild variant="outline" size="lg" className="mt-6 w-full">
+                <Link to="/">
+                  <Home className="size-4" />
+                  홈으로 가기
+                </Link>
+              </Button>
             </>
           ) : (
-              <form className="space-y-6" onSubmit={submit}>
-                <div>
+              <form className="contents" onSubmit={submit}>
+                <div className="grid aspect-video grid-rows-3">
+                <div className="self-start">
                   <Label htmlFor="visit-date">방문 희망 날짜</Label>
                   <Input
                     id="visit-date"
@@ -325,7 +325,7 @@ export function EvaluatorConnectionPage() {
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 self-center">
                   <Label htmlFor="visit-address">방문 주소</Label>
                   <Input
                     id="visit-address"
@@ -350,7 +350,7 @@ export function EvaluatorConnectionPage() {
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 self-end">
                   <Label htmlFor="contact-phone">연락처</Label>
                   <Input
                     id="contact-phone"
@@ -377,17 +377,17 @@ export function EvaluatorConnectionPage() {
                     </p>
                   )}
                 </div>
+                </div>
 
                 {(fieldErrors.ownerName || fieldErrors.plateNumber) && (
                   <p className="text-destructive text-sm" role="alert">
                     {fieldErrors.ownerName ?? fieldErrors.plateNumber}
                   </p>
                 )}
-
                 <Button
                   type="submit"
                   size="lg"
-                  className="w-full"
+                  className="mt-auto w-full"
                   disabled={
                     mutation.isPending ||
                     !visitDate ||
@@ -402,8 +402,8 @@ export function EvaluatorConnectionPage() {
                 </Button>
               </form>
           )}
-        </section>
-      </div>
+        </VehicleSummary>
+      </section>
     </main>
   )
 }

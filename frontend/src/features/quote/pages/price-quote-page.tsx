@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, LoaderCircle, Search } from 'lucide-react'
+import { LoaderCircle, Search } from 'lucide-react'
 import { toast } from 'sonner'
 
+import quoteHero from '@/assets/quote-hero-v2.jpg'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -66,89 +67,94 @@ export function PriceQuotePage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-14" aria-label="내 차 시세 조회">
-      <header>
-        <h1 className="text-3xl font-semibold md:text-4xl lg:text-5xl lg:whitespace-nowrap">
-          {vehicle
-            ? '현재 주행거리를 알려주세요.'
-            : '내 차 정보를 확인해보세요!'}
-        </h1>
-        <p className="text-muted-foreground mt-3 text-lg leading-8">
-          {vehicle
-            ? '확인된 차량에 현재 주행거리를 반영해 예상 시세를 계산합니다.'
-            : '차량 소유자 이름과 번호판으로 차량 정보를 먼저 확인합니다.'}
-        </p>
-      </header>
+    <main
+      className="relative h-[calc(100svh-var(--spacing-header))] overflow-hidden bg-[#241a14]"
+      aria-label="내 차 시세 조회"
+    >
+      {/* 화면 전체 배경이라 사진은 장식이 된다, alt 를 비운다 */}
+      <img
+        src={quoteHero}
+        alt=""
+        aria-hidden
+        fetchPriority="high"
+        className="absolute inset-0 size-full object-cover object-[center_58%]"
+      />
+      {/* 위는 흰 제목, 아래는 흰 카드가 놓이므로 양끝을 눌러 대비를 만든다 */}
+      <div
+        className="absolute inset-0 bg-linear-to-b from-black/45 via-black/10 to-black/40"
+        aria-hidden
+      />
 
-      {vehicle && owner ? (
-        <div className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <aside className="rounded-2xl border p-7 md:p-8">
-            <VehicleSummary vehicle={vehicle} />
-          </aside>
+      <div className="relative mx-auto flex h-full max-w-5xl flex-col px-6 pt-14 pb-[90px]">
+        <header>
+          <h1 className="text-3xl font-semibold text-white md:text-4xl">
+            {vehicle
+              ? '주행거리 입력'
+              : '내 차량 시세 정보를 확인해 보세요'}
+          </h1>
+        </header>
 
-          <section className="min-w-0 self-start rounded-2xl border p-7 md:p-8">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="-ml-2"
-              onClick={() => setVehicle(null)}
+        {vehicle && owner ? (
+          <section className="bg-background mx-auto mt-auto w-full rounded-2xl border p-6 shadow-[0_24px_60px_rgba(15,23,42,0.45)] md:p-8">
+            <VehicleSummary
+              vehicle={vehicle}
+              balancedRows
+              childrenClassName="grid h-full grid-rows-2"
             >
-              <ArrowLeft className="size-4" />
-              차량 정보 수정
-            </Button>
-
-            <form className="mt-8 space-y-6" onSubmit={showQuote}>
-              <div className="space-y-2">
-                <Label htmlFor="quote-mileage">현재 주행거리</Label>
-                <div className="relative">
-                  <Input
-                    id="quote-mileage"
-                    type="text"
-                    inputMode="numeric"
-                    value={mileage}
-                    onChange={(event) => setMileage(formatNumericInput(event.target.value, 6))}
-                    placeholder="45,000"
-                    maxLength={7}
-                    className="pr-12 tabular"
-                    required
-                  />
-                  <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm">
-                    km
-                  </span>
+              <form className="contents" onSubmit={showQuote}>
+                <div className="flex items-center gap-4 self-start">
+                  <Label htmlFor="quote-mileage" className="shrink-0">
+                    현재 주행거리
+                  </Label>
+                  <div className="relative flex-1">
+                    <Input
+                      id="quote-mileage"
+                      type="text"
+                      inputMode="numeric"
+                      value={mileage}
+                      onChange={(event) => setMileage(formatNumericInput(event.target.value, 6))}
+                      placeholder="45,000"
+                      maxLength={7}
+                      className="pr-12 tabular"
+                      required
+                    />
+                    <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm">
+                      km
+                    </span>
+                  </div>
                 </div>
-                <p className="text-muted-foreground text-xs">
-                  현재 계기판에 표시된 주행거리를 입력해 주세요.
-                </p>
-              </div>
 
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full"
-                disabled={isEstimating || !isMileageValid}
-              >
-                {isEstimating ? (
-                  <LoaderCircle className="size-4 animate-spin" />
-                ) : (
-                  <Search className="size-4" />
-                )}
-                예상 시세 조회하기
-              </Button>
-            </form>
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full self-end"
+                  disabled={isEstimating || !isMileageValid}
+                >
+                  {isEstimating ? (
+                    <LoaderCircle className="size-4 animate-spin" />
+                  ) : (
+                    <Search className="size-4" />
+                  )}
+                  예상 시세 조회하기
+                </Button>
+              </form>
+            </VehicleSummary>
           </section>
-        </div>
-      ) : (
-        <div className="mx-auto mt-12 w-full max-w-5xl rounded-2xl border p-7 md:px-12 md:py-10 lg:px-16">
-          <VehicleOwnerForm
-            actionLabel="차량 정보 확인"
-            actionIcon={Search}
-            initialValues={owner ?? undefined}
-            isSubmitting={isLookingUp}
-            onSubmit={findVehicle}
-          />
-        </div>
-      )}
+        ) : (
+          // 흰 카드는 제목과 같은 열을 쓴다, 좌우 끝이 제목 블록에 맞도록 컨테이너 폭을 그대로 채운다.
+          // 입력 열은 465px 로 묶어 두므로 넓어진 만큼은 흰 여백이 된다
+          <div className="bg-background mt-auto w-full rounded-2xl border px-[54px] py-6 shadow-[0_24px_60px_rgba(15,23,42,0.45)] md:px-[62px] md:py-8">
+            <VehicleOwnerForm
+              actionLabel="차량 정보 확인"
+              actionIcon={Search}
+              initialValues={owner ?? undefined}
+              isSubmitting={isLookingUp}
+              onSubmit={findVehicle}
+              className="max-w-[465px]"
+            />
+          </div>
+        )}
+      </div>
     </main>
   )
 }

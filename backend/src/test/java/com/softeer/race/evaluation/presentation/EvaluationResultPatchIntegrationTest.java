@@ -3,7 +3,9 @@ package com.softeer.race.evaluation.presentation;
 import com.softeer.race.auction.domain.AuctionStatus;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -82,6 +84,13 @@ class EvaluationResultPatchIntegrationTest extends IntegrationTestSupport {
     private static final int MILEAGE = 45_000;
     private static final long ESTIMATED_PRICE = 21_500_000L;
 
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.evaluationResultPatch(sessions);
+    }
+
     @Test
     @DisplayName("주행거리만 보내면 나머지는 DB에서 그대로다")
     void patchesMileageOnly() throws Exception {
@@ -105,7 +114,7 @@ class EvaluationResultPatchIntegrationTest extends IntegrationTestSupport {
         assertThat(vehicle.get("diagnostic_report_url")).isEqualTo(DOCUMENT_URL);
 
         assertThat(imageUrls()).containsExactly(IMAGE_1, IMAGE_2);
-        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "NO_LEAK");
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "UNDERBODY_INTACT");
         assertThat(statusOf(EVALUATION_ID)).isEqualTo("APPROVED");
     }
 
@@ -196,7 +205,7 @@ class EvaluationResultPatchIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.keywords.length()").value(2));
 
         // then : 사진 교체가 키워드 교체를 함께 부르면 평가사가 매긴 것이 사라진다
-        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "NO_LEAK");
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "UNDERBODY_INTACT");
     }
 
     @Test
@@ -274,7 +283,7 @@ class EvaluationResultPatchIntegrationTest extends IntegrationTestSupport {
         assertThat(vehicle.get("main_photo_url")).isEqualTo(IMAGE_1);
         assertThat(vehicle.get("diagnostic_report_url")).isEqualTo(DOCUMENT_URL);
         assertThat(imageUrls()).containsExactly(IMAGE_1, IMAGE_2);
-        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "NO_LEAK");
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "UNDERBODY_INTACT");
     }
 
     @Test

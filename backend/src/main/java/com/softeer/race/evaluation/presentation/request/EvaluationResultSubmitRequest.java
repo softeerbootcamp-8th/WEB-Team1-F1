@@ -35,6 +35,7 @@ public record EvaluationResultSubmitRequest(
         // 근거 없는 정밀도를 감추려는 장치이고, 실물을 보고 사람이 부른 금액에는 그 문제가 없다
         @Schema(description = "산정한 예상 시세(원)", example = "21500000")
         @Positive(message = "예상 시세는 0보다 커야 합니다.")
+        @Max(value = 1_000_000_000_000L, message = "산정 시세는 1조원을 넘을 수 없습니다.")
         long estimatedPrice,
 
         @Schema(description = "차량 사진 주소 목록. 보낸 순서가 표시 순서이며 첫 번째가 대표 이미지가 됩니다.",
@@ -60,7 +61,7 @@ public record EvaluationResultSubmitRequest(
          * 보낸 것의 결과가 같아야 하고, 그 정규화는 VehicleKeywordService.replace가 한다.
          */
         @Schema(description = "진단에서 확인한 키워드. 매길 것이 없으면 빈 배열을 보냅니다.",
-                example = "[\"ACCIDENT_FREE\", \"NO_LEAK\", \"GOOD_TIRE\"]")
+                example = "[\"ACCIDENT_FREE\", \"UNDERBODY_INTACT\", \"GOOD_TIRE\"]")
         @NotNull(message = "키워드 목록은 필수입니다. 매길 것이 없으면 빈 배열을 보내주세요.")
         @Size(max = EvaluationResultSubmitRequest.MAX_KEYWORD_COUNT,
                 message = "키워드는 " + EvaluationResultSubmitRequest.MAX_KEYWORD_COUNT + "개까지 매길 수 있습니다.")
@@ -79,7 +80,7 @@ public record EvaluationResultSubmitRequest(
      * VehicleKeyword.values().length 로 쓸 수 없다. 애노테이션 인자는 컴파일 타임 상수여야 한다.
      * 그래서 둘이 어긋나지 않는지는 테스트가 지킨다.
      */
-    static final int MAX_KEYWORD_COUNT = 7;
+    static final int MAX_KEYWORD_COUNT = 6;
 
     /**
      * 평가사 식별자를 인자로 받는다. 본문으로 받으면 남의 이름을 대고 제출할 수 있어,

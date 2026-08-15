@@ -1,3 +1,4 @@
+import type { FuelType, Manufacturer, VehicleKeyword } from '@/features/quote/types'
 import type { VehicleLookupResponse } from '@/features/vehicle/types'
 
 /** POST /api/auctions 요청 계약 */
@@ -17,6 +18,22 @@ export interface AuctionCreationResult {
   roomOpenAt: string
   endAt: string
   status: 'SCHEDULED'
+}
+
+/** 등록 직후 결과 화면에서만 쓸 차량 정보. 서버 응답이 아니라 이전 등록 화면이 함께 넘긴다. */
+export interface AuctionResultVehicle {
+  manufacturer: Manufacturer
+  model: string
+  modelYear: number
+  mileage: number | null
+  fuelType: FuelType
+  imageUrls: string[]
+  keywords: VehicleKeyword[]
+  diagnosticReportUrl: string | null
+}
+
+export type AuctionCreationResultState = AuctionCreationResult & {
+  vehicle: AuctionResultVehicle
 }
 
 /** POST /api/visit-quotes 요청 계약 */

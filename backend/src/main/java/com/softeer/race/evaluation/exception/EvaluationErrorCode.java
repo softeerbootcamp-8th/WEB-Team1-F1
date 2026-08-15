@@ -12,9 +12,10 @@ public enum EvaluationErrorCode implements ErrorCode {
     VEHICLE_NOT_FOUND(HttpStatus.NOT_FOUND, "차량 정보를 찾을 수 없습니다. 번호판과 이름을 확인해 주세요."),
 
     /**
-     * 정상 흐름에서는 발생하지 않는다. user_session이 users를 FK로 참조하고 인터셉터가 방금 세션을
-     * 검증했으므로 계정이 없을 수 없다. 그래도 두는 이유는 이 코드가 없으면 그 상황이
-     * GlobalExceptionHandler의 최후 방어선을 타고 500 INTERNAL_ERROR가 되기 때문이다.
+     * 정상 흐름에서는 발생하지 않지만 불가능하지도 않다. 세션은 회원 테이블을 FK로 참조하지 않는
+     * 별도 저장소에 살고 인증도 회원을 읽지 않으므로, 회원이 사라져도 그 세션은 TTL이 다할 때까지
+     * 살아 있다. 이 코드가 없으면 그 요청이 GlobalExceptionHandler의 최후 방어선을 타고
+     * 500 INTERNAL_ERROR가 된다.
      */
     SELLER_NOT_FOUND(HttpStatus.NOT_FOUND, "판매자 정보를 찾을 수 없습니다."),
 

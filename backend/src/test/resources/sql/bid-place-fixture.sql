@@ -14,20 +14,8 @@ values (51, 'bid_seller', 'bid_seller@race.dev', 'pw', '박판매', '01000000051
        (54, 'bid_evaluator', 'bid_evaluator@race.dev', 'pw', '최평가', '01000000054', 'EVALUATOR',
         '2026-07-01 10:00:00', '2026-07-01 10:00:00');
 
--- 쿠키로 오갈 원문 토큰의 SHA-256 hex 가 PK 다, auth-session-fixture.sql 과 같은 방식이다
--- 만료 시각을 고정 시각 +45분으로 둔다, 갱신 임계값(15분)보다 멀어서 조회가 세션을 건드리지 않는다
-insert into user_session (id, user_id, expires_at, created_at, updated_at)
-values (sha2('token-seller', 256), 51, '2026-08-03 21:30:00',
-        '2026-08-03 20:30:00', '2026-08-03 20:30:00'),
-       (sha2('token-alice', 256), 52, '2026-08-03 21:30:00',
-        '2026-08-03 20:30:00', '2026-08-03 20:30:00'),
-       (sha2('token-bob', 256), 53, '2026-08-03 21:30:00',
-        '2026-08-03 20:30:00', '2026-08-03 20:30:00'),
-       (sha2('token-evaluator', 256), 54, '2026-08-03 21:30:00',
-        '2026-08-03 20:30:00', '2026-08-03 20:30:00'),
-       -- 고정 시각보다 1분 과거, 만료 판정을 받는다
-       (sha2('token-expired', 256), 52, '2026-08-03 20:44:00',
-        '2026-08-03 20:14:00', '2026-08-03 20:14:00');
+-- 로그인 세션은 여기서 심지 않는다, 테이블이 아니라 Redis 에 산다
+-- 이 파일과 짝이 되는 세션은 SessionFixture 가 심는다
 
 insert into vehicle (id, seller_id, manufacturer, model, model_year, mileage, fuel_type, transmission,
                      plate_number, estimated_price, created_at, updated_at)

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/lib/format'
 import { useAuth } from '@/features/auth/auth-context'
+import { BellIcon } from './bell-icon'
 import { NOTIFICATION_ICON } from './notification-icon'
 import { useNotifications } from './use-notifications'
 
@@ -36,7 +37,9 @@ export function NotificationBell({
   const badge = unreadCount > MAX_BADGE_COUNT ? `${MAX_BADGE_COUNT}+` : unreadCount
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    // 알림함은 현재 화면을 보조하는 메뉴다. modal 이면 Radix 가 body 스크롤바를 제거해
+    // 스크롤바 폭을 차지하는 환경에서 헤더와 본문이 좌우로 흔들린다.
+    <DropdownMenu modal={false} open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -48,7 +51,7 @@ export function NotificationBell({
           )}
           aria-label={`알림 ${unreadCount}건`}
         >
-          <Bell className="size-5" aria-hidden />
+          <BellIcon className="size-5" />
           {unreadCount > 0 && (
             <span className="bg-live text-primary-foreground tabular absolute top-0.5 right-0.5 flex min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold">
               {badge}

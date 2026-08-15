@@ -85,6 +85,24 @@ class BidRuleTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    @DisplayName("상한을 넘는 금액은 배수가 맞아도 거절한다")
+    @ParameterizedTest(name = "{0}원")
+    @ValueSource(longs = {
+            1_000_000_050_000L,   // 상한 바로 위, 배수는 맞는 금액
+            1_000_000_030_000L    // 상한 위이고 배수도 어긋난 금액
+    })
+    void rejectsAmountAboveCap(long amount) {
+        assertRejectedWith(amount, BidErrorCode.BID_AMOUNT_TOO_HIGH);
+    }
+
+    @DisplayName("상한과 같은 금액은 성립한다")
+    @Test
+    void acceptsAmountAtCap() {
+        BidRule atCap = new BidRule(999_999_950_000L, 50_000, 1_000_000_000_000L);
+
+        assertThatCode(() -> atCap.validate(1_000_000_000_000L)).doesNotThrowAnyException();
+    }
+
     private static void assertRejectedWith(long amount, BidErrorCode expected) {
         assertThatThrownBy(() -> NEXT_BID.validate(amount))
                 .isInstanceOf(BusinessException.class)

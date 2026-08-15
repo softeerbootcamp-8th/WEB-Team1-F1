@@ -47,6 +47,16 @@ export interface DealSlice {
   nextCursor: number | null
 }
 
+/** POST /api/deals/{dealId}/documents/presigned 의 응답 */
+export interface DealDocumentUpload {
+  key: string
+  /** 이 주소로 파일을 PUT 한다. 발급 때 적은 형식·크기와 정확히 같아야 한다 */
+  uploadUrl: string
+  /** 업로드 후 조회할 주소. 탁송 제출의 documentUrl 로 보내야 하는 값이 이쪽이다 */
+  fileUrl: string
+  expiresAt: string
+}
+
 /** POST /api/deals/{dealId}/transport */
 export interface TransportSubmitRequest {
   /** 업로드 API 로 먼저 올리고 받은 조회 주소 */
@@ -127,9 +137,9 @@ export function dealGuide(status: DealStatus, actionRequired: boolean): string {
   }
 
   const mine: Record<Exclude<DealStatus, 'CONFIRMED' | 'CANCELLED'>, string> = {
-    BUYER_CONFIRM_PENDING: '구매를 확정해 주세요!',
-    SELLER_SUBMIT_PENDING: '판매 서류와 탁송 일정을 입력해 주세요!',
-    BUYER_SCHEDULE_PENDING: '탁송 정보를 확인하고 인도 일정을 입력해 주세요!',
+    BUYER_CONFIRM_PENDING: '구매 확정 필요',
+    SELLER_SUBMIT_PENDING: '서류·탁송 등록 필요',
+    BUYER_SCHEDULE_PENDING: '인도 일정 입력 필요',
   }
   const theirs: Record<Exclude<DealStatus, 'CONFIRMED' | 'CANCELLED'>, string> = {
     BUYER_CONFIRM_PENDING: '구매자의 구매 확정을 기다리고 있습니다.',

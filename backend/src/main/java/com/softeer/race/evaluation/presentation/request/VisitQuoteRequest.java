@@ -46,8 +46,9 @@ public record VisitQuoteRequest(
         @NotNull
         LocalDate visitDate,
 
-        // SignUpRequest는 하이픈을 optional로 허용해(^01\d-?\d{3,4}-?\d{4}$) 같은 번호가 두 형식으로
-        // 저장되고 있다. 여기서는 화면 안내("'-'를 제외하고 숫자만")대로 숫자만 받아 그 문제를 물려받지 않는다
+        // 화면 안내("'-'를 제외하고 숫자만")대로 숫자만 받는다. 하이픈을 함께 허용하면 같은 번호가
+        // 두 형식으로 저장된다. 회원가입도 같은 이유로 SignUpRequest에서 숫자만 받는다.
+        // 여기는 방문 시 연락받을 번호라 010 외 번호도 남겨 둔다
         @Schema(description = "연락받을 휴대폰 번호(숫자만)", example = "01012345678")
         @NotBlank
         @Pattern(regexp = "^01\\d{8,9}$",

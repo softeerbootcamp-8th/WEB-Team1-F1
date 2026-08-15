@@ -55,7 +55,7 @@ class RoomOpeningIntegrationTest extends IntegrationTestSupport {
                 .photos("https://cdn.race.dev/seltos-1.jpg", "https://cdn.race.dev/seltos-2.jpg")
                 .diagnosticReportUrl("https://cdn.race.dev/seltos-report.pdf")
                 // 심은 순서도 이름 순서도 표시 순서와 어긋나는 쌍이라야 정렬이 도는지 관찰된다
-                .keywords(VehicleKeyword.NO_DAMAGE, VehicleKeyword.NO_LEAK)
+                .keywords(VehicleKeyword.NO_DAMAGE, VehicleKeyword.UNDERBODY_INTACT)
                 .startPrice(18_000_000L)
                 .create();
 
@@ -88,8 +88,8 @@ class RoomOpeningIntegrationTest extends IntegrationTestSupport {
         // then 3-1 : 키워드는 심은 순서가 아니라 목록 카드와 같은 표시 순서로 온다
         response.andExpectAll(
                 jsonPath("$.vehicle.keywords.length()").value(2),
-                jsonPath("$.vehicle.keywords[0]").value("NO_LEAK"),
-                jsonPath("$.vehicle.keywords[1]").value("NO_DAMAGE"));
+                jsonPath("$.vehicle.keywords[0]").value("NO_DAMAGE"),
+                jsonPath("$.vehicle.keywords[1]").value("UNDERBODY_INTACT"));
 
         // then 4 : 아직 아무 일도 일어나지 않은 방이라 실시간 값이 나갈 자리가 없다
         // doesNotExist 는 값이 null 이어도 통과하므로, 스키마에 아예 없다는 것은 이쪽으로 단정한다

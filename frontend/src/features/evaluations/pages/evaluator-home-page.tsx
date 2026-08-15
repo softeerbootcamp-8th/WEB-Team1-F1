@@ -23,14 +23,15 @@ import { useAuth } from '@/features/auth/auth-context'
 import { getErrorMessage } from '@/lib/axios'
 import { fetchAssignableEvaluations, fetchMyAssignments } from '../api'
 import { summarizeEvaluatorHome } from '../evaluator-home-summary'
-
-const ASSIGNABLE_QUERY_KEY = ['evaluations', 'assignable'] as const
-const MY_ASSIGNMENTS_QUERY_KEY = ['evaluations', 'my-assignments'] as const
+import {
+  ASSIGNABLE_EVALUATIONS_QUERY_KEY,
+  MY_ASSIGNMENTS_QUERY_KEY,
+} from '../query-keys'
 
 export function EvaluatorHomePage() {
   const { user } = useAuth()
   const assignableQuery = useQuery({
-    queryKey: ASSIGNABLE_QUERY_KEY,
+    queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY,
     queryFn: fetchAssignableEvaluations,
   })
   const assignmentsQuery = useQuery({
@@ -130,19 +131,19 @@ export function EvaluatorHomePage() {
                 <CardContent className="relative flex flex-1 items-center bg-[#f6f6f4] px-7 py-8">
                   <div className="grid w-full grid-cols-3 gap-4">
                     <StatusCount
-                      label="평가 수락"
+                      label="평가 진행 중"
                       count={summary.pendingCount}
                       loading={assignmentsQuery.isLoading}
                       icon={ClipboardCheck}
                     />
                     <StatusCount
-                      label="승인 처리"
+                      label="차량 진단 완료"
                       count={summary.approvedCount}
                       loading={assignmentsQuery.isLoading}
                       icon={CheckCircle2}
                     />
                     <StatusCount
-                      label="반려 처리"
+                      label="진단 반려"
                       count={summary.rejectedCount}
                       loading={assignmentsQuery.isLoading}
                       icon={XCircle}

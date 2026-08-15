@@ -17,11 +17,8 @@ values (700, 'patch_seller', 'patch_seller@race.dev', 'pw',
        (702, 'patch_eval2', 'patch_eval2@race.dev', 'pw',
         '최평가', '01000000702', 'EVALUATOR', NOW(6), NOW(6));
 
--- PK는 쿠키로 보낼 원문 토큰의 SHA-256 hex다
-insert into user_session (id, user_id, expires_at, created_at, updated_at)
-values (sha2('patch-seller-token', 256), 700, DATE_ADD(NOW(6), INTERVAL 1 HOUR), NOW(6), NOW(6)),
-       (sha2('patch-eval-token', 256), 701, DATE_ADD(NOW(6), INTERVAL 1 HOUR), NOW(6), NOW(6)),
-       (sha2('patch-eval2-token', 256), 702, DATE_ADD(NOW(6), INTERVAL 1 HOUR), NOW(6), NOW(6));
+-- 로그인 세션은 여기서 심지 않는다, 테이블이 아니라 Redis 에 산다
+-- 이 파일과 짝이 되는 세션은 SessionFixture 가 심는다
 
 -- 700: 결과가 이미 제출된 차량. 네 칸(주행거리·시세·대표 사진·진단서)이 모두 채워져 있다
 -- 701: 아직 진단 전인 차량. 주행거리와 시세가 비어 있어 항목별 수정이 거부돼야 한다
@@ -55,4 +52,4 @@ values (700, 700, 'https://cdn.test.local/images/2026/08/11111111-0d47-4a19-9b2f
 -- 제출 때 매긴 키워드. 사진만 고치는 요청이 이걸 지우지 않는지 확인한다
 insert into vehicle_keyword_tag (id, vehicle_id, keyword, created_at, updated_at)
 values (700, 700, 'ACCIDENT_FREE', NOW(6), NOW(6)),
-       (701, 700, 'NO_LEAK', NOW(6), NOW(6));
+       (701, 700, 'UNDERBODY_INTACT', NOW(6), NOW(6));

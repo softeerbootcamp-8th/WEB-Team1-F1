@@ -10,10 +10,10 @@ import { MyRequestsPanel } from '@/features/evaluations/components/my-requests-p
 import { DealListPanel } from '../components/deal-list-panel'
 
 /**
- * 탭이 곧 주소다. `/mypage/deals` 처럼 경로에 실어야 상세에서 돌아왔을 때 보던 탭이 유지되고,
+ * 탭이 곧 주소다. `/mypage/sales` 처럼 경로에 실어야 상세에서 돌아왔을 때 보던 탭이 유지되고,
  * 방문견적 상세(`/mypage/evaluations/:id`)와 규칙이 같아진다.
  */
-const TABS = ['evaluations', 'deals'] as const
+const TABS = ['evaluations', 'sales', 'purchases'] as const
 
 type Tab = (typeof TABS)[number]
 
@@ -24,7 +24,12 @@ export function MyPage() {
 
   // 모르는 경로가 들어와도 첫 탭으로 떨어뜨린다, 셋 다 아니면 빈 화면이 된다
   const segment = pathname.split('/')[2]
-  const tab: Tab = TABS.includes(segment as Tab) ? (segment as Tab) : 'evaluations'
+  // `/mypage/deals` 는 기존 북마크를 위해 구매 내역으로 해석한다.
+  const tab: Tab = segment === 'deals'
+    ? 'purchases'
+    : TABS.includes(segment as Tab)
+      ? (segment as Tab)
+      : 'evaluations'
 
   if (isLoading) {
     return (
@@ -54,7 +59,7 @@ export function MyPage() {
   return (
     <main aria-label="마이페이지" className="mx-auto max-w-5xl px-6 py-10">
       <header className="mb-8 flex items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+        <h1 className="text-3xl font-semibold md:text-4xl">
           {user.realName}
         </h1>
         <Badge variant="outline">{ROLE_LABEL[user.role]} 회원</Badge>
@@ -65,16 +70,21 @@ export function MyPage() {
         onValueChange={(next) => navigate(`/mypage/${next}`, { replace: true })}
       >
         <TabsList>
-          <TabsTrigger value="evaluations">방문견적</TabsTrigger>
-          <TabsTrigger value="deals">내 거래</TabsTrigger>
+          <TabsTrigger value="evaluations">진단 신청 내역</TabsTrigger>
+          <TabsTrigger value="sales">판매 내역</TabsTrigger>
+          <TabsTrigger value="purchases">구매 내역</TabsTrigger>
         </TabsList>
 
         <TabsContent value="evaluations" className="mt-6">
           <MyRequestsPanel />
         </TabsContent>
 
-        <TabsContent value="deals" className="mt-6">
-          <DealListPanel />
+        <TabsContent value="sales" className="mt-6">
+          <DealListPanel side="SELLER" enabled={tab === 'sales'} />
+        </TabsContent>
+
+        <TabsContent value="purchases" className="mt-6">
+          <DealListPanel side="BUYER" enabled={tab === 'purchases'} />
         </TabsContent>
       </Tabs>
     </main>

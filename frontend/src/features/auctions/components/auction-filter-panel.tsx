@@ -20,6 +20,9 @@ interface AuctionFilterPanelProps {
   onStatusChange: (next: AuctionStatus | null) => void
   /** 조건과 상태를 함께 지운다. 둘을 따로 부르면 주소에 한쪽만 반영된다. */
   onReset: () => void
+  /** 모바일 패널은 바깥 헤더가 제목과 초기화를 맡는다. */
+  showHeader?: boolean
+  className?: string
 }
 
 // 연도를 박아두면 해가 바뀔 때마다 낡는다. 상한을 실행 시점 기준으로 계산한다.
@@ -45,6 +48,8 @@ export function AuctionFilterPanel({
   status,
   onStatusChange,
   onReset,
+  showHeader = true,
+  className,
 }: AuctionFilterPanelProps) {
   const brands = Object.entries(MANUFACTURER_LABEL) as [Manufacturer, string][]
   const activeCount = countActiveFilters(value) + (status ? 1 : 0)
@@ -57,19 +62,21 @@ export function AuctionFilterPanel({
   }
 
   return (
-    <section aria-label="경매 필터" className="rounded-xl border p-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">필터</h2>
-        {activeCount > 0 && (
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-foreground text-base"
-            onClick={onReset}
-          >
-            초기화
-          </button>
-        )}
-      </div>
+    <section aria-label="경매 필터" className={cn('rounded-xl border p-5', className)}>
+      {showHeader && (
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">필터</h2>
+          {activeCount > 0 && (
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground text-base"
+              onClick={onReset}
+            >
+              초기화
+            </button>
+          )}
+        </div>
+      )}
 
       <Group label="경매 상태">
         <div className="flex flex-wrap gap-2">

@@ -1,6 +1,7 @@
 package com.softeer.race.user.application;
 
 import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_EMAIL;
+import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_PHONE;
 import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_USERNAME;
 import static com.softeer.race.user.exception.UserErrorCode.UNSUPPORTED_SIGNUP_ROLE;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -92,6 +93,20 @@ class UserServiceTest {
                         exception -> assertThat(exception.errorCode()).isEqualTo(DUPLICATE_USERNAME));
 
         verify(userRepository, never()).existsByEmail(any());
+        verify(passwordEncoder, never()).encode(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("이미 존재하는 휴대전화 번호면 중복 번호 예외를 던진다")
+    void signUpRejectsDuplicatePhone() {
+        SignUpCommand command = signUpCommand(Role.GENERAL);
+        when(userRepository.existsByPhone(command.phone())).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(DUPLICATE_PHONE));
+
         verify(passwordEncoder, never()).encode(any());
         verify(userRepository, never()).save(any());
     }
@@ -198,6 +213,20 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("동시 가입으로 휴대전화 제약이 위반되면 중복 번호 예외로 변환한다")
+    void signUpConvertsPhoneDataIntegrityViolation() {
+        SignUpCommand command = signUpCommand(Role.GENERAL);
+        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        when(userRepository.save(any(User.class)))
+                .thenThrow(new DataIntegrityViolationException(
+                        "Duplicate entry '01012345678' for key 'uk_users_phone'"));
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(DUPLICATE_PHONE));
+    }
+
+    @Test
     @DisplayName("동일 사원증 키의 DB 제약 위반은 중복 사원증 예외로 변환한다")
     void signUpConvertsDealerLicenseDataIntegrityViolation() {
         SignUpCommand command = signUpCommand(Role.DEALER, dealerLicenseKey());
@@ -234,7 +263,7 @@ class UserServiceTest {
                 "race@race.kr",
                 RAW_PASSWORD,
                 "김레이스",
-                "010-1234-5678",
+                "01012345678",
                 role,
                 dealerLicenseKey);
     }

@@ -66,6 +66,7 @@ export interface AuctionCard {
  * 종류가 늘면 벨의 아이콘 대응표도 함께 고쳐야 한다. 대응표가 전수라 빠뜨리면 빌드가 깨진다.
  */
 export type NotificationType =
+  | 'EVAL_REQUESTED'
   | 'EVAL_APPROVED'
   | 'EVAL_REJECTED'
   | 'AUCTION_STARTED'

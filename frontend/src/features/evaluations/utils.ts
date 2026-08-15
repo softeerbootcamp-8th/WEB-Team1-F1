@@ -28,27 +28,29 @@ export function formatPhone(value: string): string {
 export function getEvaluationStatusMeta(
   status: EvaluationStatus,
   assigned: boolean,
-  viewer: 'seller' | 'evaluator' = 'seller',
 ) {
   if (status === 'APPROVED') {
     return {
-      label: viewer === 'evaluator' ? '승인 처리' : '진단 완료',
-      className: 'bg-success/10 text-success border-success/20',
+      label: '차량 진단 완료',
+      className: 'border-success/25 bg-success/10 text-success',
     }
   }
   if (status === 'REJECTED') {
     return {
-      label: viewer === 'evaluator' ? '반려 처리' : '반려',
-      className: 'bg-destructive/10 text-destructive border-destructive/20',
+      label: '진단 반려',
+      className: 'border-destructive/25 bg-destructive/8 text-destructive',
     }
   }
-  if (viewer === 'evaluator') {
-    return { label: '평가 수락', className: 'bg-deal-active/10 text-deal-active border-deal-active/20' }
-  }
   if (assigned) {
-    return { label: '평가사 배정됨', className: 'bg-deal-active/10 text-deal-active border-deal-active/20' }
+    return {
+      label: '평가 진행 중',
+      className: 'border-deal-active/25 bg-deal-active/10 text-deal-active',
+    }
   }
-  return { label: '접수됨 · 배정 대기', className: 'bg-warning/10 text-warning border-warning/20' }
+  return {
+    label: '배정 대기',
+    className: 'border-warning/30 bg-warning/10 text-[color-mix(in_oklab,var(--warning)_75%,black)]',
+  }
 }
 
 export function getAuctionStatusMeta(status: EvaluationAuctionStatus) {
@@ -56,7 +58,7 @@ export function getAuctionStatusMeta(status: EvaluationAuctionStatus) {
     return { label: '경매 예정', className: 'bg-warning/10 text-warning border-warning/20' }
   }
   if (status === 'IN_PROGRESS') {
-    return { label: '경매 진행 중', className: 'bg-primary/10 text-primary border-primary/20' }
+    return { label: '경매 진행 중', className: 'bg-warning/10 text-warning border-warning/20' }
   }
   if (status === 'ENDED') {
     return { label: '낙찰 완료', className: 'bg-success/10 text-success border-success/20' }

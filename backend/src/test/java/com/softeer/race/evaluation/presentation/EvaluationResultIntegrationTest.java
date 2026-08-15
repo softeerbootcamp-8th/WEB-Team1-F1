@@ -2,7 +2,9 @@ package com.softeer.race.evaluation.presentation;
 
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -79,6 +81,13 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
     private static final int MILEAGE = 45_000;
     private static final long ESTIMATED_PRICE = 21_500_000L;
 
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.diagnosticReport(sessions);
+    }
+
     @Test
     @DisplayName("한 번의 제출로 차량·사진·진단서·상태가 모두 바뀐다")
     void submit() throws Exception {
@@ -143,7 +152,7 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
         assertThat(vehicle.get("main_photo_url")).isEqualTo(IMAGE_1);
         assertThat(vehicle.get("diagnostic_report_url")).isEqualTo(DOCUMENT_URL);
         assertThat(imageUrls()).containsExactly(IMAGE_1, IMAGE_2);
-        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "NO_LEAK");
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "UNDERBODY_INTACT");
     }
 
     @Test
@@ -238,7 +247,7 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
     @DisplayName("매긴 키워드가 저장되고 응답에도 정해진 순서로 실려 나간다")
     void submitStoresKeywords() throws Exception {
         // given : 선언 순서와 어긋나게, 중복까지 섞어 보낸다
-        List<String> sent = List.of("GOOD_TIRE", "NO_LEAK", "ACCIDENT_FREE", "NO_LEAK");
+        List<String> sent = List.of("GOOD_TIRE", "UNDERBODY_INTACT", "ACCIDENT_FREE", "UNDERBODY_INTACT");
 
         // when
         submitWithKeywords(EVALUATION_ID, EVALUATOR_TOKEN, DOCUMENT_URL, sent, IMAGE_1)
@@ -246,11 +255,11 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
                 // 중복이 사라지고 VehicleKeyword 선언 순서로 정렬돼 나간다
                 .andExpect(jsonPath("$.keywords.length()").value(3))
                 .andExpect(jsonPath("$.keywords[0]").value("ACCIDENT_FREE"))
-                .andExpect(jsonPath("$.keywords[1]").value("NO_LEAK"))
+                .andExpect(jsonPath("$.keywords[1]").value("UNDERBODY_INTACT"))
                 .andExpect(jsonPath("$.keywords[2]").value("GOOD_TIRE"));
 
         // then : 중복을 보냈어도 행은 세 개다. 유니크 제약이 있어 걸러지지 않으면 500이 된다
-        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "GOOD_TIRE", "NO_LEAK");
+        assertThat(keywords()).containsExactly("ACCIDENT_FREE", "GOOD_TIRE", "UNDERBODY_INTACT");
     }
 
     /**
@@ -264,7 +273,7 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
     void submitReplacesKeywords() throws Exception {
         // given
         submitWithKeywords(EVALUATION_ID, EVALUATOR_TOKEN, DOCUMENT_URL,
-                List.of("ACCIDENT_FREE", "NO_LEAK"), IMAGE_1)
+                List.of("ACCIDENT_FREE", "UNDERBODY_INTACT"), IMAGE_1)
                 .andExpect(status().isOk());
 
         // when : 겹치는 것 하나를 그대로 두고 하나를 바꿔 다시 낸다
@@ -292,7 +301,7 @@ class EvaluationResultIntegrationTest extends IntegrationTestSupport {
     private ResultActions submit(long evaluationId, String rawToken,
                                  String documentUrl, String... imageUrls) throws Exception {
         return submitWithKeywords(evaluationId, rawToken, documentUrl,
-                List.of("ACCIDENT_FREE", "NO_LEAK"), imageUrls);
+                List.of("ACCIDENT_FREE", "UNDERBODY_INTACT"), imageUrls);
     }
 
     private void registerAuction() {

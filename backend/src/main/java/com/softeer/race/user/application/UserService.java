@@ -1,6 +1,7 @@
 package com.softeer.race.user.application;
 
 import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_EMAIL;
+import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_PHONE;
 import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_DEALER_LICENSE;
 import static com.softeer.race.user.exception.UserErrorCode.DUPLICATE_USERNAME;
 import static com.softeer.race.user.exception.UserErrorCode.DEALER_LICENSE_NOT_ALLOWED;
@@ -42,6 +43,9 @@ public class UserService {
         if (userRepository.existsByEmail(command.email())) {
             throw new BusinessException(DUPLICATE_EMAIL);
         }
+        if (userRepository.existsByPhone(command.phone())) {
+            throw new BusinessException(DUPLICATE_PHONE);
+        }
 
         String encodedPassword = passwordEncoder.encode(command.password());
         User user = User.create(
@@ -75,6 +79,9 @@ public class UserService {
         }
         if (message != null && message.contains("uk_users_dealer_license_key")) {
             return DUPLICATE_DEALER_LICENSE;
+        }
+        if (message != null && message.contains("uk_users_phone")) {
+            return DUPLICATE_PHONE;
         }
         return DUPLICATE_EMAIL;
     }

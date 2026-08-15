@@ -19,7 +19,7 @@ describe('HomePage', () => {
     )
   })
 
-  it('실시간 목록을 구독하지 않고 경매 목록으로 가는 길만 남긴다', () => {
+  it('실시간 목록을 구독하지 않고 판매 과정과 주요 기능 진입로를 안내한다', () => {
     render(
       <MemoryRouter>
         <HomePage />
@@ -30,6 +30,9 @@ describe('HomePage', () => {
     expect(
       screen.queryByRole('heading', { name: '지금 입찰 중인 차량' }),
     ).toBeNull()
+    expect(
+      screen.getByRole('heading', { name: '방문부터 거래까지' }),
+    ).toBeTruthy()
     expect(
       screen.getByRole('link', { name: '진행 중인 경매' }).getAttribute('href'),
     ).toBe('/auctions')

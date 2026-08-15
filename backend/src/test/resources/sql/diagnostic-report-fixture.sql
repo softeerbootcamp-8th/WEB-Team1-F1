@@ -23,14 +23,8 @@ values (600, 'report_seller', 'report_seller@race.dev', 'pw',
        (604, 'report_seller2', 'report_seller2@race.dev', 'pw',
         '정판매', '01000000604', 'GENERAL', NOW(6), NOW(6));
 
--- PK는 쿠키로 보낼 원문 토큰의 SHA-256 hex다
--- 만료 시각을 하드코딩하지 않는다, 그 날짜가 지나는 순간 전 시나리오가 401이 된다
-insert into user_session (id, user_id, expires_at, created_at, updated_at)
-values (sha2('report-seller-token', 256), 600, DATE_ADD(NOW(6), INTERVAL 1 HOUR), NOW(6), NOW(6)),
-       (sha2('report-eval-token', 256), 601, DATE_ADD(NOW(6), INTERVAL 1 HOUR), NOW(6), NOW(6)),
-       (sha2('report-eval2-token', 256), 602, DATE_ADD(NOW(6), INTERVAL 1 HOUR), NOW(6), NOW(6)),
-       (sha2('report-other-token', 256), 603, DATE_ADD(NOW(6), INTERVAL 1 HOUR), NOW(6), NOW(6)),
-       (sha2('report-seller2-token', 256), 604, DATE_ADD(NOW(6), INTERVAL 1 HOUR), NOW(6), NOW(6));
+-- 로그인 세션은 여기서 심지 않는다, 테이블이 아니라 Redis 에 산다
+-- 이 파일과 짝이 되는 세션은 SessionFixture 가 심는다
 
 -- 진단 전 차량이라 주행거리와 예상 시세가 비어 있다(Vehicle.pendingDiagnosis가 만드는 상태)
 insert into vehicle (id, seller_id, manufacturer, model, model_year, mileage, fuel_type, transmission,

@@ -38,6 +38,7 @@ public record EvaluationResultPatchRequest(
 
         @Schema(description = "바꿀 예상 시세(원). 생략하면 그대로 둡니다.", example = "21000000")
         @Positive(message = "예상 시세는 0보다 커야 합니다.")
+        @Max(value = 1_000_000_000_000L, message = "산정 시세는 1조원을 넘을 수 없습니다.")
         Long estimatedPrice,
 
         /*
@@ -77,7 +78,7 @@ public record EvaluationResultPatchRequest(
                 수정 뒤의 키워드 전부. 빈 배열을 보내면 매겨 둔 키워드가 모두 지워집니다.
                 생략하면 키워드를 건드리지 않습니다.
                 """,
-                example = "[\"ACCIDENT_FREE\", \"NO_LEAK\"]")
+                example = "[\"ACCIDENT_FREE\", \"UNDERBODY_INTACT\"]")
         @Size(max = EvaluationResultSubmitRequest.MAX_KEYWORD_COUNT,
                 message = "키워드는 " + EvaluationResultSubmitRequest.MAX_KEYWORD_COUNT
                         + "개까지 매길 수 있습니다.")

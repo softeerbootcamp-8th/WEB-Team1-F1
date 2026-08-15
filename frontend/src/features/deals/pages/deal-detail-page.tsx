@@ -4,7 +4,6 @@ import { toast } from 'sonner'
 import {
   ArrowLeft,
   CalendarClock,
-  CircleAlert,
   CircleCheckBig,
   CircleX,
   Clock3,
@@ -74,7 +73,7 @@ export function DealDetailPage() {
           title="잘못된 거래 번호입니다"
           action={
             <Button asChild>
-              <Link to="/mypage/deals">내 거래</Link>
+              <Link to="/mypage/purchases">구매 내역</Link>
             </Button>
           }
         />
@@ -100,7 +99,7 @@ export function DealDetailPage() {
           description={getErrorMessage(query.error, '존재하지 않거나 조회 권한이 없는 거래입니다.')}
           action={
             <Button asChild>
-              <Link to="/mypage/deals">내 거래</Link>
+              <Link to="/mypage/purchases">구매 내역</Link>
             </Button>
           }
         />
@@ -110,13 +109,16 @@ export function DealDetailPage() {
 
   const cancelled = deal.status === 'CANCELLED'
   const meta = DEAL_STATUS_META[deal.status]
+  const headline = deal.actionRequired ? dealGuide(deal.status, true) : meta.label
+  const listHref = deal.mySide === 'SELLER' ? '/mypage/sales' : '/mypage/purchases'
+  const listLabel = deal.mySide === 'SELLER' ? '판매 내역' : '구매 내역'
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12" aria-label="거래 상세">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link to="/mypage/deals">
+        <Link to={listHref}>
           <ArrowLeft />
-          내 거래
+          {listLabel}
         </Link>
       </Button>
 
@@ -127,44 +129,49 @@ export function DealDetailPage() {
           </div>
           <div className="min-w-0">
             <p className="text-muted-foreground text-sm">거래 #{deal.dealId}</p>
-            <h1 className="mt-1 truncate text-3xl font-semibold md:text-4xl">{deal.model}</h1>
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <h1 className="min-w-0 truncate text-3xl font-semibold md:text-4xl">{deal.model}</h1>
+              <Badge
+                variant="outline"
+                className={cn(
+                  'rounded-full px-3 py-1 text-sm font-semibold',
+                  deal.actionRequired
+                    ? 'border-closing-soon/30 bg-closing-soon/10 text-[color-mix(in_oklab,var(--closing-soon)_70%,black)]'
+                    : cancelled
+                      ? 'border-destructive/25 bg-destructive/8 text-destructive'
+                      : deal.status === 'CONFIRMED'
+                        ? 'border-success/25 bg-success/10 text-success'
+                        : 'border-border bg-muted/60 text-muted-foreground',
+                )}
+              >
+                {headline}
+              </Badge>
+            </div>
             <p className="text-muted-foreground mt-2">
               {deal.modelYear}년식 · {formatMileage(deal.mileage)}
             </p>
+            {!deal.actionRequired && (
+              <p className="text-muted-foreground mt-3 flex items-start gap-1.5 text-sm">
+                {deal.status === 'CONFIRMED' ? (
+                  <CircleCheckBig className="text-success mt-0.5 size-4 shrink-0" aria-hidden />
+                ) : cancelled ? (
+                  <CircleX className="text-destructive mt-0.5 size-4 shrink-0" aria-hidden />
+                ) : (
+                  <Clock3 className="mt-0.5 size-4 shrink-0" aria-hidden />
+                )}
+                {dealGuide(deal.status, false)}
+              </p>
+            )}
           </div>
         </div>
 
         <div className="text-right">
-          <Badge variant={cancelled ? 'destructive' : deal.status === 'CONFIRMED' ? 'success' : 'secondary'}>
-            {meta.label}
-          </Badge>
-          <p className="tabular mt-3 text-2xl font-semibold">{formatKRW(deal.finalPrice)}</p>
+          <p className="tabular text-2xl font-semibold">{formatKRW(deal.finalPrice)}</p>
           <p className="text-muted-foreground text-xs">낙찰가</p>
         </div>
       </header>
 
       {!cancelled && <DealSteps status={deal.status} />}
-
-      {/* 내 차례인지 아닌지에 따라 문장이 갈린다, "나는 기다리면 되는가"가 한눈에 읽혀야 한다 */}
-      <div
-        className={cn(
-          'mt-6 flex items-start gap-2 rounded-lg border px-5 py-4 text-sm',
-          deal.actionRequired
-            ? 'border-closing-soon/40 bg-closing-soon/5 text-closing-soon font-semibold'
-            : 'text-muted-foreground',
-        )}
-      >
-        {deal.actionRequired ? (
-          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-        ) : deal.status === 'CONFIRMED' ? (
-          <CircleCheckBig className="mt-0.5 size-4 shrink-0" aria-hidden />
-        ) : deal.status === 'CANCELLED' ? (
-          <CircleX className="mt-0.5 size-4 shrink-0" aria-hidden />
-        ) : (
-          <Clock3 className="mt-0.5 size-4 shrink-0" aria-hidden />
-        )}
-        <p>{dealGuide(deal.status, deal.actionRequired)}</p>
-      </div>
 
       <DealActions deal={deal} onDone={refresh} />
 
@@ -251,8 +258,15 @@ export function DealDetailPage() {
 
       {/* 확정 전까지는 양쪽 누구든 그만둘 수 있다. 내 차례가 아니어도 빠질 수 있어야 한다 */}
       {!cancelled && deal.status !== 'CONFIRMED' && (
-        <div className="mt-8 border-t pt-6">
-          <Button variant="ghost" size="sm" onClick={cancel} disabled={isCancelling}>
+        <div className="mt-8">
+          <Button
+            variant="outline"
+            className="text-destructive border-destructive/20 hover:bg-destructive/5 hover:text-destructive"
+            onClick={cancel}
+            disabled={isCancelling}
+          >
+            {isCancelling && <LoaderCircle className="animate-spin" />}
+            <CircleX />
             거래 그만두기
           </Button>
         </div>

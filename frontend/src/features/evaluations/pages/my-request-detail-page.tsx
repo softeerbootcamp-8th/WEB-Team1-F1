@@ -16,11 +16,11 @@ import { EmptyState } from '@/components/common/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { VehicleKeywordBadge } from '@/features/quote/components/vehicle-keyword-badge'
 import {
   FUEL_TYPE_LABEL,
   MANUFACTURER_LABEL,
   TRANSMISSION_LABEL,
-  VEHICLE_KEYWORD_LABEL,
 } from '@/features/quote/types'
 import { getErrorMessage } from '@/lib/axios'
 import { formatDateTime, formatKRW, formatMileage } from '@/lib/format'
@@ -31,9 +31,10 @@ import {
   formatPhone,
   formatVisitDate,
   getAuctionBlockReason,
-  getAuctionStatusMeta,
   getEvaluationStatusMeta,
 } from '../utils'
+
+const COMPACT_STATUS_BADGE_CLASS = 'h-10 rounded-md px-3 text-sm font-semibold'
 
 export function MyRequestDetailPage() {
   const { evaluationId: evaluationIdParam } = useParams()
@@ -75,7 +76,6 @@ export function MyRequestDetailPage() {
   const status = getEvaluationStatusMeta(detail.status, assigned)
   const isDiagnosed = detail.status === 'APPROVED'
 
-  const auctionMeta = auctionStatus ? getAuctionStatusMeta(auctionStatus) : null
   // 재출품을 막는 상태만 남긴다. null 이면 출품할 수 있다는 뜻이라 아래에서 분기 하나로 쓴다
   const blockedStatus =
     auctionStatus && !canRegisterAuction(auctionStatus) ? auctionStatus : null
@@ -99,9 +99,13 @@ export function MyRequestDetailPage() {
           </h1>
           <p className="text-muted-foreground mt-2">{detail.modelYear}년식 · {detail.plateNumber}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="outline" className={status.className}>{status.label}</Badge>
-          {auctionMeta && <Badge variant="outline" className={auctionMeta.className}>{auctionMeta.label}</Badge>}
+        <div className="flex max-w-full flex-wrap justify-end gap-2">
+          <Badge
+            variant="outline"
+            className={`${COMPACT_STATUS_BADGE_CLASS} ${status.className}`}
+          >
+            {status.label}
+          </Badge>
         </div>
       </header>
 
@@ -112,18 +116,25 @@ export function MyRequestDetailPage() {
             <CardContent>
               <dl className="space-y-5 text-sm">
                 <div><dt className="text-muted-foreground">방문 희망일</dt><dd className="mt-1 font-medium">{formatVisitDate(detail.visitDate)}</dd></div>
-                <div><dt className="text-muted-foreground flex items-center gap-1"><MapPin className="size-3.5" />방문 주소</dt><dd className="mt-1 font-medium">{detail.visitAddress}</dd></div>
+                <div><dt className="text-muted-foreground flex items-center gap-1"><MapPin className="size-3.5" />방문 주소</dt><dd className="mt-1 break-words font-medium">{detail.visitAddress}</dd></div>
                 <div><dt className="text-muted-foreground">접수 시각</dt><dd className="mt-1 font-medium">{formatDateTime(detail.requestedAt)}</dd></div>
               </dl>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><UserRound />평가사 배정</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserRound />{isDiagnosed ? '진단 평가사' : '평가사 배정'}
+              </CardTitle>
+            </CardHeader>
             <CardContent className="text-sm">
               {assigned ? (
                 <div className="space-y-3">
-                  <p><strong>{detail.evaluatorName}</strong> 평가사가 방문할 예정입니다.</p>
+                  <p>
+                    <strong>{detail.evaluatorName}</strong> 평가사가{' '}
+                    {isDiagnosed ? '차량 진단을 완료했습니다.' : '방문할 예정입니다.'}
+                  </p>
                   <a className="inline-flex items-center gap-2 font-medium underline-offset-4 hover:underline" href={`tel:${detail.contactPhone}`}><Phone className="size-4" />신청 연락처 {formatPhone(detail.contactPhone)}</a>
                 </div>
               ) : (
@@ -157,7 +168,7 @@ export function MyRequestDetailPage() {
                   <p className="mb-2 text-sm font-medium">차량 상태</p>
                   <div className="flex flex-wrap gap-1.5">
                     {detail.keywords.map((keyword) => (
-                      <Badge key={keyword} variant="secondary">{VEHICLE_KEYWORD_LABEL[keyword]}</Badge>
+                      <VehicleKeywordBadge key={keyword} keyword={keyword} />
                     ))}
                   </div>
                 </div>
@@ -175,7 +186,7 @@ export function MyRequestDetailPage() {
               {isDiagnosed && detail.diagnosticReportUrl && (
                 <Button asChild variant="outline" className="mt-6"><a href={detail.diagnosticReportUrl} target="_blank" rel="noreferrer"><FileText />진단서 PDF 보기</a></Button>
               )}
-              {isDiagnosed && detail.submittedAt && <p className="text-muted-foreground mt-4 text-xs">{formatDateTime(detail.submittedAt)} 진단 완료</p>}
+              {isDiagnosed && detail.submittedAt && <p className="text-muted-foreground mt-4 text-xs">{formatDateTime(detail.submittedAt)} 차량 진단 완료</p>}
             </CardContent>
           </Card>
 
@@ -184,7 +195,7 @@ export function MyRequestDetailPage() {
           {isDiagnosed && (blockedStatus ? (
             <section className="rounded-2xl border p-6 md:p-8">
               <h2 className="text-xl font-semibold">이미 경매에 등록된 차량입니다</h2>
-              <p className="text-muted-foreground mt-2 text-sm">{getAuctionBlockReason(blockedStatus)}</p>
+              <p className="text-muted-foreground mt-2 text-sm whitespace-nowrap">{getAuctionBlockReason(blockedStatus)}</p>
               <Button asChild variant="outline" className="mt-5"><Link to="/auctions?scope=MINE"><Gavel />나의 경매 보기</Link></Button>
             </section>
           ) : (

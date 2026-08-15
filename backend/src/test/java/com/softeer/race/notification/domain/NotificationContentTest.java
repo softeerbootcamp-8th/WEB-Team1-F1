@@ -55,6 +55,17 @@ class NotificationContentTest {
     }
 
     @Test
+    @DisplayName("방문견적 신청 문구는 번호판까지 담아 같은 차종의 신청을 구분한다")
+    void evaluationRequestedContainsPlateNumber() {
+        NotificationContent content =
+                NotificationContent.evaluationRequested("12가3456", MODEL);
+
+        assertThat(content.type()).isEqualTo(NotificationType.EVAL_REQUESTED);
+        assertThat(content.message())
+                .isEqualTo("12가3456 아반떼 CN7 차량의 방문 진단 신청이 접수되었습니다.");
+    }
+
+    @Test
     @DisplayName("기존 종류는 기본 문구를 그대로 내용으로 만들 수 있다")
     void defaultContentKeepsLegacyMessage() {
         NotificationContent content = NotificationContent.defaultOf(AUCTION_WON);

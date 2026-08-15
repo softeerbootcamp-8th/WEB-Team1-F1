@@ -63,7 +63,7 @@ class VehicleLookupIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.model").value("그랜저 IG"))
                 .andExpect(jsonPath("$.modelYear").value(2021))
                 .andExpect(jsonPath("$.fuelType").value("GASOLINE"))
-                .andExpect(jsonPath("$.transmission").value("AUTOMATIC"))
+                .andExpect(jsonPath("$.transmission").doesNotExist())
                 .andExpect(jsonPath("$.mainImageUrl").value(IMAGE_URL));
     }
 

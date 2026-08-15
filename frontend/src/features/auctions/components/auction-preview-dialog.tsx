@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   ChartLine,
   FileText,
@@ -20,6 +20,7 @@ import {
 import { Countdown } from '@/components/common/countdown'
 import { useCountdown } from '@/hooks/use-countdown'
 import { StartAlertButton } from '@/features/auctions/components/start-alert-button'
+import { useAuth } from '@/features/auth/auth-context'
 import { CarPhotos } from '@/features/auction-room/components/car-detail'
 import { KeywordBadges } from '@/features/auction-room/components/keyword-badges'
 import { fetchAuctionRoom, fetchRoomOpening, fetchRoomResult } from '@/features/auction-room/api'
@@ -67,6 +68,18 @@ export function AuctionPreviewDialog({
   onSimilar,
 }: AuctionPreviewDialogProps) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+
+  // 결과·방으로 나간 뒤 "뒤로"가 돌아올 목록 주소(탭·필터 쿼리 포함). 딥링크 파라미터는
+  // 지운다 — 남겨 두면 돌아온 목록이 이 미리보기를 다시 연다.
+  const from = useMemo(() => {
+    const params = new URLSearchParams(location.search)
+    params.delete('open')
+    params.delete('as')
+    const search = params.toString()
+    return `${location.pathname}${search ? `?${search}` : ''}`
+  }, [location.pathname, location.search])
   const [detail, setDetail] = useState<RoomOpeningView | RoomResultView | null>(null)
   const [error, setError] = useState<string | null>(null)
   /** 실제로 받아온 것이 무엇인지. 넘겨받은 단계가 낡았으면 여기서 갈린다 */
@@ -86,6 +99,14 @@ export function AuctionPreviewDialog({
     setDetail(null)
     setError(null)
     setLoaded(status)
+
+    // 상세 응답은 로그인한 회원에게만 내려온다. 비로그인 요청을 먼저 보내면 401이
+    // 일반적인 조회 실패처럼 보여, 왜 못 보는지와 다음 행동이 모두 사라진다.
+    if (isAuthLoading || !isAuthenticated) {
+      return () => {
+        alive = false
+      }
+    }
 
     const settle = (data: RoomOpeningView | RoomResultView, as: PreviewStatus) => {
       if (!alive) return
@@ -114,7 +135,7 @@ export function AuctionPreviewDialog({
         fetchAuctionRoom(auctionId)
           .then(() => {
             // 이미 들어갈 수 있는 방이다, 미리보기가 아니라 진짜 방으로 보낸다
-            if (alive) navigate(`/auctions/${auctionId}`, { replace: true })
+            if (alive) navigate(`/auctions/${auctionId}`, { replace: true, state: { from } })
           })
           .catch((e: unknown) => {
             if (!alive) return
@@ -131,7 +152,7 @@ export function AuctionPreviewDialog({
     return () => {
       alive = false
     }
-  }, [auctionId, status, navigate])
+  }, [auctionId, status, navigate, from, isAuthenticated, isAuthLoading])
 
   const openAt = (detail as RoomOpeningView | null)?.openAt ?? card?.openAt
   const { isElapsed } = useCountdown(openAt ?? '', 1000, clockOffset)
@@ -141,8 +162,8 @@ export function AuctionPreviewDialog({
   useEffect(() => {
     if (auctionId === null || loaded !== 'NOT_OPEN' || !isElapsed) return
 
-    navigate(`/auctions/${auctionId}`)
-  }, [auctionId, loaded, isElapsed, navigate])
+    navigate(`/auctions/${auctionId}`, { state: { from } })
+  }, [auctionId, loaded, isElapsed, navigate, from])
 
   const result = loaded === 'ENDED' ? (detail as RoomResultView | null) : null
   const vehicle = detail?.vehicle
@@ -160,8 +181,8 @@ export function AuctionPreviewDialog({
   return (
     <Dialog open={auctionId !== null} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-2xl">
-        <DialogHeader className="flex-row items-start justify-between gap-4 space-y-0 border-b p-5 pr-12 pb-3 text-left">
-          <div className="space-y-1">
+        <DialogHeader className="grid grid-cols-[minmax(0,1fr)_13rem] items-start gap-x-4 gap-y-1 border-b p-5 pr-12 pb-3 text-left">
+          <div className="min-w-0 space-y-1">
             <DialogTitle className="text-2xl">
               {vehicle && `${MANUFACTURER_LABEL[vehicle.manufacturer]} `}
               {model ?? '경매'}
@@ -172,11 +193,9 @@ export function AuctionPreviewDialog({
                 : '불러오는 중'}
             </DialogDescription>
 
-            {/* 방·결과 화면과 같은 자리다, 화면을 옮겨도 눈이 찾는 곳이 같아야 한다 */}
-            {vehicle && <KeywordBadges keywords={vehicle.keywords} />}
           </div>
 
-          <div className="shrink-0 text-right">
+          <div className="w-52 text-right">
             {loaded === 'NOT_OPEN' ? (
               <>
                 <p className="text-muted-foreground flex items-center justify-end gap-1.5 text-base">
@@ -197,15 +216,27 @@ export function AuctionPreviewDialog({
                   <Flag className="size-4" />
                   {result?.outcome === 'UNSOLD' ? '유찰' : '최종 낙찰가'}
                 </p>
-                <p className="text-price-up tabular mt-0.5 text-3xl font-bold">
+                <p className="text-price-up tabular mt-0.5 text-3xl font-bold whitespace-nowrap">
                   {result?.winningPrice == null ? '—' : formatKRW(result.winningPrice)}
                 </p>
               </>
             )}
           </div>
+
+          {/* 시계 아래에서 헤더 전체 폭을 쓴다. 시계 숫자 폭이 바뀌어도 마지막 키워드가
+              다음 줄로 밀리지 않아 미리보기 높이가 매초 흔들리지 않는다. */}
+          {vehicle && (
+            <div className="col-span-2 pt-1">
+              <KeywordBadges keywords={vehicle.keywords} />
+            </div>
+          )}
         </DialogHeader>
 
-        {error ? (
+        {isAuthLoading ? (
+          <p className="text-muted-foreground p-10 text-center text-base">로그인 상태를 확인하고 있습니다</p>
+        ) : !isAuthenticated ? (
+          <p className="text-muted-foreground p-10 text-center text-base">로그인이 필요합니다.</p>
+        ) : error ? (
           <p className="text-muted-foreground p-10 text-center text-base">{error}</p>
         ) : (
           <>
@@ -219,15 +250,17 @@ export function AuctionPreviewDialog({
 
             {/* 진단서는 사실 하나가 아니라 나가는 문이라 오른쪽 끝에 둔다, 줄이 좁으면 밑으로 접힌다 */}
             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t px-4 py-2.5 text-base">
-              {/* 두 단계 모두 값이 셋이라 같은 자리에 세운다, 미리보기를 옮겨 봐도 눈이 같은 곳을 읽는다 */}
-              <dl className="text-muted-foreground flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              {/* 두 단계 모두 값이 셋이라 같은 자리에 세운다, 미리보기를 옮겨 봐도 눈이 같은 곳을 읽는다.
+                  한 줄에 설 때는 표가 자기 상자를 버리고 값들을 바깥 줄에 직접 세운다 — 표가 상자로
+                  남으면 값끼리의 간격만 자기 안에서 정해져, 마지막 값과 진단서 버튼 사이만 좁아진다 */}
+              <dl className="text-muted-foreground flex min-w-0 flex-1 flex-col gap-2 sm:contents">
                 {loaded === 'NOT_OPEN' ? (
                   <>
                     {openAt && <Fact label="경매방 입장" value={formatClock(openAt)} />}
                     <FactDivider />
                     {startAt && <Fact label="경매 시작" value={formatClock(startAt)} />}
                     <FactDivider />
-                    {card && <Fact label="마감" value={formatClock(card.endAt)} />}
+                    {card && <Fact label="경매 마감" value={formatClock(card.endAt)} />}
                   </>
                 ) : (
                   <>
@@ -283,7 +316,7 @@ export function AuctionPreviewDialog({
                     <ListFilter />
                     비슷한 경매 보기
                   </Button>
-                  <Button onClick={() => navigate(`/auctions/${auctionId}/result`)}>
+                  <Button onClick={() => navigate(`/auctions/${auctionId}/result`, { state: { from } })}>
                     <ChartLine />
                     결과 자세히 보기
                   </Button>
@@ -317,9 +350,10 @@ function FactDivider() {
   return <div className="bg-border hidden h-4 w-px shrink-0 sm:block" aria-hidden />
 }
 
-/** 시작가 대비 낙찰가 상승률. 유찰이면 오른 값이 없다 */
+/** 시작가 대비 낙찰가 상승률. 유찰이면 오르지 않았으므로 옆의 두 값과 같은 꼴로 0을 적는다 */
 function riseRate(result: RoomResultView | null): string {
-  if (result === null || result.winningPrice === null) return '—'
+  if (result === null) return '—'
+  if (result.winningPrice === null) return '0.0%'
   const rate = ((result.winningPrice - result.startPrice) / result.startPrice) * 100
   return `+${rate.toFixed(1)}%`
 }

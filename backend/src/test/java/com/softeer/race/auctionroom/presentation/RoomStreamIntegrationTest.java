@@ -49,9 +49,6 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
     // 연결 만료가 30분이라 대기 상한을 안 주면 끝나지 않은 응답을 30분 기다린다
     private static final long ASYNC_WAIT_MILLIS = 1_000L;
 
-    // 세션 유효기간이 30분이다, 그보다 뒤로 밀면 구독이 열려 있는 사이 세션이 죽는다
-    private static final long SESSION_EXPIRED_MINUTES = 31L;
-
     // 마감(시작 + 20분)에 결과 확인 5분까지 지난 시각이 되도록 뒤로 물린다
     private static final LocalDateTime CLOSED_START_AT = LocalDateTime.of(2026, 8, 3, 18, 30);
 
@@ -185,10 +182,14 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("시나리오 6 : 구독 중 세션 만료 -> 다 내려간 응답이 인증 때문에 뒤집히지 않는다")
     void expiredSessionDoesNotOverturnSentResponse() throws Exception {
-        // given : 붙어 있는 사이 세션 유효기간이 지난다
+        // given : 붙어 있는 사이 세션이 만료된다
+        // 세션의 수명은 Redis 의 TTL 로 흐르므로 시계를 밀어서는 만료시킬 수 없다,
+        // Redis 는 만료된 키를 스스로 지우니 지운 상태가 곧 만료된 상태다
         long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
-        MvcResult opened = subscribe(liveAuctionId).andExpect(request().asyncStarted()).andReturn();
-        fixClockAt(NOW.plusMinutes(SESSION_EXPIRED_MINUTES));
+        String sessionToken = loginAs(users.user("한구경", Role.DEALER));
+        MvcResult opened = subscribeAs(liveAuctionId, sessionToken)
+                .andExpect(request().asyncStarted()).andReturn();
+        sessions.expire(sessionToken);
 
         // when : 서버가 끊어 요청이 두 번째로 디스패처를 통과한다, 인증도 이때 다시 돈다
         roomChannel.closeRoom(liveAuctionId);
@@ -290,7 +291,7 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
         opened.getAsyncResult(ASYNC_WAIT_MILLIS);
     }
 
-    // 세션은 고정된 현재 시각 기준으로 발급된다, @BeforeEach 가 시각을 먼저 고정하므로 발급 직후 유효하다
+    // 세션의 수명은 서버 Clock 이 아니라 Redis 의 TTL 이라, 고정된 시각과 무관하게 발급 직후 유효하다
     private String loginAs(User user) {
         return sessionService.issue(user);
     }

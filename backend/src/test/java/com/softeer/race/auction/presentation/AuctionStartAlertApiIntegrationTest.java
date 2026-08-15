@@ -219,18 +219,11 @@ class AuctionStartAlertApiIntegrationTest extends IntegrationTestSupport {
         return "/api/auctions/" + auctionId + "/start-alert";
     }
 
-    // 만료를 넉넉히 둬 슬라이딩 연장 임계에 걸리지 않게 한다, 걸리면 요청마다 UPDATE 가 섞인다
+    // 같은 회원으로 여러 번 불려도 같은 키를 덮어쓸 뿐이라 중복을 걸러낼 필요가 없다
+    // 수명은 시더가 기본값(auth.session.ttl)으로 잡는다, 갱신 임계보다 넉넉해 요청이 세션을 건드리지 않는다
     private Cookie sessionCookieOf(User user) {
         String token = "start-alert-token-" + user.getId();
-
-        if (countSessions(user) == 0) {
-            jdbcTemplate.update("""
-                            insert into user_session (id, user_id, expires_at, created_at, updated_at)
-                            values (sha2(?, 256), ?, ?, ?, ?)
-                            """,
-                    token, user.getId(), NOW.plusHours(1), NOW, NOW);
-        }
-
+        sessions.seed(token, user.getId(), user.getRole());
         return new Cookie(SessionCookieFactory.COOKIE_NAME, token);
     }
 
@@ -269,8 +262,4 @@ class AuctionStartAlertApiIntegrationTest extends IntegrationTestSupport {
                 "select count(*) from auction_start_alert_subscription", Long.class);
     }
 
-    private Long countSessions(User user) {
-        return jdbcTemplate.queryForObject(
-                "select count(*) from user_session where user_id = ?", Long.class, user.getId());
-    }
 }

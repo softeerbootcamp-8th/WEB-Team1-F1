@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CalendarDays,
   CheckCircle2,
+  Clock3,
   LoaderCircle,
   MapPin,
   Phone,
@@ -28,17 +29,19 @@ import { FUEL_TYPE_LABEL, MANUFACTURER_LABEL, TRANSMISSION_LABEL } from '@/featu
 import { getErrorMessage } from '@/lib/axios'
 import { formatDateTime } from '@/lib/format'
 import { assignEvaluation, fetchAssignableEvaluations } from '../api'
+import {
+  ASSIGNABLE_EVALUATIONS_QUERY_KEY,
+  MY_ASSIGNMENTS_QUERY_KEY,
+} from '../query-keys'
 import type { EvaluationAssignment } from '../types'
 import { formatPhone, formatVisitDate, getEvaluationErrorCode } from '../utils'
-
-const ASSIGNABLE_QUERY_KEY = ['evaluations', 'assignable'] as const
 
 export function AssignableEvaluationsPage() {
   const queryClient = useQueryClient()
   const [assignment, setAssignment] = useState<EvaluationAssignment | null>(null)
 
   const query = useQuery({
-    queryKey: ASSIGNABLE_QUERY_KEY,
+    queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY,
     queryFn: fetchAssignableEvaluations,
   })
 
@@ -46,8 +49,8 @@ export function AssignableEvaluationsPage() {
     mutationFn: assignEvaluation,
     onSuccess: (data) => {
       setAssignment(data)
-      void queryClient.invalidateQueries({ queryKey: ASSIGNABLE_QUERY_KEY })
-      void queryClient.invalidateQueries({ queryKey: ['evaluations', 'my-assignments'] })
+      void queryClient.invalidateQueries({ queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY })
+      void queryClient.invalidateQueries({ queryKey: MY_ASSIGNMENTS_QUERY_KEY })
     },
     onError: (error) => {
       const code = getEvaluationErrorCode(error)
@@ -55,14 +58,14 @@ export function AssignableEvaluationsPage() {
         toast.info('이미 마감됐습니다', {
           description: '다른 평가사가 먼저 수락해 목록을 새로고침했습니다.',
         })
-        void queryClient.invalidateQueries({ queryKey: ASSIGNABLE_QUERY_KEY })
+        void queryClient.invalidateQueries({ queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY })
         return
       }
       if (code === 'EVALUATION_NOT_ASSIGNABLE') {
         toast.info('수락할 수 없는 신청입니다', {
           description: '신청 상태가 변경되어 목록을 새로고침했습니다.',
         })
-        void queryClient.invalidateQueries({ queryKey: ASSIGNABLE_QUERY_KEY })
+        void queryClient.invalidateQueries({ queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY })
         return
       }
       toast.error(getErrorMessage(error, '방문견적을 수락하지 못했습니다'))
@@ -76,9 +79,6 @@ export function AssignableEvaluationsPage() {
       <header className="mb-8 flex flex-wrap items-end justify-between gap-5">
         <div>
           <h1 className="text-3xl font-semibold md:text-4xl">배정 대기 목록</h1>
-          <p className="text-muted-foreground mt-3">
-            방문일이 가까운 신청부터 표시됩니다. 수락한 평가사에게만 연락처가 공개됩니다.
-          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => void query.refetch()} disabled={query.isFetching}>
@@ -111,11 +111,11 @@ export function AssignableEvaluationsPage() {
         <ul className="space-y-3">
           {evaluations.map((evaluation) => (
             <li key={evaluation.evaluationId}>
-              <Card className="gap-0 py-0">
-                <CardContent className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <h2 className="text-lg font-semibold">
+              <Card className="gap-0 overflow-hidden border-border/80 py-0 shadow-sm transition-[border-color,box-shadow] hover:border-foreground/15 hover:shadow-md">
+                <CardContent className="grid p-0 lg:grid-cols-[minmax(0,1fr)_13rem]">
+                  <div className="min-w-0 p-5 sm:p-6">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <h2 className="text-xl font-semibold">
                         {MANUFACTURER_LABEL[evaluation.manufacturer]} {evaluation.model}
                       </h2>
                     </div>
@@ -126,24 +126,29 @@ export function AssignableEvaluationsPage() {
                       {TRANSMISSION_LABEL[evaluation.transmission]}
                     </p>
 
-                    <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-[1fr_1.4fr_auto]">
-                      <div className="flex min-w-0 gap-2.5">
-                        <CalendarDays className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                        <strong>{formatVisitDate(evaluation.visitDate)}</strong>
-                      </div>
-                      <div className="flex min-w-0 gap-2.5">
-                        <MapPin className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                        <span className="break-words">{evaluation.visitAddress}</span>
-                      </div>
-                      <p className="text-muted-foreground text-xs md:col-span-2 xl:col-span-1 xl:self-center xl:text-right">
-                        {formatDateTime(evaluation.requestedAt)} 접수
-                      </p>
+                    <div className="mt-5 grid divide-y border-t pt-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                      <AssignmentMeta
+                        icon={CalendarDays}
+                        label="방문 희망일"
+                        value={formatVisitDate(evaluation.visitDate)}
+                        emphasis
+                      />
+                      <AssignmentMeta
+                        icon={MapPin}
+                        label="방문 위치"
+                        value={evaluation.visitAddress}
+                      />
+                      <AssignmentMeta
+                        icon={Clock3}
+                        label="신청 날짜"
+                        value={formatDateTime(evaluation.requestedAt)}
+                      />
                     </div>
                   </div>
 
-                  <div className="shrink-0 lg:border-l lg:pl-6">
+                  <div className="flex items-center border-t p-5 lg:border-t-0 lg:border-l">
                     <Button
-                      className="w-full lg:w-40"
+                      className="h-11 w-full"
                       disabled={mutation.isPending}
                       onClick={() => mutation.mutate(evaluation.evaluationId)}
                     >
@@ -183,7 +188,7 @@ export function AssignableEvaluationsPage() {
               </div>
               <div>
                 <dt className="text-muted-foreground">방문 주소</dt>
-                <dd className="mt-1 font-medium">{assignment.visitAddress}</dd>
+                <dd className="mt-1 break-words font-medium">{assignment.visitAddress}</dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">판매자 연락처</dt>
@@ -207,5 +212,29 @@ export function AssignableEvaluationsPage() {
         </DialogContent>
       </Dialog>
     </main>
+  )
+}
+
+function AssignmentMeta({
+  icon: Icon,
+  label,
+  value,
+  emphasis = false,
+}: {
+  icon: typeof CalendarDays
+  label: string
+  value: string
+  emphasis?: boolean
+}) {
+  return (
+    <div className="min-w-0 py-3 first:pt-0 last:pb-0 sm:px-4 sm:py-0 sm:first:pl-0 sm:last:pr-0">
+      <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
+        <Icon className="size-3.5" />
+        {label}
+      </p>
+      <p className={`mt-2 line-clamp-2 break-words text-sm leading-5 ${emphasis ? 'font-semibold' : 'font-medium'}`} title={value}>
+        {value}
+      </p>
+    </div>
   )
 }

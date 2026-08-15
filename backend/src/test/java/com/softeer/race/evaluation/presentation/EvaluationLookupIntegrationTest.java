@@ -2,7 +2,9 @@ package com.softeer.race.evaluation.presentation;
 
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -64,6 +66,13 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
             CDN_BASE_URL + "/images/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg";
     private static final String DOCUMENT_URL =
             CDN_BASE_URL + "/documents/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.pdf";
+
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.diagnosticReport(sessions);
+    }
 
     @Test
     @DisplayName("내 신청 목록에 남의 신청이 섞이지 않고 최신 접수부터 나온다")
@@ -175,7 +184,7 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.submittedAt").exists())
                 .andExpect(jsonPath("$.keywords.length()").value(2))
                 .andExpect(jsonPath("$.keywords[0]").value("ACCIDENT_FREE"))
-                .andExpect(jsonPath("$.keywords[1]").value("NO_LEAK"));
+                .andExpect(jsonPath("$.keywords[1]").value("UNDERBODY_INTACT"));
     }
 
     @Test
@@ -259,7 +268,7 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
                           "estimatedPrice": 21500000,
                           "imageUrls": ["%s"],
                           "diagnosticReportUrl": "%s",
-                          "keywords": ["ACCIDENT_FREE", "NO_LEAK"]
+                          "keywords": ["ACCIDENT_FREE", "UNDERBODY_INTACT"]
                         }
                         """.formatted(IMAGE_URL, DOCUMENT_URL)));
     }

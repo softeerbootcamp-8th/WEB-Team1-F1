@@ -26,7 +26,7 @@ public record VehicleResponse(
         FuelType fuelType,
 
         @Schema(description = "평가사가 매긴 키워드, 목록과 같은 표시 순서이고 없으면 빈 배열",
-                example = "[\"ACCIDENT_FREE\", \"NO_LEAK\"]")
+                example = "[\"ACCIDENT_FREE\", \"UNDERBODY_INTACT\"]")
         List<VehicleKeyword> keywords,
 
         @Schema(description = "차량 사진, 등록 순서 그대로이고 첫 장이 대표다",

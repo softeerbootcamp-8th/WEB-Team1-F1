@@ -74,7 +74,7 @@ class UserControllerTest {
                                   "email": "race@race.kr",
                                   "password": "password123",
                                   "realName": "김레이스",
-                                  "phone": "010-1234-5678",
+                                  "phone": "01012345678",
                                   "role": "DEALER",
                                   "dealerLicenseKey": "dealer-licenses/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg"
                                 }
@@ -100,7 +100,7 @@ class UserControllerTest {
                                   "email": "not-an-email",
                                   "password": "123",
                                   "realName": "김레이스",
-                                  "phone": "010-1234-5678",
+                                  "phone": "01012345678",
                                   "role": "GENERAL"
                                 }
                                 """))
@@ -179,6 +179,44 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.detail").value("이미 사용 중인 이메일입니다."));
     }
 
+    @Test
+    @DisplayName("하이픈이 섞인 휴대전화 번호는 phone 필드 오류와 함께 400을 반환한다")
+    void signUpRejectsHyphenatedPhone() throws Exception {
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequest().replace("01012345678", "010-1234-5678")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.errors[*].field", hasItems("phone")));
+    }
+
+    @Test
+    @DisplayName("010으로 시작하지 않거나 자릿수가 다른 번호는 phone 필드 오류와 함께 400을 반환한다")
+    void signUpRejectsPhoneOutOfFormat() throws Exception {
+        for (String invalidPhone : new String[]{"01112345678", "0101234567", "010123456789", "010abcd5678"}) {
+            mockMvc.perform(post("/api/users")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(validRequest().replace("01012345678", invalidPhone)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                    .andExpect(jsonPath("$.errors[*].field", hasItems("phone")));
+        }
+    }
+
+    @Test
+    @DisplayName("중복 휴대전화 번호 비즈니스 예외는 USER_DUPLICATE_PHONE으로 409를 반환한다")
+    void signUpDuplicatePhone() throws Exception {
+        when(userService.signUp(any(SignUpCommand.class)))
+                .thenThrow(new BusinessException(UserErrorCode.DUPLICATE_PHONE));
+
+        mockMvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequest()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("USER_DUPLICATE_PHONE"))
+                .andExpect(jsonPath("$.detail").value("이미 사용 중인 휴대전화 번호입니다."));
+    }
+
     private static String validRequest() {
         return """
                 {
@@ -186,7 +224,7 @@ class UserControllerTest {
                   "email": "race@race.kr",
                   "password": "password123",
                   "realName": "김레이스",
-                  "phone": "010-1234-5678",
+                  "phone": "01012345678",
                   "role": "GENERAL"
                 }
                 """;
