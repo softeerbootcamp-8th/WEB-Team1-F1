@@ -42,18 +42,32 @@ function page(
   return { evaluations, hasNext: nextCursor !== null, nextCursor }
 }
 
-function renderPage() {
+function renderPage(initialEntry = '/evaluations/assignable') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
 
-  return render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <AssignableEvaluationsPage />
-      </MemoryRouter>
-    </QueryClientProvider> as ReactNode,
-  )
+  return {
+    client,
+    ...render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[initialEntry]}>
+          <AssignableEvaluationsPage />
+        </MemoryRouter>
+      </QueryClientProvider> as ReactNode,
+    ),
+  }
+}
+
+// 캐시에 남아 있는 모든 정렬의 목록에서 번호판을 모은다
+function cachedPlateNumbers(client: QueryClient) {
+  return client
+    .getQueriesData<{ pages: AssignableEvaluationsResponse[] }>({
+      queryKey: ['evaluations', 'assignable', 'list'],
+    })
+    .flatMap(([, data]) => data?.pages ?? [])
+    .flatMap((page) => page.evaluations)
+    .map((evaluation) => evaluation.plateNumber)
 }
 
 describe('배정 대기 목록', () => {
@@ -74,14 +88,15 @@ describe('배정 대기 목록', () => {
     renderPage()
     expect(await screen.findByText(/12가3456/)).toBeTruthy()
 
-    // 첫 페이지는 커서 없이 받는다
-    expect(fetchMock.mock.calls[0][0]).toBeNull()
+    // 첫 페이지는 기본 정렬로, 커서 없이 받는다
+    expect(fetchMock.mock.calls[0][0]).toBe('VISIT_DATE')
+    expect(fetchMock.mock.calls[0][1]).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: '더 보기' }))
 
     expect(await screen.findByText(/34나5678/)).toBeTruthy()
     // 서버가 준 커서를 그대로 돌려보낸다. 목록에서 몇 번째인지가 아니라 정렬축 위의 좌표다
-    expect(fetchMock.mock.calls[1][0]).toEqual({
+    expect(fetchMock.mock.calls[1][1]).toEqual({
       visitDate: '2026-08-20',
       evaluationId: 520,
     })
@@ -136,5 +151,62 @@ describe('배정 대기 목록', () => {
     expect(list().getByText(/34나5678/)).toBeTruthy()
     expect(list().getByText(/56다7890/)).toBeTruthy()
     expect(fetchMock.mock.calls.length).toBe(fetchCallsBeforeAssign)
+  })
+
+  it('최신 신청순으로 바꾸면 그 정렬의 첫 페이지부터 읽는다', async () => {
+    fetchMock.mockResolvedValue(page([evaluation(520, '12가3456', '2026-08-20')]))
+
+    renderPage()
+    await screen.findByText(/12가3456/)
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: '최신 신청순' }))
+
+    // 커서는 정렬 키 위의 좌표라, 정렬이 바뀌면 이전 커서로는 이어 읽을 수 없다
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('LATEST', null))
+  })
+
+  it('주소에 정렬이 적혀 있으면 그 순서로 연다', async () => {
+    fetchMock.mockResolvedValue(page([evaluation(520, '12가3456', '2026-08-20')]))
+
+    renderPage('/evaluations/assignable?sort=latest')
+    await screen.findByText(/12가3456/)
+
+    expect(fetchMock.mock.calls[0][0]).toBe('LATEST')
+    expect(screen.getByRole('tab', { name: '최신 신청순' }).getAttribute('data-state')).toBe(
+      'active',
+    )
+  })
+
+  /**
+   * 한쪽 정렬에서만 지우면 정렬을 바꿨을 때 이미 수락한 신청이 되살아나 보인다.
+   */
+  it('수락한 신청은 두 정렬 캐시에서 함께 내려간다', async () => {
+    fetchMock.mockImplementation((sort) =>
+      Promise.resolve(
+        sort === 'LATEST'
+          ? page([evaluation(521, '34나5678', '2026-08-25'), evaluation(520, '12가3456', '2026-08-20')])
+          : page([evaluation(520, '12가3456', '2026-08-20'), evaluation(521, '34나5678', '2026-08-25')]),
+      ),
+    )
+    assignMock.mockResolvedValue({
+      evaluationId: 520,
+      plateNumber: '12가3456',
+      visitDate: '2026-08-20',
+      visitAddress: '서울 성동구 왕십리로 83',
+      contactPhone: '01011112222',
+      status: 'REQUESTED',
+    })
+
+    const { client } = renderPage()
+    await screen.findByText(/12가3456/)
+
+    // 두 정렬 모두 캐시에 쌓아 둔다
+    fireEvent.mouseDown(screen.getByRole('tab', { name: '최신 신청순' }))
+    await waitFor(() => expect(cachedPlateNumbers(client).filter((it) => it === '12가3456')).toHaveLength(2))
+
+    fireEvent.click(screen.getAllByRole('button', { name: '방문견적 수락' })[1])
+
+    await waitFor(() => expect(cachedPlateNumbers(client)).not.toContain('12가3456'))
+    expect(cachedPlateNumbers(client)).toContain('34나5678')
   })
 })

@@ -37,7 +37,7 @@ public class EvaluationAssignmentController implements EvaluationAssignmentApi {
             @Valid AssignableEvaluationCursorRequest request) {
 
         AssignableEvaluationsResponse response = AssignableEvaluationsResponse.from(
-                evaluationAssignmentService.findAssignable(request.toCursor()));
+                evaluationAssignmentService.findAssignable(request.toCursor(), request.sortOrDefault()));
 
         return ResponseEntity.ok(response);
     }

@@ -28,12 +28,22 @@ import lombok.NoArgsConstructor;
  */
 @Getter
 @Entity
-// 배정 대기 목록이 status + evaluator_id로 대상을 좁히고 visit_date, id 순으로 끊어 읽는다.
-// 커서 페이징은 이 인덱스가 있어야 페이지당 비용이 일정해진다 — 없으면 페이지마다 전체를 훑고
-// 정렬하므로 신청이 쌓일수록 나누어 조회하는 쪽이 오히려 전량 조회보다 느려진다.
-// 같은 인덱스가 전체 대기 건수를 세는 조회도 테이블을 읽지 않고 처리한다.
-@Table(indexes = @Index(name = "idx_evaluation_assignable",
-        columnList = "status, evaluator_id, visit_date, id"))
+// 배정 대기 목록이 status + evaluator_id로 대상을 좁힌 뒤 정렬 순서로 끊어 읽는다.
+// 커서 페이징은 인덱스가 정렬 순서를 그대로 들고 있어야 페이지당 비용이 일정해진다 — 없으면
+// 페이지마다 전체를 훑고 정렬하므로 신청이 쌓일수록 나누어 조회하는 쪽이 전량 조회보다 느려진다.
+//
+// 정렬이 둘이라 인덱스도 둘이다. 최신순은 id 역순인데, 방문일 인덱스는 visit_date가 id보다 앞에
+// 있어 그 순서를 만들어 내지 못한다.
+//
+// 최신순 인덱스에 id를 적지 않는다. InnoDB의 보조 인덱스는 PK를 뒤에 달고 있어
+// (status, evaluator_id)만으로 이미 (status, evaluator_id, id) 순서다.
+// 이 인덱스가 전체 대기 건수를 세는 조회도 테이블을 읽지 않고 처리한다.
+@Table(indexes = {
+        @Index(name = "idx_evaluation_assignable",
+                columnList = "status, evaluator_id, visit_date, id"),
+        @Index(name = "idx_evaluation_assignable_latest",
+                columnList = "status, evaluator_id")
+})
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Evaluation extends BaseTimeEntity {
 

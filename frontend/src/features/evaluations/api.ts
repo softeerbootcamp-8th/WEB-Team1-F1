@@ -2,6 +2,7 @@ import { axiosInstance } from '@/lib/axios'
 import type {
   AssignableEvaluationCountResponse,
   AssignableEvaluationCursor,
+  AssignableEvaluationSort,
   AssignableEvaluationsResponse,
   EvaluationAssignment,
   EvaluationDetail,
@@ -14,17 +15,22 @@ import type {
 
 /**
  * 배정 대기 목록 한 페이지. 커서 없이 부르면 첫 페이지, 이후에는 직전 응답의 nextCursor를
- * 그대로 돌려보낸다(한쪽만 보내면 서버가 400).
+ * 그대로 돌려보낸다.
  *
- * 커서는 목록에서 몇 번째인가가 아니라 정렬축(방문일·신청 ID) 위의 좌표다. 그래서 이어 읽는
- * 사이 다른 평가사가 앞의 신청을 수락해 목록에서 빠져도 남은 신청을 건너뛰지 않는다.
+ * 커서는 목록에서 몇 번째인가가 아니라 정렬축 위의 좌표다. 그래서 이어 읽는 사이 다른 평가사가
+ * 앞의 신청을 수락해 목록에서 빠져도 남은 신청을 건너뛰지 않는다.
+ *
+ * 커서에 담기는 값은 정렬이 정하므로 sort와 cursor는 같은 짝이어야 한다. 서버가 준 커서를 그대로
+ * 돌려보내는 한 어긋나지 않고, 어긋난 짝은 400으로 돌아온다.
  */
 export async function fetchAssignableEvaluations(
+  sort: AssignableEvaluationSort,
   cursor?: AssignableEvaluationCursor | null,
 ): Promise<AssignableEvaluationsResponse> {
-  const params = new URLSearchParams()
+  const params = new URLSearchParams({ sort })
   if (cursor) {
-    params.set('visitDate', cursor.visitDate)
+    // 최신순 커서에는 방문일이 없다. 빈 값을 실어 보내면 정렬과 어긋난 요청이 된다
+    if (cursor.visitDate !== null) params.set('visitDate', cursor.visitDate)
     params.set('evaluationId', String(cursor.evaluationId))
   }
 

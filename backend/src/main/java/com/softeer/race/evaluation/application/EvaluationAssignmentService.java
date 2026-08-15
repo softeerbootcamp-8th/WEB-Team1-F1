@@ -2,6 +2,7 @@ package com.softeer.race.evaluation.application;
 
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.AssignableEvaluationCursor;
+import com.softeer.race.evaluation.application.dto.AssignableEvaluationSort;
 import com.softeer.race.evaluation.application.dto.info.AssignableEvaluationInfo;
 import com.softeer.race.evaluation.application.dto.info.AssignableEvaluationsInfo;
 import com.softeer.race.evaluation.application.dto.info.EvaluationAssignmentInfo;
@@ -62,24 +63,35 @@ public class EvaluationAssignmentService {
      * <p>
      * 커서가 없으면 첫 페이지다. 잘못된 커서를 첫 페이지로 되돌리는 판단은 여기서 하지 않는다 —
      * 요청이 성립하는지는 표현 계층이 검증한다.
+     * <p>
+     * 정렬은 커서와 짝이다. 커서에 담기는 값이 정렬 키의 좌표라, 같은 커서라도 정렬이 다르면
+     * 다른 자리를 가리킨다. 둘이 맞는 짝인지도 표현 계층이 먼저 본다.
      */
-    public AssignableEvaluationsInfo findAssignable(AssignableEvaluationCursor cursor) {
-        AssignableEvaluationCursor start = (cursor != null) ? cursor : AssignableEvaluationCursor.first();
+    public AssignableEvaluationsInfo findAssignable(AssignableEvaluationCursor cursor,
+                                                    AssignableEvaluationSort sort) {
+        AssignableEvaluationSort order = (sort != null) ? sort : AssignableEvaluationSort.VISIT_DATE;
+        AssignableEvaluationCursor start = (cursor != null) ? cursor : AssignableEvaluationCursor.first(order);
 
         // 한 건을 더 읽어 다음 페이지가 있는지 본다. 건수를 세는 쿼리를 따로 내는 것보다 싸고,
         // 세는 시점과 읽는 시점이 갈려 "다음이 있다는데 열면 비어 있는" 상태가 되지 않는다
-        List<AssignableEvaluationInfo> found =
-                evaluationRepository.findAssignable(
-                                EvaluationStatus.REQUESTED, start.visitDate(), start.evaluationId(),
-                                Limit.of(PAGE_SIZE + 1))
-                        .stream()
-                        .map(AssignableEvaluationInfo::from)
-                        .toList();
+        List<AssignableEvaluationInfo> found = read(order, start, Limit.of(PAGE_SIZE + 1)).stream()
+                .map(AssignableEvaluationInfo::from)
+                .toList();
 
         boolean hasNext = found.size() > PAGE_SIZE;
         List<AssignableEvaluationInfo> page = hasNext ? found.subList(0, PAGE_SIZE) : found;
 
-        return new AssignableEvaluationsInfo(page, hasNext, hasNext ? nextCursor(page.getLast()) : null);
+        return new AssignableEvaluationsInfo(
+                page, hasNext, hasNext ? nextCursor(page.getLast(), order) : null);
+    }
+
+    // 정렬마다 이어 읽는 조건이 달라 쿼리도 다르다. 고르는 일만 여기서 한다
+    private List<Evaluation> read(AssignableEvaluationSort sort, AssignableEvaluationCursor start, Limit limit) {
+        return sort == AssignableEvaluationSort.LATEST
+                ? evaluationRepository.findAssignableByLatest(
+                        EvaluationStatus.REQUESTED, start.evaluationId(), limit)
+                : evaluationRepository.findAssignableByVisitDate(
+                        EvaluationStatus.REQUESTED, start.visitDate(), start.evaluationId(), limit);
     }
 
     /**
@@ -89,9 +101,13 @@ public class EvaluationAssignmentService {
         return evaluationRepository.countAssignable(EvaluationStatus.REQUESTED);
     }
 
-    // 마지막으로 준 항목이 다음 페이지가 이어 읽을 지점이다. 목록의 정렬과 같은 두 값을 담는다
-    private static AssignableEvaluationCursor nextCursor(AssignableEvaluationInfo last) {
-        return new AssignableEvaluationCursor(last.visitDate(), last.evaluationId());
+    // 마지막으로 준 항목이 다음 페이지가 이어 읽을 지점이다. 정렬이 쓰는 값만 담는다 —
+    // 최신순에 방문일을 실어 보내면 받는 쪽이 그 값도 돌려보내야 하는 줄 알게 된다
+    private static AssignableEvaluationCursor nextCursor(AssignableEvaluationInfo last,
+                                                         AssignableEvaluationSort sort) {
+        return sort == AssignableEvaluationSort.LATEST
+                ? new AssignableEvaluationCursor(null, last.evaluationId())
+                : new AssignableEvaluationCursor(last.visitDate(), last.evaluationId());
     }
 
     /**

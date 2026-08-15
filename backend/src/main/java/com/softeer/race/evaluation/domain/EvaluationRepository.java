@@ -64,6 +64,10 @@ public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
      * {@code Page}가 아니라 {@code List} + {@link Limit}이다. Page는 페이지마다 전체 건수를 세는
      * 쿼리를 덤으로 낸다. 다음 페이지가 있는지는 한 건 더 읽어 보면 알 수 있고, 홈에 쓰는 전체
      * 건수는 {@link #countAssignable}이 필요할 때만 따로 센다.
+     * <p>
+     * {@link #findAssignableByLatest}와 한 메서드로 합치지 않는다. 정렬만 다른 것이 아니라 이어
+     * 읽는 조건의 비교 방향과 값의 개수까지 달라, 하나로 묶으려면 조회 조건을 문자열로 조립해야
+     * 한다. 정렬은 둘뿐이고 앞으로도 화면이 고르는 만큼만 늘어난다.
      */
     @Query("""
             select e
@@ -75,10 +79,36 @@ public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
                     or (e.visitDate = :cursorVisitDate and e.id > :cursorEvaluationId))
             order by e.visitDate, e.id
             """)
-    List<Evaluation> findAssignable(@Param("requested") EvaluationStatus requested,
-                                    @Param("cursorVisitDate") LocalDate cursorVisitDate,
-                                    @Param("cursorEvaluationId") long cursorEvaluationId,
-                                    Limit limit);
+    List<Evaluation> findAssignableByVisitDate(@Param("requested") EvaluationStatus requested,
+                                               @Param("cursorVisitDate") LocalDate cursorVisitDate,
+                                               @Param("cursorEvaluationId") long cursorEvaluationId,
+                                               Limit limit);
+
+    /**
+     * 같은 배정 대기 신청들을 접수가 최근인 순서로 읽는다. 나머지 조건은
+     * {@link #findAssignableByVisitDate}와 같다.
+     * <p>
+     * {@code createdAt}이 아니라 id로 정렬한다. id는 IDENTITY라 접수 순서와 정확히 같은 순서이고,
+     * 그러면서 PK 인덱스를 그대로 쓴다({@link #findBySellerId}도 같은 근거다).
+     * <p>
+     * <b>커서가 id 하나뿐이다.</b> id는 유일해 동률이 없으므로 가르는 값을 따로 둘 이유가 없다.
+     * 방문일 순에서 두 값이 필요했던 것은 날짜 단위라 같은 값이 몰렸기 때문이다.
+     * <p>
+     * 값이 작아지는 방향으로 읽으므로 커서 비교도 {@code <}다. 첫 페이지의 시작점은 어떤 행보다도
+     * 뒤에 있는 값이어야 해서 {@code Long.MAX_VALUE}가 들어온다.
+     */
+    @Query("""
+            select e
+            from Evaluation e
+            join fetch e.vehicle
+            where e.status = :requested
+                and e.evaluator is null
+                and e.id < :cursorEvaluationId
+            order by e.id desc
+            """)
+    List<Evaluation> findAssignableByLatest(@Param("requested") EvaluationStatus requested,
+                                            @Param("cursorEvaluationId") long cursorEvaluationId,
+                                            Limit limit);
 
     /**
      * 배정 대기 중인 전체 건수. 평가사 홈이 보여주는 값이다.
@@ -87,7 +117,7 @@ public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
      * 첫 페이지만 오므로 그 방식으로는 20 이상을 셀 수 없다. 반대로 홈은 이 값 하나만 있으면 되고
      * 목록은 필요 없어, 홈이 목록 전체를 끌어오던 조회 자체가 사라진다.
      * <p>
-     * {@link #findAssignable}과 같은 조건이라 같은 인덱스로 처리된다. 캐시하거나 근사치로 두지
+     * 목록과 같은 조건이라 같은 인덱스로 처리되고, 정렬과는 무관해 두 정렬이 같은 값을 본다. 캐시하거나 근사치로 두지
      * 않는다 — 수락 한 번에 값이 바뀌는데 홈은 그 수를 보고 목록을 열지 말지 정한다.
      */
     @Query("""
