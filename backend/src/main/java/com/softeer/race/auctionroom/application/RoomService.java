@@ -35,7 +35,7 @@ public class RoomService {
         });
 
         // 조회는 접속이 아니다, 접속자는 열려 있는 구독으로만 센다
-        return RoomView.of(userId, snapshot, roomChannel.countViewers(auctionId),
+        return RoomView.of(userId, snapshot, roomChannel.viewerCount(auctionId),
                 roomReader.findPhotoUrls(auctionId),
                 roomReader.findKeywords(snapshot.detail().vehicleId()));
     }

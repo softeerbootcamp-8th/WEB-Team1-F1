@@ -2,7 +2,7 @@ package com.softeer.race.auctionroom.infrastructure;
 
 import com.softeer.race.auctionroom.application.RoomChannel;
 import com.softeer.race.auctionroom.application.RoomState;
-import com.softeer.race.auctionroom.application.RoomSubscriber;
+import com.softeer.race.auctionroom.application.RoomSubscription;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -16,14 +16,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class InMemoryRoomChannel implements RoomChannel {
 
     // 등록은 요청 스레드, 해제는 컨테이너 콜백 스레드, 전송은 또 다른 스레드에서 온다
-    private final Map<Long, Set<RoomSubscriber>> subscribersByAuction = new ConcurrentHashMap<>();
+    private final Map<Long, Set<RoomSubscription>> subscribersByAuction = new ConcurrentHashMap<>();
 
     @Override
-    public void subscribe(long auctionId, RoomSubscriber subscriber) {
+    public void subscribe(long auctionId, RoomSubscription subscriber) {
         // 집합을 얻는 것과 더하는 것을 한 번에
         // 나누니까 기존 집합을 받아든 사이 마지막 해제가 엔트리를 지워, 맵에서 떨어져 나간 집합에 더하게 된다
         subscribersByAuction.compute(auctionId, (id, subscribers) -> {
-            Set<RoomSubscriber> room = subscribers != null ? subscribers : ConcurrentHashMap.newKeySet();
+            Set<RoomSubscription> room = subscribers != null ? subscribers : ConcurrentHashMap.newKeySet();
             room.add(subscriber);
 
             return room;
@@ -31,31 +31,31 @@ public class InMemoryRoomChannel implements RoomChannel {
     }
 
     @Override
-    public boolean unsubscribe(long auctionId, RoomSubscriber subscriber) {
+    public boolean unsubscribe(long auctionId, RoomSubscription subscriber) {
         return remove(auctionId, Set.of(subscriber));
     }
 
     @Override
-    public int countViewers(long auctionId) {
-        Set<RoomSubscriber> subscribers = subscribersByAuction.get(auctionId);
+    public int viewerCount(long auctionId) {
+        Set<RoomSubscription> subscribers = subscribersByAuction.get(auctionId);
 
-        return subscribers == null ? 0 : countViewers(subscribers);
+        return subscribers == null ? 0 : viewerCount(subscribers);
     }
 
     @Override
-    public Map<Long, Integer> viewerCounts() {
+    public Map<Long, Integer> viewerCountByRoom() {
         Map<Long, Integer> counts = new HashMap<>();
 
-        subscribersByAuction.forEach((auctionId, subscribers) -> counts.put(auctionId, countViewers(subscribers)));
+        subscribersByAuction.forEach((auctionId, subscribers) -> counts.put(auctionId, viewerCount(subscribers)));
 
         return counts;
     }
 
     // 구독이 빠지면 그 사람도 같이 사라지므로 사람을 따로 명부에 들고 정리할 것이 없다
-    private static int countViewers(Set<RoomSubscriber> subscribers) {
+    private static int viewerCount(Set<RoomSubscription> subscribers) {
         Set<Long> viewers = new HashSet<>();
 
-        for (RoomSubscriber subscriber : subscribers) {
+        for (RoomSubscription subscriber : subscribers) {
             viewers.add(subscriber.viewerId());
         }
 
@@ -64,16 +64,16 @@ public class InMemoryRoomChannel implements RoomChannel {
 
     @Override
     public void broadcast(long auctionId, RoomState state) {
-        Set<RoomSubscriber> subscribers = subscribersByAuction.get(auctionId);
+        Set<RoomSubscription> subscribers = subscribersByAuction.get(auctionId);
 
         if (subscribers == null) {
             return;
         }
 
         // 순회 중에는 집합을 건드리지 않는다, 보내다 닫힌 구독은 모아 두었다가 끝나고 걷어낸다
-        Set<RoomSubscriber> closed = new HashSet<>();
+        Set<RoomSubscription> closed = new HashSet<>();
 
-        for (RoomSubscriber subscriber : subscribers) {
+        for (RoomSubscription subscriber : subscribers) {
             subscriber.send(state);
 
             if (!subscriber.isOpen()) {
@@ -93,9 +93,9 @@ public class InMemoryRoomChannel implements RoomChannel {
         Set<Long> sweptAuctions = new HashSet<>();
 
         subscribersByAuction.forEach((auctionId, subscribers) -> {
-            Set<RoomSubscriber> closed = new HashSet<>();
+            Set<RoomSubscription> closed = new HashSet<>();
 
-            for (RoomSubscriber subscriber : subscribers) {
+            for (RoomSubscription subscriber : subscribers) {
                 subscriber.ping();
 
                 if (!subscriber.isOpen()) {
@@ -114,32 +114,32 @@ public class InMemoryRoomChannel implements RoomChannel {
 
     // 호출자가 이 목록을 돌며 방을 끊으므로 도는 사이에 맵이 바뀐다, 그 순간의 사본을 준다
     @Override
-    public Set<Long> subscribedAuctions() {
+    public Set<Long> subscribedRooms() {
         return Set.copyOf(subscribersByAuction.keySet());
     }
 
     @Override
     public void closeRoom(long auctionId) {
         // 명부에서 먼저 뺀다, 끝난 연결이 해제 콜백으로 돌아왔을 때 방이 비어 있어야 갱신이 돌지 않는다
-        Set<RoomSubscriber> subscribers = subscribersByAuction.remove(auctionId);
+        Set<RoomSubscription> subscribers = subscribersByAuction.remove(auctionId);
 
         if (subscribers == null) {
             return;
         }
 
-        subscribers.forEach(RoomSubscriber::close);
+        subscribers.forEach(RoomSubscription::close);
     }
 
     // 상대가 사라진 구독을 걷어낸다, 명부에서 빼기만 하면 그 응답은 아무도 끝내지 않아 만료까지 산다
     // 해제는 이 순서를 지킨다, 명부를 먼저 비워야 끝난 연결의 콜백이 돌아왔을 때 갱신이 돌지 않는다
-    private void discard(long auctionId, Set<RoomSubscriber> closed) {
+    private void discard(long auctionId, Set<RoomSubscription> closed) {
         remove(auctionId, closed);
-        closed.forEach(RoomSubscriber::close);
+        closed.forEach(RoomSubscription::close);
     }
 
     // 마지막 구독이 빠지는 순간과 새 구독이 들어오는 순간이 겹쳐도 새 구독이 유실되지 않게 한 번에 처리한다
     // 실제로 뺀 것이 있으면 참, 명부에 없던 것만 넘어오면 거짓이다
-    private boolean remove(long auctionId, Set<RoomSubscriber> targets) {
+    private boolean remove(long auctionId, Set<RoomSubscription> targets) {
         if (targets.isEmpty()) {
             return false;
         }

@@ -358,7 +358,7 @@ class AuctionListServiceTest {
         givenGroup(AuctionListGroup.LIVE, List.of(liveRow(1, NOW.minusMinutes(10))));
         givenGroup(AuctionListGroup.PENDING, List.of());
         givenGroup(AuctionListGroup.ENDED, List.of());
-        given(roomChannel.countViewers(1L)).willReturn(7);
+        given(roomChannel.viewerCount(1L)).willReturn(7);
 
         // when
         AuctionCardInfo card = auctionListService.list(null, null, NO_FILTER).content().getFirst();

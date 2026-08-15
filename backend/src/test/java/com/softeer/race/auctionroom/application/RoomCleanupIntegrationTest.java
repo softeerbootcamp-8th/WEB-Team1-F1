@@ -54,12 +54,12 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
         subscriptions.forEach(it -> roomChannel.unsubscribe(it.auctionId(), it.subscriber()));
     }
 
-    private void subscribe(long auctionId, RoomSubscriber subscriber) {
+    private void subscribe(long auctionId, RoomSubscription subscriber) {
         roomChannel.subscribe(auctionId, subscriber);
         subscriptions.add(new Subscription(auctionId, subscriber));
     }
 
-    private record Subscription(long auctionId, RoomSubscriber subscriber) {
+    private record Subscription(long auctionId, RoomSubscription subscriber) {
     }
 
     @Test
@@ -76,7 +76,7 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
 
         // then 1 : 남은 사람은 줄어든 접속자 수를 받는다, 다시 조회하지 않았는데 갱신된다
         assertThat(alive.lastState().viewerCount()).isEqualTo(1);
-        assertThat(roomChannel.countViewers(auctionId)).isEqualTo(1);
+        assertThat(roomChannel.viewerCount(auctionId)).isEqualTo(1);
 
         // then 2 : 사라진 쪽에는 아무것도 보내지 않는다
         assertThat(gone.received()).isEmpty();
@@ -182,7 +182,7 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
         // then 1 : 둘 다 서버가 끝냈고 명부에도 남지 않는다
         assertThat(alive.closedByServer).isTrue();
         assertThat(gone.closedByServer).isTrue();
-        assertThat(roomChannel.countViewers(auctionId)).isZero();
+        assertThat(roomChannel.viewerCount(auctionId)).isZero();
 
         // then 2 : 끊는 동안 현황을 다시 보내지 않는다, 명부를 먼저 비우므로 갱신할 방이 없다
         assertThat(alive.received()).isEmpty();
@@ -200,7 +200,7 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
 
         // then : 볼 것이 남은 방이라 그대로 둔다
         assertThat(alive.closedByServer).isFalse();
-        assertThat(roomChannel.countViewers(auctionId)).isEqualTo(1);
+        assertThat(roomChannel.viewerCount(auctionId)).isEqualTo(1);
     }
 
     private long liveRoom() {
@@ -215,7 +215,7 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
     }
 
     // 열려 있다가 알리지 않고 끊긴 연결, 청소가 찔러 봐야 드러난다
-    private static class FakeSubscriber implements RoomSubscriber {
+    private static class FakeSubscriber implements RoomSubscription {
 
         // 이 테스트는 사람이 몇인지 보지 않는다, 서로 다른 사람이기만 하면 된다
         private static final AtomicLong VIEWER_SERIAL = new AtomicLong();

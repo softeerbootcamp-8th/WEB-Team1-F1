@@ -1,7 +1,7 @@
 package com.softeer.race.auctionroom.presentation;
 
 import com.softeer.race.auctionroom.application.RoomStreamService;
-import com.softeer.race.auctionroom.application.RoomSubscriber;
+import com.softeer.race.auctionroom.application.RoomSubscription;
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
 import lombok.RequiredArgsConstructor;
@@ -37,8 +37,8 @@ public class RoomStreamController implements RoomStreamApi {
             // 유일한 선언 수단이다, 값을 안 쓰게 바뀌더라도 지우면 구독이 조용히 비로그인에 열린다
             @LoginUser AuthenticatedUser authenticatedUser) {
         SseEmitter emitter = new SseEmitter(STREAM_TIMEOUT_MILLIS);
-        RoomSubscriber subscriber =
-                new SseRoomSubscriber(auctionId, authenticatedUser.id(), emitter);
+        RoomSubscription subscriber =
+                new SseRoomSubscription(auctionId, authenticatedUser.id(), emitter);
 
         // 타임아웃 뒤에 완료 콜백이 잇달아 와서 해제가 두 번 불린다
         AtomicBoolean released = new AtomicBoolean();

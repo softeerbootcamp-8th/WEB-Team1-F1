@@ -146,7 +146,7 @@ class RoomStreamPoolIntegrationTest extends IntegrationTestSupport {
         awaitSubscribed(auctionId, CROWD);
 
         // then 1 : 겹친 등록에 밀려 걷힌 연결이 없다
-        assertThat(roomChannel.countViewers(auctionId)).isEqualTo(CROWD);
+        assertThat(roomChannel.viewerCount(auctionId)).isEqualTo(CROWD);
 
         // then 2 : 먼저 붙어 있던 연결로 갱신이 흘러 들어왔고, 그 현황이 온전하다
         // 겹쳐 쓰다 섞였으면 여기서 조각난 JSON 이 잡힌다
@@ -256,7 +256,7 @@ class RoomStreamPoolIntegrationTest extends IntegrationTestSupport {
     private void awaitSubscribed(long auctionId, int expected) {
         Instant deadline = Instant.now().plus(SUBSCRIBE_TIMEOUT);
 
-        while (roomChannel.countViewers(auctionId) < expected) {
+        while (roomChannel.viewerCount(auctionId) < expected) {
             if (Instant.now().isAfter(deadline)) {
                 throw new IllegalStateException(
                         "구독이 " + expected + "개까지 차지 않았다, 연결에서 난 오류 " + streamErrors());

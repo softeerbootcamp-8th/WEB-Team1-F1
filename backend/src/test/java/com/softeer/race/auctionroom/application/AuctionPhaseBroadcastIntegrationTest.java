@@ -167,7 +167,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.RESULT);
 
         // then 2 : 더 바뀔 값이 없는 구간이라 연결을 붙잡지 않는다, 주기 정리를 기다리지 않는다
-        assertThat(roomChannel.countViewers(auctionId)).isZero();
+        assertThat(roomChannel.viewerCount(auctionId)).isZero();
     }
 
     private long waitingRoom() {
@@ -191,7 +191,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         auctionStarter.start(auctionId);
     }
 
-    private static final class RecordingSubscriber implements RoomSubscriber {
+    private static final class RecordingSubscriber implements RoomSubscription {
 
         // 이 테스트는 사람이 몇인지 보지 않는다, 서로 다른 사람이기만 하면 된다
         private static final AtomicLong VIEWER_SERIAL = new AtomicLong();

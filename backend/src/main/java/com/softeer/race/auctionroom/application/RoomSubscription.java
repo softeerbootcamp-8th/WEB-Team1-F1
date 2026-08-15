@@ -3,7 +3,7 @@ package com.softeer.race.auctionroom.application;
 /**
  * 경매방 현황을 받아가는 열린 구독
  */
-public interface RoomSubscriber {
+public interface RoomSubscription {
 
     /**
      * 현황 전송, 이미 닫혔으면 조용히 버린다

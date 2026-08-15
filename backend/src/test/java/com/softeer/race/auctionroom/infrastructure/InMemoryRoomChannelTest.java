@@ -2,7 +2,7 @@ package com.softeer.race.auctionroom.infrastructure;
 
 import com.softeer.race.auctionroom.application.RoomState;
 import com.softeer.race.auctionroom.domain.BidCounts;
-import com.softeer.race.auctionroom.application.RoomSubscriber;
+import com.softeer.race.auctionroom.application.RoomSubscription;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,7 +40,7 @@ class InMemoryRoomChannelTest {
         channel.subscribe(AUCTION, new FakeSubscriber());
         channel.subscribe(AUCTION, new FakeSubscriber());
 
-        int connected = channel.countViewers(AUCTION);
+        int connected = channel.viewerCount(AUCTION);
 
         assertThat(connected).isEqualTo(2);
     }
@@ -51,7 +51,7 @@ class InMemoryRoomChannelTest {
         channel.subscribe(AUCTION, new FakeSubscriber(VIEWER));
         channel.subscribe(AUCTION, new FakeSubscriber(VIEWER));
 
-        int connected = channel.countViewers(AUCTION);
+        int connected = channel.viewerCount(AUCTION);
 
         assertThat(connected).isEqualTo(1);
     }
@@ -69,13 +69,13 @@ class InMemoryRoomChannelTest {
         channel.subscribe(AUCTION, third);
 
         channel.unsubscribe(AUCTION, first);
-        int afterOneWindow = channel.countViewers(AUCTION);
+        int afterOneWindow = channel.viewerCount(AUCTION);
 
         channel.unsubscribe(AUCTION, second);
         channel.unsubscribe(AUCTION, third);
 
         assertThat(afterOneWindow).isEqualTo(1);
-        assertThat(channel.countViewers(AUCTION)).isZero();
+        assertThat(channel.viewerCount(AUCTION)).isZero();
     }
 
     @Test
@@ -85,7 +85,7 @@ class InMemoryRoomChannelTest {
         channel.subscribe(AUCTION, new FakeSubscriber());
         channel.subscribe(OTHER_AUCTION, new FakeSubscriber());
 
-        assertThat(channel.viewerCounts()).containsOnly(entry(AUCTION, 2), entry(OTHER_AUCTION, 1));
+        assertThat(channel.viewerCountByRoom()).containsOnly(entry(AUCTION, 2), entry(OTHER_AUCTION, 1));
     }
 
     @Test
@@ -96,7 +96,7 @@ class InMemoryRoomChannelTest {
 
         channel.unsubscribe(AUCTION, leaving);
 
-        assertThat(channel.viewerCounts()).isEmpty();
+        assertThat(channel.viewerCountByRoom()).isEmpty();
     }
 
     @Test
@@ -106,13 +106,13 @@ class InMemoryRoomChannelTest {
         channel.subscribe(AUCTION, new FakeSubscriber(VIEWER));
 
         // 방별 집계를 구독 수로 짜면 여기서만 깨진다, 사람 단위 집계를 실제로 나눠 쓰는지 본다
-        assertThat(channel.viewerCounts()).containsExactly(entry(AUCTION, 1));
+        assertThat(channel.viewerCountByRoom()).containsExactly(entry(AUCTION, 1));
     }
 
     @Test
     @DisplayName("아무도 없는 방은 0명이다")
     void emptyRoomCountsZero() {
-        int connected = channel.countViewers(AUCTION);
+        int connected = channel.viewerCount(AUCTION);
 
         assertThat(connected).isZero();
     }
@@ -123,7 +123,7 @@ class InMemoryRoomChannelTest {
         channel.subscribe(AUCTION, new FakeSubscriber());
         channel.subscribe(AUCTION, new FakeSubscriber());
 
-        int connected = channel.countViewers(OTHER_AUCTION);
+        int connected = channel.viewerCount(OTHER_AUCTION);
 
         assertThat(connected).isZero();
     }
@@ -137,7 +137,7 @@ class InMemoryRoomChannelTest {
 
         channel.unsubscribe(AUCTION, leaving);
 
-        int connected = channel.countViewers(AUCTION);
+        int connected = channel.viewerCount(AUCTION);
 
         assertThat(connected).isEqualTo(1);
     }
@@ -150,7 +150,7 @@ class InMemoryRoomChannelTest {
         channel.subscribe(AUCTION, subscriber);
         channel.subscribe(AUCTION, subscriber);
 
-        int connected = channel.countViewers(AUCTION);
+        int connected = channel.viewerCount(AUCTION);
 
         assertThat(connected).isEqualTo(1);
     }
@@ -164,7 +164,7 @@ class InMemoryRoomChannelTest {
         channel.unsubscribe(AUCTION, leaving);
         channel.unsubscribe(AUCTION, leaving);
 
-        int connected = channel.countViewers(AUCTION);
+        int connected = channel.viewerCount(AUCTION);
 
         assertThat(connected).isZero();
     }
@@ -206,7 +206,7 @@ class InMemoryRoomChannelTest {
 
         channel.broadcast(AUCTION, liveState());
 
-        int connected = channel.countViewers(AUCTION);
+        int connected = channel.viewerCount(AUCTION);
 
         assertThat(connected).isEqualTo(1);
     }
@@ -236,7 +236,7 @@ class InMemoryRoomChannelTest {
         channel.broadcast(AUCTION, liveState());
         channel.broadcast(AUCTION, liveState());
 
-        int connected = channel.countViewers(AUCTION);
+        int connected = channel.viewerCount(AUCTION);
 
         assertThat(connected).isZero();
     }
@@ -249,13 +249,13 @@ class InMemoryRoomChannelTest {
         channel.subscribe(AUCTION, silent);
         channel.subscribe(AUCTION, new FakeSubscriber());
 
-        int beforeSweep = channel.countViewers(AUCTION);
+        int beforeSweep = channel.viewerCount(AUCTION);
 
         Set<Long> swept = channel.sweepClosed();
 
         assertThat(beforeSweep).isEqualTo(2);
         assertThat(swept).containsExactly(AUCTION);
-        assertThat(channel.countViewers(AUCTION)).isEqualTo(1);
+        assertThat(channel.viewerCount(AUCTION)).isEqualTo(1);
     }
 
     @Test
@@ -280,7 +280,7 @@ class InMemoryRoomChannelTest {
 
         assertThat(first.closedByServer).isTrue();
         assertThat(second.closedByServer).isTrue();
-        assertThat(channel.countViewers(AUCTION)).isZero();
+        assertThat(channel.viewerCount(AUCTION)).isZero();
     }
 
     @Test
@@ -293,7 +293,7 @@ class InMemoryRoomChannelTest {
         channel.closeRoom(AUCTION);
 
         assertThat(other.closedByServer).isFalse();
-        assertThat(channel.countViewers(OTHER_AUCTION)).isEqualTo(1);
+        assertThat(channel.viewerCount(OTHER_AUCTION)).isEqualTo(1);
     }
 
     @Test
@@ -302,7 +302,7 @@ class InMemoryRoomChannelTest {
         // 주기 작업이 방 목록을 받아 든 사이 마지막 사람이 나갈 수 있다
         channel.closeRoom(AUCTION);
 
-        assertThat(channel.countViewers(AUCTION)).isZero();
+        assertThat(channel.viewerCount(AUCTION)).isZero();
     }
 
     @Test
@@ -364,7 +364,7 @@ class InMemoryRoomChannelTest {
         // 연결 하나가 끝나면 해제 콜백이 돌아와 남은 접속자 수를 다시 읽는다
         // 그때 방이 안 비어 있으면 한 명 끊을 때마다 조회와 방송이 한 번씩 돈다
         List<Integer> seenWhileCutting = new ArrayList<>();
-        Runnable callback = () -> seenWhileCutting.add(channel.countViewers(AUCTION));
+        Runnable callback = () -> seenWhileCutting.add(channel.viewerCount(AUCTION));
         channel.subscribe(AUCTION, new FakeSubscriber(callback));
         channel.subscribe(AUCTION, new FakeSubscriber(callback));
 
@@ -375,13 +375,13 @@ class InMemoryRoomChannelTest {
 
     @Test
     @DisplayName("구독이 남은 방만 목록에 오른다")
-    void subscribedAuctionsListsOnlyOccupiedRooms() {
+    void subscribedRoomsListsOnlyOccupiedRooms() {
         FakeSubscriber leaving = new FakeSubscriber();
         channel.subscribe(AUCTION, new FakeSubscriber());
         channel.subscribe(OTHER_AUCTION, leaving);
         channel.unsubscribe(OTHER_AUCTION, leaving);
 
-        Set<Long> occupied = channel.subscribedAuctions();
+        Set<Long> occupied = channel.subscribedRooms();
 
         assertThat(occupied).containsExactly(AUCTION);
     }
@@ -412,7 +412,7 @@ class InMemoryRoomChannelTest {
                 arrival.get();
 
                 // 들어온 쪽은 남아 있어야 한다, 0이면 맵에서 떨어져 나간 집합에 들어간 것이다
-                if (channel.countViewers(AUCTION) == 0) {
+                if (channel.viewerCount(AUCTION) == 0) {
                     lost++;
                 }
                 channel.unsubscribe(AUCTION, arriving);
@@ -440,7 +440,7 @@ class InMemoryRoomChannelTest {
     }
 
     // 닫힌 구독을 흉내내려면 열림 여부를 정할 수 있어야 한다
-    private static final class FakeSubscriber implements RoomSubscriber {
+    private static final class FakeSubscriber implements RoomSubscription {
 
         // 사람을 안 정하면 매번 다른 사람이다, 손으로 지정한 사람과 겹치지 않게 큰 값에서 시작한다
         private static final AtomicLong VIEWER_SERIAL = new AtomicLong(1_000L);

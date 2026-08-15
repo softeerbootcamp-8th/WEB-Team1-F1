@@ -33,7 +33,7 @@ public class RoomStreamService {
     /**
      * 구독을 등록하고 방 전체에 현황을 보낸다, 새 구독은 첫 현황을 받고 기존 구독은 늘어난 접속자 수를 받는다
      */
-    public void subscribe(long auctionId, RoomSubscriber subscriber) {
+    public void subscribe(long auctionId, RoomSubscription subscriber) {
         // 연결을 열어 두지 않는 단계의 구독이 채널에 남지 않도록 등록 전에 판정한다
         RoomSnapshot snapshot = roomReader.find(auctionId)
                 .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
@@ -51,7 +51,7 @@ public class RoomStreamService {
     /**
      * 구독을 방에서 빼고 남은 구독에 줄어든 접속자 수를 보낸다
      */
-    public void unsubscribe(long auctionId, RoomSubscriber subscriber) {
+    public void unsubscribe(long auctionId, RoomSubscription subscriber) {
         // 걷어내기와 방 끊기가 먼저 빼 간 뒤에도 이 콜백은 돌아온다, 그때 갱신하면 같은 방을 두 번 읽는다
         if (roomChannel.unsubscribe(auctionId, subscriber)) {
             refresh(auctionId);
@@ -79,7 +79,7 @@ public class RoomStreamService {
     // 마감 방송이 이미 끊고 지나가므로 여기 걸리는 것은 그 방송이 유실된 방뿐이다
     @Scheduled(fixedDelay = DISCONNECT_INTERVAL_MILLIS, scheduler = SchedulingConfig.ROOM_STREAM)
     public void disconnectClosedRooms() {
-        for (long auctionId : roomChannel.subscribedAuctions()) {
+        for (long auctionId : roomChannel.subscribedRooms()) {
             // 한 방의 실패를 그 방에 가둔다, 남은 방은 이번 주기에 그대로 정리한다
             try {
                 if (connectionsAreOver(auctionId)) {
@@ -95,7 +95,7 @@ public class RoomStreamService {
      * 방에 열려 있는 구독에 현황을 다시 보낸다, 보는 사람이 없으면 조회도 하지 않는다
      */
     public void refresh(long auctionId) {
-        if (roomChannel.countViewers(auctionId) == 0) {
+        if (roomChannel.viewerCount(auctionId) == 0) {
             return;
         }
 
@@ -114,7 +114,7 @@ public class RoomStreamService {
     private void broadcast(RoomSnapshot snapshot) {
         long auctionId = snapshot.detail().auctionId();
 
-        roomChannel.broadcast(auctionId, RoomState.of(snapshot, roomChannel.countViewers(auctionId)));
+        roomChannel.broadcast(auctionId, RoomState.of(snapshot, roomChannel.viewerCount(auctionId)));
 
         // 마감됐다는 마지막 현황까지 받고 나서 끊는다, 이 순서라야 화면이 끊김을 결과로 읽는다
         if (!snapshot.phase().allowsConnection()) {
