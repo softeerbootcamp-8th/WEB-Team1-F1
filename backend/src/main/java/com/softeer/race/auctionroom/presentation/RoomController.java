@@ -21,17 +21,6 @@ public class RoomController implements RoomApi {
     private final RoomService roomService;
 
     @Override
-    @GetMapping("/{auctionId}/room")
-    public ResponseEntity<RoomResponse> readRoom(
-            @PathVariable("auctionId") long auctionId,
-            @LoginUser AuthenticatedUser authenticatedUser) {
-
-        RoomResponse response =
-                RoomResponse.from(roomService.readRoom(auctionId, authenticatedUser.id()));
-        return ResponseEntity.ok(response);
-    }
-
-    @Override
     @GetMapping("/{auctionId}/room/opening")
     public ResponseEntity<RoomOpeningResponse> readOpening(
             @PathVariable("auctionId") long auctionId,
@@ -41,6 +30,17 @@ public class RoomController implements RoomApi {
             @LoginUser AuthenticatedUser authenticatedUser) {
 
         RoomOpeningResponse response = RoomOpeningResponse.from(roomService.readOpening(auctionId));
+        return ResponseEntity.ok(response);
+    }
+
+    @Override
+    @GetMapping("/{auctionId}/room")
+    public ResponseEntity<RoomResponse> readRoom(
+            @PathVariable("auctionId") long auctionId,
+            @LoginUser AuthenticatedUser authenticatedUser) {
+
+        RoomResponse response =
+                RoomResponse.from(roomService.readRoom(auctionId, authenticatedUser.id()));
         return ResponseEntity.ok(response);
     }
 

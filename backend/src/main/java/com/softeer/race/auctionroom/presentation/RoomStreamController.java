@@ -41,20 +41,20 @@ public class RoomStreamController implements RoomStreamApi {
                 new SseRoomSubscription(auctionId, authenticatedUser.id(), emitter);
 
         // 타임아웃 뒤에 완료 콜백이 잇달아 와서 해제가 두 번 불린다
-        AtomicBoolean released = new AtomicBoolean();
-        Runnable release = () -> {
-            if (released.compareAndSet(false, true)) {
+        AtomicBoolean unsubscribed = new AtomicBoolean();
+        Runnable unsubscribe = () -> {
+            if (unsubscribed.compareAndSet(false, true)) {
                 // 콜백은 요청 스레드가 아니다, 주입받은 빈으로 불러야 트랜잭션 프록시를 탄다
                 roomStreamService.unsubscribe(auctionId, subscription);
             }
         };
 
-        emitter.onCompletion(release);
-        emitter.onTimeout(release);
+        emitter.onCompletion(unsubscribe);
+        emitter.onTimeout(unsubscribe);
         emitter.onError(error -> {
             // 클라이언트 정상 종료도 여기로 오므로 경고면 소음이 된다, 진짜 문제도 조용히 사라지지 않게 흔적만 남긴다
             log.debug("경매방 현황 연결 오류, 경매 {}", auctionId, error);
-            release.run();
+            unsubscribe.run();
         });
 
         roomStreamService.subscribe(auctionId, subscription);

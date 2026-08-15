@@ -22,7 +22,7 @@ class SseRoomSubscription implements RoomSubscription {
     private volatile boolean open = true;
 
     // 전송 실패로 내려간 것과 이 연결을 끝낸 것은 다르다, 전자만 보고 끝내면 응답이 만료까지 남는다
-    private final AtomicBoolean ended = new AtomicBoolean();
+    private final AtomicBoolean completed = new AtomicBoolean();
 
     SseRoomSubscription(long auctionId, long viewerId, SseEmitter emitter) {
         this.auctionId = auctionId;
@@ -78,7 +78,7 @@ class SseRoomSubscription implements RoomSubscription {
 
         // 쓰기에 실패해 이미 내려간 구독도 응답은 열려 있을 수 있어, 열림 여부로 건너뛰면 그것을 못 끝낸다
         // 두 번 끝내지 않기 위한 표시는 따로 둔다
-        if (!ended.compareAndSet(false, true)) {
+        if (!completed.compareAndSet(false, true)) {
             return;
         }
 
