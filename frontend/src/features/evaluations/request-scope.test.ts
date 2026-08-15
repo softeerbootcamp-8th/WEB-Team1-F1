@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  bucketOf,
   countRequests,
-  isRequestScope,
+  isStateOf,
   needsListing,
   requestStateOf,
   selectRequests,
@@ -32,12 +33,17 @@ describe('판매자 신청 내역의 상태 구분', () => {
     expect(requestStateOf(request({ assigned: true }))).toBe('EVALUATING')
   })
 
-  it('진단이 끝나면 출품 대기이고, 경매가 걸리면 경매 중이다', () => {
+  it('진단이 끝나면 출품 대기다', () => {
     // 판매자에게 진단 완료는 끝이 아니라 할 일이 생기는 지점이다.
-    // 평가사 기준을 그대로 쓰면 가장 먼저 봐야 할 건이 종료 칸으로 숨는다
+    // 평가사 기준을 그대로 쓰면 가장 먼저 봐야 할 건이 종료 쪽으로 숨는다
     expect(requestStateOf(request({ status: 'APPROVED' }))).toBe('READY_TO_LIST')
+  })
+
+  it('경매 예정과 진행 중은 다른 칸이다', () => {
+    // "경매 중"을 눌렀는데 아직 시작하지 않은 경매가 섞여 나오면 목록이 라벨을 배반한다.
+    // 시작 전에는 시작가와 시각을 고칠 수 있어 판매자가 하는 판단도 다르다
     expect(requestStateOf(request({ status: 'APPROVED', auctionStatus: 'SCHEDULED' })))
-      .toBe('IN_AUCTION')
+      .toBe('AUCTION_SCHEDULED')
     expect(requestStateOf(request({ status: 'APPROVED', auctionStatus: 'IN_PROGRESS' })))
       .toBe('IN_AUCTION')
   })
@@ -48,26 +54,33 @@ describe('판매자 신청 내역의 상태 구분', () => {
 
     expect(requestStateOf(failed)).toBe('READY_TO_LIST')
     expect(needsListing(failed)).toBe(true)
+    expect(bucketOf('READY_TO_LIST')).toBe('ACTIVE')
   })
 
-  it('반려와 낙찰 완료만 종료다', () => {
+  it('반려와 낙찰만 종료로 간다', () => {
     // 낙찰 뒤의 일은 마이페이지의 판매 내역이 거래로 이어받는다
-    expect(requestStateOf(request({ status: 'REJECTED' }))).toBe('CLOSED')
-    expect(requestStateOf(request({ status: 'APPROVED', auctionStatus: 'ENDED' }))).toBe('CLOSED')
+    expect(requestStateOf(request({ status: 'REJECTED' }))).toBe('REJECTED')
+    expect(requestStateOf(request({ status: 'APPROVED', auctionStatus: 'ENDED' }))).toBe('SOLD')
+    expect(bucketOf('REJECTED')).toBe('CLOSED')
+    expect(bucketOf('SOLD')).toBe('CLOSED')
+
     // 반려된 신청의 차량에도 지난 경매 이력이 남을 수 있다. 경매부터 보면 경매 칸으로 샌다
-    expect(requestStateOf(request({ status: 'REJECTED', auctionStatus: 'FAILED' }))).toBe('CLOSED')
+    expect(requestStateOf(request({ status: 'REJECTED', auctionStatus: 'FAILED' }))).toBe('REJECTED')
   })
 
-  it('상태 칸은 그 상태만 담고, 진행 중은 종료만 뺀다', () => {
+  it('상태를 고르지 않으면 그 큰 틀 전체다', () => {
     const evaluations = [
       request({ evaluationId: 3, status: 'REQUESTED', assigned: true }),
       request({ evaluationId: 2, status: 'APPROVED', auctionStatus: 'SCHEDULED' }),
       request({ evaluationId: 1, status: 'REJECTED' }),
     ]
 
-    expect(selectRequests(evaluations, 'IN_AUCTION').map((item) => item.evaluationId)).toEqual([2])
     expect(countRequests(evaluations, 'ACTIVE')).toBe(2)
-    expect(countRequests(evaluations, 'PENDING_ASSIGNMENT')).toBe(0)
+    expect(countRequests(evaluations, 'CLOSED')).toBe(1)
+    expect(selectRequests(evaluations, 'ACTIVE', 'AUCTION_SCHEDULED').map((item) => item.evaluationId))
+      .toEqual([2])
+    expect(countRequests(evaluations, 'ACTIVE', 'IN_AUCTION')).toBe(0)
+    expect(countRequests(evaluations, 'ACTIVE', 'PENDING_ASSIGNMENT')).toBe(0)
   })
 
   it('진행 중에서는 출품할 수 있는 건이 맨 위로 온다', () => {
@@ -91,12 +104,14 @@ describe('판매자 신청 내역의 상태 구분', () => {
     ]
 
     expect(selectRequests(evaluations, 'CLOSED').map((item) => item.evaluationId)).toEqual([3, 2])
-    expect(countRequests(evaluations, 'ACTIVE')).toBe(1)
   })
 
-  it('모르는 범위는 진행 중으로 읽는다', () => {
-    // 주소에 손댄 값이 들어와도 빈 화면이 아니라 기본 목록이 나와야 한다
-    expect(isRequestScope('READY_TO_LIST')).toBe(true)
-    expect(isRequestScope('DONE')).toBe(false)
+  it('큰 틀에 없는 상태는 그 틀의 것이 아니다', () => {
+    // 주소로 scope=ACTIVE&state=REJECTED 같은 짝이 들어올 수 있다.
+    // 그대로 두면 어느 칩도 켜지지 않은 채 빈 목록만 나온다
+    expect(isStateOf('READY_TO_LIST', 'ACTIVE')).toBe(true)
+    expect(isStateOf('REJECTED', 'ACTIVE')).toBe(false)
+    expect(isStateOf('SOLD', 'CLOSED')).toBe(true)
+    expect(isStateOf('DONE', 'CLOSED')).toBe(false)
   })
 })
