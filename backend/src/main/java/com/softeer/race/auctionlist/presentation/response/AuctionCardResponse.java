@@ -52,7 +52,7 @@ public record AuctionCardResponse(
         LocalDateTime endAt,
 
         @Schema(description = "지금 방을 보고 있는 사람 수, 닫힌 단계는 0", example = "12")
-        int connectedCount
+        int viewerCount
 ) {
     public static AuctionCardResponse from(AuctionCardInfo info) {
         return new AuctionCardResponse(
@@ -69,6 +69,6 @@ public record AuctionCardResponse(
                 info.openAt(),
                 info.startAt(),
                 info.endAt(),
-                info.connectedCount());
+                info.viewerCount());
     }
 }

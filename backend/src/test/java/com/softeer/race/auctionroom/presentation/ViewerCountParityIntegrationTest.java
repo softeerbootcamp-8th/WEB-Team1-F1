@@ -71,7 +71,7 @@ class ViewerCountParityIntegrationTest extends IntegrationTestSupport {
                         status().isOk(),
                         jsonPath("$.content.length()").value(1),
                         jsonPath("$.content[0].auctionId").value((int) auctionId),
-                        jsonPath("$.content[0].connectedCount").value(1));
+                        jsonPath("$.content[0].viewerCount").value(1));
     }
 
     @Test
@@ -97,7 +97,7 @@ class ViewerCountParityIntegrationTest extends IntegrationTestSupport {
         mockMvc.perform(get("/api/auctions"))
                 .andExpectAll(
                         status().isOk(),
-                        jsonPath("$.content[0].connectedCount").value(0));
+                        jsonPath("$.content[0].viewerCount").value(0));
     }
 
     // ================= 준비 ====================

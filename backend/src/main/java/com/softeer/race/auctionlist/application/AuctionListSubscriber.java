@@ -17,7 +17,7 @@ public interface AuctionListSubscriber {
      * 경매 하나의 시청자 수 전송, 이미 닫혔으면 조용히 버린다
      */
     // 카드로 통일하지 않는다, 1초마다 보내는 값이라 카드로 싸면 활성 경매 수만큼 매 초 조회가 나간다
-    void sendAudience(long auctionId, int connectedCount);
+    void sendAudience(long auctionId, int viewerCount);
 
     /**
      * 살아 있는지 확인만 하는 신호, 목록 변화를 담지 않는다

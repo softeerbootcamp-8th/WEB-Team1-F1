@@ -26,7 +26,7 @@ public interface AuctionListChannel {
     /**
      * 열려 있는 모든 구독에 시청자 수 전송, 닫힌 구독은 순회가 끝난 뒤 걷어낸다
      */
-    void broadcastAudience(long auctionId, int connectedCount);
+    void broadcastAudience(long auctionId, int viewerCount);
 
     /**
      * 모든 구독을 찔러 보고 닫힌 것을 걷어낸다

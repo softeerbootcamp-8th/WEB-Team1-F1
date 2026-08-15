@@ -218,7 +218,7 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
         assertThat(body(list))
                 .contains("event:audience")
                 .contains("\"auctionId\":" + auctionId)
-                .contains("\"connectedCount\":1");
+                .contains("\"viewerCount\":1");
     }
 
     @Test
@@ -250,7 +250,7 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
 
     // 경매방 명부는 싱글턴이라 앞 테스트가 남긴 방의 이벤트가 섞인다, 내 경매 것만 센다
     private static int audienceCount(MvcResult list, long auctionId) {
-        return body(list).split("\"auctionId\":" + auctionId + ",\"connectedCount\"", -1).length - 1;
+        return body(list).split("\"auctionId\":" + auctionId + ",\"viewerCount\"", -1).length - 1;
     }
 
     private ResultActions bid(long auctionId, long amount) throws Exception {

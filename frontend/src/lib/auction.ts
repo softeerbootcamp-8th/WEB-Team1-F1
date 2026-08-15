@@ -154,13 +154,13 @@ export function applyCardEvent(
 export function applyAudienceEvent(
   cards: AuctionListCard[],
   auctionId: number,
-  connectedCount: number,
+  viewerCount: number,
 ): AuctionListCard[] {
   const index = cards.findIndex((it) => it.auctionId === auctionId)
   if (index < 0) return cards
 
   const next = [...cards]
-  next[index] = { ...next[index], connectedCount }
+  next[index] = { ...next[index], viewerCount }
   return next
 }
 

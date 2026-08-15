@@ -38,7 +38,7 @@ class AuctionCardAssemblerTest {
         AuctionCardInfo card = assembler.assemble(live, NOW, Map.of());
 
         assertThat(card.phase()).isEqualTo(RoomPhase.LIVE);
-        assertThat(card.connectedCount()).isEqualTo(WATCHING);
+        assertThat(card.viewerCount()).isEqualTo(WATCHING);
     }
 
     @Test
@@ -49,7 +49,7 @@ class AuctionCardAssemblerTest {
         AuctionCardInfo card = assembler.assemble(closed, NOW, Map.of());
 
         assertThat(card.phase()).isEqualTo(RoomPhase.CLOSED);
-        assertThat(card.connectedCount()).isZero();
+        assertThat(card.viewerCount()).isZero();
     }
 
     @Test
