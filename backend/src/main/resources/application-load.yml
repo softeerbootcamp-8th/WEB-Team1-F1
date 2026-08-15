@@ -1,0 +1,30 @@
+# 부하 측정 전용 프로파일. 측정이 끝나면 파일째 지운다.
+spring:
+  jpa:
+    # 기본 프로파일의 create 를 물려받으면 재기동마다 측정용 데이터가 사라진다
+    hibernate:
+      ddl-auto: update
+    # 질의 로그는 측정 중 디스크 I/O 로 결과에 섞인다
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+logging:
+  level:
+    root: info
+
+# 톰캣 스레드 지표는 Micrometer 가 JMX 로 읽어 이 레지스트리가 꺼져 있으면 나오지 않는다.
+# 부트 기본값이 false 라 tomcat.sessions.* 만 보이고 tomcat.threads.* 는 404 가 된다.
+server:
+  tomcat:
+    mbeanregistry:
+      enabled: true
+
+# /actuator 는 AuthInterceptor 가 거는 /api/** 밖이라 무인증으로 열린다.
+# 운영(prod)에는 이 블록이 없어야 한다, 같은 이유로 Swagger 도 꺼 두었다.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, metrics

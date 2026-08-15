@@ -45,6 +45,9 @@ public class AuctionProgressScheduler {
 
     @Scheduled(fixedDelay = TICK_MILLIS, scheduler = SchedulingConfig.AUCTION_PROGRESS)
     public void advanceAuctions() {
+        // 경과 시간이라 주입된 Clock(벽시계)이 아니라 단조 시계를 쓴다
+        long tickStartedAt = System.nanoTime();
+
         // 시작 전이가 통째로 실패해도 낙찰 확정은 막지 않는다.
         // 상태 표시용 전이가 확정을 가로막는 구조가 되면 안 된다.
         try {
@@ -59,6 +62,12 @@ public class AuctionProgressScheduler {
             notifyStartAlerts();
         } catch (Exception e) {
             log.error("시작 알림 발송 단계 실패", e);
+        }
+
+        // 0.5초 주기라 매 틱을 남기면 로그가 이것만으로 찬다, 기준을 넘긴 주기만 남긴다
+        long elapsedMillis = (System.nanoTime() - tickStartedAt) / 1_000_000L;
+        if (elapsedMillis > TICK_MILLIS) {
+            log.warn("경매 진행 틱 초과 {}ms", elapsedMillis);
         }
     }
 
