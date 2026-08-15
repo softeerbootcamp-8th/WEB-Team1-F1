@@ -168,11 +168,13 @@ export function AssignableEvaluationsPage() {
       </header>
 
       {/* 정렬 전환. 기본은 방문일 임박순이고, 최신순은 방금 들어온 신청을 위로 올린다 —
-          방문일 순으로는 새 신청이 목록 중간에 꽂혀 어디에 생겼는지 찾을 수 없다 */}
+          방문일 순으로는 새 신청이 목록 중간에 꽂혀 어디에 생겼는지 찾을 수 없다.
+          위쪽 버튼들과 같은 오른쪽 축에 세운다. 목록을 다루는 조작을 한자리에 모으면
+          왼쪽은 제목과 카드가 이루는 읽기 축으로 남는다 */}
       <Tabs
         value={sort}
         onValueChange={(next) => changeSort(next as AssignableEvaluationSort)}
-        className="mb-5"
+        className="mb-5 items-end"
       >
         <TabsList aria-label="목록 정렬 기준" className="bg-muted/40">
           {SORTS.map((option) => (
