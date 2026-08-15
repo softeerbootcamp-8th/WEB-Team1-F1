@@ -4,11 +4,13 @@ import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.auction.domain.AuctionStatus;
 import com.softeer.race.auction.domain.VehicleAuctionStatusRow;
 import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.evaluation.application.dto.info.EvaluationAssignmentCountsInfo;
 import com.softeer.race.evaluation.application.dto.info.EvaluationDetailInfo;
 import com.softeer.race.evaluation.domain.AssignmentScope;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.domain.EvaluationStatus;
+import com.softeer.race.evaluation.domain.EvaluationStatusCountRow;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
@@ -40,6 +42,7 @@ import static org.mockito.Mockito.mock;
  * <ol>
  *   <li>내 신청 목록은 레포지토리가 준 순서를 그대로 옮긴다</li>
  *   <li>담당 목록은 범위가 정한 상태와 순서로 읽는다</li>
+ *   <li>담당 건수는 없는 상태를 0으로 채운다</li>
  *   <li>진단이 끝난 상세는 결과 칸이 채워져 나간다</li>
  *   <li>진단 전 상세는 결과 칸이 전부 null이다</li>
  *   <li>열람 권한이 없으면 존재 여부를 감춘 NOT_FOUND</li>
@@ -140,6 +143,21 @@ class EvaluationLookupServiceTest {
                 EVALUATOR_ID,
                 AssignmentScope.COMPLETED.statuses(),
                 AssignmentScope.COMPLETED.sort());
+    }
+
+    @Test
+    @DisplayName("담당 건수는 없는 상태를 0으로 채워 내려간다")
+    void countMyAssignments() {
+        // given : group by는 있는 행만 묶어 REJECTED가 0이면 행 자체가 오지 않는다
+        given(evaluationRepository.countByEvaluatorIdGroupByStatus(EVALUATOR_ID)).willReturn(List.of(
+                new EvaluationStatusCountRow(EvaluationStatus.REQUESTED, 3),
+                new EvaluationStatusCountRow(EvaluationStatus.APPROVED, 2)));
+
+        // when
+        EvaluationAssignmentCountsInfo info = evaluationLookupService.countMyAssignments(EVALUATOR_ID);
+
+        // then : 합계도 서버가 낸다. 화면이 더하게 두면 상태가 늘 때 조용히 틀린다
+        assertThat(info).isEqualTo(new EvaluationAssignmentCountsInfo(5, 3, 2, 0));
     }
 
     @Test

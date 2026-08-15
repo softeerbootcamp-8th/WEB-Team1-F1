@@ -184,6 +184,23 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("담당 건수는 상태별로 세어 나간다")
+    void countMyAssignments() throws Exception {
+        // 목록이 범위로 갈린 뒤로는 어느 한쪽을 받아도 나머지를 셀 수 없다
+        lookup("/my-assignments/count", EVALUATOR_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.pending").value(1))
+                // 아직 승인된 건이 없다. group by에 행이 없어도 0으로 채워져야 한다
+                .andExpect(jsonPath("$.approved").value(0))
+                .andExpect(jsonPath("$.rejected").value(1));
+
+        lookup("/my-assignments/count", OTHER_EVALUATOR_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(0));
+    }
+
+    @Test
     @DisplayName("판매자와 평가사 목록에 차량의 최신 경매 상태가 나온다")
     void listsLatestAuctionStatus() throws Exception {
         // given : 같은 차량의 앞선 유찰 뒤 새 경매가 진행 중이다

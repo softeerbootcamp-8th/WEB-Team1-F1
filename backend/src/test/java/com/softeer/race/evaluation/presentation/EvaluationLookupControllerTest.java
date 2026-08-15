@@ -9,6 +9,7 @@ import com.softeer.race.user.domain.Role;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.presentation.GlobalExceptionHandler;
 import com.softeer.race.evaluation.application.EvaluationLookupService;
+import com.softeer.race.evaluation.application.dto.info.EvaluationAssignmentCountsInfo;
 import com.softeer.race.evaluation.application.dto.info.EvaluationDetailInfo;
 import com.softeer.race.evaluation.application.dto.info.EvaluationSummaryInfo;
 import com.softeer.race.evaluation.domain.AssignmentScope;
@@ -47,6 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>내 담당 목록은 범위를 주지 않으면 진행 중이다</li>
  *   <li>완료 범위는 완료 시각까지 내려준다</li>
  *   <li>모르는 범위는 400</li>
+ *   <li>담당 건수는 상태별로 나간다</li>
  *   <li>목록이 비면 빈 배열이다</li>
  *   <li>상세는 결과 칸까지 내려준다</li>
  *   <li>진단 전 상세는 결과 칸이 null로 나간다</li>
@@ -163,6 +165,22 @@ class EvaluationLookupControllerTest {
                 .andExpect(status().isBadRequest());
 
         then(evaluationLookupService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("담당 건수는 상태별로 나간다")
+    void countMyAssignments() throws Exception {
+        // given : 홈이 목록을 받지 않고 이 값만 읽는다
+        given(evaluationLookupService.countMyAssignments(USER_ID))
+                .willReturn(new EvaluationAssignmentCountsInfo(7, 3, 3, 1));
+
+        // when & then
+        mockMvc.perform(get("/api/evaluations/my-assignments/count").cookie(sessionCookie()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(7))
+                .andExpect(jsonPath("$.pending").value(3))
+                .andExpect(jsonPath("$.approved").value(3))
+                .andExpect(jsonPath("$.rejected").value(1));
     }
 
     @Test

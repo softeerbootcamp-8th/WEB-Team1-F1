@@ -179,6 +179,25 @@ public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
                                                   Sort sort);
 
     /**
+     * 이 평가사가 맡은 건수를 상태별로. 평가사 홈이 보여주는 값이다.
+     * <p>
+     * 목록을 상태로 나누면서 필요해졌다. 전에는 홈이 담당 목록을 통째로 받아 상태별로 셌는데,
+     * 이제 목록이 진행 중과 완료로 갈라져 어느 쪽을 받아도 나머지를 셀 수 없다. 홈은 애초에
+     * 카드가 아니라 수만 보여주므로, 목록을 두 번 받는 대신 이 조회 하나로 끝낸다
+     * ({@link #countAssignable}이 같은 이유로 생겼다).
+     * <p>
+     * 상태마다 따로 세지 않고 한 번에 묶는다. 세 번 왕복할 이유가 없고, {@code idx_evaluation_my_assignments}의
+     * 앞 두 컬럼이 (evaluator_id, status)라 이 조회는 테이블 행에 닿지 않는다.
+     */
+    @Query("""
+            select new com.softeer.race.evaluation.domain.EvaluationStatusCountRow(e.status, count(e))
+            from Evaluation e
+            where e.evaluator.id = :evaluatorId
+            group by e.status
+            """)
+    List<EvaluationStatusCountRow> countByEvaluatorIdGroupByStatus(@Param("evaluatorId") long evaluatorId);
+
+    /**
      * 상세 조회용. 차량 제원과 담당 평가사를 함께 보여주므로 둘 다 붙여 읽는다.
      * <p>
      * {@code findById}로 대신하지 않는다. 그쪽은 vehicle과 evaluator가 프록시로 남아 상세를

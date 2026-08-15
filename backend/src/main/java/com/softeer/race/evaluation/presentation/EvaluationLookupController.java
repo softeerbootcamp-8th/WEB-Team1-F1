@@ -5,6 +5,7 @@ import com.softeer.race.auth.presentation.annotation.LoginUser;
 import com.softeer.race.auth.presentation.annotation.RequireRole;
 import com.softeer.race.evaluation.application.EvaluationLookupService;
 import com.softeer.race.evaluation.domain.AssignmentScope;
+import com.softeer.race.evaluation.presentation.response.EvaluationAssignmentCountsResponse;
 import com.softeer.race.evaluation.presentation.response.EvaluationDetailResponse;
 import com.softeer.race.evaluation.presentation.response.EvaluationSummariesResponse;
 import com.softeer.race.user.domain.Role;
@@ -50,6 +51,20 @@ public class EvaluationLookupController implements EvaluationLookupApi {
 
         return ResponseEntity.ok(EvaluationSummariesResponse.from(
                 evaluationLookupService.findMyAssignments(authenticatedUser.id(), scope)));
+    }
+
+    /**
+     * 목록과 나누지 않고 따로 둔다. 이 값을 읽는 평가사 홈은 카드가 아니라 수만 필요하고,
+     * 목록이 범위로 갈린 뒤로는 어느 한쪽을 받아도 나머지를 셀 수 없다.
+     */
+    @Override
+    @GetMapping("/my-assignments/count")
+    @RequireRole(Role.EVALUATOR)
+    public ResponseEntity<EvaluationAssignmentCountsResponse> countMyAssignments(
+            @LoginUser AuthenticatedUser authenticatedUser) {
+
+        return ResponseEntity.ok(EvaluationAssignmentCountsResponse.from(
+                evaluationLookupService.countMyAssignments(authenticatedUser.id())));
     }
 
     @Override
