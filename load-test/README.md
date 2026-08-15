@@ -127,3 +127,17 @@ k6 run load-test/scenarios/a-close-spike.js
 - **마감을 넉넉히 뒤로 뒀다.** 진행 중인 경매는 정해진 시각에 자동 마감된다. 측정 시간보다 마감이 빠르면 측정 중간에 대상이 사라진다. 시나리오 B는 반대로 이 자동 마감을 **일부러 이용한다**
 - **경매 상태를 `SCHEDULED`로 넣는다.** 입찰 판정은 상태가 아니라 서버 시각을 보고, 진행 스케줄러가 다음 틱에 알아서 `IN_PROGRESS`로 옮긴다. 상태를 손으로 맞춰 넣으면 스케줄러가 하는 일을 측정에서 빼는 셈이 된다
 - **계정을 API로 만들고 나머지는 SQL로 넣는다.** 비밀번호 해시는 서버가 만들어야 로그인이 되므로 계정만 API를 탄다. 반면 "진행 중인 경매"는 발행에서 시작까지 최소 1시간 규칙 때문에 **API로는 만들 수 없다**
+
+---
+
+## 질의 수를 셀 때 (가설 5 회차)
+
+성능 측정과 **같이 돌리지 않는다.** 로그 기록이 디스크 I/O로 응답 시간에 섞인다. 반대로 이 회차는 응답 시간을 안 보므로 로그가 켜져 있어도 된다.
+
+```bash
+cd backend && ./gradlew bootRun --args='--spring.profiles.active=load --logging.level.org.hibernate.SQL=DEBUG --logging.level.org.springframework.jdbc.core.JdbcTemplate=DEBUG --logging.level.org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate=DEBUG'
+```
+
+- **`show-sql`은 켜지 않는다.** `org.hibernate.SQL=DEBUG`와 같이 켜면 같은 SQL이 표준 출력과 로거로 두 번 나가 **질의 수가 그대로 두 배가 된다.** `load` 프로파일이 `show-sql: false`라 로거만 켜면 된다
+- **JDBC 로거를 반드시 같이 켠다.** 목록 조회의 본 질의는 `AuctionListRepository`가 `NamedParameterJdbcTemplate`으로 직접 날려서 Hibernate 로거에 전혀 안 잡힌다
+- 세는 것은 요청 스레드(`nio-8080-exec`)가 낸 질의만이다. 경매 진행 스케줄러가 0.5초마다 질의 셋을 내는 배경 소음을 스레드 이름으로 가른다
