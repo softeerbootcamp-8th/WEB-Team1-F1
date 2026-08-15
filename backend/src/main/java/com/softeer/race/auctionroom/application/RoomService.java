@@ -21,26 +21,6 @@ public class RoomService {
     private final Clock clock;
 
     /**
-     * 경매방 현황, 조회한 사람의 입찰과 낙찰 여부까지 판정된 상태
-     */
-    @Transactional(readOnly = true)
-    public RoomView readRoom(long auctionId, long viewerId) {
-        RoomSnapshot snapshot = roomReader.find(auctionId)
-                .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
-
-        // 열리지 않은 방과 끝난 방은 여기서 걸린다,
-        // 화면은 사유를 보고 개장 안내나 결과로 옮겨간다
-        snapshot.phase().entryRejection().ifPresent(errorCode -> {
-            throw new BusinessException(errorCode);
-        });
-
-        // 조회는 접속이 아니다, 접속자는 열려 있는 구독으로만 센다
-        return RoomView.of(viewerId, snapshot, roomChannel.viewerCount(auctionId),
-                roomReader.findPhotoUrls(auctionId),
-                roomReader.findKeywords(snapshot.detail().vehicleId()));
-    }
-
-    /**
      * 아직 열리지 않은 경매방의 안내, 입장 가능 시각을 화면에 보이기 위한 것
      */
     @Transactional(readOnly = true)
@@ -58,6 +38,26 @@ public class RoomService {
 
         return RoomOpening.of(detail, roomReader.findPhotoUrls(auctionId),
                 roomReader.findKeywords(detail.vehicleId()), now);
+    }
+
+    /**
+     * 경매방 현황, 조회한 사람의 입찰과 낙찰 여부까지 판정된 상태
+     */
+    @Transactional(readOnly = true)
+    public RoomView readRoom(long auctionId, long viewerId) {
+        RoomSnapshot snapshot = roomReader.find(auctionId)
+                .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
+
+        // 열리지 않은 방과 끝난 방은 여기서 걸린다,
+        // 화면은 사유를 보고 개장 안내나 결과로 옮겨간다
+        snapshot.phase().entryRejection().ifPresent(errorCode -> {
+            throw new BusinessException(errorCode);
+        });
+
+        // 조회는 접속이 아니다, 접속자는 열려 있는 구독으로만 센다
+        return RoomView.of(viewerId, snapshot, roomChannel.viewerCount(auctionId),
+                roomReader.findPhotoUrls(auctionId),
+                roomReader.findKeywords(snapshot.detail().vehicleId()));
     }
 
     /**
