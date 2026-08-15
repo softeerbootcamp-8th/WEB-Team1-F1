@@ -7,14 +7,19 @@ import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Objects;
 
-import static com.softeer.race.notification.domain.NotificationType.EVAL_REQUESTED;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_ENDED;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_FAILED;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_SOLD;
-import static com.softeer.race.notification.domain.NotificationType.AUCTION_WON;
-import static com.softeer.race.notification.domain.NotificationType.DEAL_CONFIRMED;
-import static com.softeer.race.notification.domain.NotificationType.OUTBID;
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_STARTED;
+import static com.softeer.race.notification.domain.NotificationType.AUCTION_WON;
+import static com.softeer.race.notification.domain.NotificationType.DEAL_BUYER_SCHEDULE_REQUIRED;
+import static com.softeer.race.notification.domain.NotificationType.DEAL_CANCELLED;
+import static com.softeer.race.notification.domain.NotificationType.DEAL_CONFIRMED;
+import static com.softeer.race.notification.domain.NotificationType.DEAL_SELLER_SUBMIT_REQUIRED;
+import static com.softeer.race.notification.domain.NotificationType.EVAL_APPROVED;
+import static com.softeer.race.notification.domain.NotificationType.EVAL_REJECTED;
+import static com.softeer.race.notification.domain.NotificationType.EVAL_REQUESTED;
+import static com.softeer.race.notification.domain.NotificationType.OUTBID;
 
 /**
  * 알림 종류와 발행 시점에 완성한 문구
@@ -42,10 +47,24 @@ public record NotificationContent(NotificationType type, String message) {
     }
 
     public static NotificationContent evaluationRequested(
-            String plateNumber, String vehicleModel) {
+            String vehicleName, String plateNumber) {
         return new NotificationContent(EVAL_REQUESTED,
-                "%s %s 차량의 방문 진단 신청이 접수되었습니다."
-                        .formatted(text(plateNumber), text(vehicleModel)));
+                "%s %s 차량의 방문견적 신청이 접수되었습니다."
+                        .formatted(text(vehicleName), text(plateNumber)));
+    }
+
+    public static NotificationContent evaluationApproved(
+            String vehicleName, String plateNumber) {
+        return new NotificationContent(EVAL_APPROVED,
+                "%s %s 차량의 평가가 승인되었습니다. 경매글을 등록해 주세요."
+                        .formatted(text(vehicleName), text(plateNumber)));
+    }
+
+    public static NotificationContent evaluationRejected(
+            String vehicleName, String plateNumber) {
+        return new NotificationContent(EVAL_REJECTED,
+                "%s %s 차량의 평가가 반려되었습니다. 사유를 확인해 주세요."
+                        .formatted(text(vehicleName), text(plateNumber)));
     }
 
     public static NotificationContent defaultOf(NotificationType type) {
@@ -98,6 +117,24 @@ public record NotificationContent(NotificationType type, String message) {
     public static NotificationContent dealConfirmedForSeller(
             String vehicleModel, LocalDateTime deliveryAt, String deliveryLocation) {
         return dealConfirmed(vehicleModel, deliveryAt, deliveryLocation, "인도");
+    }
+
+    public static NotificationContent dealSellerSubmitRequired(String vehicleName) {
+        return new NotificationContent(DEAL_SELLER_SUBMIT_REQUIRED,
+                "%s 차량의 구매자가 구매를 확정했습니다. 서류와 탁송 일정을 등록해 주세요."
+                        .formatted(text(vehicleName)));
+    }
+
+    public static NotificationContent dealBuyerScheduleRequired(String vehicleName) {
+        return new NotificationContent(DEAL_BUYER_SCHEDULE_REQUIRED,
+                "%s 차량의 판매자가 탁송 일정을 등록했습니다. 인도 일정을 정해 주세요."
+                        .formatted(text(vehicleName)));
+    }
+
+    public static NotificationContent dealCancelled(String vehicleName, String cancelledBy) {
+        return new NotificationContent(DEAL_CANCELLED,
+                "%s 차량의 거래를 %s가 취소했습니다."
+                        .formatted(text(vehicleName), text(cancelledBy)));
     }
 
     private static NotificationContent dealConfirmed(

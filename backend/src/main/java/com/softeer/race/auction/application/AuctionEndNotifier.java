@@ -45,31 +45,29 @@ public class AuctionEndNotifier {
         if (winnerId == null) {
             notificationPublisher.publishContent(
                     context.sellerId(),
-                    NotificationContent.auctionFailed(context.vehicleModel()),
+                    NotificationContent.auctionFailed(context.vehicleName().display()),
                     auctionId);
             return;
         }
 
         long finalPrice = context.finalPriceOrThrow(auctionId);
+        String vehicleName = context.vehicleName().display();
 
         notificationPublisher.publishContent(
                 context.sellerId(),
-                NotificationContent.auctionSold(
-                        context.vehicleModel(), finalPrice),
+                NotificationContent.auctionSold(vehicleName, finalPrice),
                 auctionId);
 
         notificationPublisher.publishContent(
                 winnerId,
-                NotificationContent.auctionWon(
-                        context.vehicleModel(), finalPrice),
+                NotificationContent.auctionWon(vehicleName, finalPrice),
                 dealId);
 
         for (long bidderId :
                 bidRepository.findOtherBidderIds(auctionId, winnerId)) {
             notificationPublisher.publishContent(
                     bidderId,
-                    NotificationContent.auctionEnded(
-                            context.vehicleModel(), finalPrice),
+                    NotificationContent.auctionEnded(vehicleName, finalPrice),
                     auctionId);
         }
     }

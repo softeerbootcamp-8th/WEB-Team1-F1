@@ -83,7 +83,7 @@ class AuctionStartAlertNotificationIntegrationTest extends IntegrationTestSuppor
         assertThat(notificationsOf(alice)).singleElement().satisfies(row -> {
             assertThat(row.type()).isEqualTo(AUCTION_STARTED);
             assertThat(row.message())
-                    .isEqualTo("아반떼 CN7 경매가 시작되었습니다. 지금 입찰할 수 있습니다.");
+                    .isEqualTo("현대 아반떼 CN7 경매가 시작되었습니다. 지금 입찰할 수 있습니다.");
             assertThat(row.read()).isFalse();
         });
 

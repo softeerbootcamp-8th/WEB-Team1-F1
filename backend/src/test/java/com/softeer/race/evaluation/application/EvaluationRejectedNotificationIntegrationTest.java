@@ -88,7 +88,8 @@ class EvaluationRejectedNotificationIntegrationTest extends IntegrationTestSuppo
         // then 2 : 발행 당시 문구가 보관되고 아직 읽지 않은 상태다
         NotificationRow rejected = notifications.getFirst();
         assertThat(rejected.type()).isEqualTo(EVAL_REJECTED);
-        assertThat(rejected.message()).isEqualTo(EVAL_REJECTED.defaultMessage());
+        assertThat(rejected.message())
+                .isEqualTo("현대 아반떼 CN7 60가6000 차량의 평가가 반려되었습니다. 사유를 확인해 주세요.");
         assertThat(rejected.read()).isFalse();
 
         // then 3 : 목적지가 그 신청의 상세다. 사유를 내려보내는 화면이 거기 하나뿐이라,

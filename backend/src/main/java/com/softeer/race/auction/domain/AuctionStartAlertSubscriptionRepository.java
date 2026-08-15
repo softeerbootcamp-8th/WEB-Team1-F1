@@ -32,7 +32,7 @@ public interface AuctionStartAlertSubscriptionRepository
      */
     @Query("""
             select new com.softeer.race.auction.domain.AuctionStartAlertTarget(
-                s.id, a.id, s.user.id, a.status, v.model)
+                s.id, a.id, s.user.id, a.status, v.manufacturer, v.model)
             from AuctionStartAlertSubscription s
             join s.auction a
             join a.post p

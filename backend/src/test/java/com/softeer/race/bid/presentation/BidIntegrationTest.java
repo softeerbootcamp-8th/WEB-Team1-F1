@@ -321,7 +321,7 @@ class BidIntegrationTest extends IntegrationTestSupport {
         assertThat(notificationsOf(ALICE_ID)).singleElement().satisfies(row -> {
             assertThat(row.type()).isEqualTo(OUTBID);
             assertThat(row.message())
-                    .isEqualTo("그랜저 IG 경매에서 이*님이 24,850,000원에 입찰했습니다.");
+                    .isEqualTo("현대 그랜저 IG 경매에서 이*님이 24,850,000원에 입찰했습니다.");
             assertThat(row.link()).isEqualTo("/auctions/" + LIVE_AUCTION);
         });
         assertThat(notificationsOf(BOB_ID)).isEmpty();
@@ -342,12 +342,12 @@ class BidIntegrationTest extends IntegrationTestSupport {
         assertThat(notificationsOf(ALICE_ID))
                 .extracting(NotificationRow::message)
                 .containsExactly(
-                        "그랜저 IG 경매에서 이*님이 24,950,000원에 입찰했습니다.",
-                        "그랜저 IG 경매에서 이*님이 24,850,000원에 입찰했습니다.");
+                        "현대 그랜저 IG 경매에서 이*님이 24,950,000원에 입찰했습니다.",
+                        "현대 그랜저 IG 경매에서 이*님이 24,850,000원에 입찰했습니다.");
         assertThat(notificationsOf(BOB_ID))
                 .extracting(NotificationRow::message)
                 .containsExactly(
-                        "그랜저 IG 경매에서 김**스님이 24,900,000원에 입찰했습니다.");
+                        "현대 그랜저 IG 경매에서 김**스님이 24,900,000원에 입찰했습니다.");
     }
 
     private ResultActions bid(long auctionId, String rawToken, long amount) throws Exception {

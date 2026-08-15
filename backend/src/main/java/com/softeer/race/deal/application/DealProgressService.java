@@ -17,10 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 
-import static com.softeer.race.notification.domain.NotificationType.DEAL_BUYER_SCHEDULE_REQUIRED;
-import static com.softeer.race.notification.domain.NotificationType.DEAL_CANCELLED;
-import static com.softeer.race.notification.domain.NotificationType.DEAL_SELLER_SUBMIT_REQUIRED;
-
 /**
  * 거래를 다음 단계로 옮긴다
  * <p>
@@ -49,7 +45,10 @@ public class DealProgressService {
 
         deal.confirmPurchase(now());
 
-        notificationPublisher.publish(deal.getSeller().getId(), DEAL_SELLER_SUBMIT_REQUIRED, dealId);
+        notificationPublisher.publishContent(
+                deal.getSeller().getId(),
+                NotificationContent.dealSellerSubmitRequired(vehicleName(dealId)),
+                dealId);
     }
 
     /**
@@ -64,7 +63,10 @@ public class DealProgressService {
 
         deal.submitTransport(documentUrl, transportAt, transportLocation, now());
 
-        notificationPublisher.publish(deal.getBuyer().getId(), DEAL_BUYER_SCHEDULE_REQUIRED, dealId);
+        notificationPublisher.publishContent(
+                deal.getBuyer().getId(),
+                NotificationContent.dealBuyerScheduleRequired(vehicleName(dealId)),
+                dealId);
     }
 
     /**
@@ -82,25 +84,18 @@ public class DealProgressService {
 
         deal.confirmDelivery(deliveryAt, deliveryLocation, now());
 
-        String vehicleModel = dealRepository.findVehicleModelById(dealId)
-                .orElseThrow(() -> new IllegalStateException(
-                        "확정한 거래의 차량을 찾을 수 없다, 거래 %d"
-                                .formatted(dealId)));
+        String vehicleName = vehicleName(dealId);
 
         notificationPublisher.publishContent(
                 deal.getBuyer().getId(),
                 NotificationContent.dealConfirmedForBuyer(
-                        vehicleModel,
-                        deal.getDeliveryAt(),
-                        deal.getDeliveryLocation()),
+                        vehicleName, deal.getDeliveryAt(), deal.getDeliveryLocation()),
                 dealId);
 
         notificationPublisher.publishContent(
                 deal.getSeller().getId(),
                 NotificationContent.dealConfirmedForSeller(
-                        vehicleModel,
-                        deal.getDeliveryAt(),
-                        deal.getDeliveryLocation()),
+                        vehicleName, deal.getDeliveryAt(), deal.getDeliveryLocation()),
                 dealId);
     }
 
@@ -121,7 +116,10 @@ public class DealProgressService {
                 ? deal.getSeller().getId()
                 : deal.getBuyer().getId();
 
-        notificationPublisher.publish(counterpartId, DEAL_CANCELLED, dealId);
+        notificationPublisher.publishContent(
+                counterpartId,
+                NotificationContent.dealCancelled(vehicleName(dealId), side.label()),
+                dealId);
     }
 
     /**
@@ -151,6 +149,18 @@ public class DealProgressService {
         if (!fileStorage.isManagedUrl(documentUrl, FileCategory.DOCUMENT)) {
             throw new BusinessException(DealErrorCode.UNMANAGED_DOCUMENT_URL);
         }
+    }
+
+    /**
+     * 알림 문구에 넣을 거래 차량 이름
+     * <p>
+     * 거래는 차량을 직접 들고 있지 않다. 프록시로 세 단계를 열면 조회가 세 번 나가므로 조인 한 번으로 읽는다.
+     */
+    private String vehicleName(long dealId) {
+        return dealRepository.findVehicleNameById(dealId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "거래의 차량을 찾을 수 없다, 거래 %d".formatted(dealId)))
+                .display();
     }
 
     private Deal find(long dealId) {

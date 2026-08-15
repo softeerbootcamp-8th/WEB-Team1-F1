@@ -16,6 +16,7 @@ import com.softeer.race.vehicle.application.dto.command.VehicleLookupCommand;
 import com.softeer.race.vehicle.application.dto.info.VehicleLookupInfo;
 import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleLookup;
+import com.softeer.race.vehicle.domain.VehicleName;
 import com.softeer.race.vehicle.domain.VehicleRepository;
 import com.softeer.race.vehicle.domain.VehicleSpec;
 import java.time.Clock;
@@ -127,7 +128,7 @@ public class VisitQuoteService {
     private void notifyEvaluators(long evaluationId, Vehicle vehicle) {
         // 문구는 수신자와 무관하게 같아 한 번만 조립한다
         NotificationContent content = NotificationContent.evaluationRequested(
-                vehicle.getPlateNumber(), vehicle.getModel());
+                VehicleName.of(vehicle).display(), vehicle.getPlateNumber());
 
         for (long evaluatorId : userRepository.findIdsByRole(Role.EVALUATOR)) {
             notificationPublisher.publishContent(evaluatorId, content, evaluationId);

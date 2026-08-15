@@ -1,5 +1,8 @@
 package com.softeer.race.auction.domain;
 
+import com.softeer.race.vehicle.domain.Manufacturer;
+import com.softeer.race.vehicle.domain.VehicleName;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,8 +19,16 @@ public record AuctionStartAlertTarget(
         long auctionId,
         long userId,
         AuctionStatus auctionStatus,
-        String vehicleModel
+        VehicleName vehicleName
 ) {
+
+    // JPQL 생성자 표현식이 인자 타입으로 이 생성자에 걸린다, 원본 모델명은 필드로 남지 않는다
+    public AuctionStartAlertTarget(long subscriptionId, long auctionId, long userId,
+                                   AuctionStatus auctionStatus,
+                                   Manufacturer manufacturer, String model) {
+        this(subscriptionId, auctionId, userId, auctionStatus,
+                new VehicleName(manufacturer, model));
+    }
 
     /**
      * 시작 알림을 보낼 대상인지, 아니면 알림 없이 정리할 대상인지
