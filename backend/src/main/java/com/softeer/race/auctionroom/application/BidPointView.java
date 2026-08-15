@@ -14,7 +14,8 @@ public record BidPointView(
         boolean extended
 ) {
 
-    static BidPointView of(BidPoint point, long viewerId, boolean extended) {
-        return new BidPointView(point.bidAt(), point.amount(), point.isMine(viewerId), extended);
+    // 마감이 어느 입찰에 밀렸는지는 저장돼 있지 않아 경매 시작 시각으로 되짚어 묻는다
+    static BidPointView of(BidPoint point, long viewerId, LocalDateTime startAt) {
+        return new BidPointView(point.bidAt(), point.amount(), point.isMine(viewerId), point.extendsDeadline(startAt));
     }
 }
