@@ -140,7 +140,7 @@ function ViewingBadge({ result }: { result: RoomResultView }) {
     () => new Date(result.serverTime).getTime() - Date.now(),
     [result.serverTime],
   )
-  const { remaining } = useCountdown(result.resultEndAt, 1000, offset)
+  const { remaining } = useCountdown(result.resultViewingEndsAt, 1000, offset)
 
   // 1초가 안 남으면 "00:00 남음"이 찍힌다, 그 표기가 나오기 전에 끝난 것으로 본다
   const viewing = remaining >= 1000
@@ -170,7 +170,7 @@ function Headline({ result }: { result: RoomResultView }) {
   const unsold = result.outcome === 'UNSOLD'
 
   const gap =
-    result.myBid && result.winningPrice !== null ? result.winningPrice - result.myBid.amount : null
+    result.myStanding && result.winningPrice !== null ? result.winningPrice - result.myStanding.highestAmount : null
 
   // 유찰이면 팔린 값이 없어 시작가로 범위를 잡는다
   const similarPath = `/auctions?${toFilterParams(
@@ -217,10 +217,10 @@ function Headline({ result }: { result: RoomResultView }) {
         <div>
           <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            {result.myBid ? (
+            {result.myStanding ? (
               <>
                 내 최고 입찰{' '}
-                <strong className="text-foreground">{formatKRW(result.myBid.amount)}</strong>
+                <strong className="text-foreground">{formatKRW(result.myStanding.highestAmount)}</strong>
                 {gap !== null && gap > 0 && (
                   <>
                     {' · '}낙찰가와 <strong className="text-foreground">{formatKRW(gap)}</strong>{' '}
@@ -228,7 +228,7 @@ function Headline({ result }: { result: RoomResultView }) {
                   </>
                 )}
                 {' · '}입찰한 {result.bidderCount}명 중{' '}
-                <strong className="text-foreground">{result.myBid.rank}번째</strong>
+                <strong className="text-foreground">{result.myStanding.rank}번째</strong>
               </>
             ) : standing === 'SELLER' ? (
               user ? `${user.realName}님이 내놓은 차예요` : '내가 내놓은 차예요'
@@ -286,7 +286,7 @@ function CurveCard({ result }: { result: RoomResultView }) {
 
         <div className="text-muted-foreground flex items-center gap-3 text-sm">
           {/* 빨강이 나라는 뜻은 입찰한 사람에게만 필요하다, 안 넣었으면 곡선에 빨강이 없다 */}
-          {result.myBid && (
+          {result.myStanding && (
             <span className="flex items-center gap-1.5">
               <span className="bg-destructive size-2 rounded-full" aria-hidden />
               내 입찰
@@ -303,7 +303,7 @@ function CurveCard({ result }: { result: RoomResultView }) {
           shape={shape}
           startAt={result.startAt}
           endAt={result.endAt}
-          myAmount={result.myBid?.amount ?? null}
+          myAmount={result.myStanding?.highestAmount ?? null}
           mineWon={mineWon}
         />
       ) : (
