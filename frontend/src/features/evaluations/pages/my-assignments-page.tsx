@@ -116,7 +116,13 @@ export function MyAssignmentsPage() {
                       asChild
                       className="h-11 w-full"
                     >
-                      <Link to={`/evaluations/${evaluation.evaluationId}/result`}>
+                      {/* 보고 있던 탭을 함께 넘긴다. 결과 화면의 "내 담당 목록"이
+                          돌아올 자리를 이 값으로 정한다 */}
+                      <Link
+                        to={`/evaluations/${evaluation.evaluationId}/result${
+                          scope === 'COMPLETED' ? '?scope=COMPLETED' : ''
+                        }`}
+                      >
                         {evaluation.status === 'APPROVED'
                           ? '진단 확인·수정'
                           : '진단 작성하기'}
