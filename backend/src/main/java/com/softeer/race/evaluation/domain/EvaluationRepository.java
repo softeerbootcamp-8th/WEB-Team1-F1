@@ -1,9 +1,11 @@
 package com.softeer.race.evaluation.domain;
 
 import jakarta.persistence.LockModeType;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -41,7 +43,7 @@ public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
     boolean existsBlockingVisitQuoteByPlateNumber(@Param("plateNumber") String plateNumber);
 
     /**
-     * 아직 아무도 수락하지 않은 신청들. 방문일이 임박한 순서로 나온다.
+     * 아직 아무도 수락하지 않은 신청들 중 커서 다음 자리부터 {@code limit}건. 방문일이 임박한 순서로 나온다.
      * <p>
      * 조건이 {@code status = REQUESTED}와 {@code evaluator is null} 두 개다. 상태만으로는 이미
      * 배정된 신청까지 걸려 나오고, evaluator만으로는 평가가 끝난 뒤 배정이 지워지는 흐름이 생길 때
@@ -51,8 +53,21 @@ public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
      * vehicle을 join fetch 한다. 목록의 각 항목이 번호판과 제원을 보여주므로 없으면 건수만큼
      * 지연 로딩 쿼리가 더 나간다.
      * <p>
-     * 페이징을 두지 않는다. 배정되는 즉시 빠지는 목록이라 규모의 상한이 낮고, 근거 있는 페이지
-     * 크기를 정할 수 없어 임의의 숫자가 된다. 필요해지면 AuctionListService의 커서 방식을 따른다.
+     * <b>offset이 아니라 커서로 끊는다.</b> 이 목록은 수락되는 즉시 그 자리에서 행이 빠진다.
+     * offset은 앞자리 한 건이 빠지면 다음 페이지의 첫 신청이 이미 읽은 구간으로 당겨져 아무에게도
+     * 보이지 않게 된다 — 배정이 늦어지는 것으로 끝나지 않고 그 신청만 계속 건너뛴다. 정렬 키를
+     * 값으로 비교하면 행이 빠져도 이어 읽을 지점이 그대로다.
+     * <p>
+     * {@code visitDate}가 같을 때를 id로 가른다. 날짜 단위라 동률이 페이지 크기를 넘길 만큼 몰리고,
+     * 가르는 값이 없으면 그 날짜 안에서 읽는 순서가 매번 달라져 누락과 중복이 함께 생긴다.
+     * <p>
+     * {@code Page}가 아니라 {@code List} + {@link Limit}이다. Page는 페이지마다 전체 건수를 세는
+     * 쿼리를 덤으로 낸다. 다음 페이지가 있는지는 한 건 더 읽어 보면 알 수 있고, 홈에 쓰는 전체
+     * 건수는 {@link #countAssignable}이 필요할 때만 따로 센다.
+     * <p>
+     * {@link #findAssignableByLatest}와 한 메서드로 합치지 않는다. 정렬만 다른 것이 아니라 이어
+     * 읽는 조건의 비교 방향과 값의 개수까지 달라, 하나로 묶으려면 조회 조건을 문자열로 조립해야
+     * 한다. 정렬은 둘뿐이고 앞으로도 화면이 고르는 만큼만 늘어난다.
      */
     @Query("""
             select e
@@ -60,9 +75,58 @@ public interface EvaluationRepository extends JpaRepository<Evaluation, Long> {
             join fetch e.vehicle
             where e.status = :requested
                 and e.evaluator is null
+                and (e.visitDate > :cursorVisitDate
+                    or (e.visitDate = :cursorVisitDate and e.id > :cursorEvaluationId))
             order by e.visitDate, e.id
             """)
-    List<Evaluation> findAssignable(@Param("requested") EvaluationStatus requested);
+    List<Evaluation> findAssignableByVisitDate(@Param("requested") EvaluationStatus requested,
+                                               @Param("cursorVisitDate") LocalDate cursorVisitDate,
+                                               @Param("cursorEvaluationId") long cursorEvaluationId,
+                                               Limit limit);
+
+    /**
+     * 같은 배정 대기 신청들을 접수가 최근인 순서로 읽는다. 나머지 조건은
+     * {@link #findAssignableByVisitDate}와 같다.
+     * <p>
+     * {@code createdAt}이 아니라 id로 정렬한다. id는 IDENTITY라 접수 순서와 정확히 같은 순서이고,
+     * 그러면서 PK 인덱스를 그대로 쓴다({@link #findBySellerId}도 같은 근거다).
+     * <p>
+     * <b>커서가 id 하나뿐이다.</b> id는 유일해 동률이 없으므로 가르는 값을 따로 둘 이유가 없다.
+     * 방문일 순에서 두 값이 필요했던 것은 날짜 단위라 같은 값이 몰렸기 때문이다.
+     * <p>
+     * 값이 작아지는 방향으로 읽으므로 커서 비교도 {@code <}다. 첫 페이지의 시작점은 어떤 행보다도
+     * 뒤에 있는 값이어야 해서 {@code Long.MAX_VALUE}가 들어온다.
+     */
+    @Query("""
+            select e
+            from Evaluation e
+            join fetch e.vehicle
+            where e.status = :requested
+                and e.evaluator is null
+                and e.id < :cursorEvaluationId
+            order by e.id desc
+            """)
+    List<Evaluation> findAssignableByLatest(@Param("requested") EvaluationStatus requested,
+                                            @Param("cursorEvaluationId") long cursorEvaluationId,
+                                            Limit limit);
+
+    /**
+     * 배정 대기 중인 전체 건수. 평가사 홈이 보여주는 값이다.
+     * <p>
+     * 목록을 나누어 읽게 되면서 필요해졌다. 전에는 홈이 목록을 통째로 받아 길이를 셌는데, 이제
+     * 첫 페이지만 오므로 그 방식으로는 20 이상을 셀 수 없다. 반대로 홈은 이 값 하나만 있으면 되고
+     * 목록은 필요 없어, 홈이 목록 전체를 끌어오던 조회 자체가 사라진다.
+     * <p>
+     * 목록과 같은 조건이라 같은 인덱스로 처리되고, 정렬과는 무관해 두 정렬이 같은 값을 본다. 캐시하거나 근사치로 두지
+     * 않는다 — 수락 한 번에 값이 바뀌는데 홈은 그 수를 보고 목록을 열지 말지 정한다.
+     */
+    @Query("""
+            select count(e)
+            from Evaluation e
+            where e.status = :requested
+                and e.evaluator is null
+            """)
+    long countAssignable(@Param("requested") EvaluationStatus requested);
 
     /**
      * 이 판매자가 낸 신청들. 최신 접수부터 나온다.

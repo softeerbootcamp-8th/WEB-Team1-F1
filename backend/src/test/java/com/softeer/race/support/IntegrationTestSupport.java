@@ -3,9 +3,12 @@ package com.softeer.race.support;
 import com.softeer.race.auction.application.AuctionCloser;
 import com.softeer.race.auction.application.AuctionStarter;
 import com.softeer.race.auction.domain.AuctionRepository;
+import com.softeer.race.auth.config.AuthProperties;
+import com.softeer.race.auth.domain.SessionStore;
 import com.softeer.race.auctionpost.domain.AuctionPostRepository;
 import com.softeer.race.bid.domain.BidRepository;
-import com.softeer.race.support.seed.AuctionRoomSeeder;
+import com.softeer.race.support.seed.RoomSeeder;
+import com.softeer.race.support.seed.SessionSeeder;
 import com.softeer.race.support.seed.UserSeeder;
 import com.softeer.race.user.domain.UserRepository;
 import com.softeer.race.vehicle.domain.VehicleImageRepository;
@@ -89,7 +92,9 @@ public abstract class IntegrationTestSupport {
 
     // 심는 물건은 저장까지 하므로 리포지토리가 필요하다, 빈으로 등록하는 대신 여기서 만들어 물려준다
     protected UserSeeder users;
-    protected AuctionRoomSeeder rooms;
+    protected RoomSeeder rooms;
+    // 세션은 테이블이 아니라 Redis 에 살아 SQL 픽스처로 심을 수 없다, 이 시더가 그 자리를 대신한다
+    protected SessionSeeder sessions;
 
     @Autowired
     void createSeeders(UserRepository userRepository,
@@ -100,9 +105,12 @@ public abstract class IntegrationTestSupport {
                        AuctionRepository auctionRepository,
                        BidRepository bidRepository,
                        AuctionStarter auctionStarter,
-                       AuctionCloser auctionCloser) {
+                       AuctionCloser auctionCloser,
+                       SessionStore sessionStore,
+                       AuthProperties authProperties) {
         users = new UserSeeder(userRepository);
-        rooms = new AuctionRoomSeeder(vehicleRepository, vehicleImageRepository, vehicleKeywordTagRepository,
+        sessions = new SessionSeeder(sessionStore, authProperties.session().ttl());
+        rooms = new RoomSeeder(vehicleRepository, vehicleImageRepository, vehicleKeywordTagRepository,
                 auctionPostRepository, auctionRepository, bidRepository, auctionStarter, auctionCloser);
     }
 

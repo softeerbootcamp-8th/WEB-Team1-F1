@@ -396,8 +396,8 @@ export function useAuctionList({
           return applyCardEvent(current, card, scope, Date.now() + offsetRef.current)
         })
       },
-      onAudience: ({ auctionId, connectedCount }) => {
-        setCards((current) => applyAudienceEvent(current, auctionId, connectedCount))
+      onAudience: ({ auctionId, viewerCount }) => {
+        setCards((current) => applyAudienceEvent(current, auctionId, viewerCount))
       },
       // 끊긴 동안 온 것은 유실이고 서버가 다시 보내지 않는다, 복구는 갱신 몫이다
       onReconnect: refresh,

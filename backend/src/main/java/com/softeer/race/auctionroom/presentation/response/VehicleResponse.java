@@ -1,6 +1,6 @@
 package com.softeer.race.auctionroom.presentation.response;
 
-import com.softeer.race.auctionroom.domain.VehicleSummary;
+import com.softeer.race.auctionroom.application.VehicleSummary;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
 import com.softeer.race.vehicle.domain.VehicleKeyword;

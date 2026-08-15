@@ -95,10 +95,7 @@ class AuctionProgressIntegrationTest extends IntegrationTestSupport {
 
     // UserSeeder 는 세션까지 만들지 않는다, 쿠키가 필요한 시나리오 하나 때문에 여기서 심는다
     private void giveSession(User user, String rawToken) {
-        jdbcTemplate.update("""
-                insert into user_session (id, user_id, expires_at, created_at, updated_at)
-                values (sha2(?, 256), ?, ?, ?, ?)
-                """, rawToken, user.getId(), NOW.plusHours(1), NOW, NOW);
+        sessions.seed(rawToken, user.getId(), user.getRole());
     }
 
     @Test

@@ -26,8 +26,8 @@ public class SessionCookieFactory {
 
     private final AuthProperties authProperties;
 
-    public ResponseCookie create(String rawToken) {
-        return builder(rawToken).build();
+    public ResponseCookie create(String token) {
+        return builder(token).build();
     }
 
     public ResponseCookie expire() {
@@ -36,7 +36,7 @@ public class SessionCookieFactory {
 
     /**
      * Max-Age를 두지 않아 브라우저 종료 시 사라지는 세션 쿠키가 된다.
-     * 만료의 권위는 DB의 expires_at 하나여야 하고, 쿠키에도 수명을 두면 슬라이딩 연장마다
+     * 만료의 권위는 세션 저장소에 걸린 TTL 하나여야 하고, 쿠키에도 수명을 두면 슬라이딩 연장마다
      * Set-Cookie를 다시 내려 동기화해야 한다. 서버가 만료로 판정하면 401이 나가고 프론트가 처리한다.
      * Domain도 두지 않아 host-only 쿠키가 된다.
      */

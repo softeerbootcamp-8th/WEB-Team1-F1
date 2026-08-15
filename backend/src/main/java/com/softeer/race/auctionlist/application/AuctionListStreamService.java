@@ -78,7 +78,7 @@ public class AuctionListStreamService {
             return;
         }
 
-        audienceSnapshot.advanceTo(roomChannel.viewerCounts())
+        audienceSnapshot.advanceTo(roomChannel.viewerCountByRoom())
                 .forEach(auctionListChannel::broadcastAudience);
     }
 

@@ -155,7 +155,7 @@ class InMemoryAuctionListChannelTest {
         }
 
         @Override
-        public void sendAudience(long auctionId, int connectedCount) {
+        public void sendAudience(long auctionId, int viewerCount) {
             if (diesOnSend) {
                 open = false;
             }

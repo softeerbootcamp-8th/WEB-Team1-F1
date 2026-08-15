@@ -97,7 +97,7 @@ function card(
     openAt: `2026-08-03T${openAt}`,
     startAt: `2026-08-03T${startAt}`,
     endAt: `2026-08-03T${endAt}`,
-    connectedCount: 0,
+    viewerCount: 0,
   }
 }
 
@@ -232,7 +232,7 @@ describe('applyAudienceEvent', () => {
   it('그 경매의 시청자 수만 바뀐다', () => {
     const next = applyAudienceEvent(page, 2, 5)
 
-    expect(next[1].connectedCount).toBe(5)
+    expect(next[1].viewerCount).toBe(5)
     expect(next[0]).toBe(page[0])
   })
 
@@ -240,7 +240,7 @@ describe('applyAudienceEvent', () => {
     const next = applyAudienceEvent(page, 2, 5)
 
     // 시청자 수는 카드 전체가 아니라 숫자 하나만 오는 이벤트다
-    expect(next[1]).toEqual({ ...page[1], connectedCount: 5 })
+    expect(next[1]).toEqual({ ...page[1], viewerCount: 5 })
   })
 
   it('목록에 없는 경매면 아무 일도 없다', () => {

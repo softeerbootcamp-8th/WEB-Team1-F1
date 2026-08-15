@@ -11,7 +11,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * <b>커밋 뒤에 보내는 이유.</b> 저장과 같은 트랜잭션에서 보내면 두 군데가 어긋난다. 회원이 알림을
  * 보고 목록을 열었을 때 그 알림이 아직 없고, 저장이 롤백되면 화면에만 남는다. 게다가 전송은 열린
  * 연결에 직접 쓰는 일이라 트랜잭션 안에 두면 안 받아 가는 상대 하나가 DB 커넥션을 붙잡는다.
- * AuctionRoomStreamService 가 브로드캐스트에 {@code @Transactional} 을 붙이지 않은 것과 같은 이유다.
+ * RoomStreamService 가 브로드캐스트에 {@code @Transactional} 을 붙이지 않은 것과 같은 이유다.
  * <p>
  * <b>{@code fallbackExecution} 을 켜지 않는다.</b> 트랜잭션 없이 발행하면 이 리스너는 조용히 안 불린다.
  * 그걸 켜서 구제하면 "커밋 뒤에만 보낸다"는 보장이 깨지고, 트랜잭션 밖에서 발행한 버그가 정상 동작으로

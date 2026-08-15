@@ -9,6 +9,7 @@ import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.command.EvaluationResultPatchCommand;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
 import java.time.LocalDateTime;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -16,6 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +45,13 @@ class EvaluationAuctionLockConcurrencyIntegrationTest extends IntegrationTestSup
 
     @Autowired
     private TransactionTemplate transactionTemplate;
+
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.evaluationResultPatch(sessions);
+    }
 
     @Test
     @DisplayName("경매 등록이 차량을 먼저 잠그면 평가 수정은 커밋을 기다린 뒤 거부된다")

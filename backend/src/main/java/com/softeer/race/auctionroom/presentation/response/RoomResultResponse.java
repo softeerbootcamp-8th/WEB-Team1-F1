@@ -33,7 +33,7 @@ public record RoomResultResponse(
         boolean sellerIsMine,
 
         @Schema(description = "조회한 사람의 성적, 입찰한 적이 없으면 키는 있고 값이 null 이다")
-        MyBidResponse myBid,
+        MyStandingResponse myStanding,
 
         @Schema(description = "끝날 때까지 들어온 입찰 건수", example = "4")
         long bidCount,
@@ -52,7 +52,7 @@ public record RoomResultResponse(
 
         @Schema(description = "결과를 볼 수 있는 구간이 끝나는 시각, 마감 뒤 5분이다",
                 example = "2026-08-03T18:55:10")
-        LocalDateTime resultEndAt,
+        LocalDateTime resultViewingEndsAt,
 
         @Schema(description = "응답을 만든 서버 시각(KST), 남은 열람 시간을 세는 기준이다",
                 example = "2026-08-03T18:51:00")
@@ -60,7 +60,7 @@ public record RoomResultResponse(
 
         @Schema(description = "가격이 오른 과정, 시간순 전체이고 유찰이면 빈 배열이다. "
                 + "시작가는 담기지 않으므로 곡선의 첫 점은 첫 입찰이다")
-        List<PricePointResponse> priceCurve
+        List<BidPointResponse> priceCurve
 ) {
 
     public static RoomResultResponse from(RoomResultView view) {
@@ -70,17 +70,17 @@ public record RoomResultResponse(
                 VehicleResponse.from(view.vehicle()),
                 view.startPrice(),
                 view.winningPrice(),
-                WinnerResponse.from(view),
+                WinnerResponse.from(view.winnerName(), view.winnerIsMine()),
                 view.sellerIsMine(),
-                MyBidResponse.from(view),
-                view.stats().bidCount(),
-                view.stats().bidderCount(),
+                MyStandingResponse.from(view.viewerStanding()),
+                view.bidCounts().bidCount(),
+                view.bidCounts().bidderCount(),
                 view.extensionCount(),
                 view.startAt(),
                 view.endAt(),
                 view.resultViewingEndsAt(),
                 view.serverTime(),
-                view.priceCurve().stream().map(PricePointResponse::from).toList()
+                view.priceCurve().stream().map(BidPointResponse::from).toList()
         );
     }
 }

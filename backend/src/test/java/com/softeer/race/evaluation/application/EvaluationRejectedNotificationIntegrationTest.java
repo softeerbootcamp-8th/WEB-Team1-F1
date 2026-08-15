@@ -5,7 +5,9 @@ import com.softeer.race.evaluation.application.dto.command.EvaluationRejectComma
 import com.softeer.race.notification.domain.NotificationRepository;
 import com.softeer.race.notification.domain.NotificationRow;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +66,13 @@ class EvaluationRejectedNotificationIntegrationTest extends IntegrationTestSuppo
     @Autowired
     void createTransactionTemplate(PlatformTransactionManager transactionManager) {
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+    }
+
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.diagnosticReport(sessions);
     }
 
     @Test

@@ -35,12 +35,12 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     private BidService bidService;
 
     @Autowired
-    private AuctionRoomStreamService auctionRoomStreamService;
+    private RoomStreamService roomStreamService;
 
     @Autowired
     private RoomChannel roomChannel;
 
-    private final RecordingSubscriber watcher = new RecordingSubscriber();
+    private final RecordingSubscription watcher = new RecordingSubscription();
 
     private long auctionId;
 
@@ -60,7 +60,7 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     void bidReachesWatchers() {
         // given : 진행 중인 방을 한 사람이 보고 있다, 들어올 때 받은 첫 현황은 아직 시작가다
         auctionId = liveRoom();
-        auctionRoomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher);
         assertThat(watcher.lastState().currentPrice()).isEqualTo(START_PRICE);
 
         // when : 다른 사람이 입찰한다
@@ -71,8 +71,8 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
         RoomState last = watcher.lastState();
 
         assertThat(last.currentPrice()).isEqualTo(BID_AMOUNT);
-        assertThat(last.stats().bidCount()).isEqualTo(1);
-        assertThat(last.stats().bidderCount()).isEqualTo(1);
+        assertThat(last.bidCounts().bidCount()).isEqualTo(1);
+        assertThat(last.bidCounts().bidderCount()).isEqualTo(1);
     }
 
     @Test
@@ -80,7 +80,7 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     void extendedDeadlineReachesWatchers() {
         // given : 마감이 10초 남은 방을 한 사람이 보고 있다
         auctionId = closingRoom();
-        auctionRoomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher);
         assertThat(watcher.lastState().endAt()).isEqualTo(NOW.plusSeconds(10));
 
         // when : 소프트 클로즈 임계 안에서 입찰이 들어온다
@@ -97,7 +97,7 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     void rolledBackBidIsNotBroadcast() {
         // given : 진행 중인 방을 한 사람이 보고 있다
         auctionId = liveRoom();
-        auctionRoomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher);
         int beforeBid = watcher.received().size();
 
         // when : 이 메서드의 트랜잭션 안에서 입찰한다, 테스트가 끝나며 롤백된다
@@ -121,7 +121,7 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     }
 
     // 받은 현황만 기록하면 되는 구독, 끊김은 이 테스트가 보지 않는다
-    private static final class RecordingSubscriber implements RoomSubscriber {
+    private static final class RecordingSubscription implements RoomSubscription {
 
         // 이 테스트는 사람이 몇인지 보지 않는다, 서로 다른 사람이기만 하면 된다
         private static final AtomicLong VIEWER_SERIAL = new AtomicLong();

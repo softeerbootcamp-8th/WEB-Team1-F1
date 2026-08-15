@@ -26,8 +26,8 @@ class AuctionCardAssembler {
         RoomPhase phase = RoomPhase.at(now, row.roomOpenAt(), row.startTime(), row.currentEndTime());
 
         // 닫힌 단계는 경매방도 접속자를 세지 않는다. 목록만 다른 수를 보이면 안 된다.
-        int connectedCount = phase.allowsConnection()
-                ? roomChannel.countViewers(row.auctionId()) : 0;
+        int viewerCount = phase.allowsConnection()
+                ? roomChannel.viewerCount(row.auctionId()) : 0;
 
         return new AuctionCardInfo(
                 row.auctionId(),
@@ -43,6 +43,6 @@ class AuctionCardAssembler {
                 row.roomOpenAt(),
                 row.startTime(),
                 row.currentEndTime(),
-                connectedCount);
+                viewerCount);
     }
 }

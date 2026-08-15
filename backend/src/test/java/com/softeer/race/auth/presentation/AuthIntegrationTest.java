@@ -10,31 +10,35 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
+import com.softeer.race.user.domain.Role;
 import jakarta.servlet.http.Cookie;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
 /**
- * 세션 로그인을 컨트롤러에서 DB까지
+ * 세션 로그인을 컨트롤러에서 저장소까지
  * <p>
  * 1. 왕복
  * 로그인으로 받은 쿠키가 실제로 인증에 쓰이고, 로그아웃 후에는 같은 쿠키가 거부된다
  * <p>
  * 2. 저장 형태
- * 쿠키에는 원문, DB PK에는 SHA-256 해시
+ * 쿠키 값이 그대로 저장소 키가 되고, 값에는 회원의 id와 역할이 담긴다
  * <p>
  * 3. 만료
- * 상태 플래그가 아니라 expires_at 과 서버 Clock 으로 판정
+ * 상태 플래그도 만료 시각 비교도 아니고 저장소의 TTL 로 판정. 만료된 세션은 저장소에서 사라져
+ * 없는 세션과 구분되지 않으므로 둘 다 미인증이다
  * <p>
  * 4. 슬라이딩 갱신
- * 남은 시간이 임계값 이하일 때만 만료 시각이 다시 잡힌다
+ * 남은 수명이 임계값 이하일 때만 다시 잡힌다
  * <p>
  * 5. CORS
  * 인터셉터가 붙은 경로여도 OPTIONS 는 401 로 막히지 않고, 지금은 어떤 오리진도 허용된다
@@ -46,17 +50,21 @@ import org.springframework.test.web.servlet.ResultActions;
 class AuthIntegrationTest extends IntegrationTestSupport {
 
     // 상수
-    private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 30, 12, 0, 0);
+    // application.yml 의 auth.session 과 같은 값이다
     private static final Duration TTL = Duration.ofMinutes(30);
+    private static final Duration RENEW_THRESHOLD = Duration.ofMinutes(15);
 
     private static final long USER_ID = 81L;
     private static final String USERNAME = "auth_kim";
     private static final String PASSWORD = "password123";
 
-    // 고정 시각은 전진할 수 없으므로 슬라이딩은 시간을 움직이는 대신 expires_at 을 조작해 같은 상태를 만든다
+    // 시계를 고정하지 않는다. 세션의 수명은 서버 Clock 이 아니라 저장소의 TTL 로 흐른다
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
     @BeforeEach
-    void fixClock() {
-        fixClockAt(NOW);
+    void seedSessions() {
+        SessionFixture.authSession(sessions);
     }
 
     @Test
@@ -85,58 +93,67 @@ class AuthIntegrationTest extends IntegrationTestSupport {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
 
-        // then 4 : row 도 남지 않는다
-        assertThat(sessionCountOf(sessionCookie.getValue())).isZero();
+        // then 4 : 저장소에도 남지 않는다
+        assertThat(sessions.find(sessionCookie.getValue())).isEmpty();
     }
 
-    // DB가 유출돼도 그것만으로는 세션을 탈취할 수 없어야 한다
+    // 저장 형태 자체가 검증 대상이라 이 시나리오만 예외적으로 키를 직접 들여다본다
+    // 역할이 값에 복사된다는 것이 인증 경로가 회원을 다시 읽지 않는 근거다
     @Test
-    @DisplayName("시나리오 2 : 쿠키에는 원문이 담기고 DB PK에는 그 해시가 저장된다")
-    void scenario2_SessionTokenIsStoredAsHash() throws Exception {
+    @DisplayName("시나리오 2 : 쿠키 값이 그대로 저장소 키가 되고 값에는 회원의 id와 역할이 담긴다")
+    void scenario2_SessionIsStoredUnderCookieValue() throws Exception {
         // when : 로그인
         Cookie sessionCookie = login();
 
-        // then 1 : 쿠키 값을 그대로 PK로 쓰는 row는 없다
-        Integer storedAsRaw = jdbcTemplate.queryForObject(
-                "select count(*) from user_session where id = ?", Integer.class, sessionCookie.getValue());
-        assertThat(storedAsRaw).isZero();
-
-        // then 2 : 해시로는 정확히 한 건 찾힌다
-        assertThat(sessionCountOf(sessionCookie.getValue())).isEqualTo(1);
+        // then
+        assertThat(redisTemplate.opsForValue().get("session:" + sessionCookie.getValue()))
+                .isEqualTo(USER_ID + ":" + Role.GENERAL);
     }
 
+    // 만료된 세션은 저장소가 스스로 지운다, 그래서 없는 세션과 같은 코드로 거부된다
     @Test
-    @DisplayName("시나리오 3 : 만료 시각이 지난 세션은 AUTH_SESSION_EXPIRED로 거부된다")
+    @DisplayName("시나리오 3 : 만료된 세션은 AUTH_UNAUTHENTICATED로 거부된다")
     void scenario3_ExpiredSession() throws Exception {
-        mockMvc.perform(get("/api/auth/me").cookie(sessionCookie("expired-raw-token")))
+        // given : 살아 있던 세션이 만료된다
+        sessions.seed("expiring-raw-token", USER_ID, Role.GENERAL);
+        sessions.expire("expiring-raw-token");
+
+        mockMvc.perform(get("/api/auth/me").cookie(sessionCookie("expiring-raw-token")))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("AUTH_SESSION_EXPIRED"));
+                .andExpect(jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
     }
 
     @Test
-    @DisplayName("시나리오 4 : 남은 시간이 임계값 이하인 세션은 조회 후 만료 시각이 현재 + TTL로 갱신된다")
+    @DisplayName("시나리오 4 : 남은 수명이 임계값 이하인 세션은 조회 후 TTL로 다시 잡힌다")
     void scenario4_SlidingExpiryRenewsWithinThreshold() throws Exception {
-        // given : 남은 시간 10분 (임계값 15분 이하)
-        assertThat(expiresAtOf("renewable-raw-token")).isEqualTo(NOW.plusMinutes(10));
+        // given : 남은 수명 10분 (임계값 15분 이하)
+        assertThat(sessions.timeToLive("renewable-raw-token")).isLessThanOrEqualTo(RENEW_THRESHOLD);
 
         // when
         mockMvc.perform(get("/api/auth/me").cookie(sessionCookie("renewable-raw-token")))
                 .andExpect(status().isOk());
 
-        // then : 인터셉터의 트랜잭션이 핸들러 실행 전에 커밋되므로 갱신이 DB에 남는다
-        assertThat(expiresAtOf("renewable-raw-token")).isEqualTo(NOW.plus(TTL));
+        // then : 남은 수명에 더한 것이 아니라 TTL 로 다시 잡혔다, 10분 + 30분이면 이 단언이 깨진다
+        assertThat(sessions.timeToLive("renewable-raw-token"))
+                .isGreaterThan(TTL.minusMinutes(1))
+                .isLessThanOrEqualTo(TTL);
     }
 
-    // 2초 폴링에 매 요청 UPDATE 가 나가면 한 row 에 쓰기가 집중된다
+    // 2초 폴링에 매 요청 쓰기가 나가면 한 키에 쓰기가 집중된다
     @Test
-    @DisplayName("시나리오 5 : 남은 시간이 임계값보다 많은 세션은 조회해도 만료 시각이 그대로다")
+    @DisplayName("시나리오 5 : 남은 수명이 임계값보다 많은 세션은 조회해도 그대로다")
     void scenario5_SlidingExpiryDoesNotRenewBeyondThreshold() throws Exception {
-        // given : 남은 시간 25분 (임계값 15분 초과)
+        // given : 남은 수명 25분 (임계값 15분 초과)
+        Duration seeded = Duration.ofMinutes(25);
+
+        // when
         mockMvc.perform(get("/api/auth/me").cookie(sessionCookie("fresh-raw-token")))
                 .andExpect(status().isOk());
 
-        // then
-        assertThat(expiresAtOf("fresh-raw-token")).isEqualTo(NOW.plusMinutes(25));
+        // then : 갱신됐다면 30분으로 늘어난다
+        assertThat(sessions.timeToLive("fresh-raw-token"))
+                .isGreaterThan(seeded.minusMinutes(1))
+                .isLessThanOrEqualTo(seeded);
     }
 
     // 인터셉터가 preflight 를 401 로 막으면 브라우저에서는 실제 요청이 아예 나가지 않는다
@@ -207,16 +224,4 @@ class AuthIntegrationTest extends IntegrationTestSupport {
                 .header("Access-Control-Request-Method", "GET"));
     }
 
-    // ================= 조회 ====================
-    // 애플리케이션이 만드는 SHA-256 hex 와 MySQL 의 sha2 가 같은 값이어야 픽스처의 토큰도 성립한다
-    private Integer sessionCountOf(String rawToken) {
-        return jdbcTemplate.queryForObject(
-                "select count(*) from user_session where id = sha2(?, 256)", Integer.class, rawToken);
-    }
-
-    private LocalDateTime expiresAtOf(String rawToken) {
-        return jdbcTemplate.queryForObject(
-                "select expires_at from user_session where id = sha2(?, 256)",
-                LocalDateTime.class, rawToken);
-    }
 }

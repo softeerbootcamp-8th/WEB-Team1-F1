@@ -283,7 +283,7 @@ export function SignupPage() {
             영문·숫자·특수문자 사용 가능, 8~64자(공백 제외)
           </p>
         </div>
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <Label htmlFor="phone">휴대전화 번호</Label>
           <Input
             ref={phoneInputRef}
@@ -307,17 +307,14 @@ export function SignupPage() {
               e.currentTarget.setCustomValidity(
                 e.currentTarget.validity.valueMissing
                   ? '휴대전화 번호를 입력해 주세요.'
-                  : '010, 011, 016으로 시작하는 올바른 휴대전화 번호를 입력해 주세요.',
+                  : '010으로 시작하는 숫자 11자리를 입력해 주세요.',
               )
             }}
             placeholder="010-1234-5678"
-            pattern="^(010|011|016)-[0-9]{3,4}-[0-9]{4}$"
+            pattern="^010-[0-9]{4}-[0-9]{4}$"
             className="tabular"
             required
           />
-          <p className="text-muted-foreground text-xs">
-            숫자만 입력해 주세요. 하이픈은 자동으로 입력됩니다.
-          </p>
         </div>
         <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
           {isSubmitting ? '회원가입 처리 중...' : '회원가입'}

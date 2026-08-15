@@ -116,7 +116,7 @@ export function MyRequestDetailPage() {
             <CardContent>
               <dl className="space-y-5 text-sm">
                 <div><dt className="text-muted-foreground">방문 희망일</dt><dd className="mt-1 font-medium">{formatVisitDate(detail.visitDate)}</dd></div>
-                <div><dt className="text-muted-foreground flex items-center gap-1"><MapPin className="size-3.5" />방문 주소</dt><dd className="mt-1 font-medium">{detail.visitAddress}</dd></div>
+                <div><dt className="text-muted-foreground flex items-center gap-1"><MapPin className="size-3.5" />방문 주소</dt><dd className="mt-1 break-words font-medium">{detail.visitAddress}</dd></div>
                 <div><dt className="text-muted-foreground">접수 시각</dt><dd className="mt-1 font-medium">{formatDateTime(detail.requestedAt)}</dd></div>
               </dl>
             </CardContent>
