@@ -115,6 +115,14 @@ describe('판매자 신청 내역의 큰 틀과 상태 구분', () => {
     fireEvent.mouseDown(screen.getByRole('tab', { name: /종료/ }))
 
     expect(await screen.findByText(/아반떼 CN7/)).toBeTruthy()
+
+    // 반려는 카드 머리의 배지가 말한다. 진행 단계 자리에 한 줄로 끼워 넣으면 다른 카드와
+    // 모양이 어긋나고, 끝난 사실을 카드마다 다른 곳에서 읽게 된다
+    const rejectedCard = screen.getByText(/아반떼 CN7/).closest('[data-slot="card"]') as HTMLElement
+    expect(within(rejectedCard).getByText('반려')).toBeTruthy()
+    // 반려는 진행 선 위의 한 지점이 아니라 선을 벗어난 결말이라 단계를 그리지 않는다
+    expect(within(rejectedCard).queryByRole('list')).toBeNull()
+
     const filter = screen.getByRole('group', { name: '종료 상태 필터' })
     expect(within(filter).getAllByRole('button').map((chip) => chip.textContent?.replace(/\s/g, '')))
       .toEqual(['반려1', '낙찰완료0'])

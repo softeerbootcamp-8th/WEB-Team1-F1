@@ -5,7 +5,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { MANUFACTURER_LABEL } from '@/features/quote/types'
 import { formatDateTime } from '@/lib/format'
 import type { EvaluationSummary } from '../types'
-import { formatVisitDate, getAuctionStatusMeta } from '../utils'
+import { formatVisitDate, getAuctionStatusMeta, getEvaluationStatusMeta } from '../utils'
 import { EvaluationProgress } from './evaluation-progress'
 
 interface EvaluationSummaryCardProps {
@@ -45,9 +45,25 @@ export function EvaluationSummaryCard({
     </Badge>
   ) : null
 
+  // 반려는 진행 단계에서 내려와 여기 선다. 경매 배지와 같은 자리·같은 모양이라
+  // "이 신청이 어떻게 끝났는가"를 카드마다 같은 곳에서 읽는다
+  const rejected = evaluation.status === 'REJECTED'
+  // 반려면 그릴 단계가 없다. 타입에서 빼 두면 진행 단계 쪽이 반려를 다시 그리는 일이 없다
+  const progressStatus = evaluation.status === 'REJECTED' ? null : evaluation.status
+  const rejectedMeta = getEvaluationStatusMeta('REJECTED', evaluation.assigned)
+  const statusBadge = rejected ? (
+    <Badge
+      variant="outline"
+      className={`rounded-full px-3 py-1 text-sm font-semibold ${rejectedMeta.className}`}
+    >
+      {rejectedMeta.label}
+    </Badge>
+  ) : null
+
   const badges =
-    badge || auctionBadge ? (
+    statusBadge || badge || auctionBadge ? (
       <div className="flex flex-wrap items-center gap-2">
+        {statusBadge}
         {badge}
         {auctionBadge}
       </div>
@@ -69,9 +85,13 @@ export function EvaluationSummaryCard({
               {evaluation.modelYear}년식 · {evaluation.plateNumber}
             </p>
 
-            <div className="mt-5">
-              <EvaluationProgress status={evaluation.status} assigned={evaluation.assigned} />
-            </div>
+            {!rejected && (
+              <div className="mt-5">
+                {progressStatus && (
+          <EvaluationProgress status={progressStatus} assigned={evaluation.assigned} />
+        )}
+              </div>
+            )}
 
             <div className="mt-5 grid divide-y border-t pt-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               <SummaryMeta
@@ -125,7 +145,9 @@ export function EvaluationSummaryCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        <EvaluationProgress status={evaluation.status} assigned={evaluation.assigned} />
+        {progressStatus && (
+          <EvaluationProgress status={progressStatus} assigned={evaluation.assigned} />
+        )}
         <div className="flex gap-3">
           <CalendarDays className="text-muted-foreground mt-0.5 size-4 shrink-0" />
           <div>
