@@ -11,14 +11,14 @@ public interface RoomChannel {
     /**
      * 구독을 방에 등록한다, 같은 구독을 두 번 등록해도 하나다
      */
-    void subscribe(long auctionId, RoomSubscription subscriber);
+    void subscribe(long auctionId, RoomSubscription subscription);
 
     /**
      * 구독을 방에서 뺀다, 두 번 빼도 명부는 같고 실제로 뺀 호출만 참을 돌려준다
      */
     // 걷어내기가 먼저 빼 간 뒤에 해제 콜백이 돌아오므로, 호출자는 자기가 뺀 것인지 알아야
     // 갱신을 두 번 돌리지 않는다
-    boolean unsubscribe(long auctionId, RoomSubscription subscriber);
+    boolean unsubscribe(long auctionId, RoomSubscription subscription);
 
     /**
      * 방을 보고 있는 사람 수, 한 사람이 창을 여럿 열어도 하나로 센다

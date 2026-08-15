@@ -37,7 +37,7 @@ public class RoomStreamController implements RoomStreamApi {
             // 유일한 선언 수단이다, 값을 안 쓰게 바뀌더라도 지우면 구독이 조용히 비로그인에 열린다
             @LoginUser AuthenticatedUser authenticatedUser) {
         SseEmitter emitter = new SseEmitter(STREAM_TIMEOUT_MILLIS);
-        RoomSubscription subscriber =
+        RoomSubscription subscription =
                 new SseRoomSubscription(auctionId, authenticatedUser.id(), emitter);
 
         // 타임아웃 뒤에 완료 콜백이 잇달아 와서 해제가 두 번 불린다
@@ -45,7 +45,7 @@ public class RoomStreamController implements RoomStreamApi {
         Runnable release = () -> {
             if (released.compareAndSet(false, true)) {
                 // 콜백은 요청 스레드가 아니다, 주입받은 빈으로 불러야 트랜잭션 프록시를 탄다
-                roomStreamService.unsubscribe(auctionId, subscriber);
+                roomStreamService.unsubscribe(auctionId, subscription);
             }
         };
 
@@ -57,7 +57,7 @@ public class RoomStreamController implements RoomStreamApi {
             release.run();
         });
 
-        roomStreamService.subscribe(auctionId, subscriber);
+        roomStreamService.subscribe(auctionId, subscription);
 
         return ResponseEntity.ok(emitter);
     }

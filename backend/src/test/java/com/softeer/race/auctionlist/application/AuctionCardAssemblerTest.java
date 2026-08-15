@@ -96,12 +96,12 @@ class AuctionCardAssemblerTest {
         }
 
         @Override
-        public void subscribe(long auctionId, RoomSubscription subscriber) {
+        public void subscribe(long auctionId, RoomSubscription subscription) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public boolean unsubscribe(long auctionId, RoomSubscription subscriber) {
+        public boolean unsubscribe(long auctionId, RoomSubscription subscription) {
             throw new UnsupportedOperationException();
         }
 

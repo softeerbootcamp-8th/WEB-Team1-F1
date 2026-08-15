@@ -40,7 +40,7 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private RoomChannel roomChannel;
 
-    private final RecordingSubscriber watcher = new RecordingSubscriber();
+    private final RecordingSubscription watcher = new RecordingSubscription();
 
     private long auctionId;
 
@@ -121,7 +121,7 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     }
 
     // 받은 현황만 기록하면 되는 구독, 끊김은 이 테스트가 보지 않는다
-    private static final class RecordingSubscriber implements RoomSubscription {
+    private static final class RecordingSubscription implements RoomSubscription {
 
         // 이 테스트는 사람이 몇인지 보지 않는다, 서로 다른 사람이기만 하면 된다
         private static final AtomicLong VIEWER_SERIAL = new AtomicLong();

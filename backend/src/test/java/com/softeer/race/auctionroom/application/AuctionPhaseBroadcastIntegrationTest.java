@@ -45,7 +45,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private RoomChannel roomChannel;
 
-    private final RecordingSubscriber watcher = new RecordingSubscriber();
+    private final RecordingSubscription watcher = new RecordingSubscription();
 
     private long auctionId;
 
@@ -191,7 +191,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         auctionStarter.start(auctionId);
     }
 
-    private static final class RecordingSubscriber implements RoomSubscription {
+    private static final class RecordingSubscription implements RoomSubscription {
 
         // 이 테스트는 사람이 몇인지 보지 않는다, 서로 다른 사람이기만 하면 된다
         private static final AtomicLong VIEWER_SERIAL = new AtomicLong();

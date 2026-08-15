@@ -38,8 +38,8 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private RoomChannel roomChannel;
 
-    private final FakeSubscriber alive = new FakeSubscriber();
-    private final FakeSubscriber gone = new FakeSubscriber();
+    private final FakeSubscription alive = new FakeSubscription();
+    private final FakeSubscription gone = new FakeSubscription();
 
     // 채널은 테이블이 아니라 컨텍스트에 남으므로 정리 훅이 지워 주지 않는다, 건 것을 모아 두었다가 끝나고 뺀다
     private final List<Subscription> subscriptions = new ArrayList<>();
@@ -51,15 +51,15 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
 
     @AfterEach
     void leaveRooms() {
-        subscriptions.forEach(it -> roomChannel.unsubscribe(it.auctionId(), it.subscriber()));
+        subscriptions.forEach(it -> roomChannel.unsubscribe(it.auctionId(), it.subscription()));
     }
 
-    private void subscribe(long auctionId, RoomSubscription subscriber) {
-        roomChannel.subscribe(auctionId, subscriber);
-        subscriptions.add(new Subscription(auctionId, subscriber));
+    private void subscribe(long auctionId, RoomSubscription subscription) {
+        roomChannel.subscribe(auctionId, subscription);
+        subscriptions.add(new Subscription(auctionId, subscription));
     }
 
-    private record Subscription(long auctionId, RoomSubscription subscriber) {
+    private record Subscription(long auctionId, RoomSubscription subscription) {
     }
 
     @Test
@@ -124,15 +124,15 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
     void brokenRoomDoesNotStopOtherRooms() {
         // given : 한 글자 실명 입찰자가 있는 방, 호가를 마스킹하는 순간 터진다
         long brokenRoom = liveRoomWithBidderNamed("김");
-        FakeSubscriber brokenAlive = new FakeSubscriber();
-        FakeSubscriber brokenGone = new FakeSubscriber();
+        FakeSubscription brokenAlive = new FakeSubscription();
+        FakeSubscription brokenGone = new FakeSubscription();
         subscribe(brokenRoom, brokenAlive);
         subscribe(brokenRoom, brokenGone);
 
         // given : 아무 결함이 없는 방
         long healthyRoom = liveRoom();
-        FakeSubscriber healthyAlive = new FakeSubscriber();
-        FakeSubscriber healthyGone = new FakeSubscriber();
+        FakeSubscription healthyAlive = new FakeSubscription();
+        FakeSubscription healthyGone = new FakeSubscription();
         subscribe(healthyRoom, healthyAlive);
         subscribe(healthyRoom, healthyGone);
 
@@ -177,7 +177,7 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
 
         // when : 마감 후 결과 구간까지 지나 방이 닫힌다
         fixClockAt(NOW.plusMinutes(30));
-        roomStreamService.disconnectClosedRooms();
+        roomStreamService.closeStreamEndedRooms();
 
         // then 1 : 둘 다 서버가 끝냈고 명부에도 남지 않는다
         assertThat(alive.closedByServer).isTrue();
@@ -196,7 +196,7 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
         subscribe(auctionId, alive);
 
         // when : 같은 주기 작업이 돈다
-        roomStreamService.disconnectClosedRooms();
+        roomStreamService.closeStreamEndedRooms();
 
         // then : 볼 것이 남은 방이라 그대로 둔다
         assertThat(alive.closedByServer).isFalse();
@@ -215,7 +215,7 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
     }
 
     // 열려 있다가 알리지 않고 끊긴 연결, 청소가 찔러 봐야 드러난다
-    private static class FakeSubscriber implements RoomSubscription {
+    private static class FakeSubscription implements RoomSubscription {
 
         // 이 테스트는 사람이 몇인지 보지 않는다, 서로 다른 사람이기만 하면 된다
         private static final AtomicLong VIEWER_SERIAL = new AtomicLong();
