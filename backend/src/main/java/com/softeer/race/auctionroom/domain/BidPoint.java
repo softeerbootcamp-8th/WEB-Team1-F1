@@ -32,8 +32,8 @@ public final class BidPoint {
     /**
      * 이 입찰이 마감을 밀어냈는지, 판정은 마감 규칙을 가진 경매에 물어본다
      */
-    public boolean extendsDeadline(LocalDateTime startTime) {
-        return Auction.isDeadlineExtending(startTime, bidAt);
+    public boolean extendsDeadline(LocalDateTime startAt) {
+        return Auction.isDeadlineExtending(startAt, bidAt);
     }
 
     public long amount() {

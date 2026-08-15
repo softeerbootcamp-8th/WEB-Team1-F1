@@ -21,19 +21,19 @@ public enum RoomPhase {
      * 주어진 시각 기준의 방 단계
      */
     public static RoomPhase at(LocalDateTime now,
-                               LocalDateTime roomOpenAt,
-                               LocalDateTime startTime,
-                               LocalDateTime currentEndTime) {
-        if (now.isBefore(roomOpenAt)) {
+                               LocalDateTime openAt,
+                               LocalDateTime startAt,
+                               LocalDateTime endAt) {
+        if (now.isBefore(openAt)) {
             return NOT_OPEN;
         }
-        if (now.isBefore(startTime)) {
+        if (now.isBefore(startAt)) {
             return WAITING;
         }
-        if (now.isBefore(currentEndTime)) {
+        if (now.isBefore(endAt)) {
             return LIVE;
         }
-        if (now.isBefore(resultViewingEndsAt(currentEndTime))) {
+        if (now.isBefore(resultViewingEndsAt(endAt))) {
             return RESULT;
         }
         return CLOSED;
@@ -43,8 +43,8 @@ public enum RoomPhase {
      * 결과를 볼 수 있는 구간이 끝나는 시각
      */
     // 구간 길이를 열지 않고 계산을 연다, 화면이 같은 덧셈을 따로 하면 두 곳이 갈라진다
-    public static LocalDateTime resultViewingEndsAt(LocalDateTime currentEndTime) {
-        return currentEndTime.plus(RESULT_VIEWING);
+    public static LocalDateTime resultViewingEndsAt(LocalDateTime endAt) {
+        return endAt.plus(RESULT_VIEWING);
     }
 
     /**

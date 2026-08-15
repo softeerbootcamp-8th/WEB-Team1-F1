@@ -16,9 +16,9 @@ public record AuctionRoomDetail(
         AuctionStatus status,
         long startPrice,
         long currentPrice,
-        LocalDateTime roomOpenAt,
-        LocalDateTime startTime,
-        LocalDateTime currentEndTime,
+        LocalDateTime openAt,
+        LocalDateTime startAt,
+        LocalDateTime endAt,
         int extensionCount,
         long vehicleId,
         Manufacturer manufacturer,
@@ -38,9 +38,9 @@ public record AuctionRoomDetail(
                              AuctionStatus status,
                              long startPrice,
                              Long currentPrice,
-                             LocalDateTime roomOpenAt,
-                             LocalDateTime startTime,
-                             LocalDateTime currentEndTime,
+                             LocalDateTime openAt,
+                             LocalDateTime startAt,
+                             LocalDateTime endAt,
                              int extensionCount,
                              long vehicleId,
                              Manufacturer manufacturer,
@@ -57,9 +57,9 @@ public record AuctionRoomDetail(
                 status,
                 startPrice,
                 currentPrice != null ? currentPrice : startPrice,
-                roomOpenAt,
-                startTime,
-                currentEndTime,
+                openAt,
+                startAt,
+                endAt,
                 extensionCount,
                 vehicleId,
                 manufacturer,
@@ -77,14 +77,14 @@ public record AuctionRoomDetail(
      * 주어진 시각 기준의 방 단계
      */
     public RoomPhase phaseAt(LocalDateTime now) {
-        return RoomPhase.at(now, roomOpenAt, startTime, currentEndTime);
+        return RoomPhase.at(now, openAt, startAt, endAt);
     }
 
     /**
      * 결과를 볼 수 있는 구간이 끝나는 시각, 연장된 마감을 기준으로 센다
      */
     public LocalDateTime resultViewingEndsAt() {
-        return RoomPhase.resultViewingEndsAt(currentEndTime);
+        return RoomPhase.resultViewingEndsAt(endAt);
     }
 
     /**

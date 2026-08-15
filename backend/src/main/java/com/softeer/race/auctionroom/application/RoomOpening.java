@@ -27,8 +27,8 @@ public record RoomOpening(
                 detail.auctionId(),
                 VehicleSummary.of(detail, imageUrls, keywords),
                 detail.startPrice(),
-                detail.roomOpenAt(),
-                detail.startTime(),
+                detail.openAt(),
+                detail.startAt(),
                 now
         );
     }

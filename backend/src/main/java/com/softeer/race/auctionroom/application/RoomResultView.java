@@ -50,8 +50,8 @@ public record RoomResultView(
                 detail.isWonBy(viewerId),
                 detail.isSoldBy(viewerId),
                 viewerStanding,
-                detail.startTime(),
-                detail.currentEndTime(),
+                detail.startAt(),
+                detail.endAt(),
                 detail.resultViewingEndsAt(),
                 serverTime,
                 detail.extensionCount(),
@@ -59,7 +59,7 @@ public record RoomResultView(
                 // 마감이 어느 입찰에 밀렸는지는 저장돼 있지 않아 점마다 되짚어 묻는다
                 priceCurve.stream()
                         .map(point -> BidPointView.of(point, viewerId,
-                                point.extendsDeadline(detail.startTime())))
+                                point.extendsDeadline(detail.startAt())))
                         .toList());
     }
 }
