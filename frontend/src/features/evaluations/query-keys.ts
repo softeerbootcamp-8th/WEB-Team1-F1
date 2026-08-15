@@ -30,3 +30,9 @@ export const assignableEvaluationsQueryKey = (sort: AssignableEvaluationSort) =>
   [...ASSIGNABLE_EVALUATIONS_LIST_QUERY_KEY, sort] as const
 
 export const MY_ASSIGNMENTS_QUERY_KEY = ['evaluations', 'my-assignments'] as const
+
+/** 담당 건수. 목록 키를 접두사로 삼아 목록이 무효화될 때 함께 다시 읽힌다 */
+export const MY_ASSIGNMENTS_COUNT_QUERY_KEY = [
+  ...MY_ASSIGNMENTS_QUERY_KEY,
+  'count',
+] as const

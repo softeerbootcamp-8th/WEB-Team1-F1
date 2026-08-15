@@ -85,6 +85,17 @@ export interface EvaluationSummariesResponse {
   evaluations: EvaluationSummary[]
 }
 
+/**
+ * 평가사가 맡은 건수. 목록이 진행 중과 완료로 갈려, 어느 한쪽을 받아도 나머지를 셀 수 없다.
+ * total은 서버가 낸 합계다 — 화면이 더하면 상태가 하나 늘 때 조용히 틀린다.
+ */
+export interface EvaluationAssignmentCounts {
+  total: number
+  pending: number
+  approved: number
+  rejected: number
+}
+
 export interface EvaluationDetail {
   evaluationId: number
   status: EvaluationStatus

@@ -5,6 +5,7 @@ import type {
   AssignableEvaluationSort,
   AssignableEvaluationsResponse,
   EvaluationAssignment,
+  EvaluationAssignmentCounts,
   EvaluationDetail,
   EvaluationRejection,
   EvaluationResult,
@@ -61,6 +62,14 @@ export async function assignEvaluation(
 export async function fetchMyAssignments(): Promise<EvaluationSummariesResponse> {
   const { data } = await axiosInstance.get<EvaluationSummariesResponse>(
     '/api/evaluations/my-assignments',
+  )
+  return data
+}
+
+/** 담당 건수. 목록이 범위로 갈린 뒤로는 어느 한쪽을 받아도 나머지를 셀 수 없다 */
+export async function fetchMyAssignmentCounts(): Promise<EvaluationAssignmentCounts> {
+  const { data } = await axiosInstance.get<EvaluationAssignmentCounts>(
+    '/api/evaluations/my-assignments/count',
   )
   return data
 }
