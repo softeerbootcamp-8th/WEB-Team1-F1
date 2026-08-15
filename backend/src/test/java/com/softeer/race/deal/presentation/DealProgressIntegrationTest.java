@@ -232,11 +232,17 @@ class DealProgressIntegrationTest extends IntegrationTestSupport {
         assertThat(typesOf(seller))
                 .containsExactly(AUCTION_SOLD, DEAL_SELLER_SUBMIT_REQUIRED, DEAL_CONFIRMED);
 
+        // 단계마다 할 일이 다르다, 문구가 같으면 눌러 보기 전에는 무엇을 해야 하는지 알 수 없다
+        assertThat(messageOf(seller, DEAL_SELLER_SUBMIT_REQUIRED)).isEqualTo(
+                "현대 아반떼 CN7 차량의 구매자가 구매를 확정했습니다. 서류와 탁송 일정을 등록해 주세요.");
+        assertThat(messageOf(buyer, DEAL_BUYER_SCHEDULE_REQUIRED)).isEqualTo(
+                "현대 아반떼 CN7 차량의 판매자가 탁송 일정을 등록했습니다. 인도 일정을 정해 주세요.");
+
         // 같은 확정이어도 실제 행동은 구매자가 인수, 판매자가 인도라 문구를 구분한다
         assertThat(messageOf(buyer, DEAL_CONFIRMED)).isEqualTo(
-                "아반떼 CN7 차량을 2026년 8월 21일 10:00에 부산시 해운대구 센텀중앙로 55에서 인수합니다.");
+                "현대 아반떼 CN7 차량을 2026년 8월 21일 10:00에 부산시 해운대구 센텀중앙로 55에서 인수합니다.");
         assertThat(messageOf(seller, DEAL_CONFIRMED)).isEqualTo(
-                "아반떼 CN7 차량을 2026년 8월 21일 10:00에 부산시 해운대구 센텀중앙로 55에서 인도합니다.");
+                "현대 아반떼 CN7 차량을 2026년 8월 21일 10:00에 부산시 해운대구 센텀중앙로 55에서 인도합니다.");
     }
 
     @Test
@@ -266,6 +272,20 @@ class DealProgressIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.faultParty").value("BUYER"));
 
         assertThat(typesOf(seller)).endsWith(DEAL_CANCELLED);
+
+        // 받는 쪽이 다음에 무엇을 할지는 "누가 그만뒀는가"로 갈린다, 상대에게 물어보지 않고 알아야 한다
+        assertThat(messageOf(seller, DEAL_CANCELLED))
+                .isEqualTo("현대 아반떼 CN7 차량의 거래를 구매자가 취소했습니다.");
+    }
+
+    @Test
+    @DisplayName("시나리오 9-1 : 판매자가 그만두면 구매자 쪽 문구가 판매자로 뒤집힌다")
+    void scenario9_1_CancelNamesTheSellerWhenSellerQuits() throws Exception {
+        cancel(SELLER_TOKEN).andExpect(status().isNoContent());
+
+        assertThat(typesOf(buyer)).endsWith(DEAL_CANCELLED);
+        assertThat(messageOf(buyer, DEAL_CANCELLED))
+                .isEqualTo("현대 아반떼 CN7 차량의 거래를 판매자가 취소했습니다.");
     }
 
     @Test

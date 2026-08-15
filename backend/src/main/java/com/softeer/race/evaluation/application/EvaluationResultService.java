@@ -1,8 +1,5 @@
 package com.softeer.race.evaluation.application;
 
-import static com.softeer.race.notification.domain.NotificationType.EVAL_APPROVED;
-import static com.softeer.race.notification.domain.NotificationType.EVAL_REJECTED;
-
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.command.EvaluationRejectCommand;
@@ -14,6 +11,7 @@ import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.notification.application.NotificationPublisher;
+import com.softeer.race.notification.domain.NotificationContent;
 import com.softeer.race.storage.domain.FileCategory;
 import com.softeer.race.storage.domain.FileStorage;
 import com.softeer.race.vehicle.application.VehicleImageService;
@@ -24,6 +22,7 @@ import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleImage;
 import com.softeer.race.vehicle.domain.VehicleImageRepository;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
+import com.softeer.race.vehicle.domain.VehicleName;
 import com.softeer.race.vehicle.domain.VehicleRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -101,8 +100,12 @@ public class EvaluationResultService {
         evaluation.approve();
 
         // 이 트랜잭션 안에서 발행한다. 제출이 롤백됐는데 승인 알림만 남으면 안 된다.
-        // 판매자 식별자는 프록시가 이미 들고 있어 회원 조회가 늘지 않는다
-        notificationPublisher.publish(vehicle.getSeller().getId(), EVAL_APPROVED, command.evaluationId());
+        // 차량은 이미 잠그고 읽어 두었고 판매자 식별자는 프록시가 들고 있어 조회가 늘지 않는다
+        notificationPublisher.publishContent(
+                vehicle.getSeller().getId(),
+                NotificationContent.evaluationApproved(
+                        VehicleName.of(vehicle).display(), vehicle.getPlateNumber()),
+                command.evaluationId());
 
         // 제출 시각을 응답에 싣는다. 교체는 더티 체킹이라 커밋 시점에야 flush 되고,
         // 그 전까지 updatedAt은 이전 값이라 방금 올린 결과에 예전 시각이 붙어 나간다
@@ -211,11 +214,16 @@ public class EvaluationResultService {
         evaluation.validateRejectableBy(command.evaluatorId());
         evaluation.reject(command.reason());
 
-        // submit과 같은 이유로 이 트랜잭션 안에서 발행한다. 반려가 롤백됐는데 알림만 남으면 안 된다.
-        // findByIdForUpdate가 join fetch 없이 읽으므로 vehicle 프록시 초기화 쿼리가 한 번 나간다 —
+        // submit 과 같은 이유로 이 트랜잭션 안에서 발행한다. 반려가 롤백됐는데 알림만 남으면 안 된다.
+        // findByIdForUpdate 가 join fetch 없이 읽으므로 vehicle 프록시 초기화 쿼리가 한 번 나간다 —
         // 잠금 범위를 평가 한 행으로 제한한 대가이고, 트랜잭션 안이라 지연 로딩이 성립한다
-        notificationPublisher.publish(
-                evaluation.getVehicle().getSeller().getId(), EVAL_REJECTED, command.evaluationId());
+        Vehicle vehicle = evaluation.getVehicle();
+
+        notificationPublisher.publishContent(
+                vehicle.getSeller().getId(),
+                NotificationContent.evaluationRejected(
+                        VehicleName.of(vehicle).display(), vehicle.getPlateNumber()),
+                command.evaluationId());
 
         // 반려 시각을 응답에 싣는다. 더티 체킹이라 flush 전까지 updatedAt은 배정 시각 그대로다
         evaluationRepository.flush();

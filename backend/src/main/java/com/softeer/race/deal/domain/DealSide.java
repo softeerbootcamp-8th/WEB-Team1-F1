@@ -2,6 +2,16 @@ package com.softeer.race.deal.domain;
 
 /** 이 거래에서 조회한 사람이 선 쪽, 같은 사람이 거래마다 다를 수 있다 */
 public enum DealSide {
-    SELLER,
-    BUYER
+    SELLER("판매자"),
+    BUYER("구매자");
+
+    private final String label;
+
+    DealSide(String label) {
+        this.label = label;
+    }
+
+    public String label() {
+        return label;
+    }
 }

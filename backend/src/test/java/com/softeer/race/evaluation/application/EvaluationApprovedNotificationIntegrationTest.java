@@ -92,7 +92,8 @@ class EvaluationApprovedNotificationIntegrationTest extends IntegrationTestSuppo
         // then 2 : 발행 당시 문구가 보관되고 아직 읽지 않은 상태다
         NotificationRow approved = notifications.getFirst();
         assertThat(approved.type()).isEqualTo(EVAL_APPROVED);
-        assertThat(approved.message()).isEqualTo(EVAL_APPROVED.defaultMessage());
+        assertThat(approved.message())
+                .isEqualTo("현대 아반떼 CN7 60가6000 차량의 평가가 승인되었습니다. 경매글을 등록해 주세요.");
         assertThat(approved.read()).isFalse();
 
         // then 3 : 등록 여부를 정하기 전에 평가 결과를 볼 수 있도록 그 신청 상세로 보낸다.

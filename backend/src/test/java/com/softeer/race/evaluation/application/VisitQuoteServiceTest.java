@@ -252,7 +252,7 @@ class VisitQuoteServiceTest {
 
         // 참조는 방금 접수된 신청이다. 링크에는 쓰이지 않지만 어느 신청인지 남는다
         NotificationContent content =
-                NotificationContent.evaluationRequested(PLATE_NUMBER, "그랜저 IG");
+                NotificationContent.evaluationRequested("현대 그랜저 IG", PLATE_NUMBER);
         then(notificationPublisher).should()
                 .publishContent(FIRST_EVALUATOR_ID, content, EVALUATION_ID);
         then(notificationPublisher).should()
