@@ -1,4 +1,4 @@
-import { CalendarDays, Clock3, MapPin } from 'lucide-react'
+import { CalendarDays, CircleCheckBig, Clock3, MapPin } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -67,11 +67,21 @@ export function EvaluationSummaryCard({
                 emphasis
               />
               <SummaryMeta icon={MapPin} label="방문 위치" value={evaluation.visitAddress} />
-              <SummaryMeta
-                icon={Clock3}
-                label="신청 날짜"
-                value={formatDateTime(evaluation.requestedAt)}
-              />
+              {/* 끝낸 건은 접수 시각 대신 끝낸 시각을 보여준다. 완료 목록이 이 값의 역순으로
+                  서므로, 접수 시각이 그 자리에 있으면 순서가 뒤죽박죽으로 읽힌다 */}
+              {evaluation.completedAt ? (
+                <SummaryMeta
+                  icon={CircleCheckBig}
+                  label="진단 완료"
+                  value={formatDateTime(evaluation.completedAt)}
+                />
+              ) : (
+                <SummaryMeta
+                  icon={Clock3}
+                  label="신청 날짜"
+                  value={formatDateTime(evaluation.requestedAt)}
+                />
+              )}
             </div>
           </div>
 
