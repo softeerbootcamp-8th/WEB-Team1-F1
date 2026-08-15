@@ -131,7 +131,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.bidderCount").value(2));
 
         // then 7 : 조회는 접속이 아니다, 스트림에 열려 있는 구독이 없으므로 0이다
-        response.andExpect(jsonPath("$.connectedCount").value(0));
+        response.andExpect(jsonPath("$.viewerCount").value(0));
 
         // then 8 : 최신순, 원본이 아니라 마스킹된 이름이 실린다, 마스킹 규칙 자체는 단위테스트가 본다
         response.andExpectAll(

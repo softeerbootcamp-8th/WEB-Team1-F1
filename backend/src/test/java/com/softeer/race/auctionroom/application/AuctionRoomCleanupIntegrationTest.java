@@ -75,7 +75,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
         auctionRoomStreamService.sweepClosedSubscriptions();
 
         // then 1 : 남은 사람은 줄어든 접속자 수를 받는다, 다시 조회하지 않았는데 갱신된다
-        assertThat(alive.lastState().connectedCount()).isEqualTo(1);
+        assertThat(alive.lastState().viewerCount()).isEqualTo(1);
         assertThat(roomChannel.countViewers(auctionId)).isEqualTo(1);
 
         // then 2 : 사라진 쪽에는 아무것도 보내지 않는다
@@ -110,7 +110,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
         auctionRoomStreamService.sweepClosedSubscriptions();
 
         // then 1 : 연결은 아직 열려 있지만 닫힌 방은 접속자로 세지 않는다
-        assertThat(alive.lastState().connectedCount()).isZero();
+        assertThat(alive.lastState().viewerCount()).isZero();
 
         // then 2 : 같은 순간 새로 들어오려는 사람은 아예 막힌다, 열어 둔 화면과 새 조회가 어긋나지 않는다
         assertThat(catchThrowable(() -> auctionRoomService.enterRoom(auctionId, VIEWER_ID)))
@@ -145,7 +145,7 @@ class AuctionRoomCleanupIntegrationTest extends IntegrationTestSupport {
         assertThat(thrown).isNull();
 
         // then 2 : 멀쩡한 방은 처리 순서와 무관하게 줄어든 접속자 수를 받는다
-        assertThat(healthyAlive.lastState().connectedCount()).isEqualTo(1);
+        assertThat(healthyAlive.lastState().viewerCount()).isEqualTo(1);
     }
 
     @Test

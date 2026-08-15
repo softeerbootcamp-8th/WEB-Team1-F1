@@ -129,7 +129,7 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         // then 6 : 결과는 더 이상 바뀌지 않으므로 실시간 값이 나갈 자리가 없다
         // doesNotExist 는 값이 null 이어도 통과하므로, 스키마에 아예 없다는 것은 이쪽으로 단정한다
         response.andExpectAll(
-                jsonPath("$.connectedCount").doesNotHaveJsonPath(),
+                jsonPath("$.viewerCount").doesNotHaveJsonPath(),
                 jsonPath("$.recentBids").doesNotHaveJsonPath());
 
         // then 6-1 : 서버 시각은 결과값이 아니라 남은 열람 시간을 세는 기준이라 종료 시각과 짝으로 나간다

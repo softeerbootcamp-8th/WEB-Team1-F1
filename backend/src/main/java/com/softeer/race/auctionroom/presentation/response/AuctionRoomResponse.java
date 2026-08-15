@@ -38,8 +38,8 @@ public record AuctionRoomResponse(
                 example = "2026-08-03T20:45:12")
         LocalDateTime serverTime,
 
-        @Schema(description = "지금 방에 연결된 구독 수, 한 사람이 창을 둘 열면 둘로 센다", example = "12")
-        int connectedCount,
+        @Schema(description = "지금 방을 보고 있는 사람 수, 한 사람이 창을 여럿 열어도 하나로 센다", example = "12")
+        int viewerCount,
 
         @Schema(description = "지금까지 입찰한 사람 수", example = "4")
         long bidderCount,
@@ -70,7 +70,7 @@ public record AuctionRoomResponse(
                 state.startAt(),
                 state.endAt(),
                 state.serverTime(),
-                state.connectedCount(),
+                state.viewerCount(),
                 state.bidCounts().bidderCount(),
                 state.bidCounts().bidCount(),
                 WinnerResponse.from(view),

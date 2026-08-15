@@ -21,17 +21,17 @@ public record RoomState(
         LocalDateTime startAt,
         LocalDateTime endAt,
         LocalDateTime serverTime,
-        int connectedCount,
+        int viewerCount,
         BidCounts bidCounts,
         MaskedName winnerName,
         List<RecentBid> recentBids
 ) {
 
     /**
-     * 한 번 읽어 온 값과 방에 열려 있는 구독 수로 방 현황을 조립한다
+     * 한 번 읽어 온 값과 방을 보고 있는 사람 수로 방 현황을 조립한다
      */
-    // 구독 수를 접속자 수로 볼지는 단계가 정한다, 조회와 방송이 여기를 함께 지나므로 판정이 하나로 남는다
-    static RoomState of(RoomSnapshot snapshot, int openSubscriptions) {
+    // 사람 수를 내보낼지는 단계가 정한다, 조회와 방송이 여기를 함께 지나므로 판정이 하나로 남는다
+    static RoomState of(RoomSnapshot snapshot, int viewerCount) {
         AuctionRoomDetail detail = snapshot.detail();
 
         return new RoomState(
@@ -43,7 +43,7 @@ public record RoomState(
                 detail.startAt(),
                 detail.endAt(),
                 snapshot.serverTime(),
-                snapshot.phase().allowsConnection() ? openSubscriptions : 0,
+                snapshot.phase().allowsConnection() ? viewerCount : 0,
                 snapshot.bidCounts(),
                 detail.winnerName().orElse(null),
                 snapshot.recentBids());
