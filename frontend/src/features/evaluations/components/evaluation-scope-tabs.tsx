@@ -31,16 +31,18 @@ export function EvaluationScopeTabs<T extends string>({
 }: EvaluationScopeTabsProps<T>) {
   return (
     <Tabs value={value} onValueChange={(next) => onChange(next as T)} className="w-full">
+      {/* 칸이 늘면 가로로 흐른다. 균등 격자로 두면 여섯 칸에서 "평가 진행 중" 같은 라벨이
+          줄바꿈으로 눌리고, 좁은 화면에서는 글자가 서로 붙는다. 칸이 둘뿐일 때는 flex-1이
+          화면을 반씩 채워 지금 모양 그대로다 */}
       <TabsList
         aria-label={label}
-        className="bg-muted/40 grid h-14 w-full rounded-lg p-0"
-        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+        className="bg-muted/40 flex h-14 w-full overflow-x-auto rounded-lg p-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {options.map((option) => (
           <TabsTrigger
             key={option.value}
             value={option.value}
-            className="data-[state=active]:bg-background data-[state=active]:border-b-foreground h-14 rounded-none border-b-2 border-transparent text-base first:rounded-tl-lg last:rounded-tr-lg data-[state=active]:font-semibold data-[state=active]:shadow-none"
+            className="data-[state=active]:bg-background data-[state=active]:border-b-foreground h-14 min-w-fit flex-1 rounded-none border-b-2 border-transparent px-4 text-base whitespace-nowrap first:rounded-tl-lg last:rounded-tr-lg data-[state=active]:font-semibold data-[state=active]:shadow-none"
           >
             {option.label}
             {option.count !== undefined && (

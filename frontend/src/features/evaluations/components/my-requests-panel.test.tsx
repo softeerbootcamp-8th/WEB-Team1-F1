@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -42,11 +42,12 @@ function renderPanel(path = '/mypage/evaluations') {
   )
 }
 
-describe('판매자 신청 내역의 진행 중 · 종료 구분', () => {
+describe('판매자 신청 내역의 상태별 구분', () => {
   beforeEach(() => {
     fetchMock.mockReset()
     fetchMock.mockResolvedValue({
       evaluations: [
+        request({ evaluationId: 4, model: 'K5 DL3', status: 'APPROVED', auctionStatus: 'IN_PROGRESS' }),
         request({ evaluationId: 3, model: '아반떼 CN7', status: 'REJECTED' }),
         request({ evaluationId: 2, model: '쏘나타 DN8', status: 'REQUESTED', assigned: true }),
         request({ evaluationId: 1, model: '그랜저 IG', status: 'APPROVED' }),
@@ -66,10 +67,13 @@ describe('판매자 신청 내역의 진행 중 · 종료 구분', () => {
     // 진단이 끝나고 경매가 걸리지 않은 건은 판매자가 지금 손대야 하는 유일한 상태다
     renderPanel()
 
-    const cards = await screen.findAllByRole('heading', { level: 2 })
-    expect(cards[0].textContent).toContain('그랜저 IG')
-    // 순서만 바뀌고 이유가 없으면 목록이 뒤섞인 것으로 읽힌다
-    expect(screen.getByText('출품 대기')).toBeTruthy()
+    const headings = await screen.findAllByRole('heading', { level: 2 })
+    expect(headings[0].textContent).toContain('그랜저 IG')
+
+    // 순서만 바뀌고 이유가 없으면 목록이 뒤섞인 것으로 읽힌다.
+    // 맨 위 카드 안에서 찾는다 — 탭에도 같은 말이 있고, 그 둘이 같은 말인 것이 맞다
+    const topCard = headings[0].closest('[data-slot="card"]') as HTMLElement
+    expect(within(topCard).getByText('출품 대기')).toBeTruthy()
   })
 
   it('종료 탭에서 반려와 낙찰 완료를 본다', async () => {
@@ -81,6 +85,28 @@ describe('판매자 신청 내역의 진행 중 · 종료 구분', () => {
 
     expect(await screen.findByText(/아반떼 CN7/)).toBeTruthy()
     expect(screen.queryByText(/쏘나타 DN8/)).toBeNull()
+  })
+
+  it('상태 탭은 그 상태만 담고 건수를 함께 보여준다', async () => {
+    renderPanel()
+    await screen.findByText(/쏘나타 DN8/)
+
+    // 진행 중 3건 가운데 출품 대기는 한 건이다
+    expect(screen.getByRole('tab', { name: /진행 중/ }).textContent).toContain('3')
+    expect(screen.getByRole('tab', { name: /출품 대기/ }).textContent).toContain('1')
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /출품 대기/ }))
+
+    expect(await screen.findByText(/그랜저 IG/)).toBeTruthy()
+    expect(screen.queryByText(/쏘나타 DN8/)).toBeNull()
+  })
+
+  it('비어 있는 상태 탭은 진행 중으로 돌아갈 길을 준다', async () => {
+    // 배정 대기는 신청 직후 잠깐 머무는 상태라 대개 비어 있다
+    renderPanel('/mypage/evaluations?scope=PENDING_ASSIGNMENT')
+
+    expect(await screen.findByText('배정을 기다리는 신청이 없습니다')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '진행 중 보기' })).toBeTruthy()
   })
 
   it('주소에 적힌 종료 목록으로 바로 들어오고, 상세 링크가 그 탭을 실어 보낸다', async () => {

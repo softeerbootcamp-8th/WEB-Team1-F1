@@ -25,6 +25,7 @@ import {
 import { getErrorMessage } from '@/lib/axios'
 import { formatDateTime, formatKRW, formatMileage } from '@/lib/format'
 import { fetchEvaluationDetail } from '../api'
+import { ACTIVE_SCOPE, isRequestScope } from '../request-scope'
 import { useVehicleAuctionStatus } from '../use-vehicle-auction-status'
 import {
   canRegisterAuction,
@@ -43,12 +44,14 @@ export function MyRequestDetailPage() {
   const [searchParams] = useSearchParams()
 
   /**
-   * 어느 탭에서 들어왔는지. 신청 내역이 진행 중과 종료로 갈려, 돌아갈 곳을 고정하면 종료된
-   * 신청을 열어 본 사람이 매번 진행 중 목록으로 튕긴다.
+   * 어느 탭에서 들어왔는지. 신청 내역이 여섯 칸으로 갈려, 돌아갈 곳을 고정하면 좁혀 보던
+   * 사람이 매번 기본 목록으로 튕긴다.
    */
-  const listPath = searchParams.get('scope')?.toUpperCase() === 'CLOSED'
-    ? '/mypage/evaluations?scope=CLOSED'
-    : '/mypage/evaluations'
+  const requestedScope = searchParams.get('scope')?.toUpperCase() ?? ''
+  const listPath =
+    isRequestScope(requestedScope) && requestedScope !== ACTIVE_SCOPE
+      ? `/mypage/evaluations?scope=${requestedScope}`
+      : '/mypage/evaluations'
   const query = useQuery({
     queryKey: ['evaluations', 'detail', evaluationId],
     queryFn: () => fetchEvaluationDetail(evaluationId),
