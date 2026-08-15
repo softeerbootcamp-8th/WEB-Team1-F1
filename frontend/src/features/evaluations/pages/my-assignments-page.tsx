@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/common/empty-state'
 import { Button } from '@/components/ui/button'
 import { getErrorMessage } from '@/lib/axios'
 import { fetchMyAssignments } from '../api'
-import { AssignmentScopeTabs } from '../components/assignment-scope-tabs'
+import { EvaluationScopeTabs, type ScopeOption } from '../components/evaluation-scope-tabs'
 import { EvaluationSummaryCard } from '../components/evaluation-summary-card'
 import { myAssignmentsQueryKey } from '../query-keys'
 import type { EvaluationAssignmentScope } from '../types'
@@ -17,6 +17,13 @@ import type { EvaluationAssignmentScope } from '../types'
  * status·scope를 주소에 둔다). 기본값인 진행 중은 주소에 적지 않아 /evaluations/my를 깨끗하게 둔다.
  */
 const SCOPE_PARAM = 'scope'
+
+// "전체" 탭은 두지 않는다. 두 탭의 합이 곧 전체라 세 번째 선택지는 같은 것을 두 번 보여줄
+// 뿐이고, 상태별 건수가 필요한 평가사 홈은 목록이 아니라 건수 조회를 쓴다.
+const SCOPES: ScopeOption<EvaluationAssignmentScope>[] = [
+  { value: 'ACTIVE', label: '진행 중' },
+  { value: 'COMPLETED', label: '완료' },
+]
 
 function readScope(params: URLSearchParams): EvaluationAssignmentScope {
   return params.get(SCOPE_PARAM)?.toUpperCase() === 'COMPLETED' ? 'COMPLETED' : 'ACTIVE'
@@ -59,7 +66,12 @@ export function MyAssignmentsPage() {
       </header>
 
       <div className="mb-6">
-        <AssignmentScopeTabs value={scope} onChange={selectScope} />
+        <EvaluationScopeTabs
+          value={scope}
+          options={SCOPES}
+          onChange={selectScope}
+          label="담당 목록 범위 선택"
+        />
       </div>
 
       {query.isLoading ? (
