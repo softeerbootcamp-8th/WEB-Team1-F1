@@ -4,6 +4,7 @@ import com.softeer.race.auctionroom.domain.RoomErrorCode;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.user.domain.Role;
+import com.softeer.race.user.domain.User;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -122,8 +123,8 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("시나리오 4 : 한 방의 데이터 결함이 다른 방의 갱신을 멈추지 않는다")
     void brokenRoomDoesNotStopOtherRooms() {
-        // given : 한 글자 실명 입찰자가 있는 방, 호가를 마스킹하는 순간 터진다
-        long brokenRoom = liveRoomWithBidderNamed("김");
+        // given : 실명이 한 글자로 망가진 입찰자가 있는 방, 호가를 마스킹하는 순간 터진다
+        long brokenRoom = liveRoomWithOneLetterBidder();
         FakeSubscription brokenAlive = new FakeSubscription();
         FakeSubscription brokenGone = new FakeSubscription();
         subscribe(brokenRoom, brokenAlive);
@@ -208,10 +209,18 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
                 .create();
     }
 
-    private long liveRoomWithBidderNamed(String realName) {
-        return rooms.room(users.user("박판매", Role.GENERAL), NOW.minusMinutes(15))
-                .bid(NOW.minusMinutes(1), users.user(realName, Role.DEALER), 12_500_000L)
+    // User.create 가 두 글자 미만을 막으므로 정상으로 만든 뒤 DB 를 직접 고친다
+    // 이 결함이 남은 경로가 그것뿐이라, 테스트가 실제로 가능한 상황을 그대로 재현한다
+    private long liveRoomWithOneLetterBidder() {
+        User bidder = users.user("김입찰", Role.DEALER);
+
+        long auctionId = rooms.room(users.user("박판매", Role.GENERAL), NOW.minusMinutes(15))
+                .bid(NOW.minusMinutes(1), bidder, 12_500_000L)
                 .create();
+
+        jdbcTemplate.update("update users set real_name = ? where id = ?", "김", bidder.getId());
+
+        return auctionId;
     }
 
     // 열려 있다가 알리지 않고 끊긴 연결, 청소가 찔러 봐야 드러난다
