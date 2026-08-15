@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 세션 쿠키 없이는 방을 열 수 없고, 본인 표시는 헤더가 아니라 쿠키 주인 기준이다
  */
 @DisplayName("경매방 현황 조회 통합 테스트")
-class AuctionRoomIntegrationTest extends IntegrationTestSupport {
+class RoomIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private SessionService sessionService;
@@ -131,7 +131,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
                 jsonPath("$.bidderCount").value(2));
 
         // then 7 : 조회는 접속이 아니다, 스트림에 열려 있는 구독이 없으므로 0이다
-        response.andExpect(jsonPath("$.connectedCount").value(0));
+        response.andExpect(jsonPath("$.viewerCount").value(0));
 
         // then 8 : 최신순, 원본이 아니라 마스킹된 이름이 실린다, 마스킹 규칙 자체는 단위테스트가 본다
         response.andExpectAll(
@@ -190,7 +190,7 @@ class AuctionRoomIntegrationTest extends IntegrationTestSupport {
         // then : 도달할 수 없는 자원이므로 단계를 알리지 않고 404 다
         response.andExpectAll(
                 status().isNotFound(),
-                jsonPath("$.code").value("AUCTION_ROOM_NOT_FOUND"));
+                jsonPath("$.code").value("ROOM_NOT_FOUND"));
     }
 
     @Test

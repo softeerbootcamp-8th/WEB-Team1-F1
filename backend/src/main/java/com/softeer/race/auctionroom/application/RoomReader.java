@@ -16,19 +16,19 @@ import java.util.Optional;
 // 조회 응답과 브로드캐스트가 같은 값을 봐야 하므로 읽는 곳을 하나로 둔다
 @Component
 @RequiredArgsConstructor
-class AuctionRoomReader {
+class RoomReader {
 
     private static final int RECENT_BID_LIMIT = 20;
 
-    private final AuctionRoomRepository auctionRoomRepository;
+    private final RoomRepository roomRepository;
     private final RoomBidRepository roomBidRepository;
     private final VehicleKeywordService vehicleKeywordService;
     private final Clock clock;
 
     // 클래스는 패키지 밖에 안 보이지만 메서드는 public 이어야 한다, 프록시가 public 메서드만 자문한다
     @Transactional(readOnly = true)
-    public Optional<RoomQueryResult> find(long auctionId) {
-        return auctionRoomRepository.findDetailById(auctionId)
+    public Optional<RoomSnapshot> find(long auctionId) {
+        return roomRepository.findDetailById(auctionId)
                 .map(this::readWith);
     }
 
@@ -42,28 +42,28 @@ class AuctionRoomReader {
     // 브로드캐스트는 차량을 보내지 않으므로 find 안에 두면 방송마다 헛되이 한 번 더 읽는다
     @Transactional(readOnly = true)
     public List<String> findPhotoUrls(long auctionId) {
-        return auctionRoomRepository.findPhotoUrls(auctionId);
+        return roomRepository.findPhotoUrls(auctionId);
     }
 
     @Transactional(readOnly = true)
-    public Optional<AuctionRoomDetail> findDetail(long auctionId) {
-        return auctionRoomRepository.findDetailById(auctionId);
+    public Optional<RoomDetail> findDetail(long auctionId) {
+        return roomRepository.findDetailById(auctionId);
     }
 
     // 연결을 끊을지만 정하면 되므로 상세 한 행이면 충분하다, 집계와 호가는 읽지 않는다
     @Transactional(readOnly = true)
     public Optional<RoomPhase> findPhase(long auctionId) {
-        return auctionRoomRepository.findDetailById(auctionId)
+        return roomRepository.findDetailById(auctionId)
                 .map(detail -> detail.phaseAt(LocalDateTime.now(clock)));
     }
 
     @Transactional(readOnly = true)
-    public BidStats findStats(long auctionId) {
-        return roomBidRepository.findStats(auctionId);
+    public BidCounts findBidCounts(long auctionId) {
+        return roomBidRepository.findBidCounts(auctionId);
     }
 
     @Transactional(readOnly = true)
-    public List<PricePoint> findPriceCurve(long auctionId) {
+    public List<BidPoint> findPriceCurve(long auctionId) {
         return roomBidRepository.findPriceCurve(auctionId);
     }
 
@@ -71,16 +71,16 @@ class AuctionRoomReader {
     @Transactional(readOnly = true)
     public Optional<BidderStanding> findStanding(long auctionId, long viewerId) {
         return Optional.ofNullable(roomBidRepository.findTopAmount(auctionId, viewerId))
-                .map(topBid -> BidderStanding.of(
-                        topBid, roomBidRepository.countBiddersAbove(auctionId, topBid)));
+                .map(highestAmount -> BidderStanding.of(
+                        highestAmount, roomBidRepository.countBiddersAbove(auctionId, highestAmount)));
     }
 
-    private RoomQueryResult readWith(AuctionRoomDetail detail) {
+    private RoomSnapshot readWith(RoomDetail detail) {
         LocalDateTime now = LocalDateTime.now(clock);
 
-        BidStats stats = roomBidRepository.findStats(detail.auctionId());
+        BidCounts bidCounts = roomBidRepository.findBidCounts(detail.auctionId());
         List<RecentBid> recentBids = roomBidRepository.findRecentBids(detail.auctionId(), Limit.of(RECENT_BID_LIMIT));
 
-        return new RoomQueryResult(detail, stats, recentBids, now);
+        return new RoomSnapshot(detail, bidCounts, recentBids, now);
     }
 }

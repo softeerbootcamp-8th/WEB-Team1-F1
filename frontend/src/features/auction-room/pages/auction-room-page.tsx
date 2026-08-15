@@ -249,7 +249,7 @@ function LiveRoom({
                 실시간 시청자
               </dt>
               <dd className="tabular mt-2 text-3xl font-semibold">
-                {room.connectedCount}명
+                {room.viewerCount}명
               </dd>
             </div>
             <div className="rounded-xl border p-4">

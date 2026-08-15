@@ -45,8 +45,8 @@ class SseAuctionListSubscriber implements AuctionListSubscriber {
     }
 
     @Override
-    public void sendAudience(long auctionId, int connectedCount) {
-        send("audience", new AudienceResponse(auctionId, connectedCount));
+    public void sendAudience(long auctionId, int viewerCount) {
+        send("audience", new AudienceResponse(auctionId, viewerCount));
     }
 
     @Override

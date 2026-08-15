@@ -9,6 +9,6 @@ public record AudienceResponse(
         Long auctionId,
 
         @Schema(description = "그 경매방을 보고 있는 사람 수", example = "3")
-        Integer connectedCount
+        Integer viewerCount
 ) {
 }

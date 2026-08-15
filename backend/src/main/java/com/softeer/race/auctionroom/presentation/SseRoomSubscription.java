@@ -1,7 +1,7 @@
 package com.softeer.race.auctionroom.presentation;
 
 import com.softeer.race.auctionroom.application.RoomState;
-import com.softeer.race.auctionroom.application.RoomSubscriber;
+import com.softeer.race.auctionroom.application.RoomSubscription;
 import com.softeer.race.auctionroom.presentation.response.RoomStateResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 // 열린 SSE 응답을 채널이 아는 모양으로 감싼다, 전송 기술을 아는 곳은 여기까지다
 // equals 를 정의하지 않는다, 연결 하나에 객체 하나라 객체 자체가 식별자다
 @Slf4j
-class SseRoomSubscriber implements RoomSubscriber {
+class SseRoomSubscription implements RoomSubscription {
 
     private final long auctionId;
     private final long viewerId;
@@ -22,9 +22,9 @@ class SseRoomSubscriber implements RoomSubscriber {
     private volatile boolean open = true;
 
     // 전송 실패로 내려간 것과 이 연결을 끝낸 것은 다르다, 전자만 보고 끝내면 응답이 만료까지 남는다
-    private final AtomicBoolean ended = new AtomicBoolean();
+    private final AtomicBoolean completed = new AtomicBoolean();
 
-    SseRoomSubscriber(long auctionId, long viewerId, SseEmitter emitter) {
+    SseRoomSubscription(long auctionId, long viewerId, SseEmitter emitter) {
         this.auctionId = auctionId;
         this.viewerId = viewerId;
         this.emitter = emitter;
@@ -78,7 +78,7 @@ class SseRoomSubscriber implements RoomSubscriber {
 
         // 쓰기에 실패해 이미 내려간 구독도 응답은 열려 있을 수 있어, 열림 여부로 건너뛰면 그것을 못 끝낸다
         // 두 번 끝내지 않기 위한 표시는 따로 둔다
-        if (!ended.compareAndSet(false, true)) {
+        if (!completed.compareAndSet(false, true)) {
             return;
         }
 

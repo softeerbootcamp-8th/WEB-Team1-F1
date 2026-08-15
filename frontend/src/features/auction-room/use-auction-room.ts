@@ -123,7 +123,7 @@ export function useAuctionRoom(auctionId: number) {
             startAt: state.startAt,
             endAt: state.endAt,
             serverTime: state.serverTime,
-            connectedCount: state.connectedCount,
+            viewerCount: state.viewerCount,
             bidderCount: state.bidderCount,
             bidCount: state.bidCount,
             // 방송은 보는 사람을 가리지 않아 본인 여부를 알려주지 않는다. 금액으로 맞혀 보면

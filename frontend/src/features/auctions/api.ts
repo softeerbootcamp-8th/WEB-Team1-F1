@@ -50,7 +50,7 @@ export async function fetchAuctionList({
 /** event: audience 의 본문. 시청자 수는 1초마다 보므로 카드 전체가 아니라 이 둘만 온다 */
 interface AudiencePayload {
   auctionId: number
-  connectedCount: number
+  viewerCount: number
 }
 
 export interface AuctionListStreamHandlers {

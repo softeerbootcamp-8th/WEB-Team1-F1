@@ -1,6 +1,6 @@
 package com.softeer.race.auctionroom.presentation.response;
 
-import com.softeer.race.auctionroom.application.RoomStateBid;
+import com.softeer.race.auctionroom.domain.RecentBid;
 import com.softeer.race.user.domain.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -21,7 +21,7 @@ public record RoomStateBidResponse(
         LocalDateTime bidAt
 ) {
 
-    static RoomStateBidResponse from(RoomStateBid bid) {
+    static RoomStateBidResponse from(RecentBid bid) {
         return new RoomStateBidResponse(bid.bidderName().value(), bid.role(), bid.amount(), bid.bidAt());
     }
 }

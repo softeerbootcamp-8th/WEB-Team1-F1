@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 // 도메인이 만들 수 없는 상태는 여기서도 만들 수 없다 — 게시글 삭제가 그렇다
 @RequiredArgsConstructor
-public class AuctionRoomSeeder {
+public class RoomSeeder {
 
     // 번호판의 유일 제약을 피한다, 테이블을 비워도 되돌아가지 않아 앞 테스트가 쓴 값과 겹치지 않는다
     private static final AtomicLong SERIAL = new AtomicLong();

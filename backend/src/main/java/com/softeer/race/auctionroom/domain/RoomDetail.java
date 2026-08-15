@@ -4,23 +4,21 @@ import com.softeer.race.auction.domain.AuctionStatus;
 import com.softeer.race.common.domain.MaskedName;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
-import com.softeer.race.vehicle.domain.VehicleKeyword;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 /**
  * 경매방 조회와 브로드캐스트가 한 번에 읽어오는 경매·차량·낙찰자
  */
-public record AuctionRoomDetail(
+public record RoomDetail(
         long auctionId,
         AuctionStatus status,
         long startPrice,
         long currentPrice,
-        LocalDateTime roomOpenAt,
-        LocalDateTime startTime,
-        LocalDateTime currentEndTime,
+        LocalDateTime openAt,
+        LocalDateTime startAt,
+        LocalDateTime endAt,
         int extensionCount,
         long vehicleId,
         Manufacturer manufacturer,
@@ -36,13 +34,13 @@ public record AuctionRoomDetail(
 
     // JPQL 이 넘기는 원시 값을 받아 표시가 해소와 마스킹을 한 번에 한다
     // 위 정규 생성자는 실명을 받을 수 없으므로 조회 경로에는 이 생성자만 걸린다
-    public AuctionRoomDetail(long auctionId,
+    public RoomDetail(long auctionId,
                              AuctionStatus status,
                              long startPrice,
                              Long currentPrice,
-                             LocalDateTime roomOpenAt,
-                             LocalDateTime startTime,
-                             LocalDateTime currentEndTime,
+                             LocalDateTime openAt,
+                             LocalDateTime startAt,
+                             LocalDateTime endAt,
                              int extensionCount,
                              long vehicleId,
                              Manufacturer manufacturer,
@@ -59,9 +57,9 @@ public record AuctionRoomDetail(
                 status,
                 startPrice,
                 currentPrice != null ? currentPrice : startPrice,
-                roomOpenAt,
-                startTime,
-                currentEndTime,
+                openAt,
+                startAt,
+                endAt,
                 extensionCount,
                 vehicleId,
                 manufacturer,
@@ -79,22 +77,14 @@ public record AuctionRoomDetail(
      * 주어진 시각 기준의 방 단계
      */
     public RoomPhase phaseAt(LocalDateTime now) {
-        return RoomPhase.at(now, roomOpenAt, startTime, currentEndTime);
+        return RoomPhase.at(now, openAt, startAt, endAt);
     }
 
     /**
      * 결과를 볼 수 있는 구간이 끝나는 시각, 연장된 마감을 기준으로 센다
      */
     public LocalDateTime resultViewingEndsAt() {
-        return RoomPhase.resultViewingEndsAt(currentEndTime);
-    }
-
-    /**
-     * 화면에 보일 차량 요약
-     */
-    public VehicleSummary vehicle(List<String> imageUrls, List<VehicleKeyword> keywords) {
-        return new VehicleSummary(manufacturer, model, modelYear, mileage, fuelType,
-                keywords, imageUrls, diagnosticReportUrl);
+        return RoomPhase.resultViewingEndsAt(endAt);
     }
 
     /**

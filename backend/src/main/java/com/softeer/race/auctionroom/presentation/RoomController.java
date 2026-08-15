@@ -1,7 +1,7 @@
 package com.softeer.race.auctionroom.presentation;
 
-import com.softeer.race.auctionroom.application.AuctionRoomService;
-import com.softeer.race.auctionroom.presentation.response.AuctionRoomResponse;
+import com.softeer.race.auctionroom.application.RoomService;
+import com.softeer.race.auctionroom.presentation.response.RoomResponse;
 import com.softeer.race.auctionroom.presentation.response.RoomOpeningResponse;
 import com.softeer.race.auctionroom.presentation.response.RoomResultResponse;
 import com.softeer.race.auth.domain.AuthenticatedUser;
@@ -16,20 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auctions")
 @RequiredArgsConstructor
-public class AuctionRoomController implements AuctionRoomApi {
+public class RoomController implements RoomApi {
 
-    private final AuctionRoomService auctionRoomService;
-
-    @Override
-    @GetMapping("/{auctionId}/room")
-    public ResponseEntity<AuctionRoomResponse> enterRoom(
-            @PathVariable("auctionId") long auctionId,
-            @LoginUser AuthenticatedUser authenticatedUser) {
-
-        AuctionRoomResponse response =
-                AuctionRoomResponse.from(auctionRoomService.enterRoom(auctionId, authenticatedUser.id()));
-        return ResponseEntity.ok(response);
-    }
+    private final RoomService roomService;
 
     @Override
     @GetMapping("/{auctionId}/room/opening")
@@ -40,7 +29,18 @@ public class AuctionRoomController implements AuctionRoomApi {
             // 신호이기 때문이다, 지우면 컴파일도 테스트도 통과한 채로 이 API 가 공개된다
             @LoginUser AuthenticatedUser authenticatedUser) {
 
-        RoomOpeningResponse response = RoomOpeningResponse.from(auctionRoomService.readOpening(auctionId));
+        RoomOpeningResponse response = RoomOpeningResponse.from(roomService.readOpening(auctionId));
+        return ResponseEntity.ok(response);
+    }
+
+    @Override
+    @GetMapping("/{auctionId}/room")
+    public ResponseEntity<RoomResponse> readRoom(
+            @PathVariable("auctionId") long auctionId,
+            @LoginUser AuthenticatedUser authenticatedUser) {
+
+        RoomResponse response =
+                RoomResponse.from(roomService.readRoom(auctionId, authenticatedUser.id()));
         return ResponseEntity.ok(response);
     }
 
@@ -51,7 +51,7 @@ public class AuctionRoomController implements AuctionRoomApi {
             @LoginUser AuthenticatedUser authenticatedUser) {
 
         RoomResultResponse response =
-                RoomResultResponse.from(auctionRoomService.readResult(auctionId, authenticatedUser.id()));
+                RoomResultResponse.from(roomService.readResult(auctionId, authenticatedUser.id()));
         return ResponseEntity.ok(response);
     }
 }

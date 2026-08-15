@@ -62,7 +62,7 @@ class ViewerCountParityIntegrationTest extends IntegrationTestSupport {
                         .cookie(sessionCookie(session)))
                 .andExpectAll(
                         status().isOk(),
-                        jsonPath("$.connectedCount").value(1));
+                        jsonPath("$.viewerCount").value(1));
 
         // then 2 : 목록도 같은 수를 보인다, 어긋나면 같은 경매가 두 화면에서 다르게 보인다
         // 방이 하나뿐임을 먼저 못 박는다, 안 그러면 아래 카드가 그 방인지 알 수 없다
@@ -71,7 +71,7 @@ class ViewerCountParityIntegrationTest extends IntegrationTestSupport {
                         status().isOk(),
                         jsonPath("$.content.length()").value(1),
                         jsonPath("$.content[0].auctionId").value((int) auctionId),
-                        jsonPath("$.content[0].connectedCount").value(1));
+                        jsonPath("$.content[0].viewerCount").value(1));
     }
 
     @Test
@@ -92,12 +92,12 @@ class ViewerCountParityIntegrationTest extends IntegrationTestSupport {
                 .andExpectAll(
                         status().isOk(),
                         jsonPath("$.phase").value("RESULT"),
-                        jsonPath("$.connectedCount").value(0));
+                        jsonPath("$.viewerCount").value(0));
 
         mockMvc.perform(get("/api/auctions"))
                 .andExpectAll(
                         status().isOk(),
-                        jsonPath("$.content[0].connectedCount").value(0));
+                        jsonPath("$.content[0].viewerCount").value(0));
     }
 
     // ================= 준비 ====================

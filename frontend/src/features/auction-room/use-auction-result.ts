@@ -8,7 +8,7 @@ import { getErrorCode, getErrorStatus } from '@/lib/axios'
  * 결과 화면의 진입 상태.
  *
  * PENDING 은 마감은 됐는데 낙찰자가 아직 확정되지 않은 짧은 구간이다. 서버가 그 사이를
- * AUCTION_NOT_ENDED 로 알려주므로 없는 경매와 뭉치지 않는다.
+ * ROOM_RESULT_NOT_READY 로 알려주므로 없는 경매와 뭉치지 않는다.
  */
 export type ResultEntry = 'LOADING' | 'READY' | 'PENDING' | 'SIGNED_OUT' | 'BROKEN'
 
@@ -57,7 +57,7 @@ export function useAuctionResult(auctionId: number) {
 
           // 마감과 낙찰 확정 사이의 짧은 틈이다, 확정되면 결과가 나온다
           // 확정이 계속 실패한 채로 남으면 이 물음도 끝나지 않으므로 몇 번만 묻고 그만둔다
-          if (getErrorCode(error) === 'AUCTION_NOT_ENDED') {
+          if (getErrorCode(error) === 'ROOM_RESULT_NOT_READY') {
             if (attempts >= MAX_ATTEMPTS) {
               setEntry('PENDING')
               return

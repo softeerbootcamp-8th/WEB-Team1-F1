@@ -3,7 +3,7 @@ package com.softeer.race.auctionroom.application;
 /**
  * 경매방 현황을 받아가는 열린 구독
  */
-public interface RoomSubscriber {
+public interface RoomSubscription {
 
     /**
      * 현황 전송, 이미 닫혔으면 조용히 버린다
@@ -29,6 +29,6 @@ public interface RoomSubscriber {
     /**
      * 이 구독을 연 사람, 같은 사람이 연 창들을 하나로 묶는 데만 쓴다
      */
-    // 방송에 싣지 않는다, 그것을 지키는 것은 이 주석이 아니라 AuctionRoomStreamIntegrationTest 의 누출 단정이다
+    // 방송에 싣지 않는다, 그것을 지키는 것은 이 주석이 아니라 RoomStreamIntegrationTest 의 누출 단정이다
     long viewerId();
 }

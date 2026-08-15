@@ -1,15 +1,9 @@
 package com.softeer.race.user.domain;
 
 import com.softeer.race.common.domain.BaseTimeEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.user.exception.UserErrorCode;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,6 +20,9 @@ import lombok.NoArgsConstructor;
 })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTimeEntity {
+
+    // MaskedName 이 가릴 수 있는 최소 길이와 같다
+    private static final int MIN_REAL_NAME_LENGTH = 2;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -89,6 +86,16 @@ public class User extends BaseTimeEntity {
             String phone,
             Role role,
             String dealerLicenseKey) {
+        validateRealName(realName);
+
         return new User(username, email, encodedPassword, realName, phone, role, dealerLicenseKey);
+    }
+
+    // 이름은 가운데를 가려 내보내므로 두 글자보다 짧으면 가릴 자리가 없다
+    // 여기서 막지 않으면 호가창을 읽는 시점에 터져 그 사람이 입찰한 방 전체가 응답못함
+    private static void validateRealName(String realName) {
+        if (realName == null || realName.strip().length() < MIN_REAL_NAME_LENGTH) {
+            throw new BusinessException(UserErrorCode.INVALID_REAL_NAME);
+        }
     }
 }

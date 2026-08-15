@@ -19,7 +19,7 @@ export interface AuctionListCard {
   openAt: string
   startAt: string
   endAt: string
-  connectedCount: number
+  viewerCount: number
 }
 
 /**

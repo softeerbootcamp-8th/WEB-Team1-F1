@@ -1,7 +1,7 @@
 package com.softeer.race.auctionroom.presentation;
 
-import com.softeer.race.auctionroom.application.AuctionRoomStreamService;
-import com.softeer.race.auctionroom.application.RoomSubscriber;
+import com.softeer.race.auctionroom.application.RoomStreamService;
+import com.softeer.race.auctionroom.application.RoomSubscription;
 import com.softeer.race.auth.domain.AuthenticatedUser;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
 import lombok.RequiredArgsConstructor;
@@ -21,12 +21,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RestController
 @RequestMapping("/api/auctions")
 @RequiredArgsConstructor
-public class AuctionRoomStreamController implements AuctionRoomStreamApi {
+public class RoomStreamController implements RoomStreamApi {
 
     // 경매 하나의 수명보다 짧게 잡아 오래 붙어 있는 연결을 주기적으로 새로 세운다
     private static final long STREAM_TIMEOUT_MILLIS = Duration.ofMinutes(30).toMillis();
 
-    private final AuctionRoomStreamService auctionRoomStreamService;
+    private final RoomStreamService roomStreamService;
 
     @Override
     @GetMapping(path = "/{auctionId}/room/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -37,27 +37,27 @@ public class AuctionRoomStreamController implements AuctionRoomStreamApi {
             // 유일한 선언 수단이다, 값을 안 쓰게 바뀌더라도 지우면 구독이 조용히 비로그인에 열린다
             @LoginUser AuthenticatedUser authenticatedUser) {
         SseEmitter emitter = new SseEmitter(STREAM_TIMEOUT_MILLIS);
-        RoomSubscriber subscriber =
-                new SseRoomSubscriber(auctionId, authenticatedUser.id(), emitter);
+        RoomSubscription subscription =
+                new SseRoomSubscription(auctionId, authenticatedUser.id(), emitter);
 
         // 타임아웃 뒤에 완료 콜백이 잇달아 와서 해제가 두 번 불린다
-        AtomicBoolean released = new AtomicBoolean();
-        Runnable release = () -> {
-            if (released.compareAndSet(false, true)) {
+        AtomicBoolean unsubscribed = new AtomicBoolean();
+        Runnable unsubscribe = () -> {
+            if (unsubscribed.compareAndSet(false, true)) {
                 // 콜백은 요청 스레드가 아니다, 주입받은 빈으로 불러야 트랜잭션 프록시를 탄다
-                auctionRoomStreamService.unsubscribe(auctionId, subscriber);
+                roomStreamService.unsubscribe(auctionId, subscription);
             }
         };
 
-        emitter.onCompletion(release);
-        emitter.onTimeout(release);
+        emitter.onCompletion(unsubscribe);
+        emitter.onTimeout(unsubscribe);
         emitter.onError(error -> {
             // 클라이언트 정상 종료도 여기로 오므로 경고면 소음이 된다, 진짜 문제도 조용히 사라지지 않게 흔적만 남긴다
             log.debug("경매방 현황 연결 오류, 경매 {}", auctionId, error);
-            release.run();
+            unsubscribe.run();
         });
 
-        auctionRoomStreamService.subscribe(auctionId, subscriber);
+        roomStreamService.subscribe(auctionId, subscription);
 
         return ResponseEntity.ok(emitter);
     }

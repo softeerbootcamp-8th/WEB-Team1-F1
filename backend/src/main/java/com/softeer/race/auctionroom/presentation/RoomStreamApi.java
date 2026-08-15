@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Tag(name = "AuctionRoom", description = "경매방 현황 조회 API")
-public interface AuctionRoomStreamApi {
+public interface RoomStreamApi {
 
     @Operation(summary = "경매방 현황 실시간 구독",
             description = "연결을 열어 둔 채로 방 현황이 바뀔 때마다 현재 상태 전체를 내려줍니다. "
@@ -21,11 +21,11 @@ public interface AuctionRoomStreamApi {
                     + "변경분이 아니라 매번 전체라 한 건을 놓쳐도 다음 전송이 덮습니다. "
                     + "보는 사람을 가리지 않아 내 입찰 표시도 낙찰자 본인 여부도 없습니다. 마스킹된 이름을 "
                     + "직접 비교하면 동명이인에서 틀리므로 그 둘은 조회 API로 받습니다. "
-                    + "연결은 입찰이 진행되는 동안만 열립니다. 마감되면 마지막 현황을 한 번 보내고 서버가 "
-                    + "끊으므로, 다시 구독하지 말고 결과 요약 API로 갑니다. 현황 조회는 마감 뒤에도 열려 있습니다. "
-                    + "연결 자체가 접속자 한 명이라 같은 사람이 창을 둘 열면 둘로 셉니다. 모든 시각은 KST입니다. "
-                    + "로그인이 필요합니다. EventSource는 다른 출처에 자격 증명을 기본으로 보내지 않으므로 "
-                    + "withCredentials를 켜야 세션 쿠키가 실립니다.")
+                    + "연결은 방이 열린 뒤 마감까지 열립니다. 입찰 시작 전 대기 구간에도 열려 사람이 모이는 것이 보입니다. "
+                    + "마감되면 마지막 현황을 한 번 보내고 서버가 끊으므로, 다시 구독하지 말고 결과 요약 API로 갑니다. "
+                    + "현황 조회는 마감 뒤에도 열려 있습니다. 모든 시각은 KST입니다. "
+                    + "EventSource는 다른 출처에 자격 증명을 기본으로 보내지 않으므로 withCredentials를 켜야 "
+                    + "세션 쿠키가 실립니다.")
     @ApiResponse(responseCode = "200", description = "현황 스트림을 엽니다.",
             content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE,
                     schema = @Schema(implementation = RoomStateResponse.class)))

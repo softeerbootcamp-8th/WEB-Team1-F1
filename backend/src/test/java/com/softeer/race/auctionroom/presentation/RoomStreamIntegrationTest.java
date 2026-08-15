@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 서버가 끊은 뒤 응답이 실제로 끝나는지, 두 번째로 디스패처를 통과하며 인증이 이미 나간 응답을 뒤집지 않는지
  */
 @DisplayName("경매방 현황 구독 통합 테스트")
-class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
+class RoomStreamIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private SessionService sessionService;
@@ -84,7 +84,7 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
                 .contains("\"auctionId\":" + liveAuctionId)
                 .contains("\"phase\":\"LIVE\"")
                 .contains("\"currentPrice\":12500000")
-                .contains("\"connectedCount\":1");
+                .contains("\"viewerCount\":1");
 
         // then 3 : 집계 둘이 방송에도 실린다, 한 사람이 두 번 넣었으므로 건수와 사람 수가 다르다
         assertThat(afterFirst)
@@ -104,7 +104,7 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
 
         // then 5 : 먼저 열려 있던 연결로 늘어난 접속자 수가 흘러 들어간다, 다시 조회하지 않았는데 갱신된다
         assertThat(body(first))
-                .contains("\"connectedCount\":2")
+                .contains("\"viewerCount\":2")
                 .isNotEqualTo(afterFirst);
     }
 
@@ -148,7 +148,7 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
         // then : 열 연결이 없으므로 404 다, 채널에도 아무 흔적이 남지 않는다
         response.andExpectAll(
                 status().isNotFound(),
-                jsonPath("$.code").value("AUCTION_ROOM_NOT_FOUND"));
+                jsonPath("$.code").value("ROOM_NOT_FOUND"));
     }
 
     @Test
@@ -245,8 +245,8 @@ class AuctionRoomStreamIntegrationTest extends IntegrationTestSupport {
 
         // then : 연결은 둘인데 사람은 하나다, 두 번째 창이 열려도 접속자 수가 늘지 않는다
         assertThat(body(first))
-                .contains("\"connectedCount\":1")
-                .doesNotContain("\"connectedCount\":2");
+                .contains("\"viewerCount\":1")
+                .doesNotContain("\"viewerCount\":2");
     }
 
     // ================= 준비 ====================
