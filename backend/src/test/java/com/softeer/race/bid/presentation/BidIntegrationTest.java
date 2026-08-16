@@ -2,6 +2,7 @@ package com.softeer.race.bid.presentation;
 
 import com.jayway.jsonpath.JsonPath;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
+import com.softeer.race.bid.application.AuctionLockRegistry;
 import com.softeer.race.notification.domain.NotificationRepository;
 import com.softeer.race.notification.domain.NotificationRow;
 import com.softeer.race.support.IntegrationTestSupport;
@@ -24,6 +25,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.softeer.race.notification.domain.NotificationType.OUTBID;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -75,6 +77,9 @@ class BidIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private AuctionLockRegistry auctionLockRegistry;
 
     @BeforeEach
     void fixClock() {
@@ -155,6 +160,28 @@ class BidIntegrationTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.code").value("SELLER_CANNOT_BID"));
 
         assertThat(bidCount(LIVE_AUCTION)).isZero();
+    }
+
+    // 게이트는 성립 입찰이 있어야 사본을 갖는다. 사본 유무(콜드/워밍)에 따라 같은 요청이
+    // 다른 사유를 받으면 잠금 앞 거르기가 판정을 바꾼 것이다 - 이 테스트가 그 사고를 막는다.
+    @Test
+    @DisplayName("시나리오 5-2 : 판매자의 저가 입찰은 게이트 사본 유무와 무관하게 같은 사유를 받는다")
+    void sellerRejectionIsConsistentAcrossGateStates() throws Exception {
+        // 콜드 - 사본이 없어 잠금 안 판정이 거른다
+        bid(LIVE_AUCTION, SELLER_TOKEN, START_PRICE)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("SELLER_CANNOT_BID"));
+
+        // 성립 입찰로 사본을 만든다
+        bid(LIVE_AUCTION, ALICE_TOKEN, START_PRICE)
+                .andExpect(status().isCreated());
+
+        // 워밍 - 같은 요청(이제 하한 미달이기도 하다)이 게이트에서 걸려도 사유는 같아야 한다
+        bid(LIVE_AUCTION, SELLER_TOKEN, START_PRICE)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("SELLER_CANNOT_BID"));
+
+        assertThat(bidCount(LIVE_AUCTION)).isEqualTo(1);
     }
 
     // 평가사 역할은 입찰 자체가 허용되지 않으므로 서비스에 도달하기 전에 공통 인가에서 차단한다
@@ -299,6 +326,47 @@ class BidIntegrationTest extends IntegrationTestSupport {
 
         assertThat(bidCount(LIVE_AUCTION)).isEqualTo(1);
         assertThat(currentPriceOf(LIVE_AUCTION)).isEqualTo(START_PRICE);
+    }
+
+    // MockMvc 는 테스트 스레드에서 돌고 ReentrantLock 은 재진입이 되므로, 다른 스레드가 잠금을 쥐어야 대기가 성립한다.
+    @Test
+    @DisplayName("시나리오 11-1 : 잠금을 기한 안에 얻지 못한 입찰은 거절되고, 잠금이 풀리면 다시 성립한다")
+    void rejectsWhenLockTimesOut() throws Exception {
+        ReentrantLock lock = auctionLockRegistry.obtain(LIVE_AUCTION);
+        CountDownLatch held = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        ExecutorService holder = Executors.newSingleThreadExecutor();
+
+        holder.submit(() -> {
+            lock.lock();
+            try {
+                held.countDown();
+                release.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                lock.unlock();
+            }
+        });
+
+        try {
+            assertThat(held.await(10, TimeUnit.SECONDS)).isTrue();
+
+            // BidFacade 의 대기 상한(3초)만큼 걸리는 테스트다, 상한을 줄이면 여기도 빨라진다
+            bid(LIVE_AUCTION, ALICE_TOKEN, START_PRICE)
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("BID_LOCK_TIMEOUT"));
+
+            assertThat(bidCount(LIVE_AUCTION)).isZero();
+        } finally {
+            release.countDown();
+            holder.shutdown();
+        }
+        assertThat(holder.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+
+        // 타임아웃이 잠금을 오염시키지 않았다면 풀린 뒤 같은 요청은 그대로 성립한다
+        bid(LIVE_AUCTION, ALICE_TOKEN, START_PRICE).andExpect(status().isCreated());
+        assertThat(bidCount(LIVE_AUCTION)).isEqualTo(1);
     }
 
     @Test

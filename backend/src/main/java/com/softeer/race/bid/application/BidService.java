@@ -3,6 +3,8 @@ package com.softeer.race.bid.application;
 import com.softeer.race.auction.domain.Auction;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.bid.application.dto.BidPlaceInfo;
+import com.softeer.race.bid.application.dto.BidPlaced;
+import com.softeer.race.bid.domain.AuctionBidSnapshot;
 import com.softeer.race.bid.domain.Bid;
 import com.softeer.race.bid.domain.BidAccepted;
 import com.softeer.race.bid.domain.BidIncrementTable;
@@ -28,7 +30,6 @@ import static com.softeer.race.bid.exception.BidErrorCode.AUCTION_NOT_LIVE;
 import static com.softeer.race.bid.exception.BidErrorCode.BIDDER_NOT_FOUND;
 import static com.softeer.race.bid.exception.BidErrorCode.EVALUATOR_CANNOT_BID;
 import static com.softeer.race.bid.exception.BidErrorCode.SELF_OUTBID;
-import static com.softeer.race.bid.exception.BidErrorCode.SELLER_CANNOT_BID;
 
 /**
  * 입찰 접수
@@ -49,7 +50,7 @@ public class BidService {
      * 입찰을 접수한다, 성립하면 경매의 현재가와 마감이 함께 갱신된다.
      */
     @Transactional
-    public BidPlaceInfo place(long auctionId, long bidderId, long amount) {
+    public BidPlaced place(long auctionId, long bidderId, long amount) {
         // 락 없이 끝낼 수 있는 일을 먼저 한다.
         // 마감 직전에는 한 경매의 입찰이 줄을 서므로, 락 안에서 보낸 시간이 대기열 전체에 곱해진다.
         BidIncrementTable table = bidIncrementService.loadTable();
@@ -66,12 +67,8 @@ public class BidService {
             throw new BusinessException(EVALUATOR_CANNOT_BID);
         }
 
-        if (preCheck.isSeller(bidderId)) {
-            throw new BusinessException(SELLER_CANNOT_BID);
-        }
-
-        // 확실히 떨어질 금액은 잠금 대기열에 세우지 않는다.
-        preCheck.rejectIfBelowMinimum(table, amount, LocalDateTime.now(clock));
+        // 확실히 떨어질 요청은 잠금 대기열에 세우지 않는다.
+        preCheck.toSnapshot().rejectIfDoomed(table, bidderId, amount, LocalDateTime.now(clock));
 
         // 여기부터 이 경매에 대한 입찰이 한 번에 하나씩 처리된다.
         Auction auction = auctionRepository.findByIdForUpdate(auctionId)
@@ -123,6 +120,13 @@ public class BidService {
         eventPublisher.publishEvent(new BidAccepted(auctionId));
 
         // acceptBid 뒤에 읽어야 연장된 마감이 담긴다.
-        return new BidPlaceInfo(bid.getId(), amount, auction.getCurrentEndTime(), acceptedAt);
+        // 게이트용 사본은 값이 확정된 여기서 만든다 - 전부 손에 있는 값이라 쿼리가 늘지 않는다.
+        AuctionBidSnapshot committed = new AuctionBidSnapshot(
+                preCheck.sellerId(), preCheck.startPrice(), amount,
+                preCheck.startTime(), auction.getCurrentEndTime());
+
+        return new BidPlaced(
+                new BidPlaceInfo(bid.getId(), amount, auction.getCurrentEndTime(), acceptedAt),
+                committed);
     }
 }

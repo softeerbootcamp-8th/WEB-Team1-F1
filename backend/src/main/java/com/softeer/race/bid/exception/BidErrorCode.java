@@ -12,7 +12,8 @@ public enum BidErrorCode implements ErrorCode {
     BID_AMOUNT_NOT_ALIGNED(HttpStatus.CONFLICT, "입찰 금액이 최저 상승가 단위에 맞지 않습니다."),
     BID_AMOUNT_TOO_HIGH(HttpStatus.BAD_REQUEST, "입찰 금액은 1조원을 넘을 수 없습니다."),
     BIDDER_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."),
-    AUCTION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 경매입니다.");
+    AUCTION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 경매입니다."),
+    BID_LOCK_TIMEOUT(HttpStatus.CONFLICT, "입찰이 몰려 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
 
     private final HttpStatus status;
     private final String message;
