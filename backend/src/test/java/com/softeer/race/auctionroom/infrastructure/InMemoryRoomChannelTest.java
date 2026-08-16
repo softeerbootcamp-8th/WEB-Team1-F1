@@ -1,5 +1,6 @@
 package com.softeer.race.auctionroom.infrastructure;
 
+import com.softeer.race.auctionroom.application.RoomMessage;
 import com.softeer.race.auctionroom.application.RoomState;
 import com.softeer.race.auctionroom.domain.BidCounts;
 import com.softeer.race.auctionroom.application.RoomSubscription;
@@ -491,11 +492,13 @@ class InMemoryRoomChannelTest {
         }
 
         @Override
-        public void send(RoomState state) {
+        public void send(RoomMessage message) {
             if (!open) {
                 return;
             }
-            received.add(state);
+            if (message instanceof RoomState state) {
+                received.add(state);
+            }
         }
 
         @Override

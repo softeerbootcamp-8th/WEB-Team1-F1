@@ -1,5 +1,6 @@
 package com.softeer.race.auctionroom.presentation;
 
+import com.softeer.race.auctionroom.application.RoomMessage;
 import com.softeer.race.auctionroom.application.RoomState;
 import com.softeer.race.auctionroom.application.RoomSubscription;
 import com.softeer.race.auctionroom.presentation.response.RoomStateResponse;
@@ -7,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -30,8 +33,8 @@ class SseRoomSubscription implements RoomSubscription {
     // 나누면 둘 다 검사를 통과한 뒤 쓰기 순서가 다시 뒤집힌다
     private final Lock order = new ReentrantLock();
 
-    // 잠금 안에서만 읽고 쓴다
-    private RoomState sent;
+    // 잠금 안에서만 읽고 쓴다, 종류마다 마지막으로 보낸 것을 따로 기억해야 서로의 순서를 밀어내지 않는다
+    private final Map<Class<? extends RoomMessage>, RoomMessage> sentByType = new HashMap<>();
 
     SseRoomSubscription(long auctionId, long viewerId, SseEmitter emitter) {
         this.auctionId = auctionId;
@@ -45,7 +48,7 @@ class SseRoomSubscription implements RoomSubscription {
     }
 
     @Override
-    public void send(RoomState state) {
+    public void send(RoomMessage message) {
         if (!open) {
             return;
         }
@@ -53,20 +56,20 @@ class SseRoomSubscription implements RoomSubscription {
         order.lock();
 
         try {
-            if (state.isStalerThan(sent)) {
+            if (message.isStalerThan(sentByType.get(message.getClass()))) {
                 return;
             }
 
-            write(state);
-            sent = state;
+            write(message);
+            sentByType.put(message.getClass(), message);
         } finally {
             order.unlock();
         }
     }
 
-    private void write(RoomState state) {
+    private void write(RoomMessage message) {
         try {
-            emitter.send(RoomStateResponse.from(state));
+            emitter.send(bodyOf(message));
         } catch (IOException e) {
             // 상대가 끊었다, 방이 닫히면 한꺼번에 몰리는 정상 경로다
             log.debug("경매방 현황 전송 중 연결이 끊겼다, 경매 {}", auctionId, e);
@@ -77,6 +80,13 @@ class SseRoomSubscription implements RoomSubscription {
             log.warn("경매방 현황 전송 실패, 경매 {}", auctionId, e);
             open = false;
         }
+    }
+
+    // 봉인된 종류라 새 이벤트가 생기면 컴파일러가 여기를 빠뜨리지 못하게 한다
+    private static Object bodyOf(RoomMessage message) {
+        return switch (message) {
+            case RoomState state -> RoomStateResponse.from(state);
+        };
     }
 
     @Override

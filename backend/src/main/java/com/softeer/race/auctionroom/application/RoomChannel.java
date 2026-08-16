@@ -35,7 +35,7 @@ public interface RoomChannel {
     /**
      * 방의 모든 구독에 현황 전송, 닫힌 구독은 순회가 끝난 뒤 걷어낸다
      */
-    void broadcast(long auctionId, RoomState state);
+    void broadcast(long auctionId, RoomMessage message);
 
     /**
      * 모든 방을 찔러 보고 닫힌 구독을 걷어낸다, 실제로 걷어낸 방의 식별자를 돌려준다

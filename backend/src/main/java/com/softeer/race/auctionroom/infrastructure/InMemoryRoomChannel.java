@@ -1,7 +1,7 @@
 package com.softeer.race.auctionroom.infrastructure;
 
 import com.softeer.race.auctionroom.application.RoomChannel;
-import com.softeer.race.auctionroom.application.RoomState;
+import com.softeer.race.auctionroom.application.RoomMessage;
 import com.softeer.race.auctionroom.application.RoomSubscription;
 import org.springframework.stereotype.Component;
 
@@ -63,7 +63,7 @@ public class InMemoryRoomChannel implements RoomChannel {
     }
 
     @Override
-    public void broadcast(long auctionId, RoomState state) {
+    public void broadcast(long auctionId, RoomMessage message) {
         Set<RoomSubscription> subscriptions = subscriptionsByRoom.get(auctionId);
 
         if (subscriptions == null) {
@@ -74,7 +74,7 @@ public class InMemoryRoomChannel implements RoomChannel {
         Set<RoomSubscription> closed = new HashSet<>();
 
         for (RoomSubscription subscription : subscriptions) {
-            subscription.send(state);
+            subscription.send(message);
 
             if (!subscription.isOpen()) {
                 closed.add(subscription);

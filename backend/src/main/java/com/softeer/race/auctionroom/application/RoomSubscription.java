@@ -10,7 +10,7 @@ public interface RoomSubscription {
      */
     // 낡은 것을 버리는 것이 계약인 이유는, 입찰마다 다른 스레드가 각자 현황을 만들어 같은 구독에 쓰기 때문이다
     // 늦게 만든 것이 먼저 닿으면 화면의 현재가가 내려간다, 구현은 검사와 전송을 원자적으로 묶어야 한다
-    void send(RoomState state);
+    void send(RoomMessage message);
 
     /**
      * 살아 있는지 확인만 하는 신호, 현황을 담지 않는다

@@ -252,8 +252,10 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
         }
 
         @Override
-        public void send(RoomState state) {
-            received.add(state);
+        public void send(RoomMessage message) {
+            if (message instanceof RoomState state) {
+                received.add(state);
+            }
         }
 
         @Override

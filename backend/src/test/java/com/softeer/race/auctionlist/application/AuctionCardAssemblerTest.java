@@ -3,7 +3,7 @@ package com.softeer.race.auctionlist.application;
 import com.softeer.race.auctionlist.application.dto.AuctionCardInfo;
 import com.softeer.race.auctionlist.domain.AuctionListRow;
 import com.softeer.race.auctionroom.application.RoomChannel;
-import com.softeer.race.auctionroom.application.RoomState;
+import com.softeer.race.auctionroom.application.RoomMessage;
 import com.softeer.race.auctionroom.application.RoomSubscription;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
@@ -106,7 +106,7 @@ class AuctionCardAssemblerTest {
         }
 
         @Override
-        public void broadcast(long auctionId, RoomState state) {
+        public void broadcast(long auctionId, RoomMessage message) {
             throw new UnsupportedOperationException();
         }
 
