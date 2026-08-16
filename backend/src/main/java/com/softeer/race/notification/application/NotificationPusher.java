@@ -38,6 +38,9 @@ public class NotificationPusher {
      */
     @TransactionalEventListener
     public void push(NotificationPublished event) {
+        // 람다를 여기서 실행하는 것이 아니다. 전송 방법을 Runnable 객체로 감싸 회원 큐에 넘긴다.
+        // 이 메서드는 execute가 접수 여부를 결정하면 끝나고, pushNow는 notification-delivery-* 스레드가
+        // 나중에 호출한다. 이 한 줄이 동기 경로에서 비동기 경로로 넘어가는 정확한 경계다.
         deliveryExecutor.execute(event.userId(), () -> pushNow(event));
     }
 
@@ -62,6 +65,8 @@ public class NotificationPusher {
      */
     @TransactionalEventListener
     public void pushUnreadCount(UnreadCountChanged event) {
+        // 새 알림과 같은 userId 큐를 사용해야 두 종류가 발생한 순서대로 전송된다. 별도 @Async 메서드로
+        // 보내면 서로 다른 풀 스레드가 완료 순서를 뒤집어 이전 unread-count가 마지막에 도착할 수 있다.
         deliveryExecutor.execute(event.userId(), () -> pushUnreadCountNow(event));
     }
 
