@@ -82,7 +82,7 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
                 .andReturn();
 
         // then 2 : 구독만으로는 현황이 오지 않는다, 첫 화면은 방 조회가 이미 줬고 사람 수만 온다
-        String afterFirst = body(first);
+        String afterFirst = SseBodies.awaitUntil(first, sse -> sse.contains("event:viewers"));
         assertThat(afterFirst)
                 .contains("event:viewers")
                 .contains("\"viewerCount\":1")
@@ -92,7 +92,7 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
         roomStreamService.refresh(liveAuctionId);
 
         // then 3 : 집계 둘이 현황에 실린다, 한 사람이 두 번 넣었으므로 건수와 사람 수가 다르다
-        String afterRefresh = body(first);
+        String afterRefresh = SseBodies.awaitUntil(first, sse -> sse.contains("\"phase\""));
         assertThat(afterRefresh)
                 .contains("\"auctionId\":" + liveAuctionId)
                 .contains("\"phase\":\"LIVE\"")
@@ -112,7 +112,7 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
         subscribe(liveAuctionId).andExpect(status().isOk());
 
         // then 5 : 먼저 열려 있던 연결로 늘어난 접속자 수가 흘러 들어간다, 다시 조회하지 않았는데 갱신된다
-        assertThat(body(first))
+        assertThat(SseBodies.awaitUntil(first, sse -> sse.contains("\"viewerCount\":2")))
                 .contains("\"viewerCount\":2")
                 .isNotEqualTo(afterRefresh);
     }
@@ -223,8 +223,9 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
         MvcResult first = subscribe(liveAuctionId).andExpect(request().asyncStarted()).andReturn();
         MvcResult second = subscribe(liveAuctionId).andExpect(request().asyncStarted()).andReturn();
 
-        int sentToFirst = stateCount(first);
-        int sentToSecond = stateCount(second);
+        // 첫 사람은 자기 입장과 두 번째 입장으로 둘, 두 번째 사람은 자기 입장으로 하나를 받는다
+        int sentToFirst = awaitStateCount(first, 2);
+        int sentToSecond = awaitStateCount(second, 1);
 
         // when : 서버가 방을 끊는다, 한 명이 끝날 때마다 해제 콜백이 돌아온다
         roomChannel.closeRoom(liveAuctionId);
@@ -253,7 +254,10 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
         subscribeAs(liveAuctionId, sessionToken).andExpect(status().isOk());
 
         // then : 연결은 둘인데 사람은 하나다, 두 번째 창이 열려도 접속자 수가 늘지 않는다
-        assertThat(body(first))
+        // 두 입장이 각각 한 번씩 내보내므로 둘 다 닿기를 기다려야 아래 단정이 공허해지지 않는다
+        assertThat(awaitStateCount(first, 2))
+                .isEqualTo(2);
+        assertThat(SseBodies.read(first))
                 .contains("\"viewerCount\":1")
                 .doesNotContain("\"viewerCount\":2");
     }
@@ -292,7 +296,16 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
 
     // 그 연결로 나간 현황의 개수, SSE 는 현황 하나가 data 한 줄이다
     private static int stateCount(MvcResult opened) {
-        return body(opened).split("data:", -1).length - 1;
+        return countStates(SseBodies.read(opened));
+    }
+
+    // 기다려도 안 차면 그 수를 그대로 준다, 단정이 몇 개가 모자란지 보이게 한다
+    private static int awaitStateCount(MvcResult opened, int expected) {
+        return countStates(SseBodies.awaitUntil(opened, sse -> countStates(sse) >= expected));
+    }
+
+    private static int countStates(String sse) {
+        return sse.split("data:", -1).length - 1;
     }
 
     // 응답이 끝났는지 확인하는 대기다, 상한을 안 주면 spring-test 가 연결 만료 시간만큼 기다린다
@@ -307,7 +320,4 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
 
     // text/event-stream 에는 charset 이 안 붙어 getContentAsString() 이 ISO-8859-1 로 떨어진다
     // SSE 명세가 이 미디어타입을 항상 UTF-8 로 디코딩하게 정하므로 여기서도 그렇게 읽는다
-    private static String body(MvcResult result) {
-        return new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
-    }
 }

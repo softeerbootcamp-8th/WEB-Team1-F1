@@ -211,7 +211,7 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
     // 구독 직후의 진행중 현황이 첫 줄이고 마감 현황이 그 뒤에 온다, 조회와 견줄 것은 뒤엣것이다
     // text/event-stream 에는 charset 이 안 붙어 getContentAsString() 이 ISO-8859-1 로 떨어진다
     private JsonNode lastBroadcast(MvcResult subscribed) throws Exception {
-        String body = new String(subscribed.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+        String body = SseBodies.awaitUntil(subscribed, sse -> sse.contains("\"phase\""));
 
         String json = body.lines()
                 .filter(line -> line.startsWith("data:"))
