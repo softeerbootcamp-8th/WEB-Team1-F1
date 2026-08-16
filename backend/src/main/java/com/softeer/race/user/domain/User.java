@@ -15,8 +15,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "users", uniqueConstraints = {
         @UniqueConstraint(name = "uk_users_username", columnNames = "username"),
         @UniqueConstraint(name = "uk_users_email", columnNames = "email"),
-        @UniqueConstraint(name = "uk_users_phone", columnNames = "phone"),
-        @UniqueConstraint(name = "uk_users_dealer_license_key", columnNames = "dealer_license_key")
+        @UniqueConstraint(name = "uk_users_phone", columnNames = "phone")
 })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTimeEntity {
@@ -47,25 +46,19 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private Role role;
 
-    // 외부 조회 URL이 아니라 비공개 S3 객체 키만 저장한다. 일반 회원과 기존 딜러는 null일 수 있다.
-    @Column(name = "dealer_license_key", length = 255)
-    private String dealerLicenseKey;
-
     private User(
             String username,
             String email,
             String encodedPassword,
             String realName,
             String phone,
-            Role role,
-            String dealerLicenseKey) {
+            Role role) {
         this.username = username;
         this.email = email;
         this.password = encodedPassword;
         this.realName = realName;
         this.phone = phone;
         this.role = role;
-        this.dealerLicenseKey = dealerLicenseKey;
     }
 
     public static User create(
@@ -75,20 +68,23 @@ public class User extends BaseTimeEntity {
             String realName,
             String phone,
             Role role) {
-        return create(username, email, encodedPassword, realName, phone, role, null);
-    }
-
-    public static User create(
-            String username,
-            String email,
-            String encodedPassword,
-            String realName,
-            String phone,
-            Role role,
-            String dealerLicenseKey) {
         validateRealName(realName);
 
-        return new User(username, email, encodedPassword, realName, phone, role, dealerLicenseKey);
+        return new User(username, email, encodedPassword, realName, phone, role);
+    }
+
+    /**
+     * 딜러 자격을 붙인다. 심사를 통과한 신청만 이 메서드를 부른다({@code DealerApplication.approve}).
+     * <p>
+     * setter가 아니라 이름 있는 메서드인 이유는 역할이 아무 데서나 바뀌지 않게 하려는 것이다.
+     * 관리자·평가사로 올리는 경로는 없다 — 그 둘은 서비스가 직접 정하는 자리라 심사가 없다.
+     * <p>
+     * <b>세션에는 반영되지 않는다.</b> 역할이 로그인 시점에 세션으로 복사되므로
+     * ({@code AuthenticatedUser}) 이 회원은 다시 로그인하거나 세션이 만료될 때까지 일반 회원으로
+     * 동작한다. 그 세션을 폐기하는 일은 별도 이슈로 다룬다.
+     */
+    public void promoteToDealer() {
+        this.role = Role.DEALER;
     }
 
     // 이름은 가운데를 가려 내보내므로 두 글자보다 짧으면 가릴 자리가 없다

@@ -48,13 +48,9 @@ function streamState(endAt: string): RoomStreamState {
   return {
     auctionId: 1,
     phase: 'LIVE',
-    startPrice: 10_000_000,
     currentPrice: 10_100_000,
-    openAt: OPEN_AT,
-    startAt: START_AT,
     endAt,
     serverTime: SERVER_NOW,
-    viewerCount: 1,
     bidderCount: 1,
     bidCount: 1,
     winner: null,

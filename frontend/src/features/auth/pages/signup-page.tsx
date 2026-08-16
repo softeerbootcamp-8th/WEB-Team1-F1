@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { FileCheck2, Upload } from 'lucide-react'
+import { CircleQuestionMark, FileCheck2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Select,
   SelectContent,
@@ -74,7 +75,7 @@ export function SignupPage() {
         setDealerLicenseKey(licenseKey)
       }
 
-      await signUpRequest({
+      const result = await signUpRequest({
         ...form,
         email,
         phone,
@@ -85,7 +86,13 @@ export function SignupPage() {
       // 회원가입은 세션을 발급하지 않아서, 성공 뒤 같은 자격증명으로 다시 로그인해야 한다.
       await login({ username: form.username, password: form.password })
 
-      toast.success('회원가입이 완료되었습니다')
+      // 딜러로 신청한 사람은 지금 일반 회원으로 로그인된 상태다. 그냥 "가입 완료"라고만 하면
+      // 딜러 기능을 찾다가 없다고 여긴다
+      toast.success(
+        result.dealerApplicationStatus === 'PENDING'
+          ? '가입이 완료되었습니다. 딜러 자격은 관리자 심사 후 부여됩니다'
+          : '회원가입이 완료되었습니다',
+      )
       const returnTo = (
         location.state as {
           returnTo?: { pathname: string; state?: unknown }
@@ -136,7 +143,32 @@ export function SignupPage() {
         </div>
         {role === 'DEALER' && (
           <div className="space-y-2">
-            <Label htmlFor="dealer-license">자동차매매사원증</Label>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="dealer-license">자동차매매사원증</Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {/*
+                    * type="button" 이 없으면 폼 안의 button 은 submit 이 기본이라, 안내를 보려고
+                    * 누른 것이 그대로 가입 요청이 된다.
+                    * 호버만으로는 키보드 사용자가 열 수 없어 button 으로 둔다 — 포커스로도 열린다.
+                    */}
+                  <button
+                    type="button"
+                    aria-label="딜러 자격 안내"
+                    className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    <CircleQuestionMark className="size-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs space-y-1.5 py-2 leading-relaxed">
+                  <p>제출한 사원증은 딜러 자격 확인 용도로만 안전하게 보관됩니다.</p>
+                  <p>
+                    가입 후 관리자 심사를 거쳐 딜러 자격이 부여됩니다. 심사 전에는 일반 회원으로
+                    이용할 수 있습니다.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <label
               htmlFor="dealer-license"
               className="hover:bg-accent/50 focus-within:border-ring focus-within:ring-ring/40 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed p-4 transition-colors focus-within:ring-[3px]"
@@ -184,9 +216,6 @@ export function SignupPage() {
                 }}
               />
             </label>
-            <p className="text-muted-foreground text-xs">
-              제출한 사원증은 딜러 자격 확인 용도로만 안전하게 보관됩니다.
-            </p>
           </div>
         )}
         <div className="space-y-1.5">

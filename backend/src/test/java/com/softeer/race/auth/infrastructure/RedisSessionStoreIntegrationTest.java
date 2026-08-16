@@ -63,7 +63,7 @@ class RedisSessionStoreIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("없는 세션에 수명을 다시 잡아도 세션이 되살아나지 않는다")
     void extendDoesNotResurrectMissingSession() {
-        sessionStore.extend(TOKEN, TTL);
+        sessionStore.extend(TOKEN, DEALER.id(), TTL);
 
         assertThat(sessionStore.find(TOKEN)).isEmpty();
         assertThat(redisTemplate.hasKey(KEY)).isFalse();
@@ -74,7 +74,7 @@ class RedisSessionStoreIntegrationTest extends IntegrationTestSupport {
     void extendResetsTimeToLive() {
         sessionStore.save(TOKEN, DEALER, Duration.ofMinutes(10));
 
-        sessionStore.extend(TOKEN, TTL);
+        sessionStore.extend(TOKEN, DEALER.id(), TTL);
 
         assertThat(sessionStore.timeToLive(TOKEN))
                 .isGreaterThan(TTL.minusMinutes(1))
@@ -94,5 +94,86 @@ class RedisSessionStoreIntegrationTest extends IntegrationTestSupport {
     @DisplayName("없는 세션을 지워도 예외를 던지지 않는다")
     void deleteIsIdempotent() {
         assertThatCode(() -> sessionStore.delete(TOKEN)).doesNotThrowAnyException();
+    }
+
+    // 역할을 바꾼 뒤 이걸 부르지 않으면 그 회원은 최대 TTL 만큼 바뀌기 전 권한으로 요청할 수 있다
+    @Test
+    @DisplayName("한 회원의 세션은 기기 수와 무관하게 한 번에 모두 끊긴다")
+    void deleteAllOfRevokesEverySession() {
+        sessionStore.save("phone-token", DEALER, TTL);
+        sessionStore.save("laptop-token", DEALER, TTL);
+
+        sessionStore.deleteAllOf(DEALER.id());
+
+        assertThat(sessionStore.find("phone-token")).isEmpty();
+        assertThat(sessionStore.find("laptop-token")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("다른 회원의 세션은 건드리지 않는다")
+    void deleteAllOfLeavesOtherUsers() {
+        AuthenticatedUser other = new AuthenticatedUser(99L, Role.GENERAL);
+        sessionStore.save(TOKEN, DEALER, TTL);
+        sessionStore.save("other-token", other, TTL);
+
+        sessionStore.deleteAllOf(DEALER.id());
+
+        assertThat(sessionStore.find("other-token")).contains(other);
+    }
+
+    // 세션 키는 TTL 로 사라지지만 Set 멤버는 저절로 빠지지 않아, 색인에는 죽은 토큰이 섞여 있다
+    @Test
+    @DisplayName("색인에 죽은 토큰이 섞여 있어도 살아 있는 세션은 끊긴다")
+    void deleteAllOfIgnoresDeadTokens() {
+        sessionStore.save("expired-token", DEALER, TTL);
+        // 세션 키만 지워 색인에 토큰만 남은 상태를 만든다 — delete 가 SREM 을 하지 않으므로 실제로 이렇게 된다
+        sessionStore.delete("expired-token");
+        sessionStore.save("live-token", DEALER, TTL);
+
+        assertThatCode(() -> sessionStore.deleteAllOf(DEALER.id())).doesNotThrowAnyException();
+        assertThat(sessionStore.find("live-token")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("로그인한 적 없는 회원을 폐기해도 예외를 던지지 않는다")
+    void deleteAllOfIsIdempotent() {
+        assertThatCode(() -> sessionStore.deleteAllOf(DEALER.id())).doesNotThrowAnyException();
+    }
+
+    // 색인에 수명이 없으면 로그인할 때마다 커지기만 하고 영원히 남는다
+    @Test
+    @DisplayName("회원별 색인에도 세션과 같은 수명이 걸린다")
+    void userIndexExpiresWithSession() {
+        sessionStore.save(TOKEN, DEALER, TTL);
+
+        Long indexTtl = redisTemplate.getExpire("user-sessions:" + DEALER.id());
+
+        assertThat(indexTtl).isPositive().isLessThanOrEqualTo(TTL.toSeconds());
+    }
+
+    // 세션만 연장하면 오래 머무는 사용자의 색인이 먼저 만료돼, 살아 있는 세션이 폐기에서 빠진다
+    @Test
+    @DisplayName("연장은 색인의 수명도 함께 늘린다")
+    void extendAlsoExtendsUserIndex() {
+        sessionStore.save(TOKEN, DEALER, Duration.ofMinutes(10));
+
+        sessionStore.extend(TOKEN, DEALER.id(), TTL);
+
+        assertThat(redisTemplate.getExpire("user-sessions:" + DEALER.id()))
+                .isGreaterThan(Duration.ofMinutes(10).toSeconds());
+    }
+
+    // 폐기 뒤 색인을 남겨 두면 방금 끊긴 토큰들이 새로 로그인한 세션과 뒤섞인다
+    @Test
+    @DisplayName("폐기 후 다시 로그인한 세션은 이전 폐기에 영향받지 않는다")
+    void newSessionAfterRevokeSurvives() {
+        sessionStore.save("old-token", DEALER, TTL);
+        sessionStore.deleteAllOf(DEALER.id());
+
+        sessionStore.save("new-token", DEALER, TTL);
+
+        assertThat(sessionStore.find("new-token")).contains(DEALER);
+        assertThat(redisTemplate.opsForSet().members("user-sessions:" + DEALER.id()))
+                .containsExactly("new-token");
     }
 }

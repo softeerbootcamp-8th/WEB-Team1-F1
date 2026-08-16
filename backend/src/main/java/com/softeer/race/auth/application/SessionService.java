@@ -51,7 +51,7 @@ public class SessionService {
 
         Duration renewThreshold = authProperties.session().renewThreshold();
         if (sessionStore.timeToLive(token).compareTo(renewThreshold) <= 0) {
-            sessionStore.extend(token, authProperties.session().ttl());
+            sessionStore.extend(token, authenticatedUser.id(), authProperties.session().ttl());
         }
 
         return authenticatedUser;
@@ -63,5 +63,20 @@ public class SessionService {
             return;
         }
         sessionStore.delete(token);
+    }
+
+    /**
+     * 이 회원의 모든 세션을 끊는다. <b>역할을 바꾼 쪽이 반드시 함께 불러야 한다.</b>
+     * <p>
+     * 세션에 복사된 역할은 로그인 시점의 스냅샷이라, 부르지 않으면 그 회원은 최대 TTL만큼 바뀌기 전
+     * 권한으로 계속 요청할 수 있다. 승격이라면 새 권한이 늦게 붙는 데서 그치지만, 권한을 뺏는
+     * 변경에서는 그 시간만큼 그대로 열려 있는 것이 된다.
+     * <p>
+     * 세션을 갱신하지 않고 끊는 이유는 두 방향을 한 연산으로 다루기 위해서다. 값을 새 역할로
+     * 덮어쓰면 승격은 매끄럽지만 회수에는 쓸 수 없어, 결국 경로가 둘로 갈린다. 대신 당사자는
+     * 다시 로그인해야 한다.
+     */
+    public void revokeAllOf(long userId) {
+        sessionStore.deleteAllOf(userId);
     }
 }

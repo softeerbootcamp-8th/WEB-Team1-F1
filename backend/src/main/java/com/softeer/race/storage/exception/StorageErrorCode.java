@@ -31,6 +31,14 @@ public enum StorageErrorCode implements ErrorCode {
     DEALER_LICENSE_TOO_LARGE(HttpStatus.BAD_REQUEST,
             "자동차매매사원증은 10MB까지 업로드할 수 있습니다."),
 
+    /**
+     * 조회 주소를 발급할 수 없는 키다. 500으로 두는 이유는 이 값이 요청 본문이 아니라 DB에 저장된
+     * 사원증 키이기 때문이다 — 관리자가 잘못 보낸 것이 아니라 우리가 발급한 적 없는 키가 저장돼
+     * 있다는 뜻이라, 사용자가 고칠 수 있는 오류가 아니다.
+     */
+    INVALID_DEALER_LICENSE_KEY(HttpStatus.INTERNAL_SERVER_ERROR,
+            "사원증 파일 주소를 만들 수 없습니다."),
+
     STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE,
             "파일 저장소를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.");
 

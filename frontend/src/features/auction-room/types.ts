@@ -81,21 +81,23 @@ export interface RoomStreamWinner {
 }
 
 /** 백엔드 RoomStateResponse와 동일한 필드 — GET /room/stream이 매번 전체 상태를 통째로 밀어준다 */
-/** 차량은 방 안에서 바뀌지 않아 방송에 실리지 않는다, 최초 조회가 한 번 준다 */
+/** 방 안에서 바뀌지 않는 값은 방송에 실리지 않는다, 최초 조회가 한 번 준다 */
 export interface RoomStreamState {
   auctionId: number
   phase: RoomPhase
-  startPrice: number
   currentPrice: number
-  openAt: string
-  startAt: string
   endAt: string
   serverTime: string
-  viewerCount: number
   bidderCount: number
   bidCount: number
   winner: RoomStreamWinner | null
   recentBids: RoomStreamBid[]
+}
+
+/** event: viewers 의 본문. 들고 나는 것만으로 바뀌어 현황과 따로 온다 */
+export interface RoomViewerCount {
+  auctionId: number
+  viewerCount: number
 }
 
 /** 백엔드 RoomOpeningResponse와 동일한 필드 — 아직 열리지 않은 방의 안내다 */

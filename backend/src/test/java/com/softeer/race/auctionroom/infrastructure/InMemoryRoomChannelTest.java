@@ -1,5 +1,6 @@
 package com.softeer.race.auctionroom.infrastructure;
 
+import com.softeer.race.auctionroom.application.RoomMessage;
 import com.softeer.race.auctionroom.application.RoomState;
 import com.softeer.race.auctionroom.domain.BidCounts;
 import com.softeer.race.auctionroom.application.RoomSubscription;
@@ -435,8 +436,8 @@ class InMemoryRoomChannelTest {
     // 채널은 현황을 나르기만 하고 안을 들여다보지 않으므로, 같은 객체가 갔는지만 확인하면 된다
     private static RoomState liveState() {
         return new RoomState(
-                AUCTION, RoomPhase.LIVE, 0, 0,
-                null, null, null, null, 0, new BidCounts(0, 0), null, List.of());
+                AUCTION, RoomPhase.LIVE, 0,
+                null, null, new BidCounts(0, 0), null, List.of());
     }
 
     // 닫힌 구독을 흉내내려면 열림 여부를 정할 수 있어야 한다
@@ -491,11 +492,13 @@ class InMemoryRoomChannelTest {
         }
 
         @Override
-        public void send(RoomState state) {
+        public void send(RoomMessage message) {
             if (!open) {
                 return;
             }
-            received.add(state);
+            if (message instanceof RoomState state) {
+                received.add(state);
+            }
         }
 
         @Override

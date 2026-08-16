@@ -4,6 +4,7 @@ import static com.softeer.race.auth.exception.AuthErrorCode.UNAUTHENTICATED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -82,7 +83,7 @@ class SessionServiceTest {
 
         sessionService.authenticate(TOKEN);
 
-        verify(sessionStore, never()).extend(any(), any());
+        verify(sessionStore, never()).extend(any(), anyLong(), any());
     }
 
     // 경계를 연장 쪽으로 두지 않으면 임계값에 정확히 걸린 세션이 한 순간 갱신 대상에서 빠진다
@@ -93,7 +94,7 @@ class SessionServiceTest {
 
         sessionService.authenticate(TOKEN);
 
-        verify(sessionStore).extend(TOKEN, TTL);
+        verify(sessionStore).extend(TOKEN, USER_ID, TTL);
     }
 
     // 남은 시간에 더하는 방식이면 자주 접속한 세션의 수명이 무한히 늘어난다
@@ -104,7 +105,16 @@ class SessionServiceTest {
 
         sessionService.authenticate(TOKEN);
 
-        verify(sessionStore).extend(TOKEN, TTL);
+        verify(sessionStore).extend(TOKEN, USER_ID, TTL);
+    }
+
+    // 역할을 바꾼 쪽이 이걸 부르지 않으면 그 회원은 최대 TTL 만큼 바뀌기 전 권한으로 요청할 수 있다
+    @Test
+    @DisplayName("회원 단위 폐기는 저장소에 그대로 위임한다")
+    void revokeAllOfDelegatesToStore() {
+        sessionService.revokeAllOf(USER_ID);
+
+        verify(sessionStore).deleteAllOf(USER_ID);
     }
 
     // 만료된 세션은 저장소가 스스로 지워 없는 세션과 구분되지 않는다
