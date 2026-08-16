@@ -15,8 +15,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "users", uniqueConstraints = {
         @UniqueConstraint(name = "uk_users_username", columnNames = "username"),
         @UniqueConstraint(name = "uk_users_email", columnNames = "email"),
-        @UniqueConstraint(name = "uk_users_phone", columnNames = "phone"),
-        @UniqueConstraint(name = "uk_users_dealer_license_key", columnNames = "dealer_license_key")
+        @UniqueConstraint(name = "uk_users_phone", columnNames = "phone")
 })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTimeEntity {
@@ -47,25 +46,19 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private Role role;
 
-    // 외부 조회 URL이 아니라 비공개 S3 객체 키만 저장한다. 일반 회원과 기존 딜러는 null일 수 있다.
-    @Column(name = "dealer_license_key", length = 255)
-    private String dealerLicenseKey;
-
     private User(
             String username,
             String email,
             String encodedPassword,
             String realName,
             String phone,
-            Role role,
-            String dealerLicenseKey) {
+            Role role) {
         this.username = username;
         this.email = email;
         this.password = encodedPassword;
         this.realName = realName;
         this.phone = phone;
         this.role = role;
-        this.dealerLicenseKey = dealerLicenseKey;
     }
 
     public static User create(
@@ -75,20 +68,9 @@ public class User extends BaseTimeEntity {
             String realName,
             String phone,
             Role role) {
-        return create(username, email, encodedPassword, realName, phone, role, null);
-    }
-
-    public static User create(
-            String username,
-            String email,
-            String encodedPassword,
-            String realName,
-            String phone,
-            Role role,
-            String dealerLicenseKey) {
         validateRealName(realName);
 
-        return new User(username, email, encodedPassword, realName, phone, role, dealerLicenseKey);
+        return new User(username, email, encodedPassword, realName, phone, role);
     }
 
     // 이름은 가운데를 가려 내보내므로 두 글자보다 짧으면 가릴 자리가 없다

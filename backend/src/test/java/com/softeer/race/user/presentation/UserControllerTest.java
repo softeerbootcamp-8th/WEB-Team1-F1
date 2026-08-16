@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.presentation.GlobalExceptionHandler;
+import com.softeer.race.dealer.domain.DealerApplicationStatus;
 import com.softeer.race.user.application.UserService;
 import com.softeer.race.user.application.dto.command.SignUpCommand;
 import com.softeer.race.user.application.dto.info.SignUpInfo;
@@ -46,7 +47,7 @@ class UserControllerTest {
     @DisplayName("정상 회원가입 요청은 비밀번호 없이 201 응답을 반환한다")
     void signUp() throws Exception {
         when(userService.signUp(any(SignUpCommand.class)))
-                .thenReturn(new SignUpInfo(1L, "race_kim", "race@race.kr", "김레이스", Role.GENERAL));
+                .thenReturn(new SignUpInfo(1L, "race_kim", "race@race.kr", "김레이스", Role.GENERAL, null));
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -64,7 +65,8 @@ class UserControllerTest {
     @DisplayName("딜러 회원가입의 사원증 키는 서비스로 전달하지만 응답에는 노출하지 않는다")
     void dealerSignUpPassesPrivateKeyWithoutExposingIt() throws Exception {
         when(userService.signUp(any(SignUpCommand.class)))
-                .thenReturn(new SignUpInfo(1L, "race_kim", "race@race.kr", "김레이스", Role.DEALER));
+                .thenReturn(new SignUpInfo(1L, "race_kim", "race@race.kr", "김레이스",
+                        Role.GENERAL, DealerApplicationStatus.PENDING));
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -80,7 +82,10 @@ class UserControllerTest {
                                 }
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.role").value("DEALER"))
+                // 딜러로 신청해도 승인 전까지는 일반 회원이다. 상태가 함께 내려가야
+                // 클라이언트가 "심사 접수됨"과 "딜러 선택이 무시됨"을 구분한다
+                .andExpect(jsonPath("$.role").value("GENERAL"))
+                .andExpect(jsonPath("$.dealerApplicationStatus").value("PENDING"))
                 .andExpect(jsonPath("$.dealerLicenseKey").doesNotExist());
 
         ArgumentCaptor<SignUpCommand> command = ArgumentCaptor.forClass(SignUpCommand.class);
@@ -124,7 +129,7 @@ class UserControllerTest {
     @DisplayName("특수문자로 이루어진 ASCII 비밀번호는 정상 처리된다")
     void signUpAcceptsSpecialCharacterPassword() throws Exception {
         when(userService.signUp(any(SignUpCommand.class)))
-                .thenReturn(new SignUpInfo(1L, "race_kim", "race@race.kr", "김레이스", Role.GENERAL));
+                .thenReturn(new SignUpInfo(1L, "race_kim", "race@race.kr", "김레이스", Role.GENERAL, null));
 
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
