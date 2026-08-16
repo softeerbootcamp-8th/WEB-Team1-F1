@@ -61,6 +61,7 @@ tasks.register('experiment', Test) {
     // 조건을 바꿔가며 돌린다, ./gradlew experiment -Psubscribers=50
     systemProperty 'subscribers', findProperty('subscribers') ?: '10'
     systemProperty 'slow', findProperty('slow') ?: '0'
+    systemProperty 'slowKbps', findProperty('slowKbps') ?: '0'
     systemProperty 'bidders', findProperty('bidders') ?: '5'
     systemProperty 'runs', findProperty('runs') ?: '1'
     systemProperty 'seconds', findProperty('seconds') ?: '20'

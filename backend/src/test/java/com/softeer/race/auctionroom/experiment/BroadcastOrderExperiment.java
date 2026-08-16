@@ -58,6 +58,9 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
 
     private static final int SUBSCRIBERS = Integer.getInteger("subscribers", 10);
     private static final int SLOW_SUBSCRIBERS = Integer.getInteger("slow", 0);
+
+    // 느린 구독이 초당 읽는 양, 0 이면 한 바이트도 안 읽는다
+    private static final int SLOW_READ_KBPS = Integer.getInteger("slowKbps", 0);
     private static final int BIDDERS = Integer.getInteger("bidders", 5);
     private static final int RUNS = Integer.getInteger("runs", 1);
     private static final Duration BIDDING = Duration.ofSeconds(Integer.getInteger("seconds", 20));
@@ -70,6 +73,9 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
     // 작게 잡을수록 빨리 찬다, 안 읽는 구독자의 수신 버퍼가 차야 서버 쓰기가 막힌다
     private static final int SLOW_RECEIVE_BUFFER_BYTES = 4096;
 
+    // 이 간격마다 한 번씩 정해진 양을 읽는다, 짧을수록 흐름이 고르지만 스레드 깨우기가 잦다
+    private static final long SLOW_READ_TICK_MILLIS = 100L;
+
     private static final Pattern CURRENT_PRICE = Pattern.compile("\"currentPrice\"\\s*:\\s*(\\d+)");
 
     @LocalServerPort
@@ -81,8 +87,8 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
     @Test
     @DisplayName("동시 입찰 중 구독자가 받은 현재가 수열에 역전이 있는지 센다")
     void countPriceInversions() throws Exception {
-        System.out.printf("조건 구독 %d 안읽는구독 %d 입찰자 %d 회차 %d 구간 %d초%n",
-                SUBSCRIBERS, SLOW_SUBSCRIBERS, BIDDERS, RUNS, BIDDING.toSeconds());
+        System.out.printf("조건 구독 %d 느린구독 %d 읽기속도 %dKB/s 입찰자 %d 회차 %d 구간 %d초%n",
+                SUBSCRIBERS, SLOW_SUBSCRIBERS, SLOW_READ_KBPS, BIDDERS, RUNS, BIDDING.toSeconds());
 
         long totalInversions = 0;
 
@@ -107,7 +113,7 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
 
         ExecutorService threads = Executors.newVirtualThreadPerTaskExecutor();
         HttpClient http = HttpClient.newBuilder().executor(threads).build();
-        List<Socket> stalled = new ArrayList<>();
+        List<StalledReader> stalled = new ArrayList<>();
 
         // 계정과 세션을 전부 먼저 만든다. 시더가 전역 TestClock 을 과거로 고정했다 푸는데,
         // 연결이 열린 뒤에 부르면 그 사이 서버가 과거 시각으로 단계를 판정해 구독을 거절한다
@@ -117,13 +123,16 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
 
         try {
             Audience audience = openSubscriptions(auctionId, watchers, threads, http);
-            stalled.addAll(openStalledSubscriptions(auctionId, stallers));
+            stalled.addAll(openStalledSubscriptions(auctionId, stallers, threads));
 
             BidOutcome outcome = runBidders(auctionId, bidders, threads, http);
 
+            // 닫기 전에 읽은 양을 먼저 챙긴다, 속도 조절기가 먹었는지 보는 자기 검증이다
+            long slowBytes = stalled.stream().mapToLong(StalledReader::bytesRead).sum();
+
             // 막힌 소켓을 먼저 닫아 서버 쓰기를 풀어준다
             // 안 그러면 거기 걸려 있던 입찰이 테이블 정리 뒤에 깨어나 없는 회원을 참조한다
-            stalled.forEach(this::closeQuietly);
+            stalled.forEach(StalledReader::close);
             stalled.clear();
 
             // 마지막 방송이 도착할 틈을 준다, 곧바로 끊으면 보낸 것과 받은 것이 어긋난다
@@ -136,9 +145,9 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
                 System.out.println("경고: 구독 읽기 스레드가 시간 안에 끝나지 않았다, 뒤쪽 표본이 빠졌을 수 있다");
             }
 
-            return report(run, audience, outcome);
+            return report(run, audience, outcome, slowBytes);
         } finally {
-            stalled.forEach(this::closeQuietly);
+            stalled.forEach(StalledReader::close);
         }
     }
 
@@ -166,10 +175,11 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         return new Audience(subscriptions, connected.get());
     }
 
-    // 붙기만 하고 한 바이트도 안 읽는 구독이다. 수신 버퍼가 차면 서버 쓰기가 막혀 방송이 그 앞에서 멈춘다
-    // 모바일 네트워크나 백그라운드 탭이 실제로 만드는 상황이고, 로컬 루프백이 오히려 실제와 먼 조건이다
-    private List<Socket> openStalledSubscriptions(long auctionId, List<String> cookies) throws IOException {
-        List<Socket> sockets = new ArrayList<>();
+    // 느리게 읽거나 아예 안 읽는 구독이다. 수신 버퍼가 차면 서버 쓰기가 막혀 방송이 그 앞에서 멈춘다
+    // 속도를 0 으로 두면 한 바이트도 안 읽는데, 그건 실제 사용자가 아니라 상한을 보는 조건이다
+    private List<StalledReader> openStalledSubscriptions(long auctionId, List<String> cookies,
+                                                         ExecutorService threads) throws IOException {
+        List<StalledReader> readers = new ArrayList<>();
 
         for (int i = 0; i < SLOW_SUBSCRIBERS; i++) {
             Socket socket = new Socket();
@@ -186,10 +196,15 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
                     """.formatted(auctionId, port, cookies.get(i))).getBytes(StandardCharsets.UTF_8));
             out.flush();
 
-            sockets.add(socket);
+            StalledReader reader = new StalledReader(socket);
+            readers.add(reader);
+
+            if (SLOW_READ_KBPS > 0) {
+                threads.submit(reader::drainSlowly);
+            }
         }
 
-        return sockets;
+        return readers;
     }
 
     // 스프링이 data: 로 시작하는 줄에 JSON 을 싣고 keep-alive 는 : 로 시작한다
@@ -355,15 +370,7 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         return nanos / 1_000_000.0;
     }
 
-    private void closeQuietly(Socket socket) {
-        try {
-            socket.close();
-        } catch (IOException ignored) {
-            // 실험 정리라 실패해도 할 일이 없다
-        }
-    }
-
-    private long report(int run, Audience audience, BidOutcome outcome) {
+    private long report(int run, Audience audience, BidOutcome outcome, long slowBytes) {
         Tally tally = tally(audience.subscriptions());
         Elapsed elapsed = Elapsed.of(outcome.elapsedNanos());
 
@@ -379,6 +386,13 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         System.out.printf("%d회차 입찰응답 %d건 p50 %.1fms p95 %.1fms p99 %.1fms 최대 %.1fms%n",
                 run, elapsed.count(), millis(elapsed.p50()), millis(elapsed.p95()),
                 millis(elapsed.p99()), millis(elapsed.max()));
+
+        // 목표보다 훨씬 적으면 서버가 그만큼 못 보낸 것이고, 목표를 넘으면 속도 조절기가 안 먹은 것이다
+        if (SLOW_SUBSCRIBERS > 0) {
+            System.out.printf("%d회차 느린구독 %d개가 %,d바이트 읽음, 목표 %,d바이트%n",
+                    run, SLOW_SUBSCRIBERS, slowBytes,
+                    SLOW_READ_KBPS * 1024L * BIDDING.toSeconds() * SLOW_SUBSCRIBERS);
+        }
 
         return tally.inversions();
     }
@@ -450,6 +464,62 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
 
     private record Tally(long events, long receiving, long inversions, long maxDrop,
                          long lowestPrice, long highestPrice, long skipped) {
+    }
+
+    // 느린 회선을 흉내낸다, 정해진 간격마다 정해진 양만 읽고 쉰다
+    // 한 바이트도 안 읽는 것은 실제 사용자가 아니라서, 어느 속도부터 무너지는지 이것으로 찾는다
+    private static final class StalledReader {
+
+        private final Socket socket;
+        private final AtomicLong bytesRead = new AtomicLong();
+
+        private StalledReader(Socket socket) {
+            this.socket = socket;
+        }
+
+        private long bytesRead() {
+            return bytesRead.get();
+        }
+
+        private void drainSlowly() {
+            int perTick = Math.max(1, (int) (SLOW_READ_KBPS * 1024L * SLOW_READ_TICK_MILLIS / 1000L));
+            byte[] buffer = new byte[Math.min(perTick, SLOW_RECEIVE_BUFFER_BYTES)];
+
+            try {
+                InputStream in = socket.getInputStream();
+
+                while (!socket.isClosed()) {
+                    // 수신 버퍼가 작아 한 번에 그만큼밖에 안 나온다, 이번 몫을 채울 때까지 여러 번 읽는다
+                    // available 로 물어보고 읽어야 다음 조각을 기다리다 이번 간격을 넘기지 않는다
+                    int taken = 0;
+
+                    while (taken < perTick && in.available() > 0) {
+                        int read = in.read(buffer, 0, Math.min(buffer.length, perTick - taken));
+
+                        if (read < 0) {
+                            return;
+                        }
+
+                        taken += read;
+                    }
+
+                    bytesRead.addAndGet(taken);
+                    Thread.sleep(SLOW_READ_TICK_MILLIS);
+                }
+            } catch (IOException e) {
+                // 정리하며 소켓을 닫으면 여기로 온다, 실험이 끝나는 정상 경로다
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        private void close() {
+            try {
+                socket.close();
+            } catch (IOException ignored) {
+                // 실험 정리라 실패해도 할 일이 없다
+            }
+        }
     }
 
     // 읽는 쪽은 스레드 하나뿐이고 리포트는 그 스레드가 끝난 뒤에 읽는다
