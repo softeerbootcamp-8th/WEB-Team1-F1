@@ -1,6 +1,8 @@
 package com.softeer.race.dealer.domain;
 
 import com.softeer.race.common.domain.BaseTimeEntity;
+import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.dealer.exception.DealerApplicationErrorCode;
 import com.softeer.race.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -90,5 +92,34 @@ public class DealerApplication extends BaseTimeEntity {
     /** 사원증을 붙여 심사를 요청한다. 사원증이 실제로 올라온 파일인지는 서비스가 저장소에 확인한다. */
     public static DealerApplication apply(User applicant, String licenseKey) {
         return new DealerApplication(applicant, licenseKey);
+    }
+
+    /**
+     * 아직 판정할 수 있는 신청인지.
+     * <p>
+     * {@link #approve}·{@link #reject}와 나눠 둔다. 검증하는 메서드가 상태까지 바꾸면 이름이 거짓이
+     * 되고, 판정 메서드 안에서 다시 검사하면 어느 쪽이 진짜 관문인지 흐려진다({@code Evaluation}과 같다).
+     */
+    public void validateDecidable() {
+        if (!status.isInProgress()) {
+            throw new BusinessException(DealerApplicationErrorCode.ALREADY_DECIDED);
+        }
+    }
+
+    /**
+     * 승인한다. <b>신청자에게 딜러 자격을 붙이는 것까지가 승인이다.</b>
+     * <p>
+     * 역할 승격을 서비스가 아니라 여기서 하는 이유는, 둘이 갈라지면 "승인됐는데 아직 일반 회원"인
+     * 행이 만들어질 수 있기 때문이다. 이 신청이 가리키는 회원은 이 엔티티가 이미 들고 있다.
+     */
+    public void approve() {
+        this.status = DealerApplicationStatus.APPROVED;
+        applicant.promoteToDealer();
+    }
+
+    /** 반려한다. 사유가 함께 남아 신청자에게 무엇이 부족했는지 전할 수 있다. */
+    public void reject(String reason) {
+        this.status = DealerApplicationStatus.REJECTED;
+        this.rejectReason = reason;
     }
 }
