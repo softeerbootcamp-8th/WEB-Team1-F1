@@ -45,5 +45,27 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    // experiment 태그는 레이스를 확률로 재현하는 실험이라 초록이 아무것도 보장하지 않는다
+    // CI 에서 돌리면 시간만 쓰고 결과가 흔들리므로 뺀다, 돌릴 때는 ./gradlew experiment
+    useJUnitPlatform {
+        excludeTags 'experiment'
+    }
+}
+
+tasks.register('experiment', Test) {
+    useJUnitPlatform {
+        includeTags 'experiment'
+    }
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    // 조건을 바꿔가며 돌린다, ./gradlew experiment -Psubscribers=50
+    systemProperty 'subscribers', findProperty('subscribers') ?: '10'
+    systemProperty 'slow', findProperty('slow') ?: '0'
+    systemProperty 'bidders', findProperty('bidders') ?: '5'
+    systemProperty 'runs', findProperty('runs') ?: '1'
+    systemProperty 'seconds', findProperty('seconds') ?: '20'
+    // 실험 결과가 표준 출력으로 나온다
+    testLogging.showStandardStreams = true
+    // 조건만 바꿔 다시 돌릴 때 up-to-date 로 건너뛰지 않게 한다
+    outputs.upToDateWhen { false }
 }

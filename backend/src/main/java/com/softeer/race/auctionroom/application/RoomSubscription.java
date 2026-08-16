@@ -6,8 +6,10 @@ package com.softeer.race.auctionroom.application;
 public interface RoomSubscription {
 
     /**
-     * 현황 전송, 이미 닫혔으면 조용히 버린다
+     * 현황 전송, 이미 닫혔거나 이미 보낸 것보다 낡았으면 조용히 버린다
      */
+    // 낡은 것을 버리는 것이 계약인 이유는, 입찰마다 다른 스레드가 각자 현황을 만들어 같은 구독에 쓰기 때문이다
+    // 늦게 만든 것이 먼저 닿으면 화면의 현재가가 내려간다, 구현은 검사와 전송을 원자적으로 묶어야 한다
     void send(RoomState state);
 
     /**
