@@ -5,6 +5,7 @@ import com.softeer.race.auction.application.AuctionStarter;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.auth.config.AuthProperties;
 import com.softeer.race.auth.domain.SessionStore;
+import com.softeer.race.bid.application.AuctionBidGate;
 import com.softeer.race.auctionpost.domain.AuctionPostRepository;
 import com.softeer.race.bid.domain.BidRepository;
 import com.softeer.race.support.seed.RoomSeeder;
@@ -131,6 +132,15 @@ public abstract class IntegrationTestSupport {
         try (RedisConnection connection = redisConnectionFactory.getConnection()) {
             connection.serverCommands().flushDb();
         }
+    }
+
+    @Autowired
+    private AuctionBidGate auctionBidGate;
+
+    // 테이블을 되감으면 현재가도 처음으로 돌아가므로 그걸 기억하는 사본도 같이 되감는다.
+    @AfterEach
+    void clearBidGate() {
+        auctionBidGate.clear();
     }
 
     // 테스트 전이 아니라 후에 지운다
