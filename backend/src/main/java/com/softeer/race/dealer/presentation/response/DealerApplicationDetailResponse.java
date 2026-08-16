@@ -37,6 +37,10 @@ public record DealerApplicationDetailResponse(
         @Schema(description = "사원증을 볼 수 있는 임시 주소. 만료되면 상세를 다시 조회해 받는다")
         String licenseViewUrl,
 
+        @Schema(description = "사원증 파일 형식. 이 값으로 이미지와 PDF를 갈라 그린다",
+                example = "application/pdf")
+        String licenseContentType,
+
         @Schema(description = "사원증 주소 만료 시각", example = "2026-08-16T15:19:05")
         LocalDateTime licenseViewExpiresAt
 ) {
@@ -53,6 +57,7 @@ public record DealerApplicationDetailResponse(
                 info.rejectReason(),
                 info.appliedAt(),
                 info.licenseViewUrl(),
+                info.licenseContentType(),
                 info.licenseViewExpiresAt());
     }
 }

@@ -76,12 +76,14 @@ class AdminDealerApplicationControllerTest {
         given(dealerApplicationReviewService.findDetail(1L)).willReturn(
                 new DealerApplicationDetailInfo(1L, 42L, "race_kim", "김레이스",
                         "race@race.kr", "01012345678", DealerApplicationStatus.PENDING, null,
-                        APPLIED_AT, "https://s3.example/signed", APPLIED_AT.plusMinutes(15)));
+                        APPLIED_AT, "https://s3.example/signed", "application/pdf",
+                        APPLIED_AT.plusMinutes(15)));
 
         mockMvc.perform(get("/api/admin/dealer-applications/1").cookie(adminCookie()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.licenseViewUrl").value("https://s3.example/signed"))
-                .andExpect(jsonPath("$.phone").value("01012345678"));
+                .andExpect(jsonPath("$.phone").value("01012345678"))
+                .andExpect(jsonPath("$.licenseContentType").value("application/pdf"));
     }
 
     @Test

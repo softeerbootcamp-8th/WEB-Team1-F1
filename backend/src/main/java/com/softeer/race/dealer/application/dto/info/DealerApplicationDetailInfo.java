@@ -23,6 +23,8 @@ public record DealerApplicationDetailInfo(
         String rejectReason,
         LocalDateTime appliedAt,
         String licenseViewUrl,
+        // 이미지인지 PDF인지. 사원증은 둘 다 받으므로 화면이 무엇을 그릴지 이 값으로 가른다
+        String licenseContentType,
         LocalDateTime licenseViewExpiresAt
 ) {
 
@@ -42,6 +44,7 @@ public record DealerApplicationDetailInfo(
                 application.getRejectReason(),
                 application.getCreatedAt(),
                 licenseView.viewUrl(),
+                licenseView.contentType(),
                 licenseView.expiresAt());
     }
 }

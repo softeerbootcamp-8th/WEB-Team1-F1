@@ -142,12 +142,14 @@ class DealerApplicationReviewServiceTest {
         when(dealerApplicationRepository.findDetailById(APPLICATION_ID))
                 .thenReturn(Optional.of(DealerApplication.apply(applicant(), LICENSE_KEY)));
         when(dealerLicenseStorage.presignDealerLicenseView(LICENSE_KEY))
-                .thenReturn(new PresignedDealerLicenseView(
-                        "https://s3.example/signed", LocalDateTime.of(2026, 8, 16, 15, 19, 5)));
+                .thenReturn(new PresignedDealerLicenseView("https://s3.example/signed",
+                        "application/pdf", LocalDateTime.of(2026, 8, 16, 15, 19, 5)));
 
         DealerApplicationDetailInfo info = dealerApplicationReviewService.findDetail(APPLICATION_ID);
 
         assertThat(info.licenseViewUrl()).isEqualTo("https://s3.example/signed");
+        // 이미지인지 PDF인지 함께 내려가야 화면이 뷰어를 고를 수 있다
+        assertThat(info.licenseContentType()).isEqualTo("application/pdf");
         assertThat(info.username()).isEqualTo("race_kim");
     }
 

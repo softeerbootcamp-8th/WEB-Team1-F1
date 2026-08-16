@@ -70,6 +70,20 @@ public enum UploadContentType {
     /**
      * @throws BusinessException 이 형식의 상한을 넘으면 400
      */
+    /**
+     * 키의 확장자로 형식을 되짚는다. 키는 서버가 {@link #extension()}으로 만든 것이라 이 역방향이
+     * 성립하고, 저장해 둔 파일이 무엇인지 알아내려고 저장소에 다시 물을 필요가 없다.
+     *
+     * @throws BusinessException 확장자를 알아볼 수 없으면 500 — 우리가 만든 적 없는 키라는 뜻이다
+     */
+    public static UploadContentType fromKey(String key) {
+        return Arrays.stream(values())
+                .filter(type -> key != null && key.endsWith("." + type.extension))
+                .findFirst()
+                .orElseThrow(() ->
+                        new BusinessException(StorageErrorCode.INVALID_DEALER_LICENSE_KEY));
+    }
+
     public void validateSize(long contentLength) {
         if (contentLength > maxSize) {
             throw new BusinessException(StorageErrorCode.FILE_TOO_LARGE);

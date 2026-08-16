@@ -118,6 +118,9 @@ public class S3FileStorage implements FileStorage, DealerLicenseStorage {
 
         return new PresignedDealerLicenseView(
                 presigned.url().toString(),
+                // 키 형태가 위에서 이미 검증돼 확장자를 믿을 수 있다. HeadObject 를 한 번 더 부르는
+                // 대신 그 확장자로 형식을 되짚는다 — 키는 우리가 그 형식으로 만든 것이다
+                UploadContentType.fromKey(key).mimeType(),
                 LocalDateTime.ofInstant(presigned.expiration(), clock.getZone()));
     }
 

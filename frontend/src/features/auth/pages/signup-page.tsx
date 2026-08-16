@@ -74,7 +74,7 @@ export function SignupPage() {
         setDealerLicenseKey(licenseKey)
       }
 
-      await signUpRequest({
+      const result = await signUpRequest({
         ...form,
         email,
         phone,
@@ -85,7 +85,13 @@ export function SignupPage() {
       // 회원가입은 세션을 발급하지 않아서, 성공 뒤 같은 자격증명으로 다시 로그인해야 한다.
       await login({ username: form.username, password: form.password })
 
-      toast.success('회원가입이 완료되었습니다')
+      // 딜러로 신청한 사람은 지금 일반 회원으로 로그인된 상태다. 그냥 "가입 완료"라고만 하면
+      // 딜러 기능을 찾다가 없다고 여긴다
+      toast.success(
+        result.dealerApplicationStatus === 'PENDING'
+          ? '가입이 완료되었습니다. 딜러 자격은 관리자 심사 후 부여됩니다'
+          : '회원가입이 완료되었습니다',
+      )
       const returnTo = (
         location.state as {
           returnTo?: { pathname: string; state?: unknown }
@@ -186,6 +192,11 @@ export function SignupPage() {
             </label>
             <p className="text-muted-foreground text-xs">
               제출한 사원증은 딜러 자격 확인 용도로만 안전하게 보관됩니다.
+            </p>
+            {/* 가입이 곧 딜러 자격이 아니게 됐다. 적어 두지 않으면 가입 직후 딜러 기능을 찾다가 없다고 여긴다 */}
+            <p className="text-muted-foreground text-xs">
+              가입 후 관리자 심사를 거쳐 딜러 자격이 부여됩니다. 심사 전에는 일반 회원으로
+              이용할 수 있습니다.
             </p>
           </div>
         )}
