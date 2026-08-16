@@ -36,9 +36,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 필드 이름을 하나씩 적지 않는 것이 이 테스트의 핵심이다. 양쪽에 필드가 늘어도 계속 유효하고
  * 한쪽에만 늘면 깨진다. 다를 수 있는 것은 보는 사람 기준의 판정뿐이고, 방송은 보는 사람이
  * 정해지지 않으므로 그것들은 값이 아니라 키 자체가 없어야 한다.
- * <p>
- * 열다섯 인자를 위치로 채우는 방송 직렬화의 그물도 여기 걸린다. 조회는 그대로인데 방송만
- * 어긋나면 대조가 깨진다.
  */
 @DisplayName("경매방 조회·방송 응답 일치 통합 테스트")
 class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
@@ -104,8 +101,16 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         assertThat(broadcast.at("/vehicle").isMissingNode()).isTrue();
         assertThat(query.at("/vehicle").isMissingNode()).isFalse();
 
+        // then 2-2 : 시작가와 개장·시작 시각도 방 안에서 바뀌지 않는다, 방이 열리기 전에만 고칠 수 있다
+        assertThat(broadcast.at("/startPrice").isMissingNode()).isTrue();
+        assertThat(broadcast.at("/openAt").isMissingNode()).isTrue();
+        assertThat(broadcast.at("/startAt").isMissingNode()).isTrue();
+        assertThat(query.at("/startPrice").isMissingNode()).isFalse();
+        assertThat(query.at("/openAt").isMissingNode()).isFalse();
+        assertThat(query.at("/startAt").isMissingNode()).isFalse();
+
         // then 3 : 그 둘을 걷어내면 나머지는 키도 값도 완전히 같다
-        assertSameTree("", broadcast, withoutPersonalization(query));
+        assertSameTree("", broadcast, withoutQueryOnlyFields(query));
     }
 
     // ================= 대조 ====================
@@ -145,14 +150,17 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         return keys;
     }
 
-    // 방송에 없는 것은 보는 사람 기준의 판정 셋과 방 안에서 바뀌지 않는 차량이다
-    private JsonNode withoutPersonalization(JsonNode query) {
+    // 방송에 없는 것은 보는 사람 기준의 판정 셋과 방 안에서 바뀌지 않는 값들이다
+    private JsonNode withoutQueryOnlyFields(JsonNode query) {
         ObjectNode copy = (ObjectNode) query.deepCopy();
 
         ((ObjectNode) copy.get("winner")).remove("mine");
         copy.get("recentBids").forEach(bid -> ((ObjectNode) bid).remove("mine"));
         copy.remove("sellerIsMine");
         copy.remove("vehicle");
+        copy.remove("startPrice");
+        copy.remove("openAt");
+        copy.remove("startAt");
 
         return copy;
     }

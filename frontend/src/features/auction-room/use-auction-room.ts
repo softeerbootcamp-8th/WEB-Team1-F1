@@ -109,7 +109,7 @@ export function useAuctionRoom(auctionId: number) {
     prevEndAt.current = state.endAt
     setClockOffset(new Date(state.serverTime).getTime() - Date.now())
 
-    // 차량은 방송이 보내지 않으므로 최초 조회로 받은 것을 이어받는다.
+    // 방 안에서 바뀌지 않는 값은 방송이 보내지 않으므로 최초 조회로 받은 것을 이어받는다.
     // 구독은 조회에 성공한 뒤에만 시작하므로 prev 가 비어 있을 수 없다
     setRoom((prev) =>
       prev == null
@@ -117,10 +117,7 @@ export function useAuctionRoom(auctionId: number) {
         : {
             ...prev,
             phase: state.phase,
-            startPrice: state.startPrice,
             currentPrice: state.currentPrice,
-            openAt: state.openAt,
-            startAt: state.startAt,
             endAt: state.endAt,
             serverTime: state.serverTime,
             viewerCount: state.viewerCount,

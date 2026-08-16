@@ -81,14 +81,11 @@ export interface RoomStreamWinner {
 }
 
 /** 백엔드 RoomStateResponse와 동일한 필드 — GET /room/stream이 매번 전체 상태를 통째로 밀어준다 */
-/** 차량은 방 안에서 바뀌지 않아 방송에 실리지 않는다, 최초 조회가 한 번 준다 */
+/** 방 안에서 바뀌지 않는 값은 방송에 실리지 않는다, 최초 조회가 한 번 준다 */
 export interface RoomStreamState {
   auctionId: number
   phase: RoomPhase
-  startPrice: number
   currentPrice: number
-  openAt: string
-  startAt: string
   endAt: string
   serverTime: string
   viewerCount: number
