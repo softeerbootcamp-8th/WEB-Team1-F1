@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.dealer.application.dto.command.RejectDealerApplicationCommand;
 import com.softeer.race.dealer.application.dto.info.DealerApplicationDetailInfo;
@@ -28,12 +29,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("관리자 딜러 심사")
 class DealerApplicationReviewServiceTest {
 
     private static final long APPLICATION_ID = 1L;
+    private static final long APPLICANT_ID = 42L;
     private static final String LICENSE_KEY =
             "dealer-licenses/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.jpg";
 
@@ -43,12 +46,15 @@ class DealerApplicationReviewServiceTest {
     @Mock
     private DealerLicenseStorage dealerLicenseStorage;
 
+    @Mock
+    private SessionService sessionService;
+
     private DealerApplicationReviewService dealerApplicationReviewService;
 
     @BeforeEach
     void setUp() {
         dealerApplicationReviewService = new DealerApplicationReviewService(
-                dealerApplicationRepository, dealerLicenseStorage);
+                dealerApplicationRepository, dealerLicenseStorage, sessionService);
     }
 
     @Test
@@ -75,6 +81,33 @@ class DealerApplicationReviewServiceTest {
         assertThat(info.status()).isEqualTo(DealerApplicationStatus.REJECTED);
         assertThat(info.rejectReason()).isEqualTo("사원증 사진이 흐립니다.");
         assertThat(applicant.getRole()).isEqualTo(Role.GENERAL);
+    }
+
+    /*
+     * 폐기하지 않으면 승격이 반영되지 않는다. 역할이 로그인 시점에 세션으로 복사되므로 이미
+     * 로그인해 있던 신청자는 최대 세션 TTL 만큼 일반 회원으로 인가되고, 그 사이 /api/auth/me 는
+     * DB 를 읽어 DEALER 를 내려줘 화면과 인가가 어긋난다
+     */
+    @Test
+    @DisplayName("승인은 그 회원의 세션을 함께 끊는다")
+    void approveRevokesApplicantSessions() {
+        givenLocked(DealerApplication.apply(applicant(), LICENSE_KEY));
+
+        dealerApplicationReviewService.approve(APPLICATION_ID);
+
+        verify(sessionService).revokeAllOf(APPLICANT_ID);
+    }
+
+    // 반려는 권한을 바꾸지 않는다. 끊으면 신청자만 이유 없이 로그아웃된다
+    @Test
+    @DisplayName("반려는 세션을 끊지 않는다")
+    void rejectKeepsSessions() {
+        givenLocked(DealerApplication.apply(applicant(), LICENSE_KEY));
+
+        dealerApplicationReviewService.reject(
+                new RejectDealerApplicationCommand(APPLICATION_ID, "사원증 사진이 흐립니다."));
+
+        verify(sessionService, never()).revokeAllOf(APPLICANT_ID);
     }
 
     // 관리자 둘이 같은 신청을 동시에 열었을 때 나중 판정이 앞 판정을 덮지 않아야 한다
@@ -138,8 +171,12 @@ class DealerApplicationReviewServiceTest {
                 .thenReturn(Optional.of(application));
     }
 
+    // 실제 저장은 IDENTITY 라 save 시점에 식별자가 붙는다, 세션 폐기가 그 값을 쓰므로 대역에도 넣는다
     private static User applicant() {
-        return User.create("race_kim", "race@race.kr", "$2a$10$encoded",
+        User applicant = User.create("race_kim", "race@race.kr", "$2a$10$encoded",
                 "김레이스", "01012345678", Role.GENERAL);
+        ReflectionTestUtils.setField(applicant, "id", APPLICANT_ID);
+
+        return applicant;
     }
 }
