@@ -5,6 +5,7 @@ import com.softeer.race.storage.domain.FileStorage;
 import com.softeer.race.storage.domain.DealerLicenseStorage;
 import com.softeer.race.storage.domain.PresignedUpload;
 import com.softeer.race.storage.domain.PresignedDealerLicense;
+import com.softeer.race.storage.domain.PresignedDealerLicenseView;
 import com.softeer.race.storage.domain.UploadContentType;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.storage.exception.StorageErrorCode;
@@ -16,7 +17,10 @@ import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
@@ -85,6 +89,38 @@ public class S3FileStorage implements FileStorage, DealerLicenseStorage {
         return new PresignedDealerLicense(
                 key,
                 presigned.url().toString(),
+                LocalDateTime.ofInstant(presigned.expiration(), clock.getZone()));
+    }
+
+    /**
+     * 키 형태를 여기서 다시 확인한다. 호출자가 DB에서 읽어 온 값이라 믿을 만해 보이지만, 그 값이
+     * 어디서 왔든 <b>서명해 주는 순간 그 객체를 읽을 수 있는 주소가 된다.</b> 형태를 좁혀 두면
+     * 우리가 발급한 적 없는 키에는 서명이 나가지 않는다.
+     * <p>
+     * 객체가 실제로 있는지는 확인하지 않는다. HeadObject 를 한 번 더 부르는 비용을 치러도
+     * 서명과 조회 사이에 지워지면 어차피 404라, 그 판정은 브라우저에 맡긴다.
+     */
+    @Override
+    public PresignedDealerLicenseView presignDealerLicenseView(String key) {
+        if (key == null
+                || !MANAGED_KEY_PATTERNS.get(FileCategory.DEALER_LICENSE).matcher(key).matches()) {
+            throw new BusinessException(StorageErrorCode.INVALID_DEALER_LICENSE_KEY);
+        }
+
+        PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(
+                GetObjectPresignRequest.builder()
+                        .signatureDuration(s3Properties.presignExpiry())
+                        .getObjectRequest(GetObjectRequest.builder()
+                                .bucket(s3Properties.bucket())
+                                .key(key)
+                                .build())
+                        .build());
+
+        return new PresignedDealerLicenseView(
+                presigned.url().toString(),
+                // 키 형태가 위에서 이미 검증돼 확장자를 믿을 수 있다. HeadObject 를 한 번 더 부르는
+                // 대신 그 확장자로 형식을 되짚는다 — 키는 우리가 그 형식으로 만든 것이다
+                UploadContentType.fromKey(key).mimeType(),
                 LocalDateTime.ofInstant(presigned.expiration(), clock.getZone()));
     }
 

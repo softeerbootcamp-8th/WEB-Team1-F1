@@ -4,8 +4,12 @@
  * 지금은 화면 개발용 계약(contract) 역할.
  */
 
-/** 사용자 역할 — 백엔드 Role enum과 동일. 평가사(EVALUATOR)는 셀프 회원가입 대상이 아니다. */
-export type UserRole = 'GENERAL' | 'DEALER' | 'EVALUATOR'
+/**
+ * 사용자 역할 — 백엔드 Role enum과 동일.
+ * 평가사(EVALUATOR)와 관리자(ADMIN)는 셀프 회원가입 대상이 아니다 —
+ * 평가사는 서비스가 위촉하고, 관리자는 서버가 기동할 때 설정으로 심는다.
+ */
+export type UserRole = 'GENERAL' | 'DEALER' | 'EVALUATOR' | 'ADMIN'
 
 /** 회원가입으로 만들 수 있는 역할만 */
 export type SelfSignUpRole = 'GENERAL' | 'DEALER'

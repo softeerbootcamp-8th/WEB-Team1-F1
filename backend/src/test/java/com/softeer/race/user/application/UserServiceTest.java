@@ -13,8 +13,12 @@ import static org.mockito.Mockito.when;
 
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.security.PasswordEncoder;
-import com.softeer.race.storage.domain.DealerLicenseStorage;
+import com.softeer.race.dealer.application.DealerApplicationService;
+import com.softeer.race.dealer.application.dto.info.DealerApplicationInfo;
+import com.softeer.race.dealer.domain.DealerApplicationStatus;
 import com.softeer.race.user.application.dto.command.SignUpCommand;
+import com.softeer.race.user.application.dto.info.SignUpInfo;
+import java.time.LocalDateTime;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
 import com.softeer.race.user.domain.UserRepository;
@@ -43,13 +47,13 @@ class UserServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private DealerLicenseStorage dealerLicenseStorage;
+    private DealerApplicationService dealerApplicationService;
 
     private UserService userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository, passwordEncoder, dealerLicenseStorage);
+        userService = new UserService(userRepository, passwordEncoder, dealerApplicationService);
     }
 
     @Test
@@ -126,15 +130,16 @@ class UserServiceTest {
         verify(userRepository, never()).save(any());
     }
 
+    // 관리자는 부트스트랩으로만 심는다. 여기가 뚫리면 가입 폼으로 아무나 관리자가 된다
     @Test
-    @DisplayName("딜러 회원가입에 사원증 키가 없으면 거부한다")
-    void signUpRejectsDealerWithoutLicense() {
-        SignUpCommand command = signUpCommand(Role.DEALER, null);
+    @DisplayName("관리자 역할의 자체 회원가입을 거부한다")
+    void signUpRejectsAdminRole() {
+        SignUpCommand command = signUpCommand(Role.ADMIN);
 
         assertThatThrownBy(() -> userService.signUp(command))
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.errorCode())
-                                .isEqualTo(UserErrorCode.DEALER_LICENSE_REQUIRED));
+                                .isEqualTo(UNSUPPORTED_SIGNUP_ROLE));
 
         verify(userRepository, never()).save(any());
     }
@@ -149,39 +154,53 @@ class UserServiceTest {
                         exception -> assertThat(exception.errorCode())
                                 .isEqualTo(UserErrorCode.DEALER_LICENSE_NOT_ALLOWED));
 
-        verify(dealerLicenseStorage, never()).isValidUploadedDealerLicense(any());
+        verify(dealerApplicationService, never()).apply(any(), any());
         verify(userRepository, never()).save(any());
     }
 
+    // 이 한 줄이 이번 변경의 핵심이다. 예전에는 아무도 검토하지 않은 사원증으로 딜러가 됐다
     @Test
-    @DisplayName("업로드가 확인되지 않은 사원증 키면 딜러 가입을 거부한다")
-    void signUpRejectsInvalidDealerLicense() {
+    @DisplayName("딜러로 신청해도 회원은 일반 회원으로 만든다")
+    void signUpCreatesGeneralUserForDealerApplicant() {
         SignUpCommand command = signUpCommand(Role.DEALER, dealerLicenseKey());
-        when(dealerLicenseStorage.isValidUploadedDealerLicense(command.dealerLicenseKey()))
-                .thenReturn(false);
-
-        assertThatThrownBy(() -> userService.signUp(command))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.errorCode())
-                                .isEqualTo(UserErrorCode.INVALID_DEALER_LICENSE));
-
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("업로드가 확인된 사원증 키를 딜러 계정에 저장한다")
-    void signUpStoresDealerLicenseKey() {
-        SignUpCommand command = signUpCommand(Role.DEALER, dealerLicenseKey());
-        when(dealerLicenseStorage.isValidUploadedDealerLicense(command.dealerLicenseKey()))
-                .thenReturn(true);
         when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
         savesWithId();
+        appliesWithStatus(DealerApplicationStatus.PENDING);
 
-        userService.signUp(command);
+        SignUpInfo info = userService.signUp(command);
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
-        assertThat(userCaptor.getValue().getDealerLicenseKey()).isEqualTo(dealerLicenseKey());
+        assertThat(userCaptor.getValue().getRole()).isEqualTo(Role.GENERAL);
+        assertThat(info.role()).isEqualTo(Role.GENERAL);
+    }
+
+    @Test
+    @DisplayName("딜러로 신청하면 저장된 회원으로 심사 신청을 접수한다")
+    void signUpAppliesDealerApplication() {
+        SignUpCommand command = signUpCommand(Role.DEALER, dealerLicenseKey());
+        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        savesWithId();
+        appliesWithStatus(DealerApplicationStatus.PENDING);
+
+        SignUpInfo info = userService.signUp(command);
+
+        verify(dealerApplicationService).apply(USER_ID, dealerLicenseKey());
+        // 응답에 담기지 않으면 클라이언트는 딜러 선택이 접수된 것인지 무시된 것인지 알 수 없다
+        assertThat(info.dealerApplicationStatus()).isEqualTo(DealerApplicationStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("일반 회원가입은 심사 신청을 만들지 않는다")
+    void signUpDoesNotApplyForGeneralRole() {
+        SignUpCommand command = signUpCommand(Role.GENERAL);
+        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+        savesWithId();
+
+        SignUpInfo info = userService.signUp(command);
+
+        verify(dealerApplicationService, never()).apply(any(), any());
+        assertThat(info.dealerApplicationStatus()).isNull();
     }
 
     @Test
@@ -226,21 +245,9 @@ class UserServiceTest {
                         exception -> assertThat(exception.errorCode()).isEqualTo(DUPLICATE_PHONE));
     }
 
-    @Test
-    @DisplayName("동일 사원증 키의 DB 제약 위반은 중복 사원증 예외로 변환한다")
-    void signUpConvertsDealerLicenseDataIntegrityViolation() {
-        SignUpCommand command = signUpCommand(Role.DEALER, dealerLicenseKey());
-        when(dealerLicenseStorage.isValidUploadedDealerLicense(command.dealerLicenseKey()))
-                .thenReturn(true);
-        when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
-        when(userRepository.save(any(User.class)))
-                .thenThrow(new DataIntegrityViolationException(
-                        "Duplicate entry for key 'uk_users_dealer_license_key'"));
-
-        assertThatThrownBy(() -> userService.signUp(command))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.errorCode())
-                                .isEqualTo(UserErrorCode.DUPLICATE_DEALER_LICENSE));
+    private void appliesWithStatus(DealerApplicationStatus status) {
+        when(dealerApplicationService.apply(any(), any()))
+                .thenReturn(new DealerApplicationInfo(10L, status, null, LocalDateTime.now()));
     }
 
     // 실제 저장은 IDENTITY 라 save 시점에 식별자가 붙는다, 발행이 그 값을 쓰므로 대역도 붙여서 돌려준다
