@@ -14,9 +14,11 @@ import org.springframework.data.domain.Limit;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_WON;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,6 +57,9 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private UserChannel userChannel;
 
+    @Autowired
+    private NotificationDeliveryExecutor deliveryExecutor;
+
     private TransactionTemplate transactionTemplate;
 
     // 구독은 테이블이 아니라 컨텍스트에 남으므로 정리 훅이 지워 주지 않는다, 건 것을 모아 두었다가 끝나고 뺀다
@@ -72,6 +77,7 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
 
     @AfterEach
     void leaveChannels() {
+        awaitDelivery();
         subscriptions.forEach(it -> userChannel.unsubscribe(it.userId(), it.subscriber()));
     }
 
@@ -84,6 +90,7 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
 
         // when
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
+        awaitDelivery();
 
         // then 1 : 저장된 내용이 그대로 실려 온다
         assertThat(subscriber.received).hasSize(1);
@@ -116,6 +123,7 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
         });
 
         // then 2 : 커밋된 뒤에 도착한다
+        awaitDelivery();
         assertThat(subscriber.received).hasSize(1);
     }
 
@@ -135,6 +143,7 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
 
         // then : 화면에만 남는 알림이 생기지 않는다
         assertThat(thrown).isInstanceOf(IllegalStateException.class);
+        awaitDelivery();
         assertThat(subscriber.received).isEmpty();
         assertThat(notificationRepository.countUnread(userId)).isZero();
     }
@@ -149,6 +158,7 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
 
         // when
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
+        awaitDelivery();
 
         // then
         assertThat(phone.received).hasSize(1);
@@ -178,6 +188,7 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
+        awaitDelivery();
 
         // when
         RecordingSubscriber subscriber = join(userId);
@@ -199,6 +210,7 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
 
         // when
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
+        awaitDelivery();
 
         // then
         assertThat(other.received).isEmpty();
@@ -212,10 +224,12 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
         long userId = user();
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
+        awaitDelivery();
         RecordingSubscriber subscriber = join(userId);
 
         // when
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
+        awaitDelivery();
 
         // then : 발행 트랜잭션 안에서 세므로 방금 저장한 건이 빠지지 않는다
         assertThat(subscriber.received.getFirst().unreadCount()).isEqualTo(3);
@@ -244,11 +258,13 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
         long userId = user();
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
+        awaitDelivery();
         RecordingSubscriber phone = join(userId);
         RecordingSubscriber desktop = join(userId);
 
         // when : 한쪽에서 한 건을 읽는다
         notificationService.markRead(userId, latestNotificationId(userId));
+        awaitDelivery();
 
         // then : 읽은 화면만이 아니라 열려 있는 모든 화면의 배지가 맞춰진다
         assertThat(phone.unreadCounts).containsExactly(2L, 1L);
@@ -262,10 +278,12 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
         long userId = user();
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
         notificationPublisher.publish(userId, AUCTION_WON, DEAL_ID);
+        awaitDelivery();
         RecordingSubscriber subscriber = join(userId);
 
         // when
         notificationService.markAllRead(userId);
+        awaitDelivery();
 
         // then
         assertThat(subscriber.unreadCounts).containsExactly(2L, 0L);
@@ -308,6 +326,10 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
         return users.user("김알림", Role.GENERAL).getId();
     }
 
+    private void awaitDelivery() {
+        assertThat(deliveryExecutor.awaitIdle(Duration.ofSeconds(2))).isTrue();
+    }
+
     // 발행은 식별자를 돌려주지 않는다, 읽을 대상은 조회와 같은 길로 꺼낸다
     private long latestNotificationId(long userId) {
         return notificationRepository.findPage(userId, Long.MAX_VALUE, Limit.of(1)).getFirst().id();
@@ -328,8 +350,8 @@ class NotificationPushIntegrationTest extends IntegrationTestSupport {
     // 실제 SSE 연결은 상대가 끊어도 써 보기 전까지는 살아 있는 것으로 보인다
     private static final class RecordingSubscriber implements UserSubscriber {
 
-        private final List<NotificationPush> received = new ArrayList<>();
-        private final List<Long> unreadCounts = new ArrayList<>();
+        private final List<NotificationPush> received = new CopyOnWriteArrayList<>();
+        private final List<Long> unreadCounts = new CopyOnWriteArrayList<>();
         private boolean open = true;
         private boolean closeOnPing;
         private int pings;

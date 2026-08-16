@@ -63,3 +63,14 @@ auth:
   allowed-origins:
     - http://localhost:[*]
     - http://127.0.0.1:[*]
+
+notification:
+  delivery:
+    executor:
+      # 회원별 논리 큐를 공유하는 고정 플랫폼 스레드다. SSE는 블로킹 I/O라 vCPU 2보다 여유를 둔다.
+      threads: 4
+      # 전체와 회원별 상한을 함께 둬 메모리와 한 느린 회원의 큐 독점을 막는다.
+      queue-capacity: 1024
+      per-user-queue-capacity: 256
+      # 배포 종료 때 이 시간까지만 대기 작업을 비우고 남은 SSE 작업은 폐기한다.
+      shutdown-await: 10s

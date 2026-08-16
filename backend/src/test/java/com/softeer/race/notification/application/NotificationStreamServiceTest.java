@@ -3,6 +3,7 @@ package com.softeer.race.notification.application;
 import com.softeer.race.notification.domain.Notification;
 import com.softeer.race.notification.domain.NotificationRepository;
 import com.softeer.race.notification.domain.NotificationRow;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Limit;
@@ -25,13 +26,16 @@ class NotificationStreamServiceTest {
     private static final long USER = 1L;
 
     private final FakeUserChannel channel = new FakeUserChannel();
+    private final NotificationDeliveryMetrics deliveryMetrics =
+            new NotificationDeliveryMetrics(new SimpleMeterRegistry());
 
     @Test
     @DisplayName("건수 조회가 실패하면 등록한 구독을 되돌리고 예외를 올린다")
     void rollsBackSubscriptionWhenUnreadCountFails() {
         // given : 조회가 실패하는 상황이다 (커넥션 고갈·DB 장애)
         NotificationStreamService service =
-                new NotificationStreamService(channel, new BrokenNotificationRepository());
+                new NotificationStreamService(
+                        channel, new BrokenNotificationRepository(), deliveryMetrics);
         FakeSubscriber subscriber = new FakeSubscriber();
 
         // when
@@ -51,7 +55,8 @@ class NotificationStreamServiceTest {
     void keepsSubscriptionAndSendsUnreadCount() {
         // given : 위 시나리오의 대조군이다, 성공 경로에서는 되돌리지 않는다
         NotificationStreamService service =
-                new NotificationStreamService(channel, new FixedNotificationRepository(3L));
+                new NotificationStreamService(
+                        channel, new FixedNotificationRepository(3L), deliveryMetrics);
         FakeSubscriber subscriber = new FakeSubscriber();
 
         // when
