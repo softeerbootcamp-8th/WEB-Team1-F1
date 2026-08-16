@@ -7,6 +7,8 @@ import com.softeer.race.evaluation.application.dto.info.VisitQuotePrecheckInfo;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.domain.EvaluationStatus;
+import com.softeer.race.evaluation.domain.PlateNumberLock;
+import com.softeer.race.evaluation.domain.PlateNumberLockRepository;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.notification.application.NotificationPublisher;
 import com.softeer.race.notification.domain.NotificationContent;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -43,6 +46,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
@@ -79,6 +84,10 @@ class VisitQuoteServiceTest {
     @Mock
     private EvaluationRepository evaluationRepository;
     @Mock
+    private PlateNumberLockRepository plateNumberLockRepository;
+    @Mock
+    private PlateNumberLockCreator plateNumberLockCreator;
+    @Mock
     private NotificationPublisher notificationPublisher;
 
     private VisitQuoteService service;
@@ -86,7 +95,13 @@ class VisitQuoteServiceTest {
     @BeforeEach
     void before() {
         service = new VisitQuoteService(vehicleLookup, userRepository, vehicleRepository,
-                evaluationRepository, notificationPublisher, FIXED_CLOCK);
+                evaluationRepository, plateNumberLockRepository, plateNumberLockCreator,
+                notificationPublisher, FIXED_CLOCK);
+
+        // 접수 경로는 예외로 끝나는 것까지 전부 잠금을 먼저 거치므로 시나리오마다 심지 않고 여기서 한 번 심는다.
+        // 잠금을 타지 않는 precheck 테스트에서도 남으므로 lenient 다
+        lenient().when(plateNumberLockRepository.findByPlateNumberForUpdate(PLATE_NUMBER))
+                .thenReturn(Optional.of(mock(PlateNumberLock.class)));
     }
 
     @Test
@@ -171,6 +186,24 @@ class VisitQuoteServiceTest {
 
         then(evaluationRepository).should()
                 .existsBlockingVisitQuoteByPlateNumber(PLATE_NUMBER);
+    }
+
+    @Test
+    @DisplayName("중복 판정보다 먼저 번호판 잠금을 얻는다")
+    void requestLocksPlateBeforeDuplicateCheck() {
+        givenNoDuplicate();
+        givenLookup();
+        givenSeller();
+        givenSaveReturnsArgument();
+
+        service.request(command(TODAY.plusDays(16)));
+
+        // 순서가 이 테스트의 전부다. 잠금이 판정 뒤로 가면 두 요청이 모두 "없음"을 읽은 뒤에야
+        // 줄을 서게 되어, 잠금을 걸어 두고도 둘 다 접수된다
+        InOrder order = inOrder(plateNumberLockCreator, plateNumberLockRepository, evaluationRepository);
+        order.verify(plateNumberLockCreator).createIfAbsent(PLATE_NUMBER);
+        order.verify(plateNumberLockRepository).findByPlateNumberForUpdate(PLATE_NUMBER);
+        order.verify(evaluationRepository).existsBlockingVisitQuoteByPlateNumber(PLATE_NUMBER);
     }
 
     @Test
