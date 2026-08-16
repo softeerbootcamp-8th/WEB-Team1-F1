@@ -1,5 +1,6 @@
 package com.softeer.race.auctionroom.application;
 
+import com.softeer.race.auctionroom.domain.RoomPhase;
 import com.softeer.race.common.config.SchedulingConfig;
 import com.softeer.race.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ public class RoomStreamService {
 
     // 알리지 않고 끊긴 사람이 이 시간 안에는 보고 있는 사람 수에서 빠진다, 프록시가 유휴 연결을 끊는 것도 이 신호가 막는다
     // 정상 종료는 해제 콜백이 즉시 빼 가므로 이 주기는 조용히 사라진 연결만 줍는 안전망이다
-    // 짧게 잡아도 싸다, 메모리를 돌며 소켓에 주석 한 줄을 쓸 뿐이고 실제로 걷어낸 방이 있을 때만 DB 를 읽는다
+    // 짧게 잡아도 싸다, 메모리를 돌며 소켓에 주석 한 줄을 쓸 뿐이고 DB 는 읽지 않는다
     private static final long SWEEP_INTERVAL_MILLIS = 500L;
 
     // 마감 방송이 유실된 방의 연결이 이 시간 안에 끊긴다, 정상 경로는 방송 직후에 끊으므로 여기까지 오지 않는다
@@ -31,20 +32,20 @@ public class RoomStreamService {
     private final RoomChannel roomChannel;
 
     /**
-     * 구독을 등록하고 방 전체에 현황을 보낸다, 새 구독은 첫 현황을 받고 기존 구독은 늘어난 사람 수를 받는다
+     * 구독을 등록하고 방 전체에 늘어난 사람 수를 보낸다
      */
     public void subscribe(long auctionId, RoomSubscription subscription) {
         // 연결을 열어 두지 않는 단계의 구독이 채널에 남지 않도록 등록 전에 판정한다
-        RoomSnapshot snapshot = roomReader.find(auctionId)
+        RoomPhase phase = roomReader.findPhase(auctionId)
                 .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
 
-        snapshot.phase().streamRejection().ifPresent(errorCode -> {
+        phase.streamRejection().ifPresent(errorCode -> {
             throw new BusinessException(errorCode);
         });
 
         roomChannel.subscribe(auctionId, subscription);
 
-        broadcast(snapshot);
+        // 첫 화면은 방 조회가 이미 줬다, 여기서 현황을 다시 보내면 같은 것을 두 번 그린다
         broadcastViewerCount(auctionId);
     }
 
@@ -52,9 +53,8 @@ public class RoomStreamService {
      * 구독을 방에서 빼고 남은 구독에 줄어든 사람 수를 보낸다
      */
     public void unsubscribe(long auctionId, RoomSubscription subscription) {
-        // 걷어내기와 방 끊기가 먼저 빼 간 뒤에도 이 콜백은 돌아온다, 그때 갱신하면 같은 방을 두 번 읽는다
+        // 걷어내기와 방 끊기가 먼저 빼 간 뒤에도 이 콜백은 돌아온다, 그때도 보내면 같은 수가 두 번 나간다
         if (roomChannel.unsubscribe(auctionId, subscription)) {
-            refresh(auctionId);
             broadcastViewerCount(auctionId);
         }
     }
@@ -64,13 +64,12 @@ public class RoomStreamService {
      */
     @Scheduled(fixedDelay = SWEEP_INTERVAL_MILLIS, scheduler = SchedulingConfig.ROOM_STREAM)
     public void sweepClosedSubscriptions() {
-        // 한 방의 실패를 그 방에 가둔다, 여기서만 옳은 정책이라 refresh 자체는 계속 던지게 둔다
+        // 한 방의 실패를 그 방에 가둔다, 여기서만 옳은 정책이라 방송 자체는 계속 던지게 둔다
         for (long auctionId : roomChannel.sweepClosed()) {
             try {
-                refresh(auctionId);
                 broadcastViewerCount(auctionId);
             } catch (Exception e) {
-                log.warn("경매방 현황 갱신 실패, 경매 {}", auctionId, e);
+                log.warn("경매방 사람 수 전송 실패, 경매 {}", auctionId, e);
             }
         }
     }

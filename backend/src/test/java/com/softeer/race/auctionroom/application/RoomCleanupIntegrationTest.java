@@ -1,7 +1,5 @@
 package com.softeer.race.auctionroom.application;
 
-import com.softeer.race.auctionroom.domain.RoomErrorCode;
-import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.support.IntegrationTestSupport;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
@@ -27,14 +25,8 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
 
-    // 방을 보는 사람, 낙찰자가 없는 방이라 누구로 보든 결과가 같다
-    private static final long VIEWER_ID = 1L;
-
     @Autowired
     private RoomStreamService roomStreamService;
-
-    @Autowired
-    private RoomService roomService;
 
     @Autowired
     private RoomChannel roomChannel;
@@ -79,8 +71,27 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
         assertThat(alive.lastViewerCount()).isEqualTo(1);
         assertThat(roomChannel.viewerCount(auctionId)).isEqualTo(1);
 
-        // then 2 : 사라진 쪽에는 아무것도 보내지 않는다
+        // then 2 : 사람 수만 나가고 현황은 나가지 않는다, 사람이 드나든다고 호가창이 다시 실릴 이유가 없다
+        assertThat(alive.received()).isEmpty();
+
+        // then 3 : 사라진 쪽에는 아무것도 보내지 않는다
         assertThat(gone.received()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("시나리오 1-1 : 한 사람이 나가면 남은 사람은 사람 수만 받는다")
+    void releaseSendsOnlyViewerCount() {
+        // given : 두 사람이 진행 중인 방에 있다
+        long auctionId = liveRoom();
+        subscribe(auctionId, alive);
+        subscribe(auctionId, gone);
+
+        // when : 한쪽이 정상으로 나간다
+        roomStreamService.unsubscribe(auctionId, gone);
+
+        // then : 줄어든 수는 받되 현황은 받지 않는다, 나가는 것으로는 방 안의 값이 바뀌지 않는다
+        assertThat(alive.lastViewerCount()).isEqualTo(1);
+        assertThat(alive.received()).isEmpty();
     }
 
     @Test
@@ -92,32 +103,9 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
         // when
         roomStreamService.sweepClosedSubscriptions();
 
-        // then : 살아 있는지 확인만 하고 끝난다, 주기가 돌 때마다 같은 현황을 다시 밀지 않는다
-        // 이 단정이 걷어내기 주기를 짧게 잡을 수 있는 근거다, 방송이 안 나갔다는 것은 DB 도 안 읽었다는 뜻이다
+        // then : 살아 있는지 확인만 하고 끝난다, 걷어낸 방이 없으면 아무것도 내보내지 않는다
+        // 이 단정이 걷어내기 주기를 짧게 잡을 수 있는 근거다
         assertThat(alive.received()).isEmpty();
-    }
-
-    @Test
-    @DisplayName("시나리오 3 : 청소가 닫힌 방을 지나가면 남은 연결도 끝나고 새 조회는 거절된다")
-    void sweepOnClosedRoomEndsConnections() {
-        // given : 진행 중일 때 둘이 들어와 있다
-        long auctionId = liveRoom();
-        subscribe(auctionId, alive);
-        subscribe(auctionId, gone);
-
-        // when : 결과 구간까지 지나 방이 닫힌 뒤 한쪽이 조용히 사라져 갱신이 돈다
-        fixClockAt(NOW.plusMinutes(30));
-        gone.disconnect();
-        roomStreamService.sweepClosedSubscriptions();
-
-        // then 1 : 마지막 현황이 나간 뒤 남아 있던 연결도 끝난다, 끊기 주기를 기다리지 않는다
-        assertThat(alive.closedByServer).isTrue();
-
-        // then 2 : 같은 순간 새로 들어오려는 사람은 아예 막힌다, 열어 둔 화면과 새 조회가 어긋나지 않는다
-        assertThat(catchThrowable(() -> roomService.readRoom(auctionId, VIEWER_ID)))
-                .isInstanceOf(BusinessException.class)
-                .extracting(thrown -> ((BusinessException) thrown).errorCode())
-                .isEqualTo(RoomErrorCode.ROOM_ALREADY_CLOSED);
     }
 
     @Test
@@ -164,7 +152,7 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
         // when : 끝난 연결의 해제 콜백이 뒤늦게 돌아온다, 실제 컨테이너에서 나는 그 순서다
         roomStreamService.unsubscribe(auctionId, gone);
 
-        // then : 이미 빠진 구독이라 같은 방을 다시 읽지도 보내지도 않는다
+        // then : 이미 빠진 구독이라 같은 수를 다시 보내지 않는다
         assertThat(alive.received()).hasSize(receivedAfterSweep);
     }
 

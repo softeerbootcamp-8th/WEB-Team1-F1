@@ -130,16 +130,16 @@ class RoomStreamPoolIntegrationTest extends IntegrationTestSupport {
     // 이 테스트는 처음부터 초록이다. 스위치와 무관한 성질이라 빨강을 거쳐 만들 수 없고,
     // 나중에 방송 경로를 건드리다 깨뜨리면 그때 잡으라고 두는 그물이다
     @Test
-    @DisplayName("시나리오 3 : 여럿이 한꺼번에 입장 -> 연결이 끊기지 않고 나가는 현황이 온전하다")
+    @DisplayName("시나리오 3 : 여럿이 한꺼번에 입장 -> 연결이 끊기지 않고 나가는 사람 수가 온전하다")
     void concurrentArrivalsKeepEveryConnection() throws Exception {
         // given : 한 사람이 먼저 붙어 있다, 겹치는 갱신을 이 연결로 받는다
         long auctionId = liveRoom();
         StreamRecorder first = openStream(auctionId);
         awaitSubscribed(auctionId, 1);
-        awaitFirstState(first);
+        awaitFirstViewerCount(first);
 
-        // 들어오기 전에 받아 둔 개수를 기억한다, 이걸 안 하면 첫 현황만으로 통과해 버린다
-        int beforeCrowd = first.states().size();
+        // 들어오기 전에 받아 둔 개수를 기억한다, 이걸 안 하면 자기 입장에서 온 것만으로 통과해 버린다
+        int beforeCrowd = first.viewerCounts().size();
 
         // when : 나머지가 같은 순간에 들어온다
         openStreamsAtOnce(auctionId, CROWD - 1);
@@ -148,18 +148,18 @@ class RoomStreamPoolIntegrationTest extends IntegrationTestSupport {
         // then 1 : 겹친 등록에 밀려 걷힌 연결이 없다
         assertThat(roomChannel.viewerCount(auctionId)).isEqualTo(CROWD);
 
-        // then 2 : 먼저 붙어 있던 연결로 갱신이 흘러 들어왔고, 그 현황이 온전하다
+        // then 2 : 먼저 붙어 있던 연결로 갱신이 흘러 들어왔고, 그 한 건이 온전하다
         // 겹쳐 쓰다 섞였으면 여기서 조각난 JSON 이 잡힌다
         //
-        // 마지막 현황의 접속자 수가 정확히 사람 수라고 보지는 않는다. 브로드캐스트는 유실을 허용하고
-        // 정확한 값은 재조회가 주기로 한 설계라, 동시에 들어오면 마지막으로 나간 방송이 한 박자 이전
+        // 마지막에 실려 온 수가 정확히 사람 수라고 보지는 않는다. 브로드캐스트는 유실을 허용하고
+        // 정확한 값은 재조회가 주기로 한 설계라, 동시에 들어오면 마지막으로 나간 것이 한 박자 이전
         // 숫자를 담을 수 있다. 그건 결함이 아니라 정해 둔 성질이므로 여기서 판정하지 않는다
-        awaitMoreStates(first, beforeCrowd);
-        assertThat(first.states()).hasSizeGreaterThan(beforeCrowd);
-        assertThat(first.states().getLast())
+        awaitMoreViewerCounts(first, beforeCrowd);
+        assertThat(first.viewerCounts()).hasSizeGreaterThan(beforeCrowd);
+        assertThat(first.viewerCounts().getLast())
                 .startsWith("data:")
                 .contains("\"auctionId\":" + auctionId)
-                .contains("\"phase\":\"LIVE\"")
+                .contains("\"viewerCount\":")
                 .endsWith("}");
 
         // then 3 : 이만큼 붙어 있는 동안에도 경매방과 무관한 기능이 그대로 응답한다
@@ -268,15 +268,15 @@ class RoomStreamPoolIntegrationTest extends IntegrationTestSupport {
 
     // 명부가 차는 것과 그 현황이 소켓을 타고 와 줄로 잘리는 것은 다른 시점이다
     // 여기서 던지지 않는다, 못 받으면 뒤따르는 판정이 개수로 드러내는 편이 낫다
-    private void awaitFirstState(StreamRecorder recorder) {
-        awaitMoreStates(recorder, 0);
+    private void awaitFirstViewerCount(StreamRecorder recorder) {
+        awaitMoreViewerCounts(recorder, 0);
     }
 
     // 들어오기 전 개수보다 늘어날 때까지 기다린다, 첫 현황만 보면 뒤에 온 사람들의 방송을 안 봐도 통과한다
-    private void awaitMoreStates(StreamRecorder recorder, int before) {
+    private void awaitMoreViewerCounts(StreamRecorder recorder, int before) {
         Instant deadline = Instant.now().plus(SUBSCRIBE_TIMEOUT);
 
-        while (recorder.states().size() <= before && Instant.now().isBefore(deadline)) {
+        while (recorder.viewerCounts().size() <= before && Instant.now().isBefore(deadline)) {
             sleep();
         }
     }
@@ -341,19 +341,19 @@ class RoomStreamPoolIntegrationTest extends IntegrationTestSupport {
         }
 
         // SSE 는 한 건이 data 한 줄이고, 이름 있는 이벤트는 그 앞줄에 event 가 붙는다
-        // 현황에는 이름이 없으므로 앞줄에 event 가 없는 것만 센다, 본문을 뜯어보고 가르지 않는다
-        private List<String> states() {
+        // 앞줄의 이름으로 가른다, 본문을 뜯어보고 가르지 않는다
+        private List<String> viewerCounts() {
             synchronized (lines) {
-                List<String> states = new ArrayList<>();
+                List<String> viewerCounts = new ArrayList<>();
 
-                for (int index = 0; index < lines.size(); index++) {
+                for (int index = 1; index < lines.size(); index++) {
                     if (lines.get(index).startsWith("data:")
-                            && (index == 0 || !lines.get(index - 1).startsWith("event:"))) {
-                        states.add(lines.get(index));
+                            && lines.get(index - 1).equals("event:viewers")) {
+                        viewerCounts.add(lines.get(index));
                     }
                 }
 
-                return states;
+                return viewerCounts;
             }
         }
     }
