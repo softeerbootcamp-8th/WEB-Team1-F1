@@ -17,13 +17,6 @@ describe('방문견적 진행 단계', () => {
     expect(screen.getAllByText(/배정 대기|평가 진행 중|차량 진단 완료/)).toHaveLength(3)
   })
 
-  it('반려는 정상 진행 단계와 나누어 표시한다', () => {
-    render(<EvaluationProgress status="REJECTED" assigned />)
-
-    expect(screen.getByText('진단 반려')).toBeTruthy()
-    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-  })
-
   it('차량 진단 완료 단계는 진행 중 이중 원 대신 체크로 표시한다', () => {
     render(<EvaluationProgress status="APPROVED" assigned />)
 

@@ -1,4 +1,4 @@
-import type { AssignableEvaluationSort } from './types'
+import type { AssignableEvaluationSort, EvaluationAssignmentScope } from './types'
 
 export const ASSIGNABLE_EVALUATIONS_QUERY_KEY = ['evaluations', 'assignable'] as const
 
@@ -30,3 +30,19 @@ export const assignableEvaluationsQueryKey = (sort: AssignableEvaluationSort) =>
   [...ASSIGNABLE_EVALUATIONS_LIST_QUERY_KEY, sort] as const
 
 export const MY_ASSIGNMENTS_QUERY_KEY = ['evaluations', 'my-assignments'] as const
+
+/**
+ * 한 범위의 담당 목록. 범위가 키에 들어가지 않으면 진행 중 목록의 캐시를 완료 탭이 그대로
+ * 재사용해, 탭을 옮긴 첫 순간에 지난 목록이 그대로 보인다.
+ *
+ * 목록 키를 접두사로 삼는 덕에 수락 · 제출 뒤 무효화 한 번이 두 범위를 함께 내린다. 한 건이
+ * 끝나면 진행 중에서 빠지고 완료에 들어오므로, 두 목록이 동시에 낡는다.
+ */
+export const myAssignmentsQueryKey = (scope: EvaluationAssignmentScope) =>
+  [...MY_ASSIGNMENTS_QUERY_KEY, scope] as const
+
+/** 담당 건수. 목록 키를 접두사로 삼아 목록이 무효화될 때 함께 다시 읽힌다 */
+export const MY_ASSIGNMENTS_COUNT_QUERY_KEY = [
+  ...MY_ASSIGNMENTS_QUERY_KEY,
+  'count',
+] as const

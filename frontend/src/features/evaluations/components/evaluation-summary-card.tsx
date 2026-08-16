@@ -1,11 +1,11 @@
-import { CalendarDays, Clock3, MapPin } from 'lucide-react'
+import { CalendarDays, CircleCheckBig, Clock3, MapPin } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { MANUFACTURER_LABEL } from '@/features/quote/types'
 import { formatDateTime } from '@/lib/format'
 import type { EvaluationSummary } from '../types'
-import { formatVisitDate, getAuctionStatusMeta } from '../utils'
+import { formatVisitDate, getAuctionStatusMeta, getEvaluationStatusMeta } from '../utils'
 import { EvaluationProgress } from './evaluation-progress'
 
 interface EvaluationSummaryCardProps {
@@ -13,6 +13,11 @@ interface EvaluationSummaryCardProps {
   action?: React.ReactNode
   layout?: 'card' | 'list'
   viewer?: 'seller' | 'evaluator'
+  /**
+   * 경매 배지 옆에 함께 서는 배지. 목록이 어떤 기준으로 이 카드를 끌어올렸는지 화면이
+   * 설명해야 할 때 쓴다 — 이유 없이 순서만 바뀌면 판매자는 목록이 뒤섞인 것으로 읽는다.
+   */
+  badge?: React.ReactNode
 }
 
 export function EvaluationSummaryCard({
@@ -20,6 +25,7 @@ export function EvaluationSummaryCard({
   action,
   layout = 'card',
   viewer = 'seller',
+  badge,
 }: EvaluationSummaryCardProps) {
   const auctionStatus = evaluation.auctionStatus
     ? viewer === 'evaluator'
@@ -39,6 +45,30 @@ export function EvaluationSummaryCard({
     </Badge>
   ) : null
 
+  // 반려는 진행 단계에서 내려와 여기 선다. 경매 배지와 같은 자리·같은 모양이라
+  // "이 신청이 어떻게 끝났는가"를 카드마다 같은 곳에서 읽는다
+  const rejected = evaluation.status === 'REJECTED'
+  // 반려면 그릴 단계가 없다. 타입에서 빼 두면 진행 단계 쪽이 반려를 다시 그리는 일이 없다
+  const progressStatus = evaluation.status === 'REJECTED' ? null : evaluation.status
+  const rejectedMeta = getEvaluationStatusMeta('REJECTED', evaluation.assigned)
+  const statusBadge = rejected ? (
+    <Badge
+      variant="outline"
+      className={`rounded-full px-3 py-1 text-sm font-semibold ${rejectedMeta.className}`}
+    >
+      {rejectedMeta.label}
+    </Badge>
+  ) : null
+
+  const badges =
+    statusBadge || badge || auctionBadge ? (
+      <div className="flex flex-wrap items-center gap-2">
+        {statusBadge}
+        {badge}
+        {auctionBadge}
+      </div>
+    ) : null
+
   if (layout === 'list') {
     return (
       <Card className="gap-0 overflow-hidden border-border/80 py-0 shadow-sm transition-[border-color,box-shadow] hover:border-foreground/15 hover:shadow-md">
@@ -48,16 +78,20 @@ export function EvaluationSummaryCard({
               <h2 className="text-xl font-semibold">
                 {MANUFACTURER_LABEL[evaluation.manufacturer]} {evaluation.model}
               </h2>
-              {auctionBadge}
+              {badges}
             </div>
 
             <p className="text-muted-foreground mt-2 text-sm">
               {evaluation.modelYear}년식 · {evaluation.plateNumber}
             </p>
 
-            <div className="mt-5">
-              <EvaluationProgress status={evaluation.status} assigned={evaluation.assigned} />
-            </div>
+            {!rejected && (
+              <div className="mt-5">
+                {progressStatus && (
+          <EvaluationProgress status={progressStatus} assigned={evaluation.assigned} />
+        )}
+              </div>
+            )}
 
             <div className="mt-5 grid divide-y border-t pt-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
               <SummaryMeta
@@ -67,11 +101,21 @@ export function EvaluationSummaryCard({
                 emphasis
               />
               <SummaryMeta icon={MapPin} label="방문 위치" value={evaluation.visitAddress} />
-              <SummaryMeta
-                icon={Clock3}
-                label="신청 날짜"
-                value={formatDateTime(evaluation.requestedAt)}
-              />
+              {/* 끝낸 건은 접수 시각 대신 끝낸 시각을 보여준다. 완료 목록이 이 값의 역순으로
+                  서므로, 접수 시각이 그 자리에 있으면 순서가 뒤죽박죽으로 읽힌다 */}
+              {evaluation.completedAt ? (
+                <SummaryMeta
+                  icon={CircleCheckBig}
+                  label="진단 완료"
+                  value={formatDateTime(evaluation.completedAt)}
+                />
+              ) : (
+                <SummaryMeta
+                  icon={Clock3}
+                  label="신청 날짜"
+                  value={formatDateTime(evaluation.requestedAt)}
+                />
+              )}
             </div>
           </div>
 
@@ -97,11 +141,13 @@ export function EvaluationSummaryCard({
               {evaluation.modelYear}년식 · {evaluation.plateNumber}
             </p>
           </div>
-          {auctionBadge}
+          {badges}
         </div>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        <EvaluationProgress status={evaluation.status} assigned={evaluation.assigned} />
+        {progressStatus && (
+          <EvaluationProgress status={progressStatus} assigned={evaluation.assigned} />
+        )}
         <div className="flex gap-3">
           <CalendarDays className="text-muted-foreground mt-0.5 size-4 shrink-0" />
           <div>

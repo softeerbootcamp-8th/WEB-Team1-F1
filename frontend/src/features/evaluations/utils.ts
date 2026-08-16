@@ -37,7 +37,7 @@ export function getEvaluationStatusMeta(
   }
   if (status === 'REJECTED') {
     return {
-      label: '진단 반려',
+      label: '반려',
       className: 'border-destructive/25 bg-destructive/8 text-destructive',
     }
   }

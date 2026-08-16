@@ -1,4 +1,4 @@
-import { Check, X } from 'lucide-react'
+import { Check } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import type { EvaluationStatus } from '../types'
@@ -8,28 +8,18 @@ const EVALUATION_STEPS = ['배정 대기', '평가 진행 중', '차량 진단 �
 /**
  * 판매자와 평가사가 같은 진행 단계를 본다. 정보와 버튼이 섞이지 않도록
  * 상태는 면이 있는 배지 대신 점과 선으로만 표현한다.
+ *
+ * <b>반려는 여기서 그리지 않는다.</b> 반려는 이 선 위의 한 지점이 아니라 선을 벗어난 결말이라,
+ * 같은 자리에 그리면 세 단계가 있던 곳에 한 줄짜리 다른 모양이 들어앉는다. 끝난 사실을 알리는
+ * 것은 카드 머리의 배지가 맡는다 — 경매 상태를 알리는 배지와 같은 자리, 같은 모양이다.
  */
 export function EvaluationProgress({
   status,
   assigned,
 }: {
-  status: EvaluationStatus
+  status: Exclude<EvaluationStatus, 'REJECTED'>
   assigned: boolean
 }) {
-  if (status === 'REJECTED') {
-    return (
-      <div
-        className="text-destructive flex items-center gap-2 text-sm font-semibold"
-        aria-label="방문견적 진행 단계: 진단 반려"
-      >
-        <span className="border-destructive/30 flex size-6 items-center justify-center rounded-full border">
-          <X className="size-3.5" />
-        </span>
-        진단 반려
-      </div>
-    )
-  }
-
   const current = status === 'APPROVED' ? 2 : assigned ? 1 : 0
 
   return (

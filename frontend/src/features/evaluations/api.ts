@@ -5,6 +5,8 @@ import type {
   AssignableEvaluationSort,
   AssignableEvaluationsResponse,
   EvaluationAssignment,
+  EvaluationAssignmentCounts,
+  EvaluationAssignmentScope,
   EvaluationDetail,
   EvaluationRejection,
   EvaluationResult,
@@ -58,9 +60,26 @@ export async function assignEvaluation(
   return data
 }
 
-export async function fetchMyAssignments(): Promise<EvaluationSummariesResponse> {
+/**
+ * 평가사가 맡은 신청들. 범위가 담기는 상태와 순서를 함께 정한다 — ACTIVE는 방문일 임박순,
+ * COMPLETED는 최근 끝낸 순이다.
+ *
+ * 범위를 인자로 받는다. 기본값을 여기 두면 화면이 무엇을 보고 있는지가 두 곳에 적힌다.
+ */
+export async function fetchMyAssignments(
+  scope: EvaluationAssignmentScope,
+): Promise<EvaluationSummariesResponse> {
   const { data } = await axiosInstance.get<EvaluationSummariesResponse>(
     '/api/evaluations/my-assignments',
+    { params: { scope } },
+  )
+  return data
+}
+
+/** 담당 건수. 목록이 범위로 갈린 뒤로는 어느 한쪽을 받아도 나머지를 셀 수 없다 */
+export async function fetchMyAssignmentCounts(): Promise<EvaluationAssignmentCounts> {
+  const { data } = await axiosInstance.get<EvaluationAssignmentCounts>(
+    '/api/evaluations/my-assignments/count',
   )
   return data
 }

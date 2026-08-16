@@ -9,8 +9,10 @@ import com.softeer.race.user.domain.Role;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.presentation.GlobalExceptionHandler;
 import com.softeer.race.evaluation.application.EvaluationLookupService;
+import com.softeer.race.evaluation.application.dto.info.EvaluationAssignmentCountsInfo;
 import com.softeer.race.evaluation.application.dto.info.EvaluationDetailInfo;
 import com.softeer.race.evaluation.application.dto.info.EvaluationSummaryInfo;
+import com.softeer.race.evaluation.domain.AssignmentScope;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
@@ -43,7 +45,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 시나리오
  * <ol>
  *   <li>내 신청 목록은 세션의 사용자로 조회한다</li>
- *   <li>내 담당 목록은 다른 서비스 메서드를 탄다</li>
+ *   <li>내 담당 목록은 범위를 주지 않으면 진행 중이다</li>
+ *   <li>완료 범위는 완료 시각까지 내려준다</li>
+ *   <li>모르는 범위는 400</li>
+ *   <li>담당 건수는 상태별로 나간다</li>
  *   <li>목록이 비면 빈 배열이다</li>
  *   <li>상세는 결과 칸까지 내려준다</li>
  *   <li>진단 전 상세는 결과 칸이 null로 나간다</li>
@@ -63,6 +68,7 @@ class EvaluationLookupControllerTest {
     private static final LocalDate VISIT_DATE = LocalDate.of(2026, 8, 20);
     private static final LocalDateTime REQUESTED_AT = LocalDateTime.of(2026, 8, 5, 10, 0);
     private static final LocalDateTime SUBMITTED_AT = LocalDateTime.of(2026, 8, 5, 18, 0);
+    private static final LocalDateTime COMPLETED_AT = LocalDateTime.of(2026, 8, 12, 18, 5);
 
     private static final String DOCUMENT_URL = "https://cdn.race.dev/documents/2026/08/c.pdf";
     private static final String IMAGE_URL = "https://cdn.race.dev/images/2026/08/a.jpg";
@@ -106,17 +112,75 @@ class EvaluationLookupControllerTest {
     }
 
     @Test
-    @DisplayName("내 담당 목록은 다른 서비스 메서드를 탄다")
+    @DisplayName("내 담당 목록은 범위를 주지 않으면 진행 중이다")
     void findMyAssignments() throws Exception {
         // given : 두 경로가 같은 메서드를 부르면 판매자와 평가사가 서로의 목록을 본다
-        given(evaluationLookupService.findMyAssignments(USER_ID)).willReturn(List.of(summary()));
+        given(evaluationLookupService.findMyAssignments(USER_ID, AssignmentScope.ACTIVE))
+                .willReturn(List.of(summary()));
 
         // when & then
         mockMvc.perform(get("/api/evaluations/my-assignments").cookie(sessionCookie()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.evaluations.length()").value(1));
 
-        then(evaluationLookupService).should().findMyAssignments(USER_ID);
+        // 기본값이 완료 쪽이면 끝낸 진단이 목록을 덮어 새로 나갈 건이 그 아래 묻힌다
+        then(evaluationLookupService).should().findMyAssignments(USER_ID, AssignmentScope.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("완료 범위를 주면 그 범위로 조회하고 완료 시각까지 내려준다")
+    void findCompletedAssignments() throws Exception {
+        // given : 완료 목록이 이 값의 역순으로 서므로 없으면 화면이 순서를 읽을 수 없다
+        given(evaluationLookupService.findMyAssignments(USER_ID, AssignmentScope.COMPLETED))
+                .willReturn(List.of(summary(COMPLETED_AT)));
+
+        // when & then
+        mockMvc.perform(get("/api/evaluations/my-assignments")
+                        .param("scope", "COMPLETED")
+                        .cookie(sessionCookie()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations[0].completedAt").value("2026-08-12T18:05:00"));
+    }
+
+    @Test
+    @DisplayName("진행 중인 건에는 완료 시각이 없다")
+    void activeAssignmentHasNoCompletedAt() throws Exception {
+        // given : 빈 값으로 나가면 화면이 "아직 안 끝남"과 "끝난 시각 모름"을 구분하지 못한다
+        given(evaluationLookupService.findMyAssignments(USER_ID, AssignmentScope.ACTIVE))
+                .willReturn(List.of(summary()));
+
+        // when & then
+        mockMvc.perform(get("/api/evaluations/my-assignments").cookie(sessionCookie()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations[0].completedAt").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("모르는 범위는 400이고 서비스까지 가지 않는다")
+    void rejectsUnknownScope() throws Exception {
+        // 조용히 기본값으로 돌리면 오타 하나에 화면이 다른 목록을 보여주고도 아무 일 없는 척한다
+        mockMvc.perform(get("/api/evaluations/my-assignments")
+                        .param("scope", "DONE")
+                        .cookie(sessionCookie()))
+                .andExpect(status().isBadRequest());
+
+        then(evaluationLookupService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("담당 건수는 상태별로 나간다")
+    void countMyAssignments() throws Exception {
+        // given : 홈이 목록을 받지 않고 이 값만 읽는다
+        given(evaluationLookupService.countMyAssignments(USER_ID))
+                .willReturn(new EvaluationAssignmentCountsInfo(7, 3, 3, 1));
+
+        // when & then
+        mockMvc.perform(get("/api/evaluations/my-assignments/count").cookie(sessionCookie()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(7))
+                .andExpect(jsonPath("$.pending").value(3))
+                .andExpect(jsonPath("$.approved").value(3))
+                .andExpect(jsonPath("$.rejected").value(1));
     }
 
     @Test
@@ -220,10 +284,14 @@ class EvaluationLookupControllerTest {
     }
 
     private static EvaluationSummaryInfo summary() {
+        return summary(null);
+    }
+
+    private static EvaluationSummaryInfo summary(LocalDateTime completedAt) {
         return new EvaluationSummaryInfo(EVALUATION_ID, "APPROVED", true,
                 AuctionStatus.IN_PROGRESS, "12가3456",
                 Manufacturer.HYUNDAI, "그랜저 IG", 2021,
-                VISIT_DATE, "서울 성동구 왕십리로 83", REQUESTED_AT);
+                VISIT_DATE, "서울 성동구 왕십리로 83", REQUESTED_AT, completedAt);
     }
 
     private static EvaluationDetailInfo detail(Integer mileage, Long estimatedPrice,

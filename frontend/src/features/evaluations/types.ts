@@ -58,6 +58,14 @@ export interface AssignableEvaluationCountResponse {
   count: number
 }
 
+/**
+ * 평가사 담당 목록이 무엇을 담을지. 기본은 진행 중이다.
+ *
+ * 완료된 건을 감추는 것이 아니라 옮긴다. 승인된 건은 경매 등록 전까지 결과를 다시 제출할 수
+ * 있어, 완료 목록이 그 유일한 진입로가 된다.
+ */
+export type EvaluationAssignmentScope = 'ACTIVE' | 'COMPLETED'
+
 export interface EvaluationAssignment {
   evaluationId: number
   plateNumber: string
@@ -79,10 +87,23 @@ export interface EvaluationSummary {
   visitDate: string
   visitAddress: string
   requestedAt: string
+  /** 진단을 끝낸 시각(승인 · 반려). 아직 진행 중이면 null이다 */
+  completedAt?: string | null
 }
 
 export interface EvaluationSummariesResponse {
   evaluations: EvaluationSummary[]
+}
+
+/**
+ * 평가사가 맡은 건수. 목록이 진행 중과 완료로 갈려, 어느 한쪽을 받아도 나머지를 셀 수 없다.
+ * total은 서버가 낸 합계다 — 화면이 더하면 상태가 하나 늘 때 조용히 틀린다.
+ */
+export interface EvaluationAssignmentCounts {
+  total: number
+  pending: number
+  approved: number
+  rejected: number
 }
 
 export interface EvaluationDetail {
