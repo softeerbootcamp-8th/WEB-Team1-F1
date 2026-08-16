@@ -437,7 +437,7 @@ class InMemoryRoomChannelTest {
     private static RoomState liveState() {
         return new RoomState(
                 AUCTION, RoomPhase.LIVE, 0,
-                null, null, 0, new BidCounts(0, 0), null, List.of());
+                null, null, new BidCounts(0, 0), null, List.of());
     }
 
     // 닫힌 구독을 흉내내려면 열림 여부를 정할 수 있어야 한다

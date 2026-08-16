@@ -23,8 +23,13 @@ public interface RoomChannel {
     /**
      * 방을 보고 있는 사람 수, 한 사람이 창을 여럿 열어도 하나로 센다
      */
-    // 접속자로 셀지는 단계가 정한다
     int viewerCount(long auctionId);
+
+    /**
+     * 방을 보고 있는 사람 수를 순번과 함께 읽는다, 세는 것과 번호를 매기는 것이 한 번에 일어난다
+     */
+    // 나누면 두 스레드가 각자 센 뒤 순서가 뒤집혀, 늦게 도착한 낡은 수가 화면에 남는다
+    ViewerCount readViewerCount(long auctionId);
 
     /**
      * 구독이 있는 방마다의 사람 수, 아무도 없는 방은 담기지 않는다
@@ -33,7 +38,7 @@ public interface RoomChannel {
     Map<Long, Integer> viewerCountByRoom();
 
     /**
-     * 방의 모든 구독에 현황 전송, 닫힌 구독은 순회가 끝난 뒤 걷어낸다
+     * 방의 모든 구독에 한 건 전송, 닫힌 구독은 순회가 끝난 뒤 걷어낸다
      */
     void broadcast(long auctionId, RoomMessage message);
 

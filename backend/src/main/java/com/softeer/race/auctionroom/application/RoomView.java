@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 경매방 조회 결과, 방 현황에 조회한 사람 기준의 판정을 얹은 것
+ * 경매방 조회 결과, 방 현황에 방송이 싣지 않는 값과 조회한 사람 기준의 판정을 얹은 것
  */
 public record RoomView(
         RoomState state,
@@ -14,6 +14,7 @@ public record RoomView(
         long startPrice,
         LocalDateTime openAt,
         LocalDateTime startAt,
+        int viewerCount,
         boolean winnerIsMine,
         boolean sellerIsMine,
         List<RecentBidView> recentBids
@@ -24,11 +25,12 @@ public record RoomView(
     static RoomView of(long viewerId, RoomSnapshot snapshot, int viewerCount,
                        List<String> imageUrls, List<VehicleKeyword> keywords) {
         return new RoomView(
-                RoomState.of(snapshot, viewerCount),
+                RoomState.of(snapshot),
                 VehicleSummary.of(snapshot.detail(), imageUrls, keywords),
                 snapshot.detail().startPrice(),
                 snapshot.detail().openAt(),
                 snapshot.detail().startAt(),
+                snapshot.phase().allowsConnection() ? viewerCount : 0,
                 snapshot.detail().isWonBy(viewerId),
                 snapshot.detail().isSoldBy(viewerId),
                 snapshot.recentBids().stream().map(bid -> RecentBidView.of(bid, viewerId)).toList());

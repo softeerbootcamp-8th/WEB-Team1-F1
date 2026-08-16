@@ -18,6 +18,7 @@ import type {
   RoomEntry,
   RoomOpeningView,
   RoomStreamState,
+  RoomViewerCount,
 } from '@/features/auction-room/types'
 
 const EXTENDED_FLAG_MS = 4000
@@ -120,7 +121,6 @@ export function useAuctionRoom(auctionId: number) {
             currentPrice: state.currentPrice,
             endAt: state.endAt,
             serverTime: state.serverTime,
-            viewerCount: state.viewerCount,
             bidderCount: state.bidderCount,
             bidCount: state.bidCount,
             // 방송은 보는 사람을 가리지 않아 본인 여부를 알려주지 않는다. 금액으로 맞혀 보면
@@ -133,6 +133,10 @@ export function useAuctionRoom(auctionId: number) {
             })),
           })
   }, [markExtended])
+
+  const mergeViewerCount = useCallback((viewers: RoomViewerCount) => {
+    setRoom((prev) => (prev == null ? prev : { ...prev, viewerCount: viewers.viewerCount }))
+  }, [])
 
   useEffect(() => {
     // 방이 바뀐 경우에만 지운다. 탭이 돌아와 이펙트가 다시 도는 것뿐이면 보던 화면을 그대로 둔다
@@ -250,6 +254,7 @@ export function useAuctionRoom(auctionId: number) {
                 reconnectAttempts = 0
                 mergeStreamState(state)
               },
+              mergeViewerCount,
               reconnect,
             )
           }
@@ -287,7 +292,7 @@ export function useAuctionRoom(auctionId: number) {
       unsubscribeRef.current = null
       if (reentryTimer !== null) window.clearTimeout(reentryTimer)
     }
-  }, [auctionId, mergeStreamState, visible])
+  }, [auctionId, mergeStreamState, mergeViewerCount, visible])
 
   // 마감을 서버가 알려주기를 기다리지 않는다. 서버의 주기 정리는 최대 5초 늦고, 그 사이 화면은
   // 끝난 경매의 호가창을 보여준다. 마감 시각과 시계 보정값이 이미 있으니 스스로 센다.

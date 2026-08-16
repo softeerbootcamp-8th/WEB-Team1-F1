@@ -25,9 +25,6 @@ public record RoomStateResponse(
                 example = "2026-08-03T20:45:12")
         LocalDateTime serverTime,
 
-        @Schema(description = "지금 방을 보고 있는 사람 수, 한 사람이 창을 여럿 열어도 하나로 센다", example = "12")
-        int viewerCount,
-
         @Schema(description = "지금까지 들어온 입찰 건수, 최근 호가 20건과 달리 전체를 센다", example = "37")
         long bidCount,
 
@@ -48,7 +45,6 @@ public record RoomStateResponse(
                 state.currentPrice(),
                 state.endAt(),
                 state.serverTime(),
-                state.viewerCount(),
                 state.bidCounts().bidCount(),
                 state.bidCounts().bidderCount(),
                 RoomStateWinnerResponse.from(state.winnerName()),

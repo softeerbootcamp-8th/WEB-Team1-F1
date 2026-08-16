@@ -51,7 +51,6 @@ function streamState(endAt: string): RoomStreamState {
     currentPrice: 10_100_000,
     endAt,
     serverTime: SERVER_NOW,
-    viewerCount: 1,
     bidderCount: 1,
     bidCount: 1,
     winner: null,

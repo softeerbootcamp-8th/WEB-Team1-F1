@@ -101,6 +101,10 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         assertThat(broadcast.at("/vehicle").isMissingNode()).isTrue();
         assertThat(query.at("/vehicle").isMissingNode()).isFalse();
 
+        // then 2-1-1 : 사람 수는 들고 나는 것만으로 바뀌어 자기 이벤트로 나간다, 현황에는 키가 없다
+        assertThat(broadcast.at("/viewerCount").isMissingNode()).isTrue();
+        assertThat(query.at("/viewerCount").isMissingNode()).isFalse();
+
         // then 2-2 : 시작가와 개장·시작 시각도 방 안에서 바뀌지 않는다, 방이 열리기 전에만 고칠 수 있다
         assertThat(broadcast.at("/startPrice").isMissingNode()).isTrue();
         assertThat(broadcast.at("/openAt").isMissingNode()).isTrue();
@@ -158,6 +162,7 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         copy.get("recentBids").forEach(bid -> ((ObjectNode) bid).remove("mine"));
         copy.remove("sellerIsMine");
         copy.remove("vehicle");
+        copy.remove("viewerCount");
         copy.remove("startPrice");
         copy.remove("openAt");
         copy.remove("startAt");

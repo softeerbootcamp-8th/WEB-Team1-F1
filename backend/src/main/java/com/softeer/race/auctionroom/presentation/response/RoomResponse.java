@@ -70,7 +70,7 @@ public record RoomResponse(
                 view.startAt(),
                 state.endAt(),
                 state.serverTime(),
-                state.viewerCount(),
+                view.viewerCount(),
                 state.bidCounts().bidCount(),
                 state.bidCounts().bidderCount(),
                 WinnerResponse.from(state.winnerName(), view.winnerIsMine()),

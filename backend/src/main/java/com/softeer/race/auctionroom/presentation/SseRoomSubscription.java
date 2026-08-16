@@ -3,8 +3,11 @@ package com.softeer.race.auctionroom.presentation;
 import com.softeer.race.auctionroom.application.RoomMessage;
 import com.softeer.race.auctionroom.application.RoomState;
 import com.softeer.race.auctionroom.application.RoomSubscription;
+import com.softeer.race.auctionroom.application.ViewerCount;
 import com.softeer.race.auctionroom.presentation.response.RoomStateResponse;
+import com.softeer.race.auctionroom.presentation.response.ViewerCountResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -18,6 +21,9 @@ import java.util.concurrent.locks.ReentrantLock;
 // equals 를 정의하지 않는다, 연결 하나에 객체 하나라 객체 자체가 식별자다
 @Slf4j
 class SseRoomSubscription implements RoomSubscription {
+
+    // 화면이 이 이름으로 리스너를 나눠 단다
+    private static final String VIEWERS_EVENT = "viewers";
 
     private final long auctionId;
     private final long viewerId;
@@ -67,9 +73,16 @@ class SseRoomSubscription implements RoomSubscription {
         }
     }
 
+    // 현황에는 이름을 붙이지 않는다, 붙이면 기본 이벤트로 받던 화면이 조용히 멈춘다
+    // 봉인된 종류라 새 메시지가 생기면 컴파일러가 여기를 빠뜨리지 못하게 한다
     private void write(RoomMessage message) {
         try {
-            emitter.send(bodyOf(message));
+            switch (message) {
+                case RoomState state -> emitter.send(RoomStateResponse.from(state));
+                case ViewerCount viewers -> emitter.send(SseEmitter.event()
+                        .name(VIEWERS_EVENT)
+                        .data(ViewerCountResponse.from(viewers), MediaType.APPLICATION_JSON));
+            }
         } catch (IOException e) {
             // 상대가 끊었다, 방이 닫히면 한꺼번에 몰리는 정상 경로다
             log.debug("경매방 현황 전송 중 연결이 끊겼다, 경매 {}", auctionId, e);
@@ -82,12 +95,6 @@ class SseRoomSubscription implements RoomSubscription {
         }
     }
 
-    // 봉인된 종류라 새 이벤트가 생기면 컴파일러가 여기를 빠뜨리지 못하게 한다
-    private static Object bodyOf(RoomMessage message) {
-        return switch (message) {
-            case RoomState state -> RoomStateResponse.from(state);
-        };
-    }
 
     @Override
     public void ping() {

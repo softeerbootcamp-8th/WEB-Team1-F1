@@ -340,10 +340,20 @@ class RoomStreamPoolIntegrationTest extends IntegrationTestSupport {
         public void onComplete() {
         }
 
-        // SSE 는 현황 하나가 data 한 줄이다
+        // SSE 는 한 건이 data 한 줄이고, 이름 있는 이벤트는 그 앞줄에 event 가 붙는다
+        // 현황에는 이름이 없으므로 앞줄에 event 가 없는 것만 센다, 본문을 뜯어보고 가르지 않는다
         private List<String> states() {
             synchronized (lines) {
-                return lines.stream().filter(line -> line.startsWith("data:")).toList();
+                List<String> states = new ArrayList<>();
+
+                for (int index = 0; index < lines.size(); index++) {
+                    if (lines.get(index).startsWith("data:")
+                            && (index == 0 || !lines.get(index - 1).startsWith("event:"))) {
+                        states.add(lines.get(index));
+                    }
+                }
+
+                return states;
             }
         }
     }

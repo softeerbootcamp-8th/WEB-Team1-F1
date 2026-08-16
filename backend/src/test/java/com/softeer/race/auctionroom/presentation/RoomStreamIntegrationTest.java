@@ -77,13 +77,17 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
                         content().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM))
                 .andReturn();
 
-        // then 2 : 구독 직후 첫 현황이 한 번 온다, 아직 혼자라 접속자는 1이다
+        // then 2 : 구독 직후 첫 현황이 한 번 온다, 사람 수는 여기 실리지 않는다
         String afterFirst = body(first);
         assertThat(afterFirst)
                 .startsWith("data:")
                 .contains("\"auctionId\":" + liveAuctionId)
                 .contains("\"phase\":\"LIVE\"")
-                .contains("\"currentPrice\":12500000")
+                .contains("\"currentPrice\":12500000");
+
+        // then 2-1 : 사람 수는 자기 이벤트로 온다, 아직 혼자라 1이다
+        assertThat(afterFirst)
+                .contains("event:viewers")
                 .contains("\"viewerCount\":1");
 
         // then 3 : 집계 둘이 방송에도 실린다, 한 사람이 두 번 넣었으므로 건수와 사람 수가 다르다

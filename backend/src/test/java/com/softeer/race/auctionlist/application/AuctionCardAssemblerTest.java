@@ -5,6 +5,7 @@ import com.softeer.race.auctionlist.domain.AuctionListRow;
 import com.softeer.race.auctionroom.application.RoomChannel;
 import com.softeer.race.auctionroom.application.RoomMessage;
 import com.softeer.race.auctionroom.application.RoomSubscription;
+import com.softeer.race.auctionroom.application.ViewerCount;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
 import org.junit.jupiter.api.DisplayName;
@@ -88,6 +89,11 @@ class AuctionCardAssemblerTest {
         @Override
         public int viewerCount(long auctionId) {
             return WATCHING;
+        }
+
+        @Override
+        public ViewerCount readViewerCount(long auctionId) {
+            throw new UnsupportedOperationException();
         }
 
         @Override

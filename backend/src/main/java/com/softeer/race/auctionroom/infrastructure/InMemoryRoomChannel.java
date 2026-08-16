@@ -3,6 +3,7 @@ package com.softeer.race.auctionroom.infrastructure;
 import com.softeer.race.auctionroom.application.RoomChannel;
 import com.softeer.race.auctionroom.application.RoomMessage;
 import com.softeer.race.auctionroom.application.RoomSubscription;
+import com.softeer.race.auctionroom.application.ViewerCount;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -11,12 +12,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Component
 public class InMemoryRoomChannel implements RoomChannel {
 
     // 등록은 요청 스레드, 해제는 컨테이너 콜백 스레드, 전송은 또 다른 스레드에서 온다
     private final Map<Long, Set<RoomSubscription>> subscriptionsByRoom = new ConcurrentHashMap<>();
+
+    // 방마다 두지 않는다, 전체가 하나여도 방 안에서 단조 증가하면 그 방의 순서를 가리는 데 충분하다
+    private final AtomicLong sequence = new AtomicLong();
 
     @Override
     public void subscribe(long auctionId, RoomSubscription subscription) {
@@ -40,6 +46,20 @@ public class InMemoryRoomChannel implements RoomChannel {
         Set<RoomSubscription> subscriptions = subscriptionsByRoom.get(auctionId);
 
         return subscriptions == null ? 0 : viewerCount(subscriptions);
+    }
+
+    // compute 가 키 하나를 직렬화하므로 같은 방을 동시에 읽어도 센 수와 번호가 어긋나지 않는다
+    @Override
+    public ViewerCount readViewerCount(long auctionId) {
+        AtomicReference<ViewerCount> read = new AtomicReference<>();
+
+        subscriptionsByRoom.computeIfPresent(auctionId, (id, subscriptions) -> {
+            read.set(new ViewerCount(auctionId, viewerCount(subscriptions), sequence.incrementAndGet()));
+            return subscriptions;
+        });
+
+        // 방이 명부에서 빠진 뒤라면 남은 구독도 없다, 보낼 곳이 없으므로 번호를 쓰지 않는다
+        return read.get() != null ? read.get() : new ViewerCount(auctionId, 0, 0);
     }
 
     @Override

@@ -88,11 +88,16 @@ export interface RoomStreamState {
   currentPrice: number
   endAt: string
   serverTime: string
-  viewerCount: number
   bidderCount: number
   bidCount: number
   winner: RoomStreamWinner | null
   recentBids: RoomStreamBid[]
+}
+
+/** event: viewers 의 본문. 들고 나는 것만으로 바뀌어 현황과 따로 온다 */
+export interface RoomViewerCount {
+  auctionId: number
+  viewerCount: number
 }
 
 /** 백엔드 RoomOpeningResponse와 동일한 필드 — 아직 열리지 않은 방의 안내다 */

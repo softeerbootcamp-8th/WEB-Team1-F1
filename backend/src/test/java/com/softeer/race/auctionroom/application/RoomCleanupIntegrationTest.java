@@ -76,7 +76,7 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
         roomStreamService.sweepClosedSubscriptions();
 
         // then 1 : 남은 사람은 줄어든 접속자 수를 받는다, 다시 조회하지 않았는데 갱신된다
-        assertThat(alive.lastState().viewerCount()).isEqualTo(1);
+        assertThat(alive.lastViewerCount()).isEqualTo(1);
         assertThat(roomChannel.viewerCount(auctionId)).isEqualTo(1);
 
         // then 2 : 사라진 쪽에는 아무것도 보내지 않는다
@@ -98,8 +98,8 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("시나리오 3 : 방이 닫히면 남은 구독은 접속자에서 빠지고 새 조회는 거절된다")
-    void closedRoomCountsNobodyAsConnected() {
+    @DisplayName("시나리오 3 : 청소가 닫힌 방을 지나가면 남은 연결도 끝나고 새 조회는 거절된다")
+    void sweepOnClosedRoomEndsConnections() {
         // given : 진행 중일 때 둘이 들어와 있다
         long auctionId = liveRoom();
         subscribe(auctionId, alive);
@@ -110,8 +110,8 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
         gone.disconnect();
         roomStreamService.sweepClosedSubscriptions();
 
-        // then 1 : 연결은 아직 열려 있지만 닫힌 방은 접속자로 세지 않는다
-        assertThat(alive.lastState().viewerCount()).isZero();
+        // then 1 : 마지막 현황이 나간 뒤 남아 있던 연결도 끝난다, 끊기 주기를 기다리지 않는다
+        assertThat(alive.closedByServer).isTrue();
 
         // then 2 : 같은 순간 새로 들어오려는 사람은 아예 막힌다, 열어 둔 화면과 새 조회가 어긋나지 않는다
         assertThat(catchThrowable(() -> roomService.readRoom(auctionId, VIEWER_ID)))
@@ -146,7 +146,7 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
         assertThat(thrown).isNull();
 
         // then 2 : 멀쩡한 방은 처리 순서와 무관하게 줄어든 접속자 수를 받는다
-        assertThat(healthyAlive.lastState().viewerCount()).isEqualTo(1);
+        assertThat(healthyAlive.lastViewerCount()).isEqualTo(1);
     }
 
     @Test
@@ -230,6 +230,7 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
         private static final AtomicLong VIEWER_SERIAL = new AtomicLong();
 
         private final List<RoomState> received = new ArrayList<>();
+        private final List<ViewerCount> viewerCounts = new ArrayList<>();
         private final long viewerId = VIEWER_SERIAL.incrementAndGet();
         private boolean open = true;
         private boolean closedByServer;
@@ -251,10 +252,15 @@ class RoomCleanupIntegrationTest extends IntegrationTestSupport {
             return received.getLast();
         }
 
+        int lastViewerCount() {
+            return viewerCounts.getLast().viewerCount();
+        }
+
         @Override
         public void send(RoomMessage message) {
-            if (message instanceof RoomState state) {
-                received.add(state);
+            switch (message) {
+                case RoomState state -> received.add(state);
+                case ViewerCount viewers -> viewerCounts.add(viewers);
             }
         }
 

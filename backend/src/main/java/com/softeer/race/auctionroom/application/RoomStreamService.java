@@ -44,8 +44,8 @@ public class RoomStreamService {
 
         roomChannel.subscribe(auctionId, subscription);
 
-        // 보고 있는 사람 수는 메모리에서 오므로 등록한 뒤에 세면 DB 를 다시 읽지 않아도 된다
         broadcast(snapshot);
+        broadcastViewerCount(auctionId);
     }
 
     /**
@@ -55,6 +55,7 @@ public class RoomStreamService {
         // 걷어내기와 방 끊기가 먼저 빼 간 뒤에도 이 콜백은 돌아온다, 그때 갱신하면 같은 방을 두 번 읽는다
         if (roomChannel.unsubscribe(auctionId, subscription)) {
             refresh(auctionId);
+            broadcastViewerCount(auctionId);
         }
     }
 
@@ -67,6 +68,7 @@ public class RoomStreamService {
         for (long auctionId : roomChannel.sweepClosed()) {
             try {
                 refresh(auctionId);
+                broadcastViewerCount(auctionId);
             } catch (Exception e) {
                 log.warn("경매방 현황 갱신 실패, 경매 {}", auctionId, e);
             }
@@ -111,10 +113,15 @@ public class RoomStreamService {
                 .orElse(false);
     }
 
+    // 사람 수는 DB 를 읽지 않는다, 채널 메모리에만 있고 세는 것과 번호를 매기는 것을 채널이 함께 해 준다
+    private void broadcastViewerCount(long auctionId) {
+        roomChannel.broadcast(auctionId, roomChannel.readViewerCount(auctionId));
+    }
+
     private void broadcast(RoomSnapshot snapshot) {
         long auctionId = snapshot.detail().auctionId();
 
-        roomChannel.broadcast(auctionId, RoomState.of(snapshot, roomChannel.viewerCount(auctionId)));
+        roomChannel.broadcast(auctionId, RoomState.of(snapshot));
 
         // 마감됐다는 마지막 현황까지 받고 나서 끊는다, 이 순서라야 화면이 끊김을 결과로 읽는다
         if (!snapshot.phase().allowsConnection()) {
