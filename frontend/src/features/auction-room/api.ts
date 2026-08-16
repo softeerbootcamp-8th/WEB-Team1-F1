@@ -6,6 +6,7 @@ import type {
   RoomOpeningView,
   RoomResultView,
   RoomStreamState,
+  RoomViewerCount,
 } from '@/features/auction-room/types'
 
 /**
@@ -47,11 +48,13 @@ export async function fetchRoomResult(auctionId: number): Promise<RoomResultView
  * 그 외에는 서버가 409로 거절한다. 마감되면 마지막 현황을 한 번 보내고 서버가 끊으므로 다시
  * 구독하지 말고 결과 요약으로 가야 한다(RESULT 는 ROOM_STREAM_ENDED, 그 뒤는 ROOM_ALREADY_CLOSED).
  * 보는 사람을 가리지 않아 내 입찰(mine) 표시도 낙찰자 본인 여부도 안 실려 온다.
- * 매 전송이 변경분이 아니라 전체 현황이라 하나를 놓쳐도 다음 전송이 덮는다.
+ * 사람 수는 들고 나는 것만으로 바뀌어 event: viewers 로 따로 오고, 현황에는 실리지 않는다.
+ * 둘 다 변경분이 아니라 그 종류의 전체 값이라 하나를 놓쳐도 같은 종류의 다음 전송이 덮는다.
  */
 export function subscribeRoomStream(
   auctionId: number,
   onState: (state: RoomStreamState) => void,
+  onViewers: (viewers: RoomViewerCount) => void,
   onClosed?: () => void,
 ): () => void {
   const baseURL = axiosInstance.defaults.baseURL ?? ''
@@ -62,6 +65,10 @@ export function subscribeRoomStream(
   source.onmessage = (event) => {
     onState(JSON.parse(event.data) as RoomStreamState)
   }
+
+  source.addEventListener('viewers', (event) => {
+    onViewers(JSON.parse(event.data) as RoomViewerCount)
+  })
 
   // 끊기면 EventSource 가 스스로 다시 붙는다. 다만 재연결 응답이 2xx 가 아니면 표준대로 재시도를
   // 포기하고 CLOSED 로 남으므로, 그때만 알린다. 방이 닫혀 서버가 끊은 경우가 여기로 온다

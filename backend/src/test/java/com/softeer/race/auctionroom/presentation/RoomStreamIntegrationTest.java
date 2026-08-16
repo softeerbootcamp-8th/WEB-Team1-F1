@@ -1,6 +1,7 @@
 package com.softeer.race.auctionroom.presentation;
 
 import com.softeer.race.auctionroom.application.RoomChannel;
+import com.softeer.race.auctionroom.application.RoomStreamService;
 import com.softeer.race.auth.application.SessionService;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
@@ -28,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 단위테스트로는 볼 수 없는 것만 여기서 고정한다. 응답이 끝나지 않고 열린 채로 남는지,
  * 미디어타입과 이벤트 프레이밍이 맞는지, 그리고 다른 사람이 들어왔을 때 이미 열려 있던 연결로
- * 새 현황이 흘러 들어가는지다. 셋 다 객체를 돌려받아서는 알 수 없다.
+ * 늘어난 사람 수가 흘러 들어가는지다. 셋 다 객체를 돌려받아서는 알 수 없다.
  * <p>
  * 로그인 여부도 여기서 본다. 구독은 누구인지가 아니라 로그인했는지만 확인하므로 검증할 것은
  * 연결이 열리느냐 뿐이고, 그것 역시 응답 객체로는 알 수 없다.
@@ -43,6 +44,9 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private RoomChannel roomChannel;
+
+    @Autowired
+    private RoomStreamService roomStreamService;
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
 
@@ -63,8 +67,8 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("시나리오 1 : 진행 중 경매방 구독 -> 연결이 열린 채 첫 현황이 오고, 다음 사람이 들어오면 이미 열린 연결로도 흘러 들어간다")
-    void subscribingReceivesStateAndLaterBroadcast() throws Exception {
+    @DisplayName("시나리오 1 : 진행 중 경매방 구독 -> 연결이 열린 채 사람 수가 오고, 사건이 생기면 현황도 흘러 들어간다")
+    void subscribingReceivesViewerCountThenState() throws Exception {
         // given
         long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
 
@@ -77,22 +81,27 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
                         content().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM))
                 .andReturn();
 
-        // then 2 : 구독 직후 첫 현황이 한 번 온다, 아직 혼자라 접속자는 1이다
+        // then 2 : 구독만으로는 현황이 오지 않는다, 첫 화면은 방 조회가 이미 줬고 사람 수만 온다
         String afterFirst = body(first);
         assertThat(afterFirst)
-                .startsWith("data:")
+                .contains("event:viewers")
+                .contains("\"viewerCount\":1")
+                .doesNotContain("\"phase\"");
+
+        // when : 방에 사건이 생겨 현황이 나간다
+        roomStreamService.refresh(liveAuctionId);
+
+        // then 3 : 집계 둘이 현황에 실린다, 한 사람이 두 번 넣었으므로 건수와 사람 수가 다르다
+        String afterRefresh = body(first);
+        assertThat(afterRefresh)
                 .contains("\"auctionId\":" + liveAuctionId)
                 .contains("\"phase\":\"LIVE\"")
                 .contains("\"currentPrice\":12500000")
-                .contains("\"viewerCount\":1");
-
-        // then 3 : 집계 둘이 방송에도 실린다, 한 사람이 두 번 넣었으므로 건수와 사람 수가 다르다
-        assertThat(afterFirst)
                 .contains("\"bidCount\":2")
                 .contains("\"bidderCount\":1");
 
         // then 4 : 보는 사람을 가리지 않으므로 내 입찰 표시가 없고, 이름은 마스킹된 채로만 나간다
-        assertThat(afterFirst)
+        assertThat(afterRefresh)
                 .contains("\"name\":\"김*현\"")
                 .doesNotContain("\"mine\"")
                 .doesNotContain("bidderId")
@@ -105,7 +114,7 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
         // then 5 : 먼저 열려 있던 연결로 늘어난 접속자 수가 흘러 들어간다, 다시 조회하지 않았는데 갱신된다
         assertThat(body(first))
                 .contains("\"viewerCount\":2")
-                .isNotEqualTo(afterFirst);
+                .isNotEqualTo(afterRefresh);
     }
 
     @Test

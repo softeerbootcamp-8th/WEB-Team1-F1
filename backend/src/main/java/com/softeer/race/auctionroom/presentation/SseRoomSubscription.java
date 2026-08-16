@@ -1,12 +1,18 @@
 package com.softeer.race.auctionroom.presentation;
 
+import com.softeer.race.auctionroom.application.RoomMessage;
 import com.softeer.race.auctionroom.application.RoomState;
 import com.softeer.race.auctionroom.application.RoomSubscription;
+import com.softeer.race.auctionroom.application.ViewerCount;
 import com.softeer.race.auctionroom.presentation.response.RoomStateResponse;
+import com.softeer.race.auctionroom.presentation.response.ViewerCountResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -15,6 +21,9 @@ import java.util.concurrent.locks.ReentrantLock;
 // equals 를 정의하지 않는다, 연결 하나에 객체 하나라 객체 자체가 식별자다
 @Slf4j
 class SseRoomSubscription implements RoomSubscription {
+
+    // 화면이 이 이름으로 리스너를 나눠 단다
+    private static final String VIEWERS_EVENT = "viewers";
 
     private final long auctionId;
     private final long viewerId;
@@ -30,8 +39,8 @@ class SseRoomSubscription implements RoomSubscription {
     // 나누면 둘 다 검사를 통과한 뒤 쓰기 순서가 다시 뒤집힌다
     private final Lock order = new ReentrantLock();
 
-    // 잠금 안에서만 읽고 쓴다
-    private RoomState sent;
+    // 잠금 안에서만 읽고 쓴다, 종류마다 마지막으로 보낸 것을 따로 기억해야 서로의 순서를 밀어내지 않는다
+    private final Map<Class<? extends RoomMessage>, RoomMessage> sentByType = new HashMap<>();
 
     SseRoomSubscription(long auctionId, long viewerId, SseEmitter emitter) {
         this.auctionId = auctionId;
@@ -45,7 +54,7 @@ class SseRoomSubscription implements RoomSubscription {
     }
 
     @Override
-    public void send(RoomState state) {
+    public void send(RoomMessage message) {
         if (!open) {
             return;
         }
@@ -53,20 +62,27 @@ class SseRoomSubscription implements RoomSubscription {
         order.lock();
 
         try {
-            if (state.isStalerThan(sent)) {
+            if (message.isStalerThan(sentByType.get(message.getClass()))) {
                 return;
             }
 
-            write(state);
-            sent = state;
+            write(message);
+            sentByType.put(message.getClass(), message);
         } finally {
             order.unlock();
         }
     }
 
-    private void write(RoomState state) {
+    // 현황에는 이름을 붙이지 않는다, 붙이면 기본 이벤트로 받던 화면이 조용히 멈춘다
+    // 봉인된 종류라 새 메시지가 생기면 컴파일러가 여기를 빠뜨리지 못하게 한다
+    private void write(RoomMessage message) {
         try {
-            emitter.send(RoomStateResponse.from(state));
+            switch (message) {
+                case RoomState state -> emitter.send(RoomStateResponse.from(state));
+                case ViewerCount viewers -> emitter.send(SseEmitter.event()
+                        .name(VIEWERS_EVENT)
+                        .data(ViewerCountResponse.from(viewers), MediaType.APPLICATION_JSON));
+            }
         } catch (IOException e) {
             // 상대가 끊었다, 방이 닫히면 한꺼번에 몰리는 정상 경로다
             log.debug("경매방 현황 전송 중 연결이 끊겼다, 경매 {}", auctionId, e);
@@ -78,6 +94,7 @@ class SseRoomSubscription implements RoomSubscription {
             open = false;
         }
     }
+
 
     @Override
     public void ping() {

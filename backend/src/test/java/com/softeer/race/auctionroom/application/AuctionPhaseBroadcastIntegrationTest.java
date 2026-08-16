@@ -66,13 +66,16 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         // given : 시작을 기다리는 방을 한 사람이 보고 있다
         auctionId = waitingRoom();
         roomStreamService.subscribe(auctionId, watcher);
-        assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.WAITING);
+
+        // 구독만으로는 현황이 오지 않는다, 이 단정이 있어야 아래 현황이 전이에서 온 것임이 갈린다
+        assertThat(watcher.received()).isEmpty();
 
         // when : 시작 시각이 되어 경매가 진행중으로 넘어간다
         fixClockAt(START_AT);
         auctionStarter.start(auctionId);
 
         // then : 다시 조회하지 않았는데 진행중으로 바뀐 현황이 흘러 들어간다
+        assertThat(watcher.received()).hasSize(1);
         assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.LIVE);
     }
 
@@ -83,7 +86,9 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         auctionId = liveRoomWithBid();
         auctionInProgress();
         roomStreamService.subscribe(auctionId, watcher);
-        assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.LIVE);
+
+        // 구독만으로는 현황이 오지 않는다, 이 단정이 있어야 아래 현황이 마감에서 온 것임이 갈린다
+        assertThat(watcher.received()).isEmpty();
 
         // when : 마감 시각이 지나 낙찰자가 확정된다
         fixClockAt(END_AT);
@@ -216,8 +221,10 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         }
 
         @Override
-        public void send(RoomState state) {
-            received.add(state);
+        public void send(RoomMessage message) {
+            if (message instanceof RoomState state) {
+                received.add(state);
+            }
         }
 
         @Override
