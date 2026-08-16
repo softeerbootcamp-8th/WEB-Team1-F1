@@ -3,6 +3,7 @@ import { Link, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { useScrollReset } from '@/app/scroll-reset'
 import { EvaluatorRestrictedOutlet } from '@/app/evaluator-restricted-outlet'
 import { EvaluatorOnlyOutlet } from '@/app/evaluator-only-outlet'
+import { AdminOnlyOutlet } from '@/app/admin-only-outlet'
 import { AppLayout } from '@/components/layout/app-layout'
 import { EmptyState } from '@/components/common/empty-state'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,7 @@ import { MyAssignmentsPage } from '@/features/evaluations/pages/my-assignments-p
 import { EvaluationResultPage } from '@/features/evaluations/pages/evaluation-result-page'
 import { MyRequestDetailPage } from '@/features/evaluations/pages/my-request-detail-page'
 import { EvaluatorHomePage } from '@/features/evaluations/pages/evaluator-home-page'
+import { AdminHomePage } from '@/features/admin/pages/admin-home-page'
 import { useAuth } from '@/features/auth/auth-context'
 
 export function AppRouter() {
@@ -45,6 +47,10 @@ export function AppRouter() {
         <Route path="/auctions/:id" element={<AuctionRoomPage />} />
         {/* 결과는 방과 다른 액자다. 단계를 보지 않으므로 방이 닫힌 뒤에도 이 주소로 남는다 */}
         <Route path="/auctions/:id/result" element={<AuctionResultPage />} />
+        {/* 운영 화면은 /admin 아래로만 모은다. 서버가 막는 /api/admin/** 과 같은 이름을 쓴다 */}
+        <Route element={<AdminOnlyRoute />}>
+          <Route path="/admin" element={<AdminHomePage />} />
+        </Route>
         <Route element={<EvaluatorOnlyRoute />}>
           <Route path="/evaluations/assignable" element={<AssignableEvaluationsPage />} />
           <Route path="/evaluations/my" element={<MyAssignmentsPage />} />
@@ -81,11 +87,21 @@ export function AppRouter() {
   )
 }
 
-/** 같은 홈 주소에서 로그인한 역할에 맞는 첫 화면을 고른다. */
+/**
+ * 같은 홈 주소에서 로그인한 역할에 맞는 첫 화면을 고른다.
+ * 관리자만 화면 대신 주소를 옮긴다 — 운영 화면은 /admin 하나로만 가리켜야 딥링크가 갈라지지 않는다.
+ */
 function RoleHome() {
   const { user } = useAuth()
 
-  return user?.role === 'EVALUATOR' ? <EvaluatorHomePage /> : <HomePage />
+  switch (user?.role) {
+    case 'EVALUATOR':
+      return <EvaluatorHomePage />
+    case 'ADMIN':
+      return <Navigate to="/admin" replace />
+    default:
+      return <HomePage />
+  }
 }
 
 /** 평가사는 판매·시세·마이페이지에 직접 URL로도 들어갈 수 없다. */
@@ -100,6 +116,13 @@ function EvaluatorOnlyRoute() {
   const { user } = useAuth()
 
   return <EvaluatorOnlyOutlet role={user?.role ?? null} />
+}
+
+/** 운영 화면은 관리자만 접근한다. */
+function AdminOnlyRoute() {
+  const { user } = useAuth()
+
+  return <AdminOnlyOutlet role={user?.role ?? null} />
 }
 
 /** 옛 거래 상세 주소를 새 자리로 넘긴다. 번호를 그대로 물고 가야 알림이 가리키던 거래에 닿는다 */

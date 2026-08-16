@@ -126,6 +126,20 @@ class UserServiceTest {
         verify(userRepository, never()).save(any());
     }
 
+    // 관리자는 부트스트랩으로만 심는다. 여기가 뚫리면 가입 폼으로 아무나 관리자가 된다
+    @Test
+    @DisplayName("관리자 역할의 자체 회원가입을 거부한다")
+    void signUpRejectsAdminRole() {
+        SignUpCommand command = signUpCommand(Role.ADMIN);
+
+        assertThatThrownBy(() -> userService.signUp(command))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode())
+                                .isEqualTo(UNSUPPORTED_SIGNUP_ROLE));
+
+        verify(userRepository, never()).save(any());
+    }
+
     @Test
     @DisplayName("딜러 회원가입에 사원증 키가 없으면 거부한다")
     void signUpRejectsDealerWithoutLicense() {

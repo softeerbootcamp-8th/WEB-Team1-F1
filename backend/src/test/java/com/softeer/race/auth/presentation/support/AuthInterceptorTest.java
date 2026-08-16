@@ -41,9 +41,15 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>
  * {@code @WebMvcTest} 슬라이스는 WebMvcConfigurer를 함께 스캔하므로 AuthWebMvcConfig의
  * {@code /api/**} 등록이 이 컨텍스트에서도 살아 있다.
+ * <p>
+ * {@code /api/admin/**}만 그 계약의 예외다. AdminTestController에는 <b>애너테이션을 일부러 붙이지
+ * 않았고</b>, 그래도 차단되는지가 경로 기본 차단의 계약이다. 애너테이션을 붙여 두면 그 애너테이션이
+ * 막은 것인지 경로가 막은 것인지 구분되지 않아 테스트가 아무것도 고정하지 못한다.
  */
-@WebMvcTest(controllers = AuthInterceptorTest.TestController.class)
-@Import({AuthInterceptorTest.TestController.class, GlobalExceptionHandler.class})
+@WebMvcTest(controllers = {AuthInterceptorTest.TestController.class,
+        AuthInterceptorTest.AdminTestController.class})
+@Import({AuthInterceptorTest.TestController.class, AuthInterceptorTest.AdminTestController.class,
+        GlobalExceptionHandler.class})
 @DisplayName("인증 인터셉터")
 class AuthInterceptorTest {
 
@@ -136,6 +142,56 @@ class AuthInterceptorTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    @DisplayName("관리자 경로는 애너테이션이 없어도 쿠키가 없으면 401이다")
+    void adminPathRequiresAuthenticationWithoutAnnotation() throws Exception {
+        given(sessionService.authenticate(null))
+                .willThrow(new BusinessException(AuthErrorCode.UNAUTHENTICATED));
+
+        mockMvc.perform(get("/api/admin/interceptor-test"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
+    }
+
+    @Test
+    @DisplayName("관리자 경로는 애너테이션이 없어도 관리자가 아닌 역할을 403으로 막는다")
+    void adminPathRejectsNonAdminRoles() throws Exception {
+        for (Role role : new Role[] {Role.GENERAL, Role.DEALER, Role.EVALUATOR}) {
+            given(sessionService.authenticate(RAW_TOKEN))
+                    .willReturn(new AuthenticatedUser(USER_ID, role));
+
+            mockMvc.perform(get("/api/admin/interceptor-test")
+                            .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, RAW_TOKEN)))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
+        }
+    }
+
+    @Test
+    @DisplayName("관리자 경로는 관리자에게 열린다")
+    void adminPathAllowsAdmin() throws Exception {
+        given(sessionService.authenticate(RAW_TOKEN))
+                .willReturn(new AuthenticatedUser(USER_ID, Role.ADMIN));
+
+        mockMvc.perform(get("/api/admin/interceptor-test")
+                        .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, RAW_TOKEN)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result").value("admin"));
+    }
+
+    // getRequestURI() 를 그대로 비교하면 컨텍스트 경로가 앞에 붙는 순간 접두사가 어긋나, 매핑은
+    // 관리자 핸들러로 가는데 차단만 조용히 풀린다. 매핑이 보는 경로와 같은 것을 봐야 한다
+    @Test
+    @DisplayName("컨텍스트 경로가 붙어도 관리자 경로로 판정한다")
+    void adminPathIsDetectedUnderContextPath() throws Exception {
+        given(sessionService.authenticate(null))
+                .willThrow(new BusinessException(AuthErrorCode.UNAUTHENTICATED));
+
+        mockMvc.perform(get("/race/api/admin/interceptor-test").contextPath("/race"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
+    }
+
     // 인터셉터 범위가 /api/** 로 넓어졌으므로 preflight가 401이 되는 회귀를 여기서 잡는다
     // preflight에는 쿠키가 실리지 않아, 걸러 주지 않으면 브라우저가 실제 요청을 보내지 않는다
     @Test
@@ -173,6 +229,17 @@ class AuthInterceptorTest {
         @RequireRole({Role.DEALER, Role.EVALUATOR})
         PublicResult traderOnly() {
             return new PublicResult("trader");
+        }
+    }
+
+    // @LoginUser 도 @RequireRole 도 없다. 이 상태로도 막히는 것이 경로 기본 차단의 계약이다
+    @RestController
+    @RequestMapping("/api/admin/interceptor-test")
+    static class AdminTestController {
+
+        @GetMapping
+        PublicResult adminOnly() {
+            return new PublicResult("admin");
         }
     }
 

@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { ClipboardCheck, Gavel, ListChecks, LogOut, Menu, User as UserIcon } from 'lucide-react'
+import {
+  ClipboardCheck,
+  Gavel,
+  ListChecks,
+  LogOut,
+  Menu,
+  ShieldCheck,
+  User as UserIcon,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -24,6 +32,7 @@ import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/features/notifications/notification-bell'
 import { ROLE_LABEL, useAuth } from '@/features/auth/auth-context'
 import { BrandLogo } from '@/components/common/brand-logo'
+import type { UserRole } from '@/types/domain'
 
 const NAV = [
   { to: '/', label: '홈', end: true },
@@ -40,13 +49,21 @@ const EVALUATOR_NAV = [
   { to: '/auctions', label: '경매 목록' },
 ]
 
+// 관리자에게는 운영 화면만 남긴다. 판매·시세는 관리자 계정으로 할 일이 아니다
+const ADMIN_NAV = [{ to: '/admin', label: '운영 관리', end: true }]
+
+const NAV_BY_ROLE: Partial<Record<UserRole, typeof NAV>> = {
+  EVALUATOR: EVALUATOR_NAV,
+  ADMIN: ADMIN_NAV,
+}
+
 export function Header() {
   const { user, isAuthenticated, logout } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [isPastHeroTop, setIsPastHeroTop] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const navigation = user?.role === 'EVALUATOR' ? EVALUATOR_NAV : NAV
+  const navigation = (user?.role && NAV_BY_ROLE[user.role]) ?? NAV
   const isHome = pathname === '/'
   const hasHomeHero = isHome
   const isHomeOverlay = hasHomeHero && !isPastHeroTop
@@ -230,7 +247,17 @@ export function Header() {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                {user.role !== 'EVALUATOR' && (
+                {user.role === 'ADMIN' && (
+                  <>
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <ShieldCheck className="size-4" />
+                      운영 관리
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                {/* 마이페이지는 판매·구매 이력을 보는 곳이라 그 이력을 가질 수 있는 역할에만 건다 */}
+                {(user.role === 'GENERAL' || user.role === 'DEALER') && (
                   <>
                     <DropdownMenuItem onClick={() => navigate('/mypage')}>
                       <UserIcon className="size-4" />

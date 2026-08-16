@@ -158,9 +158,11 @@ class UserControllerTest {
     @Test
     @DisplayName("정의되지 않은 역할 문자열은 INVALID_REQUEST로 400을 반환한다")
     void signUpRejectsUnknownRole() throws Exception {
+        // Role 에 없는 값이어야 한다. 예전에는 ADMIN 을 썼지만 실제 역할이 되면서
+        // 역직렬화를 통과해 버려, 이 테스트가 검사하려던 400 이 나오지 않았다
         mockMvc.perform(post("/api/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(validRequest().replace("GENERAL", "ADMIN")))
+                        .content(validRequest().replace("GENERAL", "SUPERVISOR")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
     }
