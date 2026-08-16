@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -224,11 +225,20 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
                         continue;
                     }
 
-                    subscription.add(currentPrice(line));
-
+                    // 무엇이 왔든 이 구독이 읽고 있다는 뜻이다, 가격만 세면 입찰 시작 전에는 아무도 못 세어 헛기다린다
                     if (counted.compareAndSet(false, true)) {
                         reading.countDown();
                     }
+
+                    long price = currentPrice(line);
+
+                    // 사람 수 이벤트에는 가격이 없다, 가격 수열에 섞으면 실제 가격 뒤에 올 때 가짜 역전이 된다
+                    if (price < 0) {
+                        subscription.skip();
+                        continue;
+                    }
+
+                    subscription.add(price);
                 }
             }
         } catch (Exception ignored) {
@@ -237,7 +247,8 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
     }
 
     // 세 값 중 현재가만 쓴다, Boot 4 가 Jackson 3 으로 옮겨 어느 ObjectMapper 인지 고르지 않아도 된다
-    // 정규식이 안 맞으면 -1 이 되어 역전 0 으로 보이므로, 관측한 가격 범위를 리포트에 함께 찍어 계측을 검증한다
+    // 안 맞으면 -1 이다, 호출자가 그것을 가격 수열에서 빼고 따로 센다
+    // 관측한 가격 범위와 뺀 수를 리포트에 함께 찍어 계측을 검증한다
     private long currentPrice(String line) {
         Matcher matcher = CURRENT_PRICE.matcher(line);
 
@@ -253,18 +264,27 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         AtomicLong errors = new AtomicLong();
         long deadline = System.nanoTime() + BIDDING.toNanos();
 
+        // 재는 것이 재는 대상을 흔들지 않도록 입찰자마다 자기 목록에 담고 끝에서 한 번만 합친다
+        List<List<Long>> elapsedBatches = new CopyOnWriteArrayList<>();
+
         for (int i = 0; i < BIDDERS; i++) {
             String cookie = cookies.get(i);
 
             threads.submit(() -> {
+                List<Long> elapsed = new ArrayList<>();
                 long known = START_PRICE;
 
                 while (System.nanoTime() < deadline) {
                     // 한 번의 실패로 그 입찰자가 통째로 빠지면 표본이 조용히 줄어든다, 안에서 잡고 이어간다
                     try {
                         long amount = table.ruleFor(START_PRICE, known).minAmount();
+                        long startedAt = System.nanoTime();
+                        boolean placed = place(auctionId, cookie, amount, http, timeouts);
 
-                        if (place(auctionId, cookie, amount, http, timeouts)) {
+                        // 시간 초과도 담는다, 빼면 제일 느린 건이 통계에서 사라져 p99 가 실제보다 좋아 보인다
+                        elapsed.add(System.nanoTime() - startedAt);
+
+                        if (placed) {
                             accepted.incrementAndGet();
                         }
 
@@ -274,6 +294,7 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
                     }
                 }
 
+                elapsedBatches.add(elapsed);
                 done.countDown();
             });
         }
@@ -282,7 +303,8 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
             System.out.println("경고: 입찰 스레드가 시간 안에 끝나지 않았다");
         }
 
-        return new BidOutcome(accepted.get(), timeouts.get(), errors.get());
+        return new BidOutcome(accepted.get(), timeouts.get(), errors.get(),
+                elapsedBatches.stream().flatMap(List::stream).toList());
     }
 
     // 막힌 방송 뒤에 입찰이 줄을 서면 응답이 안 온다, 시간 제한을 걸어 실험이 멈추지 않게 하고 그 횟수를 센다
@@ -329,6 +351,10 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         return URI.create("http://localhost:" + port + path);
     }
 
+    private static double millis(long nanos) {
+        return nanos / 1_000_000.0;
+    }
+
     private void closeQuietly(Socket socket) {
         try {
             socket.close();
@@ -339,14 +365,20 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
 
     private long report(int run, Audience audience, BidOutcome outcome) {
         Tally tally = tally(audience.subscriptions());
+        Elapsed elapsed = Elapsed.of(outcome.elapsedNanos());
 
         // 구독마다 같은 방송을 받으므로 평균 수신 수가 곧 방송 횟수다
         System.out.printf("%d회차 연결 %d/%d 수신구독 %d 성립입찰 %d 시간초과 %d 오류 %d "
-                        + "방송 약 %d 수신 %d 역전 %d 최대낙폭 %,d 가격 %,d~%,d%n",
+                        + "방송 약 %d 수신 %d 역전 %d 최대낙폭 %,d 가격 %,d~%,d 가격없는data %d%n",
                 run, audience.connected(), SUBSCRIBERS, tally.receiving(),
                 outcome.accepted(), outcome.timeouts(), outcome.errors(),
                 tally.events() / Math.max(1, audience.subscriptions().size()), tally.events(),
-                tally.inversions(), tally.maxDrop(), tally.lowestPrice(), tally.highestPrice());
+                tally.inversions(), tally.maxDrop(), tally.lowestPrice(), tally.highestPrice(),
+                tally.skipped());
+
+        System.out.printf("%d회차 입찰응답 %d건 p50 %.1fms p95 %.1fms p99 %.1fms 최대 %.1fms%n",
+                run, elapsed.count(), millis(elapsed.p50()), millis(elapsed.p95()),
+                millis(elapsed.p99()), millis(elapsed.max()));
 
         return tally.inversions();
     }
@@ -358,9 +390,11 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         long maxDrop = 0;
         long lowestPrice = Long.MAX_VALUE;
         long highestPrice = Long.MIN_VALUE;
+        long skipped = 0;
 
         for (Subscription subscription : subscriptions) {
             List<Long> prices = subscription.prices();
+            skipped += subscription.skipped().get();
 
             if (!prices.isEmpty()) {
                 receiving++;
@@ -383,27 +417,55 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
             events += prices.size();
         }
 
-        return new Tally(events, receiving, inversions, maxDrop, lowestPrice, highestPrice);
+        return new Tally(events, receiving, inversions, maxDrop, lowestPrice, highestPrice, skipped);
     }
 
     private record Audience(List<Subscription> subscriptions, long connected) {
     }
 
-    private record BidOutcome(long accepted, long timeouts, long errors) {
+    private record BidOutcome(long accepted, long timeouts, long errors, List<Long> elapsedNanos) {
+    }
+
+    // 입찰 요청을 보내고 응답을 받기까지 걸린 시간, 시간 초과는 제한 시간만큼 걸린 것으로 들어간다
+    private record Elapsed(int count, long p50, long p95, long p99, long max) {
+
+        static Elapsed of(List<Long> nanos) {
+            if (nanos.isEmpty()) {
+                return new Elapsed(0, 0, 0, 0, 0);
+            }
+
+            List<Long> sorted = nanos.stream().sorted().toList();
+
+            return new Elapsed(sorted.size(), at(sorted, 0.50), at(sorted, 0.95), at(sorted, 0.99),
+                    sorted.get(sorted.size() - 1));
+        }
+
+        // 가장 가까운 순위를 쓴다, 보간하면 표본이 적을 때 실제로 관측되지 않은 값이 나온다
+        private static long at(List<Long> sorted, double quantile) {
+            int rank = (int) Math.ceil(quantile * sorted.size());
+
+            return sorted.get(Math.min(Math.max(rank - 1, 0), sorted.size() - 1));
+        }
     }
 
     private record Tally(long events, long receiving, long inversions, long maxDrop,
-                         long lowestPrice, long highestPrice) {
+                         long lowestPrice, long highestPrice, long skipped) {
     }
 
-    private record Subscription(int id, List<Long> prices) {
+    // 읽는 쪽은 스레드 하나뿐이고 리포트는 그 스레드가 끝난 뒤에 읽는다
+    // 쓸 때마다 배열을 복사하면 이벤트 수의 제곱이 되어, 구독을 올렸을 때 읽는 쪽이 스스로 느려진다
+    private record Subscription(int id, List<Long> prices, AtomicLong skipped) {
 
         Subscription(int id) {
-            this(id, new CopyOnWriteArrayList<>());
+            this(id, Collections.synchronizedList(new ArrayList<>()), new AtomicLong());
         }
 
         void add(long price) {
             prices.add(price);
+        }
+
+        void skip() {
+            skipped.incrementAndGet();
         }
     }
 }
