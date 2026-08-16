@@ -21,7 +21,6 @@ class SseRoomSubscriptionTest {
 
     private static final long AUCTION = 1L;
     private static final long VIEWER = 7L;
-    private static final long START_PRICE = 10_000_000L;
 
     @Test
     @DisplayName("더 높은 현재가를 보낸 뒤에는 낡은 현황을 보내지 않는다")
@@ -54,10 +53,7 @@ class SseRoomSubscriptionTest {
         return new RoomState(
                 AUCTION,
                 RoomPhase.LIVE,
-                START_PRICE,
                 currentPrice,
-                now.minusMinutes(30),
-                now.minusMinutes(1),
                 now.plusMinutes(19),
                 now,
                 1,

@@ -15,10 +15,7 @@ import java.util.List;
 public record RoomState(
         long auctionId,
         RoomPhase phase,
-        long startPrice,
         long currentPrice,
-        LocalDateTime openAt,
-        LocalDateTime startAt,
         LocalDateTime endAt,
         LocalDateTime serverTime,
         int viewerCount,
@@ -47,10 +44,7 @@ public record RoomState(
         return new RoomState(
                 detail.auctionId(),
                 snapshot.phase(),
-                detail.startPrice(),
                 detail.currentPrice(),
-                detail.openAt(),
-                detail.startAt(),
                 detail.endAt(),
                 snapshot.serverTime(),
                 snapshot.phase().allowsConnection() ? viewerCount : 0,
