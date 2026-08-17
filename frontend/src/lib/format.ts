@@ -3,6 +3,22 @@
  * 금액/시간/닉네임 마스킹 등 화면 전반에서 재사용한다.
  */
 
+import { formatPhoneInput } from './input-format'
+
+/**
+ * 휴대전화 번호 표기. ex) "01012345678" → "010-1234-5678"
+ *
+ * 서버는 하이픈 없는 숫자만 저장한다 — 같은 번호가 두 형식으로 들어와 uk_users_phone 중복 검사가
+ * 무너지는 것을 막으려는 것이다(백엔드 SignUpRequest 에 그 이유가 있다). 사람이 읽는 자리에서만
+ * 하이픈을 붙여, 저장 형식은 하나로 두고 화면 표기는 입력할 때와 같게 맞춘다.
+ *
+ * 하이픈을 넣는 규칙 자체는 입력 마스킹과 같아야 하므로 formatPhoneInput 을 그대로 쓴다.
+ * 규칙을 여기 한 번 더 적으면 번호 체계가 바뀔 때 한쪽만 고쳐진다.
+ */
+export function formatPhone(phone: string): string {
+  return formatPhoneInput(phone)
+}
+
 /** 원화 표기. ex) 12_500_000 → "1,250만원" 스타일이 아닌 정수 "12,500,000원" */
 export function formatKRW(value: number): string {
   return `${value.toLocaleString('ko-KR')}원`

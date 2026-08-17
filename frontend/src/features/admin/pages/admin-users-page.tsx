@@ -29,6 +29,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EmptyState } from '@/components/common/empty-state'
 import { ROLE_LABEL } from '@/features/auth/auth-context'
 import { getErrorMessage } from '@/lib/axios'
+import { formatPhone } from '@/lib/format'
 import type { UserRole } from '@/types/domain'
 import { activateUser, fetchUserDetail, fetchUsers, suspendUser } from '../api'
 import { ADMIN_USERS_QUERY_KEY, adminUserDetailQueryKey, adminUsersQueryKey } from '../query-keys'
@@ -337,7 +338,7 @@ function UserDetailDialog({ userId, onClose }: { userId: number | null; onClose:
             <Field label="아이디" value={detail.username} />
             <Field label="이름" value={detail.realName} />
             <Field label="이메일" value={detail.email} />
-            <Field label="휴대전화" value={detail.phone} />
+            <Field label="휴대전화" value={formatPhone(detail.phone)} />
             <Field label="역할" value={ROLE_LABEL[detail.role]} />
             <Field label="이용 상태" value={USER_STATUS_LABEL[detail.status]} />
             <Field label="가입" value={formatJoinedAt(detail.joinedAt)} />

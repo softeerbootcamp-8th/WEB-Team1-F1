@@ -152,7 +152,8 @@ describe('관리자 회원 관리', () => {
 
     await waitFor(() => expect(screen.getByText('race@race.kr')).toBeTruthy())
     expect(fetchDetailMock).toHaveBeenCalledWith(42)
-    expect(screen.getByText('01012345678')).toBeTruthy()
+    // 저장은 숫자만, 사람이 읽는 자리에서는 하이픈을 붙인다
+    expect(screen.getByText('010-1234-5678')).toBeTruthy()
   })
 
   it('사유를 적어 이용을 정지한다', async () => {
