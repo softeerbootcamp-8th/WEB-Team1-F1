@@ -55,5 +55,6 @@ public interface RoomChannel {
     /**
      * 방의 모든 구독을 서버가 끝낸다, 명부에서 먼저 빼므로 끝내는 동안 갱신이 돌지 않는다
      */
+    // 돌아온 시점에 연결이 다 끝나 있지는 않다, 구독마다 맡겨 둔 것을 내보낸 뒤에 끝난다
     void closeRoom(long auctionId);
 }

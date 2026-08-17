@@ -61,6 +61,9 @@ tasks.register('experiment', Test) {
     // 조건을 바꿔가며 돌린다, ./gradlew experiment -Psubscribers=50
     systemProperty 'subscribers', findProperty('subscribers') ?: '10'
     systemProperty 'slow', findProperty('slow') ?: '0'
+    systemProperty 'slowKbps', findProperty('slowKbps') ?: '0'
+    // 스프링이 시스템 프로퍼티로 읽는다, 재는 조건이 아니라 서버 설정이라 이름이 다르다
+    systemProperty 'race.room.broadcast-workers', findProperty('workers') ?: '32'
     systemProperty 'bidders', findProperty('bidders') ?: '5'
     systemProperty 'runs', findProperty('runs') ?: '1'
     systemProperty 'seconds', findProperty('seconds') ?: '20'
