@@ -17,8 +17,8 @@
 - [🔧 Tech Stack](#-tech-stack)
 - [▶️ 실행](#-실행)
 - [📦 배포](#-배포)
-- [👥 팀원 소개](#-팀원-소개)
 - [🏗️ 시스템 아키텍처](#-시스템-아키텍처)
+- [👥 팀원 소개](#-팀원-소개)
 
 ## 🚀 프로젝트 개요
 
@@ -164,13 +164,13 @@ Docker가 실행 중이어야 한다.
 - 올린 뒤 CloudFront에서 /index.html을 무효화한다. 나머지 파일은 이름에 해시가 붙어 필요 없다.
 - 릴리즈에 프론트 변경이 없으면 산출물이 없다. 그때는 다시 올리지 않는다.
 
+## 🏗️ 시스템 아키텍처
+
+![RACE 시스템 아키텍처](https://github.com/user-attachments/assets/7befdd14-e1c3-4dfc-96af-fa9c3f221b2f)
+
 ## 👥 팀원 소개
 
 | <img src="https://github.com/eojinxx.png" width="100"> | <img src="https://github.com/tukjw.png" width="100"> | <img src="https://github.com/user-attachments/assets/cc09b641-801f-46a0-a2fa-e9de58ebdd4c" width="100"> | <img src="https://github.com/mookkae.png" width="100"> |
 | --- | --- | --- | --- |
 | 김어진 | 김재완 | 박태은 | 정동현 |
 | BE | BE | BE | BE |
-
-## 🏗️ 시스템 아키텍처
-
-![RACE 시스템 아키텍처](https://github.com/user-attachments/assets/7befdd14-e1c3-4dfc-96af-fa9c3f221b2f)
