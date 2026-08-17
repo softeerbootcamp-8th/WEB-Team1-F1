@@ -3,8 +3,9 @@ package com.softeer.race.auctionlist.application;
 import com.softeer.race.auctionlist.application.dto.AuctionCardInfo;
 import com.softeer.race.auctionlist.domain.AuctionListRow;
 import com.softeer.race.auctionroom.application.RoomChannel;
-import com.softeer.race.auctionroom.application.RoomState;
-import com.softeer.race.auctionroom.application.RoomSubscriber;
+import com.softeer.race.auctionroom.application.RoomMessage;
+import com.softeer.race.auctionroom.application.RoomSubscription;
+import com.softeer.race.auctionroom.application.ViewerCount;
 import com.softeer.race.auctionroom.domain.RoomPhase;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +39,7 @@ class AuctionCardAssemblerTest {
         AuctionCardInfo card = assembler.assemble(live, NOW, Map.of());
 
         assertThat(card.phase()).isEqualTo(RoomPhase.LIVE);
-        assertThat(card.connectedCount()).isEqualTo(WATCHING);
+        assertThat(card.viewerCount()).isEqualTo(WATCHING);
     }
 
     @Test
@@ -49,7 +50,7 @@ class AuctionCardAssemblerTest {
         AuctionCardInfo card = assembler.assemble(closed, NOW, Map.of());
 
         assertThat(card.phase()).isEqualTo(RoomPhase.CLOSED);
-        assertThat(card.connectedCount()).isZero();
+        assertThat(card.viewerCount()).isZero();
     }
 
     @Test
@@ -86,27 +87,32 @@ class AuctionCardAssemblerTest {
     private static final class AlwaysWatchedRooms implements RoomChannel {
 
         @Override
-        public int countViewers(long auctionId) {
+        public int viewerCount(long auctionId) {
             return WATCHING;
         }
 
         @Override
-        public Map<Long, Integer> viewerCounts() {
+        public ViewerCount readViewerCount(long auctionId) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public void subscribe(long auctionId, RoomSubscriber subscriber) {
+        public Map<Long, Integer> viewerCountByRoom() {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public boolean unsubscribe(long auctionId, RoomSubscriber subscriber) {
+        public void subscribe(long auctionId, RoomSubscription subscription) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public void broadcast(long auctionId, RoomState state) {
+        public boolean unsubscribe(long auctionId, RoomSubscription subscription) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void broadcast(long auctionId, RoomMessage message) {
             throw new UnsupportedOperationException();
         }
 
@@ -116,7 +122,7 @@ class AuctionCardAssemblerTest {
         }
 
         @Override
-        public Set<Long> subscribedAuctions() {
+        public Set<Long> subscribedRooms() {
             throw new UnsupportedOperationException();
         }
 

@@ -358,13 +358,13 @@ class AuctionListServiceTest {
         givenGroup(AuctionListGroup.LIVE, List.of(liveRow(1, NOW.minusMinutes(10))));
         givenGroup(AuctionListGroup.PENDING, List.of());
         givenGroup(AuctionListGroup.ENDED, List.of());
-        given(roomChannel.countViewers(1L)).willReturn(7);
+        given(roomChannel.viewerCount(1L)).willReturn(7);
 
         // when
         AuctionCardInfo card = auctionListService.list(null, null, NO_FILTER).content().getFirst();
 
         // then : 목록 조회는 방 입장이 아니므로 세기만 한다, 구독을 만들 수단이 없어 셀 수도 없다
-        assertThat(card.connectedCount()).isEqualTo(7);
+        assertThat(card.viewerCount()).isEqualTo(7);
     }
 
     // ================= 키워드 =================

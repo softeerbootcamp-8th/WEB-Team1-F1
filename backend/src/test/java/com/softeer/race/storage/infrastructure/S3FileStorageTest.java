@@ -3,6 +3,7 @@ package com.softeer.race.storage.infrastructure;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.storage.domain.FileCategory;
 import com.softeer.race.storage.domain.PresignedDealerLicense;
+import com.softeer.race.storage.domain.PresignedDealerLicenseView;
 import com.softeer.race.storage.exception.StorageErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
@@ -27,6 +30,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -160,6 +165,30 @@ class S3FileStorageTest {
 
         assertThat(result.key()).startsWith("dealer-licenses/").endsWith(".jpg");
         assertThat(result.uploadUrl()).isEqualTo("https://s3.example.com/upload");
+    }
+
+    @Test
+    @DisplayName("사원증 조회 주소는 서명된 임시 주소로 발급한다")
+    void presignDealerLicenseView() throws Exception {
+        PresignedGetObjectRequest presigned = mock(PresignedGetObjectRequest.class);
+        when(presigned.url()).thenReturn(URI.create("https://s3.example.com/view").toURL());
+        when(presigned.expiration()).thenReturn(Instant.parse("2026-08-11T03:00:00Z"));
+        when(s3Presigner.presignGetObject(any(GetObjectPresignRequest.class))).thenReturn(presigned);
+
+        PresignedDealerLicenseView result =
+                s3FileStorage.presignDealerLicenseView(DEALER_LICENSE_KEY);
+
+        assertThat(result.viewUrl()).isEqualTo("https://s3.example.com/view");
+    }
+
+    // 서명해 주는 순간 그 객체를 읽을 수 있는 주소가 된다. 발급한 적 없는 키에는 서명이 나가면 안 된다
+    @Test
+    @DisplayName("발급한 적 없는 형태의 키에는 조회 주소를 서명하지 않는다")
+    void rejectUnmanagedKeyOnView() {
+        assertThatThrownBy(() -> s3FileStorage.presignDealerLicenseView("dealer-licenses/../secret"))
+                .isInstanceOf(BusinessException.class);
+
+        verify(s3Presigner, never()).presignGetObject(any(GetObjectPresignRequest.class));
     }
 
     @Test

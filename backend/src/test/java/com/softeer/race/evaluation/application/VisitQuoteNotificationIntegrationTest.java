@@ -4,6 +4,7 @@ import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.evaluation.application.dto.command.VisitQuoteCommand;
 import com.softeer.race.evaluation.application.dto.info.VisitQuoteInfo;
 import com.softeer.race.notification.application.NotificationPush;
+import com.softeer.race.notification.application.NotificationDeliveryExecutor;
 import com.softeer.race.notification.application.NotificationStreamService;
 import com.softeer.race.notification.application.UserChannel;
 import com.softeer.race.notification.application.UserSubscriber;
@@ -23,8 +24,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static com.softeer.race.notification.domain.NotificationType.EVAL_REQUESTED;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -79,6 +82,9 @@ class VisitQuoteNotificationIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private UserChannel userChannel;
 
+    @Autowired
+    private NotificationDeliveryExecutor deliveryExecutor;
+
     private TransactionTemplate transactionTemplate;
 
     // 구독은 테이블이 아니라 컨텍스트에 남아 정리 훅이 지워 주지 않는다
@@ -96,6 +102,7 @@ class VisitQuoteNotificationIntegrationTest extends IntegrationTestSupport {
 
     @AfterEach
     void leaveChannels() {
+        awaitDelivery();
         subscriptions.forEach(it -> userChannel.unsubscribe(it.userId(), it.subscriber()));
     }
 
@@ -120,8 +127,8 @@ class VisitQuoteNotificationIntegrationTest extends IntegrationTestSupport {
 
         // then 2 : 어느 차량의 신청인지 문구로 가려진다
         assertThat(notification.message())
-                .isEqualTo("%s %s 차량의 방문 진단 신청이 접수되었습니다."
-                        .formatted(PLATE_NUMBER, MODEL));
+                .isEqualTo("현대 %s %s 차량의 방문견적 신청이 접수되었습니다."
+                        .formatted(MODEL, PLATE_NUMBER));
 
         // then 3 : 담당이 정해지기 전이라 개별 상세가 아니라 배정 대기 목록으로 보낸다.
         //          참조는 어느 신청인지 남기는 값이고 링크에는 쓰이지 않는다
@@ -143,6 +150,7 @@ class VisitQuoteNotificationIntegrationTest extends IntegrationTestSupport {
 
         // when
         request(sellerId, PLATE_NUMBER, OWNER_NAME);
+        awaitDelivery();
 
         // then : 수신자를 역할로 좁힌 결정을 여기서 고정한다
         assertThat(notificationsOf(sellerId)).isEmpty();
@@ -216,6 +224,7 @@ class VisitQuoteNotificationIntegrationTest extends IntegrationTestSupport {
 
         // when
         request(sellerId, PLATE_NUMBER, OWNER_NAME);
+        awaitDelivery();
 
         // then 1 : 새 채널을 만들지 않고 기존 회원별 통로로 간다
         assertThat(connected.received).hasSize(1);
@@ -248,14 +257,18 @@ class VisitQuoteNotificationIntegrationTest extends IntegrationTestSupport {
                 .containsExactlyInAnyOrder(first.evaluationId(), second.evaluationId());
         assertThat(notifications).extracting(NotificationRow::message)
                 .containsExactlyInAnyOrder(
-                        "%s %s 차량의 방문 진단 신청이 접수되었습니다."
-                                .formatted(PLATE_NUMBER, MODEL),
-                        "%s %s 차량의 방문 진단 신청이 접수되었습니다."
-                                .formatted(OTHER_PLATE_NUMBER, OTHER_MODEL));
+                        "현대 %s %s 차량의 방문견적 신청이 접수되었습니다."
+                                .formatted(MODEL, PLATE_NUMBER),
+                        "기아 %s %s 차량의 방문견적 신청이 접수되었습니다."
+                                .formatted(OTHER_MODEL, OTHER_PLATE_NUMBER));
     }
 
     private VisitQuoteInfo request(long sellerId, String plateNumber, String ownerName) {
         return visitQuoteService.request(command(sellerId, plateNumber, ownerName));
+    }
+
+    private void awaitDelivery() {
+        assertThat(deliveryExecutor.awaitIdle(Duration.ofSeconds(2))).isTrue();
     }
 
     private static VisitQuoteCommand command(
@@ -300,8 +313,8 @@ class VisitQuoteNotificationIntegrationTest extends IntegrationTestSupport {
     // 브라우저 연결은 우리가 관리하지 않는 바깥 자원이라 대역을 쓴다, 채널·이벤트·DB는 실물이다
     private static final class RecordingSubscriber implements UserSubscriber {
 
-        private final List<NotificationPush> received = new ArrayList<>();
-        private final List<Long> unreadCounts = new ArrayList<>();
+        private final List<NotificationPush> received = new CopyOnWriteArrayList<>();
+        private final List<Long> unreadCounts = new CopyOnWriteArrayList<>();
 
         @Override
         public void send(NotificationPush push) {

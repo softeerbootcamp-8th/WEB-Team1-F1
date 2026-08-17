@@ -1,11 +1,13 @@
 package com.softeer.race.notification.infrastructure;
 
 import com.softeer.race.notification.application.NotificationPush;
+import com.softeer.race.notification.application.NotificationDeliveryMetrics;
 import com.softeer.race.notification.application.UserSubscriber;
 import com.softeer.race.notification.domain.NotificationRow;
 import com.softeer.race.notification.domain.NotificationType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -29,7 +31,53 @@ class InMemoryUserChannelTest {
     // 창이 좁아 한 번으로는 못 잡는다, 반복 횟수가 곧 검출력이다
     private static final int RACE_ROUNDS = 10_000;
 
-    private final InMemoryUserChannel channel = new InMemoryUserChannel();
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    private final InMemoryUserChannel channel = new InMemoryUserChannel(
+            new NotificationDeliveryMetrics(meterRegistry));
+
+    @Test
+    @DisplayName("구독 등록과 해제가 현재 열린 연결 수에 반영된다")
+    void subscriptionChangesConnectionGauge() {
+        FakeSubscriber subscriber = new FakeSubscriber();
+
+        channel.subscribe(USER, subscriber);
+        assertThat(connectionGauge()).isEqualTo(1.0);
+
+        channel.unsubscribe(USER, subscriber);
+        assertThat(connectionGauge()).isZero();
+    }
+
+    @Test
+    @DisplayName("알림 전송의 시도와 성공 및 소요 시간이 구독 단위로 기록된다")
+    void recordsSuccessfulNotificationSend() {
+        channel.subscribe(USER, new FakeSubscriber());
+        channel.subscribe(USER, new FakeSubscriber());
+
+        channel.send(USER, push());
+
+        assertThat(sendCount("attempt")).isEqualTo(2.0);
+        assertThat(sendCount("success")).isEqualTo(2.0);
+        assertThat(sendCount("failure")).isZero();
+        assertThat(meterRegistry.get("notification.sse.send.duration")
+                .tag("event", "notification")
+                .timer()
+                .count()).isEqualTo(2L);
+    }
+
+    @Test
+    @DisplayName("전송 중 닫힌 구독은 실패로 기록되고 열린 연결 수에서 빠진다")
+    void recordsFailedNotificationSend() {
+        FakeSubscriber broken = new FakeSubscriber();
+        broken.disconnectOnSend();
+        channel.subscribe(USER, broken);
+
+        channel.send(USER, push());
+
+        assertThat(sendCount("attempt")).isEqualTo(1.0);
+        assertThat(sendCount("success")).isZero();
+        assertThat(sendCount("failure")).isEqualTo(1.0);
+        assertThat(connectionGauge()).isZero();
+    }
 
     @Test
     @DisplayName("회원의 모든 구독이 같은 알림을 받는다")
@@ -322,6 +370,18 @@ class InMemoryUserChannelTest {
         }
     }
 
+    private double connectionGauge() {
+        return meterRegistry.get("notification.sse.connections").gauge().value();
+    }
+
+    private double sendCount(String outcome) {
+        return meterRegistry.get("notification.sse.sends")
+                .tag("event", "notification")
+                .tag("outcome", outcome)
+                .counter()
+                .count();
+    }
+
     // 채널은 알림을 나르기만 하고 안을 들여다보지 않으므로, 같은 객체가 갔는지만 확인하면 된다
     private static NotificationPush push() {
         return new NotificationPush(
@@ -337,6 +397,7 @@ class InMemoryUserChannelTest {
         private final List<Long> unreadCounts = new ArrayList<>();
         private boolean open = true;
         private boolean closeOnPing;
+        private boolean disconnectOnSend;
         private int pings;
         private int closes;
 
@@ -349,12 +410,20 @@ class InMemoryUserChannelTest {
             closeOnPing = true;
         }
 
+        void disconnectOnSend() {
+            disconnectOnSend = true;
+        }
+
         @Override
         public void send(NotificationPush push) {
             if (!open) {
                 return;
             }
             received.add(push);
+
+            if (disconnectOnSend) {
+                open = false;
+            }
         }
 
         @Override

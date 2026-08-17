@@ -38,6 +38,7 @@ public record EvaluationResultPatchRequest(
 
         @Schema(description = "바꿀 예상 시세(원). 생략하면 그대로 둡니다.", example = "21000000")
         @Positive(message = "예상 시세는 0보다 커야 합니다.")
+        @Max(value = 1_000_000_000_000L, message = "산정 시세는 1조원을 넘을 수 없습니다.")
         Long estimatedPrice,
 
         /*

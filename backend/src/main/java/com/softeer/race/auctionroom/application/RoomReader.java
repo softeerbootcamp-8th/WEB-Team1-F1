@@ -1,0 +1,86 @@
+package com.softeer.race.auctionroom.application;
+
+import com.softeer.race.auctionroom.domain.*;
+import com.softeer.race.vehicle.application.VehicleKeywordService;
+import com.softeer.race.vehicle.domain.VehicleKeyword;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Limit;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+// 조회 응답과 브로드캐스트가 같은 값을 봐야 하므로 읽는 곳을 하나로 둔다
+@Component
+@RequiredArgsConstructor
+class RoomReader {
+
+    private static final int RECENT_BID_LIMIT = 20;
+
+    private final RoomRepository roomRepository;
+    private final RoomBidRepository roomBidRepository;
+    private final VehicleKeywordService vehicleKeywordService;
+    private final Clock clock;
+
+    // 클래스는 패키지 밖에 안 보이지만 메서드는 public 이어야 한다, 프록시가 public 메서드만 자문한다
+    @Transactional(readOnly = true)
+    public Optional<RoomSnapshot> find(long auctionId) {
+        return roomRepository.findDetailById(auctionId)
+                .map(this::readWith);
+    }
+
+    // 목록이 부르는 것을 그대로 부른다, 표시 순서까지 그쪽에서 정해져 온다
+    @Transactional(readOnly = true)
+    public List<VehicleKeyword> findKeywords(long vehicleId) {
+        return vehicleKeywordService.findByVehicleIds(List.of(vehicleId))
+                .getOrDefault(vehicleId, List.of());
+    }
+
+    // 브로드캐스트는 차량을 보내지 않으므로 find 안에 두면 방송마다 헛되이 한 번 더 읽는다
+    @Transactional(readOnly = true)
+    public List<String> findPhotoUrls(long auctionId) {
+        return roomRepository.findPhotoUrls(auctionId);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<RoomDetail> findDetail(long auctionId) {
+        return roomRepository.findDetailById(auctionId);
+    }
+
+    // 연결을 끊을지만 정하면 되므로 상세 한 행이면 충분하다, 집계와 호가는 읽지 않는다
+    @Transactional(readOnly = true)
+    public Optional<RoomPhase> findPhase(long auctionId) {
+        return roomRepository.findDetailById(auctionId)
+                .map(detail -> detail.phaseAt(LocalDateTime.now(clock)));
+    }
+
+    @Transactional(readOnly = true)
+    public BidCounts findBidCounts(long auctionId) {
+        return roomBidRepository.findBidCounts(auctionId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BidPoint> findPriceCurve(long auctionId) {
+        return roomBidRepository.findPriceCurve(auctionId);
+    }
+
+    // 넣은 적이 없으면 순위도 없다, 순위 쿼리를 돌릴 이유도 없어 여기서 갈린다
+    @Transactional(readOnly = true)
+    public Optional<BidderStanding> findStanding(long auctionId, long viewerId) {
+        return Optional.ofNullable(roomBidRepository.findTopAmount(auctionId, viewerId))
+                .map(highestAmount -> BidderStanding.of(
+                        highestAmount, roomBidRepository.countBiddersAbove(auctionId, highestAmount)));
+    }
+
+    private RoomSnapshot readWith(RoomDetail detail) {
+        LocalDateTime now = LocalDateTime.now(clock);
+
+        BidCounts bidCounts = roomBidRepository.findBidCounts(detail.auctionId());
+        List<RecentBid> recentBids = roomBidRepository.findRecentBids(detail.auctionId(), Limit.of(RECENT_BID_LIMIT));
+
+        return new RoomSnapshot(detail, bidCounts, recentBids, now);
+    }
+}

@@ -357,13 +357,9 @@ class DealQueryIntegrationTest extends IntegrationTestSupport {
     }
 
     // 로그인 경로 대신 세션을 직접 심는다, 이 테스트가 볼 것은 인증이 아니라 조회다
-    // 만료를 넉넉히 둬 슬라이딩 연장에 걸리지 않게 한다, 걸리면 조회마다 UPDATE 가 섞인다
+    // 수명은 시더가 기본값(auth.session.ttl)으로 잡는다, 갱신 임계보다 넉넉해 조회가 세션을 건드리지 않는다
     private void login(User user) {
-        jdbcTemplate.update("""
-                        insert into user_session (id, user_id, expires_at, created_at, updated_at)
-                        values (sha2(?, 256), ?, ?, ?, ?)
-                        """,
-                MY_TOKEN, user.getId(), NOW.plusHours(1), NOW, NOW);
+        sessions.seed(MY_TOKEN, user.getId(), user.getRole());
     }
 
     private ResultActions list(Long cursor) throws Exception {

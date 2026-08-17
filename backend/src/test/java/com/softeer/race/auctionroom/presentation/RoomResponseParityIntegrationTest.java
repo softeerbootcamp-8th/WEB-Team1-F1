@@ -31,14 +31,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 같은 방을 조회와 방송으로 받으면 같은 모양인지, 컨트롤러에서 DB까지
  * <p>
  * 조회와 방송이 같은 값을 다른 모양으로 주면 화면이 같은 정보를 두 방법으로 읽어야 한다. 그 규칙은
- * 지금 {@code AuctionRoomView.of} 주석에만 있고 아무도 실행하지 않는다. 여기서 실행한다.
+ * 지금 {@code RoomView.of} 주석에만 있고 아무도 실행하지 않는다. 여기서 실행한다.
  * <p>
  * 필드 이름을 하나씩 적지 않는 것이 이 테스트의 핵심이다. 양쪽에 필드가 늘어도 계속 유효하고
  * 한쪽에만 늘면 깨진다. 다를 수 있는 것은 보는 사람 기준의 판정뿐이고, 방송은 보는 사람이
  * 정해지지 않으므로 그것들은 값이 아니라 키 자체가 없어야 한다.
- * <p>
- * 열다섯 인자를 위치로 채우는 방송 직렬화의 그물도 여기 걸린다. 조회는 그대로인데 방송만
- * 어긋나면 대조가 깨진다.
  */
 @DisplayName("경매방 조회·방송 응답 일치 통합 테스트")
 class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
@@ -97,15 +94,27 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
 
         // then 2-0 : 판매자 여부도 보는 사람 기준이라 방송에는 키가 없다
         // 위 둘과 달리 조회에서 참인 것을 여기서 보일 수 없다, 판매자는 입찰할 수 없어 낙찰자일 수 없다
-        // 참인 경우는 AuctionRoomIntegrationTest 시나리오 6이 지킨다
+        // 참인 경우는 RoomIntegrationTest 시나리오 6이 지킨다
         assertThat(broadcast.at("/sellerIsMine").isMissingNode()).isTrue();
 
         // then 2-1 : 차량은 방 안에서 바뀌지 않으므로 방송에 실리지 않는다, 조회가 한 번 준다
         assertThat(broadcast.at("/vehicle").isMissingNode()).isTrue();
         assertThat(query.at("/vehicle").isMissingNode()).isFalse();
 
+        // then 2-1-1 : 사람 수는 들고 나는 것만으로 바뀌어 자기 이벤트로 나간다, 현황에는 키가 없다
+        assertThat(broadcast.at("/viewerCount").isMissingNode()).isTrue();
+        assertThat(query.at("/viewerCount").isMissingNode()).isFalse();
+
+        // then 2-2 : 시작가와 개장·시작 시각도 방 안에서 바뀌지 않는다, 방이 열리기 전에만 고칠 수 있다
+        assertThat(broadcast.at("/startPrice").isMissingNode()).isTrue();
+        assertThat(broadcast.at("/openAt").isMissingNode()).isTrue();
+        assertThat(broadcast.at("/startAt").isMissingNode()).isTrue();
+        assertThat(query.at("/startPrice").isMissingNode()).isFalse();
+        assertThat(query.at("/openAt").isMissingNode()).isFalse();
+        assertThat(query.at("/startAt").isMissingNode()).isFalse();
+
         // then 3 : 그 둘을 걷어내면 나머지는 키도 값도 완전히 같다
-        assertSameTree("", broadcast, withoutPersonalization(query));
+        assertSameTree("", broadcast, withoutQueryOnlyFields(query));
     }
 
     // ================= 대조 ====================
@@ -145,14 +154,18 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
         return keys;
     }
 
-    // 방송에 없는 것은 보는 사람 기준의 판정 셋과 방 안에서 바뀌지 않는 차량이다
-    private JsonNode withoutPersonalization(JsonNode query) {
+    // 방송에 없는 것은 보는 사람 기준의 판정 셋과 방 안에서 바뀌지 않는 값들이다
+    private JsonNode withoutQueryOnlyFields(JsonNode query) {
         ObjectNode copy = (ObjectNode) query.deepCopy();
 
         ((ObjectNode) copy.get("winner")).remove("mine");
         copy.get("recentBids").forEach(bid -> ((ObjectNode) bid).remove("mine"));
         copy.remove("sellerIsMine");
         copy.remove("vehicle");
+        copy.remove("viewerCount");
+        copy.remove("startPrice");
+        copy.remove("openAt");
+        copy.remove("startAt");
 
         return copy;
     }
@@ -198,7 +211,7 @@ class RoomResponseParityIntegrationTest extends IntegrationTestSupport {
     // 구독 직후의 진행중 현황이 첫 줄이고 마감 현황이 그 뒤에 온다, 조회와 견줄 것은 뒤엣것이다
     // text/event-stream 에는 charset 이 안 붙어 getContentAsString() 이 ISO-8859-1 로 떨어진다
     private JsonNode lastBroadcast(MvcResult subscribed) throws Exception {
-        String body = new String(subscribed.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+        String body = SseBodies.awaitUntil(subscribed, sse -> sse.contains("\"phase\""));
 
         String json = body.lines()
                 .filter(line -> line.startsWith("data:"))

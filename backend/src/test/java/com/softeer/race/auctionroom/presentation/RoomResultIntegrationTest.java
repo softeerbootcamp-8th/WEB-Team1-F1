@@ -129,13 +129,13 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         // then 6 : 결과는 더 이상 바뀌지 않으므로 실시간 값이 나갈 자리가 없다
         // doesNotExist 는 값이 null 이어도 통과하므로, 스키마에 아예 없다는 것은 이쪽으로 단정한다
         response.andExpectAll(
-                jsonPath("$.connectedCount").doesNotHaveJsonPath(),
+                jsonPath("$.viewerCount").doesNotHaveJsonPath(),
                 jsonPath("$.recentBids").doesNotHaveJsonPath());
 
         // then 6-1 : 서버 시각은 결과값이 아니라 남은 열람 시간을 세는 기준이라 종료 시각과 짝으로 나간다
         // 종료 시각은 연장된 마감에서 다시 계산된다, 원래 마감에 더하면 20초 어긋난다
         response.andExpectAll(
-                jsonPath("$.resultEndAt").value("2026-08-03T18:55:10"),
+                jsonPath("$.resultViewingEndsAt").value("2026-08-03T18:55:10"),
                 jsonPath("$.serverTime").value("2026-08-03T20:45:12"));
 
         // then 7 : 탈락한 사람이 같은 결과를 보면 이름은 같고 본인 표시만 꺼진다
@@ -169,28 +169,28 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         getResult(endedAuctionId, loginAs(winner)).andExpectAll(
                 jsonPath("$.winner.mine").value(true),
                 jsonPath("$.sellerIsMine").value(false),
-                jsonPath("$.myBid.amount").value(24000000),
-                jsonPath("$.myBid.rank").value(1));
+                jsonPath("$.myStanding.highestAmount").value(24000000),
+                jsonPath("$.myStanding.rank").value(1));
 
         // then 2 : 탈락자는 두 번 넣었으므로 높은 쪽이 오고, 위에 한 사람이 있어 2등이다
         // 입찰자 수와 짝지어 "2명 중 2번째" 가 된다
         getResult(endedAuctionId, loginAs(loser)).andExpectAll(
                 jsonPath("$.winner.mine").value(false),
-                jsonPath("$.myBid.amount").value(23000000),
-                jsonPath("$.myBid.rank").value(2),
+                jsonPath("$.myStanding.highestAmount").value(23000000),
+                jsonPath("$.myStanding.rank").value(2),
                 jsonPath("$.bidderCount").value(2));
 
         // then 3 : 판매자는 입찰한 적이 없어 성적이 없고, 대신 파는 사람으로 판정된다
         getResult(endedAuctionId, loginAs(seller)).andExpectAll(
                 jsonPath("$.sellerIsMine").value(true),
                 jsonPath("$.winner.mine").value(false),
-                jsonPath("$.myBid").value(nullValue()));
+                jsonPath("$.myStanding").value(nullValue()));
 
         // then 4 : 구경꾼은 어느 쪽도 아니다, 성적 자리가 필드마다 null 이 아니라 통째로 비어 있다
         getResult(endedAuctionId, loginAs(onlooker)).andExpectAll(
                 jsonPath("$.sellerIsMine").value(false),
                 jsonPath("$.winner.mine").value(false),
-                jsonPath("$.myBid").value(nullValue()));
+                jsonPath("$.myStanding").value(nullValue()));
     }
 
     // 화면은 시작가에서 낙찰가까지 오른 과정을 선으로 그리고 내 입찰만 다른 색으로 찍는다
@@ -216,7 +216,7 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         response.andExpectAll(
                 jsonPath("$.priceCurve.length()").value(4),
                 jsonPath("$.priceCurve[0].amount").value(21000000),
-                jsonPath("$.priceCurve[0].at").value("2026-08-03T18:35:00"));
+                jsonPath("$.priceCurve[0].bidAt").value("2026-08-03T18:35:00"));
 
         // then 2 : 마지막 점이 곧 낙찰가다, 어긋나면 곡선의 끝과 요약 숫자가 다르게 보인다
         response.andExpect(jsonPath("$.priceCurve[3].amount").value(24000000))
@@ -291,7 +291,7 @@ class RoomResultIntegrationTest extends IntegrationTestSupport {
         // then : 자원이 없는 게 아니라 아직 만들어지지 않았다, 유찰이라고 답하면 거짓말이 된다
         response.andExpectAll(
                 status().isConflict(),
-                jsonPath("$.code").value("AUCTION_NOT_ENDED"));
+                jsonPath("$.code").value("ROOM_RESULT_NOT_READY"));
     }
 
     private String loginAs(User user) {

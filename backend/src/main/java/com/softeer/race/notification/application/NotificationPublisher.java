@@ -55,6 +55,8 @@ public class NotificationPublisher {
         publishInternal(userId, content, referenceId);
     }
 
+    //  알림 엔티티를 만들어 DB에 저장하고, 화면에 실시간으로 보낼 데이터를 만든 다음
+    //  트랜잭션 커밋 후 SSE로 전송하도록 Spring 이벤트를 발행하는 함수
     private void publishInternal(
             long userId, NotificationContent content, Long referenceId) {
         Notification notification = notificationRepository.save(

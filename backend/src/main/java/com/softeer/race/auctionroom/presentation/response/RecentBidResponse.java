@@ -1,7 +1,7 @@
 package com.softeer.race.auctionroom.presentation.response;
 
 import com.softeer.race.auctionroom.application.RecentBidView;
-import com.softeer.race.auctionroom.application.RoomStateBid;
+import com.softeer.race.auctionroom.domain.RecentBid;
 import com.softeer.race.user.domain.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -26,7 +26,7 @@ public record RecentBidResponse(
 ) {
 
     static RecentBidResponse from(RecentBidView view) {
-        RoomStateBid bid = view.bid();
+        RecentBid bid = view.bid();
 
         return new RecentBidResponse(bid.bidderName().value(), bid.role(), bid.amount(), bid.bidAt(), view.mine());
     }

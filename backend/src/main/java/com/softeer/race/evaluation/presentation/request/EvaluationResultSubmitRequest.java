@@ -35,6 +35,7 @@ public record EvaluationResultSubmitRequest(
         // 근거 없는 정밀도를 감추려는 장치이고, 실물을 보고 사람이 부른 금액에는 그 문제가 없다
         @Schema(description = "산정한 예상 시세(원)", example = "21500000")
         @Positive(message = "예상 시세는 0보다 커야 합니다.")
+        @Max(value = 1_000_000_000_000L, message = "산정 시세는 1조원을 넘을 수 없습니다.")
         long estimatedPrice,
 
         @Schema(description = "차량 사진 주소 목록. 보낸 순서가 표시 순서이며 첫 번째가 대표 이미지가 됩니다.",

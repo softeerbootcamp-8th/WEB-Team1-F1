@@ -1,6 +1,8 @@
 package com.softeer.race.evaluation.presentation;
 
 import com.softeer.race.auth.domain.AuthenticatedUser;
+import com.softeer.race.evaluation.domain.AssignmentScope;
+import com.softeer.race.evaluation.presentation.response.EvaluationAssignmentCountsResponse;
 import com.softeer.race.evaluation.presentation.response.EvaluationDetailResponse;
 import com.softeer.race.evaluation.presentation.response.EvaluationSummariesResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,16 +28,41 @@ public interface EvaluationLookupApi {
 
     @Operation(summary = "내가 맡은 신청 목록",
             description = """
-                    평가사로서 수락한 방문견적 신청들을 방문일이 임박한 순으로 돌려줍니다.
+                    평가사로서 수락한 방문견적 신청들을 scope가 정한 범위와 순서로 돌려줍니다.
 
-                    아직 수락하지 않은 신청은 배정 대기 목록(GET /api/evaluations/assignable)에
-                    있습니다. 판매자 연락처는 수락할 때 받은 응답에 있고 이 목록에는 없습니다.
-                    auctionStatus로 차량의 최신 경매 상태를 확인할 수 있습니다.
+                    - `ACTIVE`(기본): 아직 진단을 쓰지 않은 건(REQUESTED)을 방문일이 임박한
+                      순으로 줍니다. 끝낸 진단이 섞이면 새로 나갈 건이 그 아래 묻히기 때문에
+                      이쪽이 기본입니다.
+                    - `COMPLETED`: 진단을 끝낸 건(APPROVED · REJECTED)을 최근 끝낸 순으로
+                      줍니다. 그 시각이 completedAt이고, 이 범위에서만 채워집니다. 승인된 건은
+                      경매 등록 전까지 결과를 다시 제출할 수 있어 감추지 않고 여기로 옮깁니다.
+
+                    상태별 건수는 목록이 아니라 GET /api/evaluations/my-assignments/count에서
+                    받습니다. 아직 수락하지 않은 신청은 배정 대기 목록(GET
+                    /api/evaluations/assignable)에 있습니다. 판매자 연락처는 수락할 때 받은
+                    응답에 있고 이 목록에는 없습니다. auctionStatus로 차량의 최신 경매 상태를
+                    확인할 수 있습니다.
                     """)
     @ApiResponse(responseCode = "200", description = "없으면 빈 배열입니다.")
+    @ApiResponse(responseCode = "400", description = "scope가 ACTIVE · COMPLETED가 아닌 경우입니다.")
     @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
     @ApiResponse(responseCode = "403", description = "평가사 역할이 아닌 경우입니다.")
-    ResponseEntity<EvaluationSummariesResponse> findMyAssignments(AuthenticatedUser authenticatedUser);
+    ResponseEntity<EvaluationSummariesResponse> findMyAssignments(
+            AuthenticatedUser authenticatedUser, AssignmentScope scope);
+
+    @Operation(summary = "내 담당 건수",
+            description = """
+                    평가사로서 맡은 신청의 수를 상태별로 돌려줍니다. 목록을 받지 않고 수만
+                    필요한 화면(평가사 홈)을 위한 것입니다.
+
+                    total은 세 값의 합이고, pending이 담당 목록의 기본 화면(scope=ACTIVE)에
+                    나오는 수입니다.
+                    """)
+    @ApiResponse(responseCode = "200", description = "맡은 신청이 없으면 모두 0입니다.")
+    @ApiResponse(responseCode = "401", description = "세션이 없거나 만료된 경우입니다.")
+    @ApiResponse(responseCode = "403", description = "평가사 역할이 아닌 경우입니다.")
+    ResponseEntity<EvaluationAssignmentCountsResponse> countMyAssignments(
+            AuthenticatedUser authenticatedUser);
 
     @Operation(summary = "신청 상세",
             description = """

@@ -25,13 +25,13 @@ function result(over: Partial<RoomResultView> = {}): RoomResultView {
     winningPrice: 10_100_000,
     winner: { name: '정*찰', mine: false },
     sellerIsMine: false,
-    myBid: null,
+    myStanding: null,
     bidCount: 4,
     bidderCount: 4,
     extensionCount: 1,
     startAt: START_AT,
     endAt: END_AT,
-    resultEndAt: '2026-08-03T11:10:00',
+    resultViewingEndsAt: '2026-08-03T11:10:00',
     serverTime: '2026-08-03T11:05:48',
     priceCurve: [],
     ...over,
@@ -47,7 +47,7 @@ function point(minutesFromStart: number, amount: number, mine = false): PricePoi
   const date = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`
   const time = `${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}`
 
-  return { at: `${date}T${time}`, amount, mine, extended: false }
+  return { bidAt: `${date}T${time}`, amount, mine, extended: false }
 }
 
 // 화면의 첫 문장이 여기서 갈린다. 네 갈래가 각각 다른 말을 해야 한다
@@ -57,7 +57,7 @@ describe('viewerStandingOf', () => {
   })
 
   it('입찰했지만 낙찰자가 아니면 놓친 것이다', () => {
-    expect(viewerStandingOf(result({ myBid: { amount: 9_300_000, rank: 2 } }))).toBe('LOST')
+    expect(viewerStandingOf(result({ myStanding: { highestAmount: 9_300_000, rank: 2 } }))).toBe('LOST')
   })
 
   it('차를 내놓은 사람은 입찰과 무관하게 판매자다', () => {
@@ -132,7 +132,7 @@ describe('curveShapeOf', () => {
   })
 
   it('내 최고 입찰선은 그 금액의 높이에 놓이고, 입찰하지 않았으면 없다', () => {
-    const mine = curveShapeOf(result({ priceCurve: curve, myBid: { amount: 9_300_000, rank: 2 } }))
+    const mine = curveShapeOf(result({ priceCurve: curve, myStanding: { highestAmount: 9_300_000, rank: 2 } }))
     const watching = curveShapeOf(result({ priceCurve: curve }))
 
     // 800만에서 1010만 사이의 930만이라 바닥도 꼭대기도 아니다
@@ -147,7 +147,7 @@ describe('curveShapeOf', () => {
       startPrice: 8_000_000,
       winningPrice: 8_000_000,
       priceCurve: [point(3, 8_000_000, true)],
-      myBid: { amount: 8_000_000, rank: 1 },
+      myStanding: { highestAmount: 8_000_000, rank: 1 },
     })
 
     expect(curveShapeOf(flat)?.myLineY).toBe(0)

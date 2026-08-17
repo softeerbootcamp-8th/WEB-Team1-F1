@@ -40,12 +40,12 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     private AuctionCloser auctionCloser;
 
     @Autowired
-    private AuctionRoomStreamService auctionRoomStreamService;
+    private RoomStreamService roomStreamService;
 
     @Autowired
     private RoomChannel roomChannel;
 
-    private final RecordingSubscriber watcher = new RecordingSubscriber();
+    private final RecordingSubscription watcher = new RecordingSubscription();
 
     private long auctionId;
 
@@ -65,14 +65,17 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     void liveStateReachesWatchers() {
         // given : 시작을 기다리는 방을 한 사람이 보고 있다
         auctionId = waitingRoom();
-        auctionRoomStreamService.subscribe(auctionId, watcher);
-        assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.WAITING);
+        roomStreamService.subscribe(auctionId, watcher);
+
+        // 구독만으로는 현황이 오지 않는다, 이 단정이 있어야 아래 현황이 전이에서 온 것임이 갈린다
+        assertThat(watcher.received()).isEmpty();
 
         // when : 시작 시각이 되어 경매가 진행중으로 넘어간다
         fixClockAt(START_AT);
         auctionStarter.start(auctionId);
 
         // then : 다시 조회하지 않았는데 진행중으로 바뀐 현황이 흘러 들어간다
+        assertThat(watcher.received()).hasSize(1);
         assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.LIVE);
     }
 
@@ -82,8 +85,10 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         // given : 입찰이 한 건 들어온 진행중 방을 한 사람이 보고 있다
         auctionId = liveRoomWithBid();
         auctionInProgress();
-        auctionRoomStreamService.subscribe(auctionId, watcher);
-        assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.LIVE);
+        roomStreamService.subscribe(auctionId, watcher);
+
+        // 구독만으로는 현황이 오지 않는다, 이 단정이 있어야 아래 현황이 마감에서 온 것임이 갈린다
+        assertThat(watcher.received()).isEmpty();
 
         // when : 마감 시각이 지나 낙찰자가 확정된다
         fixClockAt(END_AT);
@@ -102,7 +107,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         // given : 입찰이 한 건도 없는 진행중 방을 한 사람이 보고 있다
         auctionId = liveRoom();
         auctionInProgress();
-        auctionRoomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher);
 
         // when : 마감 시각이 지나 유찰로 끝난다
         fixClockAt(END_AT);
@@ -120,7 +125,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     void alreadyStartedAuctionStaysQuiet() {
         // given : 시작 시각이 지나 한 번 진행중으로 넘어간 방을 한 사람이 보고 있다
         auctionId = waitingRoom();
-        auctionRoomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher);
         fixClockAt(START_AT);
         auctionStarter.start(auctionId);
         int receivedAfterStart = watcher.received().size();
@@ -138,7 +143,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         // given : 마감 시각이 지나 낙찰까지 확정된 방을 한 사람이 보고 있다
         auctionId = liveRoomWithBid();
         auctionInProgress();
-        auctionRoomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher);
         fixClockAt(END_AT);
         auctionCloser.close(auctionId);
         int receivedAfterClose = watcher.received().size();
@@ -156,7 +161,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         // given : 입찰이 한 건 들어온 진행중 방을 한 사람이 보고 있다
         auctionId = liveRoomWithBid();
         auctionInProgress();
-        auctionRoomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher);
 
         // when : 마감 시각이 지나 낙찰자가 확정된다
         fixClockAt(END_AT);
@@ -167,7 +172,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         assertThat(watcher.lastState().phase()).isEqualTo(RoomPhase.RESULT);
 
         // then 2 : 더 바뀔 값이 없는 구간이라 연결을 붙잡지 않는다, 주기 정리를 기다리지 않는다
-        assertThat(roomChannel.countViewers(auctionId)).isZero();
+        assertThat(roomChannel.viewerCount(auctionId)).isZero();
     }
 
     private long waitingRoom() {
@@ -191,7 +196,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         auctionStarter.start(auctionId);
     }
 
-    private static final class RecordingSubscriber implements RoomSubscriber {
+    private static final class RecordingSubscription implements RoomSubscription {
 
         // 이 테스트는 사람이 몇인지 보지 않는다, 서로 다른 사람이기만 하면 된다
         private static final AtomicLong VIEWER_SERIAL = new AtomicLong();
@@ -216,8 +221,10 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         }
 
         @Override
-        public void send(RoomState state) {
-            received.add(state);
+        public void send(RoomMessage message) {
+            if (message instanceof RoomState state) {
+                received.add(state);
+            }
         }
 
         @Override

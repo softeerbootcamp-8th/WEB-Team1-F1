@@ -6,6 +6,7 @@ import com.softeer.race.auth.exception.AuthErrorCode;
 import com.softeer.race.auth.presentation.annotation.LoginUser;
 import com.softeer.race.auth.presentation.annotation.RequireRole;
 import com.softeer.race.common.exception.BusinessException;
+import com.softeer.race.user.domain.Role;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.util.UrlPathHelper;
 import org.springframework.web.util.WebUtils;
 
 import java.util.Arrays;
@@ -32,19 +34,27 @@ import java.util.Arrays;
  * 대신 <b>둘 다 빠뜨린 핸들러는 조용히 공개로 동작한다.</b> 공개 API가 아무 표시를 하지 않는 것이
  * 정상이라 누락과 구분할 방법이 없다. 기본 차단으로 뒤집는 일은 별도 이슈로 다룬다.
  * <p>
+ * <b>{@code /api/admin/**}만 예외로 경로가 판정한다.</b> 애너테이션 유무와 무관하게 인증과
+ * {@code ADMIN}을 요구하므로, 선언을 빠뜨려도 공개가 아니라 차단으로 실패한다. 핸들러가 판정하게
+ * 만든 원래 이유는 같은 경로에 공개 GET과 인증 POST가 함께 매핑돼 있었기 때문인데, 관리자 경로에는
+ * 공개 핸들러가 존재할 수 없어 그 전제가 성립하지 않는다. 반대로 여기서 애너테이션 하나를 빠뜨리면
+ * 딜러 승인·반려 같은 되돌리기 어려운 조작이 무인증으로 열린다.
+ * <p>
  * 서블릿 Filter가 아니라 인터셉터인 이유는 응답 포맷이다. DispatcherServlet은 preHandle을 try 안에서
  * 호출하고 여기서 던진 예외를 ExceptionHandlerExceptionResolver로 넘기므로, 인증 실패도
  * GlobalExceptionHandler를 거쳐 다른 API와 같은 ProblemDetail 응답이 된다.
  * 필터는 DispatcherServlet 바깥이라 401 본문을 직접 조립해야 하고 응답 포맷이 이중 관리된다.
  * <p>
- * 리포지토리를 직접 주입하지 않고 SessionService를 경유한다. preHandle은 트랜잭션 밖이므로
- * 트랜잭션 경계를 구조로 강제해 두는 것이다.
+ * 세션 저장소를 직접 주입하지 않고 SessionService를 경유한다. 슬라이딩 연장 판정이 인증의 일부라,
+ * 저장소를 직접 부르는 경로가 생기면 그 규칙이 두 곳으로 흩어진다.
  */
 @Component
 @RequiredArgsConstructor
 public class AuthInterceptor implements HandlerInterceptor {
 
     public static final String LOGIN_USER = AuthInterceptor.class.getName() + ".LOGIN_USER";
+
+    private static final String ADMIN_PATH = "/api/admin";
 
     private final SessionService sessionService;
 
@@ -74,7 +84,8 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
         RequireRole requireRole = handlerMethod.getMethodAnnotation(RequireRole.class);
-        if (!requiresAuthentication(handlerMethod, requireRole)) {
+        boolean adminPath = isAdminPath(request);
+        if (!adminPath && !requiresAuthentication(handlerMethod, requireRole)) {
             return true;
         }
 
@@ -85,6 +96,10 @@ public class AuthInterceptor implements HandlerInterceptor {
         AuthenticatedUser authenticatedUser =
                 sessionService.authenticate(cookie == null ? null : cookie.getValue());
 
+        if (adminPath && authenticatedUser.role() != Role.ADMIN) {
+            throw new BusinessException(AuthErrorCode.ACCESS_DENIED);
+        }
+
         if (requireRole != null && Arrays.stream(requireRole.value())
                 .noneMatch(role -> role == authenticatedUser.role())) {
             throw new BusinessException(AuthErrorCode.ACCESS_DENIED);
@@ -92,6 +107,18 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         request.setAttribute(LOGIN_USER, authenticatedUser);
         return true;
+    }
+
+    /**
+     * 원시 {@code getRequestURI()}를 쓰지 않는다. 그 값에는 컨텍스트 경로가 붙어 있어, 배포가
+     * 컨텍스트 경로를 갖는 순간 접두사가 어긋난다. 그때 <b>매핑은 관리자 핸들러로 가는데 차단만
+     * 조용히 풀린다.</b> 핸들러 매핑이 보는 것과 같은 경로를 봐야 구멍이 생기지 않는다.
+     * (덤으로 퍼센트 인코딩도 풀려 인코딩으로 감춘 주소가 이 검사만 비껴가는 일도 없다.)
+     */
+    private boolean isAdminPath(HttpServletRequest request) {
+        String path = UrlPathHelper.defaultInstance.getPathWithinApplication(request);
+
+        return path.equals(ADMIN_PATH) || path.startsWith(ADMIN_PATH + "/");
     }
 
     /**

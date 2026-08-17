@@ -20,8 +20,9 @@ describe('평가 상태 표시', () => {
     expect(getEvaluationStatusMeta('APPROVED', true).label).toBe('차량 진단 완료')
   })
 
-  it('반려된 신청은 진단 반려로 표시한다', () => {
-    expect(getEvaluationStatusMeta('REJECTED', true).label).toBe('진단 반려')
+  it('반려된 신청은 반려로 표시한다', () => {
+    // 목록의 종료 탭 칩도 같은 말을 쓴다. 한쪽만 길면 같은 상태가 화면마다 다른 이름이 된다
+    expect(getEvaluationStatusMeta('REJECTED', true).label).toBe('반려')
   })
 })
 

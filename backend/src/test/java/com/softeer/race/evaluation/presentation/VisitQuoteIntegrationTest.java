@@ -3,7 +3,9 @@ package com.softeer.race.evaluation.presentation;
 import com.jayway.jsonpath.JsonPath;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +13,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -47,6 +48,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 7. 소유자 대조
  * 로그인한 회원이 남의 차로 신청할 수 없는지. 세션이 소유를 증명하지 않는다는 사실을 고정한다
  * <p>
+ * <b>{@code @Transactional}을 붙이지 않는다.</b> 접수는 번호판 잠금 행을 별도 트랜잭션으로
+ * 확보하는데({@code PlateNumberLockCreator}), 테스트를 하나의 트랜잭션으로 묶으면 앞선 요청이 잡은 잠금을
+ * 그 트랜잭션이 계속 쥐고 있어 다음 요청의 확보가 영원히 기다린다. 실제 요청은 각자 트랜잭션이라
+ * 커밋과 함께 풀리므로 생길 수 없는 상황이고, 롤백 대신 {@code IntegrationTestSupport}의
+ * {@code @AfterEach}가 정리한다.
+ * <p>
  * <b>Clock을 고정하지 않는다.</b> 픽스처의 세션 만료 시각이 DB의 실제 시각(NOW(6))으로 심기므로,
  * 앱 Clock만 과거·미래로 옮기면 전 시나리오가 401이나 세션 만료로 깨진다. 대신 방문 날짜를
  * 주입된 Clock에서 상대적으로 계산해 해가 바뀌어도 깨지지 않게 한다.
@@ -60,7 +67,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * "시세 조회가 보여준 금액으로 신청이 접수된다"를 테스트가 더 이상 보증하지 못한다.
  */
 @DisplayName("방문견적 신청 통합 테스트")
-@Transactional
 @Sql({"/sql/vehicle-catalog-fixture.sql", "/sql/visit-quote-fixture.sql"})
 class VisitQuoteIntegrationTest extends IntegrationTestSupport {
 
@@ -82,6 +88,13 @@ class VisitQuoteIntegrationTest extends IntegrationTestSupport {
     // 고정하지 않은 실제 Clock이다, 방문 날짜를 여기서 상대적으로 만든다
     @Autowired
     private Clock clock;
+
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.visitQuote(sessions);
+    }
 
     @Test
     @DisplayName("시나리오 1 : 방문 정보를 보내면 차량과 배정 대기 상태의 신청이 함께 만들어진다")

@@ -168,7 +168,7 @@ export function AuctionCard({
           </div>
           <div className="text-muted-foreground flex items-center gap-1 text-xs">
             <Eye className="size-3.5" />
-            <span className="tabular">실시간 시청 {auction.connectedCount}명</span>
+            <span className="tabular">실시간 시청 {auction.viewerCount}명</span>
           </div>
         </div>
 

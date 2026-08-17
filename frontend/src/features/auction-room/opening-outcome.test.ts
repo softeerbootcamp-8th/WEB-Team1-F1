@@ -13,7 +13,7 @@ describe('openingOutcomeOf', () => {
   })
 
   it('그 밖의 사유는 오류로 둔다', () => {
-    expect(openingOutcomeOf('AUCTION_ROOM_NOT_FOUND')).toBe('BROKEN')
+    expect(openingOutcomeOf('ROOM_NOT_FOUND')).toBe('BROKEN')
     expect(openingOutcomeOf(null)).toBe('BROKEN')
   })
 })

@@ -2,7 +2,9 @@ package com.softeer.race.evaluation.presentation;
 
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -24,8 +26,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 2. 정렬
  * 판매자 목록은 최신 접수부터, 평가사 목록은 방문일이 임박한 순인지
  * <p>
- * 3. 담당만
- * 평가사 목록에 배정받지 않은 신청이 들어오지 않는지
+ * 3. 담당만 · 범위
+ * 평가사 목록에 배정받지 않은 신청이 들어오지 않는지, 그리고 끝낸 진단이 기본 목록에서 빠져
+ * 완료 범위로 넘어가는지. 두 범위의 합이 담당 전체여야 한다
  * <p>
  * 4. 상세 · 진단 전후
  * 제출 전에는 결과 칸이 비어 있고 제출 뒤에 채워지는지. <b>진단 전 차량은 주행거리가 실제로
@@ -65,6 +68,13 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
     private static final String DOCUMENT_URL =
             CDN_BASE_URL + "/documents/2026/08/3f2b1c8e-0d47-4a19-9b2f-6c1d5e7a8b90.pdf";
 
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.diagnosticReport(sessions);
+    }
+
     @Test
     @DisplayName("내 신청 목록에 남의 신청이 섞이지 않고 최신 접수부터 나온다")
     void findMyRequests() throws Exception {
@@ -101,18 +111,93 @@ class EvaluationLookupIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("내 담당 목록에는 배정받은 것만 나온다")
+    @DisplayName("내 담당 목록에는 배정받아 아직 끝나지 않은 것만 나온다")
     void findMyAssignments() throws Exception {
-        // when & then : 601은 600 · 601을 맡았고 602는 아무도 수락하지 않은 신청이다
+        // when & then : 601은 600(진행 중) · 601(반려로 끝남)을 맡았고 602는 아무도 수락하지 않았다.
+        //               끝낸 진단이 남아 있으면 새로 나갈 600이 그 아래 묻힌다
         lookup("/my-assignments", EVALUATOR_TOKEN)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.evaluations.length()").value(2))
-                .andExpect(jsonPath("$.evaluations[0].assigned").value(true));
+                .andExpect(jsonPath("$.evaluations.length()").value(1))
+                .andExpect(jsonPath("$.evaluations[0].evaluationId").value(EVALUATION_ID))
+                .andExpect(jsonPath("$.evaluations[0].assigned").value(true))
+                // 아직 끝나지 않았으므로 완료 시각도 없다. updatedAt을 그대로 내보내면
+                // 여기에 배정 시각이 완료 시각인 척 붙는다
+                .andExpect(jsonPath("$.evaluations[0].completedAt").doesNotExist());
 
         // 수락한 적 없는 평가사에게는 빈 배열이다. 배정 대기 목록은 다른 API가 준다
         lookup("/my-assignments", OTHER_EVALUATOR_TOKEN)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.evaluations.length()").value(0));
+    }
+
+    /**
+     * 감추는 것이 아니라 옮기는 것이다. 승인된 건은 경매 등록 전까지 결과를 다시 제출할 수
+     * 있어, 완료 범위가 그 유일한 진입로가 된다.
+     */
+    @Test
+    @DisplayName("완료 범위에는 끝낸 진단이 완료 시각과 함께 나온다")
+    void findCompletedAssignments() throws Exception {
+        lookup("/my-assignments?scope=COMPLETED", EVALUATOR_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations.length()").value(1))
+                .andExpect(jsonPath("$.evaluations[0].evaluationId").value(REJECTED_EVALUATION_ID))
+                .andExpect(jsonPath("$.evaluations[0].status").value("REJECTED"))
+                // 이 값의 역순이 곧 목록의 순서다. 비어 나가면 화면이 왜 그 순서인지 보여줄 수 없다
+                .andExpect(jsonPath("$.evaluations[0].completedAt").exists());
+
+        // 진행 중인 600은 이쪽에 없다. 두 범위의 합이 곧 담당 전체다
+        lookup("/my-assignments?scope=ACTIVE", EVALUATOR_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations[0].evaluationId").value(EVALUATION_ID));
+    }
+
+    /**
+     * 진단을 끝내면 그 건이 진행 중 목록에서 빠지고 완료 목록으로 넘어간다. 두 범위가 같은
+     * 기준을 서로 반대로 쓰고 있는지는 이 이동으로만 확인된다 — 한쪽만 보면 조건이 어긋나
+     * 어느 목록에도 없는 건이 생겨도 알 수 없다.
+     */
+    @Test
+    @DisplayName("결과를 제출하면 진행 중에서 빠져 완료로 넘어간다")
+    void submittedAssignmentMovesToCompleted() throws Exception {
+        // given
+        submitResult().andExpect(status().isOk());
+
+        // when & then
+        lookup("/my-assignments", EVALUATOR_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations.length()").value(0));
+
+        lookup("/my-assignments?scope=COMPLETED", EVALUATOR_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations.length()").value(2))
+                // 방금 끝낸 것이 위로 온다
+                .andExpect(jsonPath("$.evaluations[0].evaluationId").value(EVALUATION_ID))
+                .andExpect(jsonPath("$.evaluations[0].status").value("APPROVED"));
+    }
+
+    @Test
+    @DisplayName("모르는 범위는 400이다")
+    void rejectsUnknownScope() throws Exception {
+        // 조용히 기본값으로 돌리면 오타 하나에 다른 목록을 보여주고도 아무 일 없는 척한다
+        lookup("/my-assignments?scope=DONE", EVALUATOR_TOKEN)
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("담당 건수는 상태별로 세어 나간다")
+    void countMyAssignments() throws Exception {
+        // 목록이 범위로 갈린 뒤로는 어느 한쪽을 받아도 나머지를 셀 수 없다
+        lookup("/my-assignments/count", EVALUATOR_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.pending").value(1))
+                // 아직 승인된 건이 없다. group by에 행이 없어도 0으로 채워져야 한다
+                .andExpect(jsonPath("$.approved").value(0))
+                .andExpect(jsonPath("$.rejected").value(1));
+
+        lookup("/my-assignments/count", OTHER_EVALUATOR_TOKEN)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(0));
     }
 
     @Test

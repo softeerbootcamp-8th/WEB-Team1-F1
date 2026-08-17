@@ -33,8 +33,8 @@ public class InMemoryAuctionListChannel implements AuctionListChannel {
     }
 
     @Override
-    public void broadcastAudience(long auctionId, int connectedCount) {
-        forEachOpen(subscriber -> subscriber.sendAudience(auctionId, connectedCount));
+    public void broadcastAudience(long auctionId, int viewerCount) {
+        forEachOpen(subscriber -> subscriber.sendAudience(auctionId, viewerCount));
     }
 
     // 서버는 이 연결에 쓰기만 하고 읽지 않아, 상대가 끊어도 다음 쓰기 전까지 모른다

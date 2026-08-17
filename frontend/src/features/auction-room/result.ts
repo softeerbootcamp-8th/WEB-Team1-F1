@@ -17,7 +17,7 @@ export type ViewerStanding = 'SELLER' | 'WON' | 'LOST' | 'ONLOOKER'
 export function viewerStandingOf(result: RoomResultView): ViewerStanding {
   if (result.sellerIsMine) return 'SELLER'
   if (result.winner?.mine) return 'WON'
-  if (result.myBid) return 'LOST'
+  if (result.myStanding) return 'LOST'
 
   return 'ONLOOKER'
 }
@@ -57,7 +57,7 @@ export function curveShapeOf(result: RoomResultView): CurveShape | null {
   if (result.priceCurve.length === 0) return null
 
   const amounts = [result.startPrice, ...result.priceCurve.map((p) => p.amount)]
-  const times = [result.startAt, ...result.priceCurve.map((p) => p.at)].map((at) =>
+  const times = [result.startAt, ...result.priceCurve.map((p) => p.bidAt)].map((at) =>
     new Date(at).getTime(),
   )
 
@@ -85,7 +85,7 @@ export function curveShapeOf(result: RoomResultView): CurveShape | null {
 
   return {
     points,
-    myLineY: result.myBid ? heightOf(result.myBid.amount) : null,
+    myLineY: result.myStanding ? heightOf(result.myStanding.highestAmount) : null,
     minAmount,
     maxAmount,
   }

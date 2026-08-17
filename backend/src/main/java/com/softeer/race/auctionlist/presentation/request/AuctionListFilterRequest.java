@@ -5,6 +5,7 @@ import com.softeer.race.vehicle.domain.FuelType;
 import com.softeer.race.vehicle.domain.Manufacturer;
 import com.softeer.race.vehicle.domain.Transmission;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.PositiveOrZero;
 
 import java.util.List;
@@ -21,8 +22,13 @@ public record AuctionListFilterRequest(
         @PositiveOrZero Integer mileageMax,
         Integer modelYearMin,
         Integer modelYearMax,
-        @PositiveOrZero Long priceMin,
-        @PositiveOrZero Long priceMax
+        @PositiveOrZero
+        @Max(value = 1_000_000_000_000L, message = "검색 금액은 1조원을 넘을 수 없습니다.")
+        Long priceMin,
+
+        @PositiveOrZero
+        @Max(value = 1_000_000_000_000L, message = "검색 금액은 1조원을 넘을 수 없습니다.")
+        Long priceMax
 ) {
 
     // 뒤집힌 범위는 항상 빈 결과라 실수일 수밖에 없다. 조용히 빈 목록을 주면 원인을 찾기 어렵다.

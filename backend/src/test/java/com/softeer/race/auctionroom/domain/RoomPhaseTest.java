@@ -13,10 +13,10 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
-import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_ALREADY_CLOSED;
-import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_ALREADY_OPEN;
-import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_NOT_OPEN_YET;
-import static com.softeer.race.auctionroom.domain.AuctionRoomErrorCode.ROOM_STREAM_ENDED;
+import static com.softeer.race.auctionroom.domain.RoomErrorCode.ROOM_ALREADY_CLOSED;
+import static com.softeer.race.auctionroom.domain.RoomErrorCode.ROOM_ALREADY_OPEN;
+import static com.softeer.race.auctionroom.domain.RoomErrorCode.ROOM_NOT_OPEN_YET;
+import static com.softeer.race.auctionroom.domain.RoomErrorCode.ROOM_STREAM_ENDED;
 import static com.softeer.race.auctionroom.domain.RoomPhase.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;

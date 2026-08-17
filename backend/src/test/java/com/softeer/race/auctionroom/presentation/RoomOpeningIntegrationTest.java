@@ -76,6 +76,9 @@ class RoomOpeningIntegrationTest extends IntegrationTestSupport {
         response.andExpectAll(
                 jsonPath("$.vehicle.manufacturer").value("HYUNDAI"),
                 jsonPath("$.vehicle.model").value("더 뉴 셀토스"),
+                // 연식과 주행거리는 둘 다 int 라 자리가 바뀌어도 컴파일된다, 값으로 갈라 둔다
+                jsonPath("$.vehicle.modelYear").value(2022),
+                jsonPath("$.vehicle.mileage").value(35000),
                 jsonPath("$.vehicle.imageUrls.length()").value(2),
                 jsonPath("$.vehicle.imageUrls[0]").value("https://cdn.race.dev/seltos-1.jpg"),
                 jsonPath("$.vehicle.diagnosticReportUrl")
@@ -91,7 +94,7 @@ class RoomOpeningIntegrationTest extends IntegrationTestSupport {
         // then 4 : 아직 아무 일도 일어나지 않은 방이라 실시간 값이 나갈 자리가 없다
         // doesNotExist 는 값이 null 이어도 통과하므로, 스키마에 아예 없다는 것은 이쪽으로 단정한다
         response.andExpectAll(
-                jsonPath("$.connectedCount").doesNotHaveJsonPath(),
+                jsonPath("$.viewerCount").doesNotHaveJsonPath(),
                 jsonPath("$.currentPrice").doesNotHaveJsonPath(),
                 jsonPath("$.recentBids").doesNotHaveJsonPath(),
                 jsonPath("$.phase").doesNotHaveJsonPath());

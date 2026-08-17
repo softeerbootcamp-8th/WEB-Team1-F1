@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { DemoVehicleHelp } from '@/features/vehicle/components/demo-vehicle-help'
 import type { VehicleLookupRequest } from '@/features/vehicle/types'
+import { cn } from '@/lib/utils'
 
 const PLATE_PATTERN = /^\d{2,3}[가-힣]\d{4}$/
 
@@ -25,6 +26,8 @@ interface VehicleOwnerFormProps {
   initialValues?: Partial<VehicleOwnerValues>
   isSubmitting?: boolean
   onSubmit: (values: VehicleOwnerValues) => void
+  /** 폼 자체의 폭을 바꿀 때만 넘긴다, 기본은 max-w-sm */
+  className?: string
 }
 
 export function VehicleOwnerForm({
@@ -33,13 +36,14 @@ export function VehicleOwnerForm({
   initialValues,
   isSubmitting = false,
   onSubmit,
+  className,
 }: VehicleOwnerFormProps) {
   const [ownerName, setOwnerName] = useState(initialValues?.ownerName ?? '')
   const [plateNumber, setPlateNumber] = useState(initialValues?.plateNumber ?? '')
 
   return (
     <form
-      className="mx-auto w-full max-w-sm space-y-7"
+      className={cn('mx-auto w-full max-w-sm space-y-7', className)}
       onSubmit={(event) => {
         event.preventDefault()
         onSubmit({

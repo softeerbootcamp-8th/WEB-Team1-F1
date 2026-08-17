@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   ChartLine,
   FileText,
@@ -68,7 +68,18 @@ export function AuctionPreviewDialog({
   onSimilar,
 }: AuctionPreviewDialogProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth()
+
+  // 결과·방으로 나간 뒤 "뒤로"가 돌아올 목록 주소(탭·필터 쿼리 포함). 딥링크 파라미터는
+  // 지운다 — 남겨 두면 돌아온 목록이 이 미리보기를 다시 연다.
+  const from = useMemo(() => {
+    const params = new URLSearchParams(location.search)
+    params.delete('open')
+    params.delete('as')
+    const search = params.toString()
+    return `${location.pathname}${search ? `?${search}` : ''}`
+  }, [location.pathname, location.search])
   const [detail, setDetail] = useState<RoomOpeningView | RoomResultView | null>(null)
   const [error, setError] = useState<string | null>(null)
   /** 실제로 받아온 것이 무엇인지. 넘겨받은 단계가 낡았으면 여기서 갈린다 */
@@ -124,7 +135,7 @@ export function AuctionPreviewDialog({
         fetchAuctionRoom(auctionId)
           .then(() => {
             // 이미 들어갈 수 있는 방이다, 미리보기가 아니라 진짜 방으로 보낸다
-            if (alive) navigate(`/auctions/${auctionId}`, { replace: true })
+            if (alive) navigate(`/auctions/${auctionId}`, { replace: true, state: { from } })
           })
           .catch((e: unknown) => {
             if (!alive) return
@@ -141,7 +152,7 @@ export function AuctionPreviewDialog({
     return () => {
       alive = false
     }
-  }, [auctionId, status, navigate, isAuthenticated, isAuthLoading])
+  }, [auctionId, status, navigate, from, isAuthenticated, isAuthLoading])
 
   const openAt = (detail as RoomOpeningView | null)?.openAt ?? card?.openAt
   const { isElapsed } = useCountdown(openAt ?? '', 1000, clockOffset)
@@ -151,8 +162,8 @@ export function AuctionPreviewDialog({
   useEffect(() => {
     if (auctionId === null || loaded !== 'NOT_OPEN' || !isElapsed) return
 
-    navigate(`/auctions/${auctionId}`)
-  }, [auctionId, loaded, isElapsed, navigate])
+    navigate(`/auctions/${auctionId}`, { state: { from } })
+  }, [auctionId, loaded, isElapsed, navigate, from])
 
   const result = loaded === 'ENDED' ? (detail as RoomResultView | null) : null
   const vehicle = detail?.vehicle
@@ -305,7 +316,7 @@ export function AuctionPreviewDialog({
                     <ListFilter />
                     비슷한 경매 보기
                   </Button>
-                  <Button onClick={() => navigate(`/auctions/${auctionId}/result`)}>
+                  <Button onClick={() => navigate(`/auctions/${auctionId}/result`, { state: { from } })}>
                     <ChartLine />
                     결과 자세히 보기
                   </Button>

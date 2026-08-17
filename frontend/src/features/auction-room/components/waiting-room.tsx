@@ -51,7 +51,7 @@ export function WaitingRoom({ room, clockOffset }: WaitingRoomProps) {
       {/* 대기중에 변하는 값은 이것 하나뿐이다, 유일한 실시간 신호라 크게 둔다 */}
       <p className="text-muted-foreground mt-4 inline-flex items-center gap-2 rounded-full border px-6 py-2.5 text-lg">
         <Eye className="size-5" />
-        지금 <span className="text-foreground tabular font-bold">{room.connectedCount}명</span>이
+        지금 <span className="text-foreground tabular font-bold">{room.viewerCount}명</span>이
         함께 기다립니다
       </p>
 

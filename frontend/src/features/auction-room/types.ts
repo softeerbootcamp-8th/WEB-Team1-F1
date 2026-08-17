@@ -58,7 +58,7 @@ export interface AuctionRoomView {
   startAt: string
   endAt: string
   serverTime: string
-  connectedCount: number
+  viewerCount: number
   bidderCount: number
   bidCount: number
   winner: RoomWinner | null
@@ -81,21 +81,23 @@ export interface RoomStreamWinner {
 }
 
 /** 백엔드 RoomStateResponse와 동일한 필드 — GET /room/stream이 매번 전체 상태를 통째로 밀어준다 */
-/** 차량은 방 안에서 바뀌지 않아 방송에 실리지 않는다, 최초 조회가 한 번 준다 */
+/** 방 안에서 바뀌지 않는 값은 방송에 실리지 않는다, 최초 조회가 한 번 준다 */
 export interface RoomStreamState {
   auctionId: number
   phase: RoomPhase
-  startPrice: number
   currentPrice: number
-  openAt: string
-  startAt: string
   endAt: string
   serverTime: string
-  connectedCount: number
   bidderCount: number
   bidCount: number
   winner: RoomStreamWinner | null
   recentBids: RoomStreamBid[]
+}
+
+/** event: viewers 의 본문. 들고 나는 것만으로 바뀌어 현황과 따로 온다 */
+export interface RoomViewerCount {
+  auctionId: number
+  viewerCount: number
 }
 
 /** 백엔드 RoomOpeningResponse와 동일한 필드 — 아직 열리지 않은 방의 안내다 */
@@ -110,7 +112,7 @@ export interface RoomOpeningView {
 
 /** 결과 곡선의 점 하나. 이름은 실리지 않는다 — 누가 불렀는지는 호가창이 답할 일이다 */
 export interface PricePoint {
-  at: string
+  bidAt: string
   amount: number
   mine: boolean
   /** 이 입찰로 마감이 밀렸는지 */
@@ -118,15 +120,15 @@ export interface PricePoint {
 }
 
 /** 조회한 사람의 성적. 입찰한 적이 없으면 이 객체 자체가 null 이다 */
-export interface MyBid {
-  amount: number
+export interface MyStanding {
+  highestAmount: number
   /** 입찰한 사람 중 내 순위, 1이면 내가 가장 높았다 */
   rank: number
 }
 
 /**
  * 백엔드 RoomResultResponse와 동일한 필드 — 더 이상 바뀌지 않는 경매라 접속자 수도 호가창도 없다.
- * serverTime 은 결과값이 아니라 남은 열람 시간을 세는 기준이라 resultEndAt 과 짝으로 온다.
+ * serverTime 은 결과값이 아니라 남은 열람 시간을 세는 기준이라 resultViewingEndsAt 과 짝으로 온다.
  */
 export interface RoomResultView {
   auctionId: number
@@ -140,7 +142,7 @@ export interface RoomResultView {
   /** 조회한 사람이 이 차를 내놓은 사람인지 */
   sellerIsMine: boolean
   /** 입찰한 적이 없으면 null */
-  myBid: MyBid | null
+  myStanding: MyStanding | null
   bidCount: number
   bidderCount: number
   /** 마감 임박 입찰로 마감이 밀린 횟수 */
@@ -148,7 +150,7 @@ export interface RoomResultView {
   startAt: string
   /** 연장된 만큼 밀린 최종 마감 시각 */
   endAt: string
-  resultEndAt: string
+  resultViewingEndsAt: string
   serverTime: string
   /** 시간순 전체. 유찰이면 빈 배열이고 시작가는 담기지 않는다 */
   priceCurve: PricePoint[]

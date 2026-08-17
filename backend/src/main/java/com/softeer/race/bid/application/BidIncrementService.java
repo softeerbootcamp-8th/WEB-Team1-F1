@@ -4,14 +4,14 @@ import com.softeer.race.bid.domain.BidIncrementBandRepository;
 import com.softeer.race.bid.domain.BidIncrementTable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 입찰 가격 구간표를 조회하는 서비스
  */
+// 클래스 레벨 @Transactional 을 붙이지 않는다 - 트랜잭션 밖의 AuctionBidGate 가 loadTable 을 부르는데
+// 붙이면 캐시 히트에도 트랜잭션이 열린다.
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class BidIncrementService {
 
     private final BidIncrementBandRepository bidIncrementBandRepository;

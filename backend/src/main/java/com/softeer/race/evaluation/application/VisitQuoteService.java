@@ -6,6 +6,7 @@ import com.softeer.race.evaluation.application.dto.info.VisitQuoteInfo;
 import com.softeer.race.evaluation.application.dto.info.VisitQuotePrecheckInfo;
 import com.softeer.race.evaluation.domain.Evaluation;
 import com.softeer.race.evaluation.domain.EvaluationRepository;
+import com.softeer.race.evaluation.domain.PlateNumberLockRepository;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.notification.application.NotificationPublisher;
 import com.softeer.race.notification.domain.NotificationContent;
@@ -16,6 +17,7 @@ import com.softeer.race.vehicle.application.dto.command.VehicleLookupCommand;
 import com.softeer.race.vehicle.application.dto.info.VehicleLookupInfo;
 import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleLookup;
+import com.softeer.race.vehicle.domain.VehicleName;
 import com.softeer.race.vehicle.domain.VehicleRepository;
 import com.softeer.race.vehicle.domain.VehicleSpec;
 import java.time.Clock;
@@ -48,6 +50,8 @@ public class VisitQuoteService {
     private final UserRepository userRepository;
     private final VehicleRepository vehicleRepository;
     private final EvaluationRepository evaluationRepository;
+    private final PlateNumberLockRepository plateNumberLockRepository;
+    private final PlateNumberLockCreator plateNumberLockCreator;
     private final NotificationPublisher notificationPublisher;
     private final Clock clock;
 
@@ -73,14 +77,18 @@ public class VisitQuoteService {
      */
     @Transactional
     public VisitQuoteInfo request(VisitQuoteCommand command) {
-        // 중복 검사를 가장 먼저 한다. 같은 트랜잭션이라 뒤에서 던져도 앞의 insert가 롤백되므로
-        // 데이터가 남는 문제는 아니지만, 거부될 요청에 카탈로그 조회와 두 번의 insert를 태울 이유가 없다
-        //
-        // exists 검사와 insert가 원자적이지 않아 동시 요청 두 건이 모두 통과할 수 있다. 부분 unique
-        // 인덱스(status가 진행 중인 행만 유일)를 MySQL이 지원하지 않아 DB 제약으로는 막을 수 없고,
-        // 락을 걸 대상 행도 없다(막아야 하는 것은 아직 없는 행이다). 저빈도 쓰기이고 배정 단계에서
-        // 사람이 걸러낼 수 있어 수용한다. 정말 막아야 하면 vehicle 위가 아닌 "번호판" 단위의
-        // 별도 테이블에 unique를 걸어 접수 슬롯을 선점하는 구조가 필요하다
+        // 중복 판정보다 앞에 잠금이 온다. 판정과 insert 사이가 원자적이지 않아, 잠그지 않으면 거의
+        // 같은 순간에 들어온 두 요청이 모두 "진행 중인 신청 없음"을 읽고 모두 접수된다.
+        // 잠글 대상 행이 왜 따로 필요한지는 PlateNumberLock,
+        // 확보가 왜 별도 트랜잭션인지는 PlateNumberLockCreator 참고
+        plateNumberLockCreator.createIfAbsent(command.plateNumber());
+        plateNumberLockRepository.findByPlateNumberForUpdate(command.plateNumber())
+                .orElseThrow(() -> new IllegalStateException(
+                        "직전에 확보한 번호판 잠금 행을 찾을 수 없다, 번호판 %s".formatted(command.plateNumber())));
+
+        // 중복 검사를 나머지 작업보다 먼저 한다. 같은 트랜잭션이라 뒤에서 던져도 앞의 insert가
+        // 롤백되므로 데이터가 남는 문제는 아니지만, 거부될 요청에 카탈로그 조회와 두 번의 insert를
+        // 태울 이유가 없다. 앞에 붙은 잠금 두 쿼리는 그 "비싼 작업"에 들지 않는다
         if (evaluationRepository.existsBlockingVisitQuoteByPlateNumber(command.plateNumber())) {
             throw new BusinessException(EvaluationErrorCode.DUPLICATE_REQUEST);
         }
@@ -127,7 +135,7 @@ public class VisitQuoteService {
     private void notifyEvaluators(long evaluationId, Vehicle vehicle) {
         // 문구는 수신자와 무관하게 같아 한 번만 조립한다
         NotificationContent content = NotificationContent.evaluationRequested(
-                vehicle.getPlateNumber(), vehicle.getModel());
+                VehicleName.of(vehicle).display(), vehicle.getPlateNumber());
 
         for (long evaluatorId : userRepository.findIdsByRole(Role.EVALUATOR)) {
             notificationPublisher.publishContent(evaluatorId, content, evaluationId);

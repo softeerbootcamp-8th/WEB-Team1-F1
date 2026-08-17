@@ -53,7 +53,7 @@ const EMPTY_PAGE = {
 const REQUESTED_NOTIFICATION: AppNotification = {
   id: 41,
   type: 'EVAL_REQUESTED',
-  message: '12가3456 그랜저 IG 차량의 방문 진단 신청이 접수되었습니다.',
+  message: '현대 그랜저 IG 12가3456 차량의 방문견적 신청이 접수되었습니다.',
   read: false,
   link: '/evaluations/assignable',
   createdAt: '2026-08-13T10:00:00',
@@ -93,7 +93,7 @@ function renderNotifications(initialEntry = '/evaluations/my') {
   return { ...hook, queryClient }
 }
 
-describe('useNotifications 의 새 방문 진단 신청 연동', () => {
+describe('useNotifications 의 새 방문견적 신청 연동', () => {
   beforeEach(() => {
     streamHandlers = null
     mocks.fetchNotifications.mockReset().mockResolvedValue(EMPTY_PAGE)

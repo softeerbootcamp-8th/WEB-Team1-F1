@@ -11,8 +11,8 @@ public interface BidPreCheckRepository extends Repository<User, Long> {
 
     @Query("""
             select new com.softeer.race.bid.domain.BidPreCheck(
-                u.role, u.realName, v.seller.id, v.model, a.startPrice, a.currentPrice,
-                a.startTime, a.currentEndTime)
+                u.role, u.realName, v.seller.id, v.manufacturer, v.model,
+                a.startPrice, a.currentPrice, a.startTime, a.currentEndTime)
             from User u
             left join Auction a on a.id = :auctionId
             left join a.post p

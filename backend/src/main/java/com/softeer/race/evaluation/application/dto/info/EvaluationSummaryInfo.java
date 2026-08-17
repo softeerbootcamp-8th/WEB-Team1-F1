@@ -27,6 +27,9 @@ import java.time.LocalDateTime;
  * <b>최신 경매 상태를 담는다.</b> 유찰 뒤 재출품할 수 있으므로 경매 이력의 존재만으로는 현재
  * 상황을 말할 수 없다. 경매가 없으면 null이고, 있으면 가장 최근 경매의 상태다.
  * <p>
+ * <b>완료된 건에는 completedAt이 붙는다.</b> 완료 목록이 이 값의 역순으로 서므로, 없으면
+ * 화면이 왜 그 순서인지 보여줄 방법이 없다. 진행 중인 건에서는 null이다.
+ * <p>
  * <b>contactPhone을 담지 않는다.</b> 담당 평가사에게는 필요한 값이지만 배정이 확정될 때
  * {@link EvaluationAssignmentInfo}가 이미 준다. 목록마다 다시 실어 나르면 개인정보가 로그와
  * 캐시에 남는 면만 넓어진다.
@@ -42,7 +45,8 @@ public record EvaluationSummaryInfo(
         int modelYear,
         LocalDate visitDate,
         String visitAddress,
-        LocalDateTime requestedAt
+        LocalDateTime requestedAt,
+        LocalDateTime completedAt
 ) {
 
     public static EvaluationSummaryInfo from(Evaluation evaluation, AuctionStatus auctionStatus) {
@@ -60,6 +64,7 @@ public record EvaluationSummaryInfo(
                 vehicle.getModelYear(),
                 evaluation.getVisitDate(),
                 evaluation.getVisitAddress(),
-                evaluation.getCreatedAt());
+                evaluation.getCreatedAt(),
+                evaluation.completedAt());
     }
 }

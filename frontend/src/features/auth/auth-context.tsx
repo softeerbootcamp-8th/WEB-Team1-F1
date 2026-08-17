@@ -78,4 +78,5 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   GENERAL: '개인',
   DEALER: '딜러',
   EVALUATOR: '평가사',
+  ADMIN: '관리자',
 }

@@ -22,6 +22,6 @@ public record AuctionCardInfo(
         LocalDateTime openAt,
         LocalDateTime startAt,
         LocalDateTime endAt,
-        int connectedCount
+        int viewerCount
 ) {
 }

@@ -465,6 +465,27 @@ class AuctionTest {
                 .isEqualTo(AuctionErrorCode.INVALID_START_AT);
     }
 
+    @Test
+    @DisplayName("시작가가 상한을 넘으면 경매를 예약할 수 없다")
+    void rejectsStartPriceAboveCap() {
+        assertThatThrownBy(() -> Auction.schedule(post(), 1_000_000_000_001L, START_TIME))
+                .isInstanceOf(BusinessException.class)
+                .extracting(thrown -> ((BusinessException) thrown).errorCode())
+                .isEqualTo(AuctionErrorCode.INVALID_START_PRICE);
+    }
+
+    @Test
+    @DisplayName("시작가가 상한을 넘으면 경매를 수정할 수 없다")
+    void rejectsStartPriceAboveCapOnUpdate() {
+        Auction auction = scheduled();
+
+        assertThatThrownBy(() -> auction.updateBeforeRoomOpens(
+                1_000_000_000_001L, START_TIME, PUBLISHED_AT))
+                .isInstanceOf(BusinessException.class)
+                .extracting(thrown -> ((BusinessException) thrown).errorCode())
+                .isEqualTo(AuctionErrorCode.INVALID_START_PRICE);
+    }
+
     private Auction scheduled() {
         return Auction.schedule(post(), 10_000_000L, START_TIME);
     }

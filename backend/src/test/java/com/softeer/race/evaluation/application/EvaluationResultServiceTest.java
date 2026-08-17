@@ -11,6 +11,7 @@ import com.softeer.race.evaluation.domain.EvaluationRepository;
 import com.softeer.race.evaluation.domain.EvaluationStatus;
 import com.softeer.race.evaluation.exception.EvaluationErrorCode;
 import com.softeer.race.notification.application.NotificationPublisher;
+import com.softeer.race.notification.domain.NotificationContent;
 import com.softeer.race.storage.domain.FileCategory;
 import com.softeer.race.storage.domain.FileStorage;
 import com.softeer.race.user.domain.User;
@@ -18,6 +19,7 @@ import com.softeer.race.vehicle.application.VehicleImageService;
 import com.softeer.race.vehicle.application.dto.command.VehicleImageRegisterCommand;
 import com.softeer.race.vehicle.application.dto.info.VehicleImageRegisterInfo;
 import com.softeer.race.vehicle.application.VehicleKeywordService;
+import com.softeer.race.vehicle.domain.Manufacturer;
 import com.softeer.race.vehicle.domain.Vehicle;
 import com.softeer.race.vehicle.domain.VehicleImageRepository;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
@@ -34,8 +36,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 
-import static com.softeer.race.notification.domain.NotificationType.EVAL_APPROVED;
-import static com.softeer.race.notification.domain.NotificationType.EVAL_REJECTED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,6 +45,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
@@ -121,6 +122,11 @@ class EvaluationResultServiceTest {
         vehicle = mock(Vehicle.class);
         evaluation = mock(Evaluation.class);
         seller = mock(User.class);
+
+        // 알림 문구가 차량 이름과 번호판을 담는다, 발행이 없는 경로도 있어 lenient 로 둔다
+        lenient().when(vehicle.getManufacturer()).thenReturn(Manufacturer.HYUNDAI);
+        lenient().when(vehicle.getModel()).thenReturn("아반떼 CN7");
+        lenient().when(vehicle.getPlateNumber()).thenReturn("60가6000");
     }
 
     @Test
@@ -286,7 +292,8 @@ class EvaluationResultServiceTest {
 
         // then : 받는 사람은 제출자인 평가사가 아니라 판매자다.
         //        참조가 신청 건이라야 등록 화면이 차량과 산정 시세를 찾아간다
-        then(notificationPublisher).should().publish(SELLER_ID, EVAL_APPROVED, EVALUATION_ID);
+        then(notificationPublisher).should().publishContent(SELLER_ID,
+                NotificationContent.evaluationApproved("현대 아반떼 CN7", "60가6000"), EVALUATION_ID);
     }
 
     @Test
@@ -310,7 +317,8 @@ class EvaluationResultServiceTest {
 
         // 받는 사람은 반려한 평가사가 아니라 판매자다.
         // 참조가 신청 건이라야 알림을 눌렀을 때 사유가 있는 상세로 간다
-        then(notificationPublisher).should().publish(SELLER_ID, EVAL_REJECTED, EVALUATION_ID);
+        then(notificationPublisher).should().publishContent(SELLER_ID,
+                NotificationContent.evaluationRejected("현대 아반떼 CN7", "60가6000"), EVALUATION_ID);
 
         // 반려는 차량을 건드리지 않는다. 진단 전 상태로 남아야 같은 번호판 재신청이 성립한다
         then(vehicleImageService).shouldHaveNoInteractions();

@@ -6,7 +6,9 @@ import com.softeer.race.notification.domain.NotificationRepository;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
 import com.softeer.race.notification.domain.NotificationRow;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,6 +81,13 @@ class EvaluationApprovedNotificationIntegrationTest extends IntegrationTestSuppo
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.diagnosticReport(sessions);
+    }
+
     @Test
     @DisplayName("시나리오 1 : 제출이 커밋되면 판매자에게 승인 안내 알림이 쌓인다")
     void scenario1_NotifiesSeller() throws Exception {
@@ -92,7 +101,8 @@ class EvaluationApprovedNotificationIntegrationTest extends IntegrationTestSuppo
         // then 2 : 발행 당시 문구가 보관되고 아직 읽지 않은 상태다
         NotificationRow approved = notifications.getFirst();
         assertThat(approved.type()).isEqualTo(EVAL_APPROVED);
-        assertThat(approved.message()).isEqualTo(EVAL_APPROVED.defaultMessage());
+        assertThat(approved.message())
+                .isEqualTo("현대 아반떼 CN7 60가6000 차량의 평가가 승인되었습니다. 경매글을 등록해 주세요.");
         assertThat(approved.read()).isFalse();
 
         // then 3 : 등록 여부를 정하기 전에 평가 결과를 볼 수 있도록 그 신청 상세로 보낸다.

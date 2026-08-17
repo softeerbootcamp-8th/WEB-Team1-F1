@@ -45,7 +45,7 @@ public class AuctionStartAlertNotifier {
 
             notificationPublisher.publishContent(
                     target.userId(),
-                    NotificationContent.auctionStarted(target.vehicleModel()),
+                    NotificationContent.auctionStarted(target.vehicleName().display()),
                     auctionId);
         }
 

@@ -1,12 +1,11 @@
 package com.softeer.race.auctionroom.application;
 
 import com.softeer.race.auctionroom.domain.AuctionOutcome;
-import com.softeer.race.auctionroom.domain.AuctionRoomDetail;
-import com.softeer.race.auctionroom.domain.BidStats;
+import com.softeer.race.auctionroom.domain.RoomDetail;
+import com.softeer.race.auctionroom.domain.BidCounts;
 import com.softeer.race.auctionroom.domain.BidderStanding;
-import com.softeer.race.auctionroom.domain.PricePoint;
+import com.softeer.race.auctionroom.domain.BidPoint;
 import com.softeer.race.common.domain.MaskedName;
-import com.softeer.race.auctionroom.domain.VehicleSummary;
 import com.softeer.race.vehicle.domain.VehicleKeyword;
 
 import java.time.LocalDateTime;
@@ -24,43 +23,41 @@ public record RoomResultView(
         MaskedName winnerName,
         boolean winnerIsMine,
         boolean sellerIsMine,
-        BidderStanding standing,
+        BidderStanding viewerStanding,
         LocalDateTime startAt,
         LocalDateTime endAt,
         LocalDateTime resultViewingEndsAt,
         LocalDateTime serverTime,
         int extensionCount,
-        BidStats stats,
-        List<PricePointView> priceCurve
+        BidCounts bidCounts,
+        List<BidPointView> priceCurve
 ) {
 
     // 결과는 더 이상 바뀌지 않으므로 접속자 수는 담지 않는다
     // 서버 시각은 결과값이 아니라 화면이 남은 열람 시간을 세는 기준이라 예외로 담는다
     static RoomResultView of(
-            AuctionRoomDetail detail, AuctionOutcome outcome, BidStats stats,
-            long viewerId, BidderStanding standing, List<PricePoint> priceCurve,
+            RoomDetail detail, AuctionOutcome outcome, BidCounts bidCounts,
+            long viewerId, BidderStanding viewerStanding, List<BidPoint> priceCurve,
             List<String> imageUrls, List<VehicleKeyword> keywords, LocalDateTime serverTime) {
 
         return new RoomResultView(
                 detail.auctionId(),
                 outcome,
-                detail.vehicle(imageUrls, keywords),
+                VehicleSummary.of(detail, imageUrls, keywords),
                 detail.startPrice(),
                 detail.winningPrice().orElse(null),
                 detail.winnerName().orElse(null),
                 detail.isWonBy(viewerId),
                 detail.isSoldBy(viewerId),
-                standing,
-                detail.startTime(),
-                detail.currentEndTime(),
+                viewerStanding,
+                detail.startAt(),
+                detail.endAt(),
                 detail.resultViewingEndsAt(),
                 serverTime,
                 detail.extensionCount(),
-                stats,
-                // 마감이 어느 입찰에 밀렸는지는 저장돼 있지 않아 점마다 되짚어 묻는다
+                bidCounts,
                 priceCurve.stream()
-                        .map(point -> PricePointView.of(point, viewerId,
-                                point.pushedDeadline(detail.startTime())))
+                        .map(point -> BidPointView.of(point, viewerId, detail.startAt()))
                         .toList());
     }
 }

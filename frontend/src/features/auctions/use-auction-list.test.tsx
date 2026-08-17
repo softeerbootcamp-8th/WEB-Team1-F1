@@ -25,7 +25,7 @@ function card(auctionId: number): AuctionListCard {
     openAt: '2026-08-03T11:30:00.000Z',
     startAt: '2026-08-03T11:50:00.000Z',
     endAt: '2026-08-03T12:30:00.000Z',
-    connectedCount: 0,
+    viewerCount: 0,
   }
 }
 

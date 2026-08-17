@@ -18,7 +18,7 @@ import {
   UploadCloud,
   XCircle,
 } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/common/empty-state'
@@ -46,6 +46,7 @@ import {
 } from '@/features/quote/types'
 import { getErrorMessage } from '@/lib/axios'
 import { formatNumericInput, parseNumericInput } from '@/lib/input-format'
+import { withinManwonCap } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import {
   fetchEvaluationDetail,
@@ -119,6 +120,15 @@ export function EvaluationResultPage() {
   const { evaluationId: evaluationIdParam } = useParams()
   const evaluationId = Number(evaluationIdParam)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  /**
+   * 어느 탭에서 들어왔는지. 목록이 진행 중과 완료로 갈려, 돌아갈 곳을 고정하면 완료 목록에서
+   * 한 건을 열어 본 사람이 매번 진행 중으로 튕긴다.
+   */
+  const listPath = searchParams.get('scope')?.toUpperCase() === 'COMPLETED'
+    ? '/evaluations/my?scope=COMPLETED'
+    : '/evaluations/my'
   const queryClient = useQueryClient()
   const [mileage, setMileage] = useState('')
   const [estimatedPriceManwon, setEstimatedPriceManwon] = useState('')
@@ -312,7 +322,8 @@ export function EvaluationResultPage() {
         ? '평가 결과를 수정했습니다'
         : '평가 결과를 제출했습니다')
       void queryClient.invalidateQueries({ queryKey: ['evaluations'] })
-      navigate('/evaluations/my', { replace: true })
+      // 방금 끝낸 건은 진행 중 목록에서 빠진다. 그쪽으로 보내면 제출한 것이 사라진 것처럼 보인다
+      navigate('/evaluations/my?scope=COMPLETED', { replace: true })
     },
     onError: (error) => {
       const code = getEvaluationErrorCode(error)
@@ -340,7 +351,8 @@ export function EvaluationResultPage() {
       setRejectDialogOpen(false)
       setRejectReason('')
       void queryClient.invalidateQueries({ queryKey: ['evaluations'] })
-      navigate('/evaluations/my', { replace: true })
+      // 방금 끝낸 건은 진행 중 목록에서 빠진다. 그쪽으로 보내면 제출한 것이 사라진 것처럼 보인다
+      navigate('/evaluations/my?scope=COMPLETED', { replace: true })
     },
     onError: (error) => {
       const localMessage = !isAxiosError(error) && error instanceof Error ? error.message : null
@@ -355,7 +367,7 @@ export function EvaluationResultPage() {
   if (isInvalidId) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-24">
-        <EmptyState title="잘못된 방문견적 번호입니다" action={<Button asChild><Link to="/evaluations/my">내 담당 목록</Link></Button>} />
+        <EmptyState title="잘못된 방문견적 번호입니다" action={<Button asChild><Link to={listPath}>내 담당 목록</Link></Button>} />
       </main>
     )
   }
@@ -370,7 +382,7 @@ export function EvaluationResultPage() {
         <EmptyState
           title="방문견적 상세를 불러오지 못했습니다"
           description={getErrorMessage(detailQuery.error, '존재하지 않거나 조회 권한이 없는 신청입니다.')}
-          action={<Button asChild><Link to="/evaluations/my">내 담당 목록</Link></Button>}
+          action={<Button asChild><Link to={listPath}>내 담당 목록</Link></Button>}
         />
       </main>
     )
@@ -380,7 +392,7 @@ export function EvaluationResultPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-12" aria-label="평가 결과 작성">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link to="/evaluations/my"><ArrowLeft />내 담당 목록</Link>
+        <Link to={listPath}><ArrowLeft />내 담당 목록</Link>
       </Button>
 
       <header className="mt-6 flex flex-wrap items-end justify-between gap-5">
@@ -416,7 +428,7 @@ export function EvaluationResultPage() {
               </div>
               <dl className="space-y-4 border-t pt-5">
                 <div><dt className="text-muted-foreground">방문 희망일</dt><dd className="mt-1 font-medium">{formatVisitDate(detail.visitDate)}</dd></div>
-                <div><dt className="text-muted-foreground">방문 주소</dt><dd className="mt-1 font-medium">{detail.visitAddress}</dd></div>
+                <div><dt className="text-muted-foreground">방문 주소</dt><dd className="mt-1 break-words font-medium">{detail.visitAddress}</dd></div>
                 <div><dt className="text-muted-foreground">판매자 연락처</dt><dd className="mt-1"><a className="inline-flex items-center gap-2 font-semibold underline-offset-4 hover:underline" href={`tel:${detail.contactPhone}`}><Phone className="size-4" />{formatPhone(detail.contactPhone)}</a></dd></div>
               </dl>
             </CardContent>
@@ -473,9 +485,11 @@ export function EvaluationResultPage() {
                     type="text"
                     inputMode="numeric"
                     value={estimatedPriceManwon}
-                    onChange={(event) => setEstimatedPriceManwon(formatNumericInput(event.target.value))}
+                    onChange={(event) => {
+                      const next = formatNumericInput(event.target.value)
+                      if (withinManwonCap(next)) setEstimatedPriceManwon(next)
+                    }}
                     placeholder="2,150"
-                    maxLength={15}
                     className="h-16 rounded-2xl px-6 pr-24 text-2xl font-semibold tracking-tight placeholder:opacity-40 md:text-2xl"
                     required
                   />

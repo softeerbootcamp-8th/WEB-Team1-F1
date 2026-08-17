@@ -287,7 +287,7 @@ export function EvaluatorConnectionPage() {
                 </div>
                 <div>
                   <dt className="text-muted-foreground">방문 주소</dt>
-                  <dd className="mt-1 font-medium">{result.visitAddress}</dd>
+                  <dd className="mt-1 break-words font-medium">{result.visitAddress}</dd>
                 </div>
               </dl>
               <Button asChild variant="outline" size="lg" className="mt-6 w-full">

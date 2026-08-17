@@ -5,7 +5,9 @@ import com.softeer.race.evaluation.application.dto.command.EvaluationRejectComma
 import com.softeer.race.notification.domain.NotificationRepository;
 import com.softeer.race.notification.domain.NotificationRow;
 import com.softeer.race.support.IntegrationTestSupport;
+import com.softeer.race.support.seed.SessionFixture;
 import jakarta.servlet.http.Cookie;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,6 +68,13 @@ class EvaluationRejectedNotificationIntegrationTest extends IntegrationTestSuppo
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
+
+    // 세션만 Redis 에 살아 @Sql 이 함께 심지 못한다, 짝이 되는 세션을 여기서 심는다
+    @BeforeEach
+    void seedSessions() {
+        SessionFixture.diagnosticReport(sessions);
+    }
+
     @Test
     @DisplayName("시나리오 1 : 반려가 커밋되면 판매자에게 사유 확인 안내 알림이 쌓인다")
     void scenario1_NotifiesSeller() throws Exception {
@@ -79,7 +88,8 @@ class EvaluationRejectedNotificationIntegrationTest extends IntegrationTestSuppo
         // then 2 : 발행 당시 문구가 보관되고 아직 읽지 않은 상태다
         NotificationRow rejected = notifications.getFirst();
         assertThat(rejected.type()).isEqualTo(EVAL_REJECTED);
-        assertThat(rejected.message()).isEqualTo(EVAL_REJECTED.defaultMessage());
+        assertThat(rejected.message())
+                .isEqualTo("현대 아반떼 CN7 60가6000 차량의 평가가 반려되었습니다. 사유를 확인해 주세요.");
         assertThat(rejected.read()).isFalse();
 
         // then 3 : 목적지가 그 신청의 상세다. 사유를 내려보내는 화면이 거기 하나뿐이라,

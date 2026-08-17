@@ -21,28 +21,29 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { CinematicCarBackdrop } from '@/components/common/cinematic-car-backdrop'
 import { useAuth } from '@/features/auth/auth-context'
 import { getErrorMessage } from '@/lib/axios'
-import { fetchAssignableEvaluations, fetchMyAssignments } from '../api'
-import { summarizeEvaluatorHome } from '../evaluator-home-summary'
+import { fetchAssignableEvaluationCount, fetchMyAssignmentCounts } from '../api'
 import {
-  ASSIGNABLE_EVALUATIONS_QUERY_KEY,
-  MY_ASSIGNMENTS_QUERY_KEY,
+  ASSIGNABLE_EVALUATIONS_COUNT_QUERY_KEY,
+  MY_ASSIGNMENTS_COUNT_QUERY_KEY,
 } from '../query-keys'
 
 export function EvaluatorHomePage() {
   const { user } = useAuth()
   const assignableQuery = useQuery({
-    queryKey: ASSIGNABLE_EVALUATIONS_QUERY_KEY,
-    queryFn: fetchAssignableEvaluations,
+    // 목록이 아니라 건수만 읽는다. 목록은 나누어 나가므로 첫 페이지 길이로는 전체를 셀 수 없고,
+    // 홈은 애초에 카드가 아니라 수만 보여준다
+    queryKey: ASSIGNABLE_EVALUATIONS_COUNT_QUERY_KEY,
+    queryFn: fetchAssignableEvaluationCount,
   })
   const assignmentsQuery = useQuery({
-    queryKey: MY_ASSIGNMENTS_QUERY_KEY,
-    queryFn: fetchMyAssignments,
+    // 목록이 아니라 상태별 건수만 읽는다. 담당 목록은 진행 중과 완료로 갈려, 어느 한쪽을
+    // 받아도 나머지를 셀 수 없다 — 홈은 애초에 카드가 아니라 수만 보여준다
+    queryKey: MY_ASSIGNMENTS_COUNT_QUERY_KEY,
+    queryFn: fetchMyAssignmentCounts,
   })
   const isError = assignableQuery.isError || assignmentsQuery.isError
-  const summary = summarizeEvaluatorHome(
-    assignableQuery.data?.evaluations.length ?? 0,
-    assignmentsQuery.data?.evaluations ?? [],
-  )
+  const counts = assignmentsQuery.data
+  const assignableCount = assignableQuery.data?.count ?? 0
 
   const refetchAll = () => {
     void Promise.all([assignableQuery.refetch(), assignmentsQuery.refetch()])
@@ -102,7 +103,7 @@ export function EvaluatorHomePage() {
               <WorkCard
                 title="배정 대기"
                 description="방문 가능한 신청을 확인하고 담당 업무로 수락하세요."
-                count={summary.assignableCount}
+                count={assignableCount}
                 countLabel="건"
                 loading={assignableQuery.isLoading}
                 icon={ListChecks}
@@ -119,7 +120,7 @@ export function EvaluatorHomePage() {
                         <Skeleton className="h-9 w-16 bg-white/20" />
                       ) : (
                         <span className="text-3xl font-semibold text-white tabular tracking-tight">
-                          {summary.assignmentCount}건
+                          {counts?.total ?? 0}건
                         </span>
                       )}
                     </div>
@@ -132,19 +133,19 @@ export function EvaluatorHomePage() {
                   <div className="grid w-full grid-cols-3 gap-4">
                     <StatusCount
                       label="평가 진행 중"
-                      count={summary.pendingCount}
+                      count={counts?.pending ?? 0}
                       loading={assignmentsQuery.isLoading}
                       icon={ClipboardCheck}
                     />
                     <StatusCount
                       label="차량 진단 완료"
-                      count={summary.approvedCount}
+                      count={counts?.approved ?? 0}
                       loading={assignmentsQuery.isLoading}
                       icon={CheckCircle2}
                     />
                     <StatusCount
                       label="진단 반려"
-                      count={summary.rejectedCount}
+                      count={counts?.rejected ?? 0}
                       loading={assignmentsQuery.isLoading}
                       icon={XCircle}
                     />

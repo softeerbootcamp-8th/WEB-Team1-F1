@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { BidPanel } from './bid-panel'
@@ -14,23 +14,48 @@ vi.mock('@/features/auth/auth-context', () => ({
 
 const NOW = Date.now()
 
+// 서버가 내려주는 ProblemDetail 모양, getErrorCode 가 response.data.code 를 읽는다
+function amountTooLow() {
+  return {
+    response: {
+      status: 409,
+      data: { code: 'BID_AMOUNT_TOO_LOW', detail: '입찰 금액이 최소 금액보다 낮습니다.' },
+    },
+  }
+}
+
 function renderPanel(
   endAt: string,
-  overrides: { sellerIsMine?: boolean; increment?: number | null; nextMin?: number | null } = {},
+  overrides: {
+    sellerIsMine?: boolean
+    increment?: number | null
+    nextMin?: number | null
+    onBid?: (amount: number) => Promise<void>
+  } = {},
 ) {
-  const { sellerIsMine = false, increment = 100_000, nextMin = 10_100_000 } = overrides
+  const {
+    sellerIsMine = false,
+    increment = 100_000,
+    nextMin = 10_100_000,
+    onBid = vi.fn(),
+  } = overrides
 
-  return render(
+  const panel = (props: { nextMin: number | null }) => (
     <BidPanel
       currentPrice={10_000_000}
       increment={increment}
-      nextMin={nextMin}
+      nextMin={props.nextMin}
       sellerIsMine={sellerIsMine}
       endAt={endAt}
       clockOffset={0}
-      onBid={vi.fn()}
-    />,
+      onBid={onBid}
+    />
   )
+
+  const view = render(panel({ nextMin }))
+
+  // 다른 사람의 입찰이 SSE로 들어와 최소 입찰가가 오른 상황을 같은 폼에 다시 그려 재현한다
+  return { ...view, raiseNextMin: (raised: number) => view.rerender(panel({ nextMin: raised })) }
 }
 
 describe('BidPanel', () => {
@@ -65,10 +90,54 @@ describe('BidPanel', () => {
     expect(screen.queryByText(/최소 입찰가/)).toBeNull()
   })
 
+  it('상한에 닿으면 입찰가를 더 올릴 수 없다', () => {
+    renderPanel(new Date(NOW + 60_000).toISOString(), {
+      increment: 100_000,
+      nextMin: 999_999_950_000,
+    })
+
+    expect(screen.getByRole('button', { name: '입찰가 높이기' }).hasAttribute('disabled')).toBe(
+      true,
+    )
+  })
+
   // 로그인이나 다음 경매로 열릴 수 있는 갈래라 바닥 줄을 남긴다
   it('마감된 경매에는 최소 입찰가 안내를 남긴다', () => {
     renderPanel(new Date(NOW - 1_000).toISOString())
 
     expect(screen.getByText(/최소 입찰가/)).toBeTruthy()
+  })
+
+  // 고른 금액이 손가락 아래에서 오르면 의도한 적 없는 금액이 나간다
+  it('최소 입찰가가 올라도 고른 금액을 그대로 보낸다', async () => {
+    const onBid = vi.fn().mockResolvedValue(undefined)
+    const { raiseNextMin } = renderPanel(new Date(NOW + 60_000).toISOString(), { onBid })
+
+    raiseNextMin(10_200_000)
+    fireEvent.click(screen.getByRole('button', { name: /원 입찰$/ }))
+
+    await waitFor(() => expect(onBid).toHaveBeenCalledWith(10_100_000))
+  })
+
+  // 판정은 서버가 한다, 화면은 그 사유를 받아 무엇이 막았고 얼마부터 되는지로 옮긴다
+  it('금액이 낮아 거절되면 현재가와 최소 입찰가를 알리고 맞추기를 낸다', async () => {
+    const onBid = vi.fn().mockRejectedValue(amountTooLow())
+    const { raiseNextMin } = renderPanel(new Date(NOW + 60_000).toISOString(), { onBid })
+
+    fireEvent.click(screen.getByRole('button', { name: /원 입찰$/ }))
+
+    // 거절과 함께 새 현재가가 닿은 상태다, 스트림이 늦으면 서버 문구가 그대로 남는다
+    raiseNextMin(10_200_000)
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('현재가가 이미 10,000,000원입니다, 최소 입찰가는 10,200,000원입니다.'),
+      ).toBeTruthy(),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /으로 맞추기$/ }))
+    fireEvent.click(screen.getByRole('button', { name: /원 입찰$/ }))
+
+    await waitFor(() => expect(onBid).toHaveBeenLastCalledWith(10_200_000))
   })
 })
