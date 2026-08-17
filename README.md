@@ -1,7 +1,31 @@
-# 🏁 RACE — 실시간 중고차 경매 플랫폼
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fd25272e-2328-4a58-92f6-2b88b1deffcf" width="420" alt="RACE 로고">
+</p>
 
-> 소프티어 부트캠프 8기 · WEB Team1 (F1)
-> 
+<h1 align="center">🏁 RACE</h1>
+
+<p align="center">
+  <strong>누구나 직접 사고팔 수 있는 실시간 중고차 경매 플랫폼</strong><br>
+  방문 평가부터 실시간 경매, 낙찰 이후 거래까지 하나의 흐름으로 이어집니다.
+</p>
+
+<p align="center">
+  <a href="https://www.f1race.site"><strong>🌐 서비스 바로가기</strong></a>
+  ·
+  <a href="https://github.com/softeerbootcamp-8th/WEB-Team1-F1/wiki"><strong>📖 팀 위키</strong></a>
+  ·
+  <a href="#️-시스템-아키텍처"><strong>🏗️ 시스템 아키텍처</strong></a>
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/35d4eca8-5120-4858-8fee-e7a0a535d371" width="100%" alt="RACE 서비스 메인 화면">
+</p>
+
+<p align="center">
+  <sub>소프티어 부트캠프 8기 · WEB Team1 (F1)</sub>
+</p>
+
+---
 
 ## 📚 목차
 
