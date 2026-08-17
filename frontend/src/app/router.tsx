@@ -27,6 +27,7 @@ import { EvaluationResultPage } from '@/features/evaluations/pages/evaluation-re
 import { MyRequestDetailPage } from '@/features/evaluations/pages/my-request-detail-page'
 import { EvaluatorHomePage } from '@/features/evaluations/pages/evaluator-home-page'
 import { AdminHomePage } from '@/features/admin/pages/admin-home-page'
+import { AdminUsersPage } from '@/features/admin/pages/admin-users-page'
 import { DealerApplicationDetailPage } from '@/features/admin/pages/dealer-application-detail-page'
 import { useAuth } from '@/features/auth/auth-context'
 
@@ -51,6 +52,7 @@ export function AppRouter() {
         {/* 운영 화면은 /admin 아래로만 모은다. 서버가 막는 /api/admin/** 과 같은 이름을 쓴다 */}
         <Route element={<AdminOnlyRoute />}>
           <Route path="/admin" element={<AdminHomePage />} />
+          <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route
             path="/admin/dealer-applications/:applicationId"
             element={<DealerApplicationDetailPage />}

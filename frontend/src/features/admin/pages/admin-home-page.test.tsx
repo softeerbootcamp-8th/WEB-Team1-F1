@@ -92,7 +92,8 @@ describe('관리자 운영 홈', () => {
     renderPage()
 
     await waitFor(() => expect(screen.getByText('박신청')).toBeTruthy())
-    expect(screen.getByRole('link').getAttribute('href')).toBe(
+    // 신청자 이름으로 지목한다. 헤더에도 링크(회원 관리)가 있어 역할만으로는 목록 행을 가릴 수 없다
+    expect(screen.getByRole('link', { name: /박신청/ }).getAttribute('href')).toBe(
       '/admin/dealer-applications/7',
     )
   })

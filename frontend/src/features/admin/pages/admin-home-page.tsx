@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { ArrowRight, RefreshCw, ShieldCheck } from 'lucide-react'
+import { ArrowRight, RefreshCw, ShieldCheck, Users } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,11 @@ import {
 
 const TABS: DealerApplicationStatus[] = ['PENDING', 'APPROVED', 'REJECTED']
 
-/** 운영 홈. 지금 관리자가 하는 일이 딜러 심사 하나뿐이라 목록을 그대로 첫 화면에 둔다. */
+/**
+ * 운영 홈. 딜러 심사 목록을 그대로 첫 화면에 두고, 회원 관리는 링크로 넘긴다.
+ * 홈을 탭으로 재구성하지 않은 것은 둘의 성격이 다르기 때문이다 — 심사는 대기 건이 쌓이면 처리하는
+ * 할 일 목록이라 첫 화면에 있어야 하고, 회원 관리는 필요할 때 찾아 들어가는 도구다.
+ */
 export function AdminHomePage() {
   const { user } = useAuth()
   const [status, setStatus] = useState<DealerApplicationStatus>('PENDING')
@@ -44,15 +48,22 @@ export function AdminHomePage() {
               {user?.realName} 관리자님, 환영합니다
             </p>
           </div>
-          <Button
-            variant="outline"
-            className="ml-auto"
-            onClick={() => void applicationsQuery.refetch()}
-            disabled={applicationsQuery.isFetching}
-          >
-            <RefreshCw className={applicationsQuery.isFetching ? 'animate-spin' : undefined} />
-            새로고침
-          </Button>
+          <div className="ml-auto flex gap-2">
+            <Button asChild variant="outline">
+              <Link to="/admin/users">
+                <Users />
+                회원 관리
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => void applicationsQuery.refetch()}
+              disabled={applicationsQuery.isFetching}
+            >
+              <RefreshCw className={applicationsQuery.isFetching ? 'animate-spin' : undefined} />
+              새로고침
+            </Button>
+          </div>
         </header>
 
         <Card className="mt-8">
