@@ -3,97 +3,83 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { fetchDealerApplications } from '../api'
-import type { DealerApplicationSummary } from '../types'
+import { fetchDealerApplications, fetchUsers } from '../api'
 import { AdminHomePage } from './admin-home-page'
 
-vi.mock('../api', () => ({ fetchDealerApplications: vi.fn() }))
+// 두 패널이 각자 자기 목록을 읽는다. 어느 쪽이 불렸는지로 열린 탭을 판정한다
+vi.mock('../api', () => ({
+  fetchDealerApplications: vi.fn(),
+  fetchUsers: vi.fn(),
+  fetchUserDetail: vi.fn(),
+  suspendUser: vi.fn(),
+  activateUser: vi.fn(),
+}))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock('@/features/auth/auth-context', () => ({
   useAuth: () => ({ user: { realName: '관리자' } }),
+  ROLE_LABEL: { GENERAL: '개인', DEALER: '딜러', EVALUATOR: '평가사', ADMIN: '관리자' },
 }))
 
-const fetchMock = vi.mocked(fetchDealerApplications)
+const applicationsMock = vi.mocked(fetchDealerApplications)
+const usersMock = vi.mocked(fetchUsers)
 
-function application(id: number, realName: string): DealerApplicationSummary {
-  return {
-    id,
-    applicantId: id + 100,
-    username: `applicant${id}`,
-    realName,
-    status: 'PENDING',
-    appliedAt: '2026-08-16T15:04:05',
-  }
-}
-
-function renderPage() {
+function renderPage(initialPath = '/admin') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
 
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/admin']}>
+      <MemoryRouter initialEntries={[initialPath]}>
         <AdminHomePage />
       </MemoryRouter>
     </QueryClientProvider>,
   )
 }
 
-describe('관리자 운영 홈', () => {
+describe('운영 관리 탭', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    applicationsMock.mockResolvedValue({ applications: [] })
+    usersMock.mockResolvedValue({ users: [], page: 0, totalPages: 0, totalUsers: 0 })
   })
 
-  it('기본으로 심사 대기 목록을 읽는다', async () => {
-    fetchMock.mockResolvedValue({ applications: [application(1, '박신청')] })
+  it('/admin 은 딜러 자격 심사 탭을 연다', async () => {
+    renderPage('/admin')
 
-    renderPage()
-
-    await waitFor(() => expect(screen.getByText('박신청')).toBeTruthy())
-    expect(fetchMock).toHaveBeenCalledWith('PENDING')
-  })
-
-  // 상태가 캐시 키에 들어가지 않으면 탭을 옮긴 첫 순간에 이전 상태의 목록이 그대로 보인다
-  it('탭을 옮기면 그 상태로 다시 읽는다', async () => {
-    fetchMock.mockResolvedValue({ applications: [] })
-
-    renderPage()
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('PENDING'))
-
-    fireEvent.mouseDown(screen.getByRole('tab', { name: '반려' }))
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('REJECTED'))
-  })
-
-  it('신청이 없으면 비어 있음을 알린다', async () => {
-    fetchMock.mockResolvedValue({ applications: [] })
-
-    renderPage()
-
-    await waitFor(() =>
-      expect(screen.getByText('심사 대기 상태의 신청이 없습니다')).toBeTruthy(),
+    await waitFor(() => expect(applicationsMock).toHaveBeenCalled())
+    expect(screen.getByRole('tab', { name: '딜러 자격 심사' }).getAttribute('aria-selected')).toBe(
+      'true',
     )
   })
 
-  it('목록을 못 읽으면 실패를 알린다', async () => {
-    fetchMock.mockRejectedValue(new Error('boom'))
+  // 탭이 곧 주소라, 이 주소를 링크로 받거나 새로고침해도 회원 관리가 열려 있어야 한다
+  it('/admin/users 는 회원 관리 탭을 연다', async () => {
+    renderPage('/admin/users')
 
-    renderPage()
-
-    await waitFor(() =>
-      expect(screen.getByText('신청 목록을 불러오지 못했습니다')).toBeTruthy(),
+    await waitFor(() => expect(usersMock).toHaveBeenCalled())
+    expect(screen.getByRole('tab', { name: '회원 관리' }).getAttribute('aria-selected')).toBe(
+      'true',
     )
   })
 
-  // 목록에 사원증 주소가 실리면 관리자가 열어 보지도 않은 서명이 건수만큼 발급된다
-  it('목록 항목은 상세로 가는 링크다', async () => {
-    fetchMock.mockResolvedValue({ applications: [application(7, '박신청')] })
+  it('탭을 누르면 그 탭의 목록을 읽는다', async () => {
+    renderPage('/admin')
+    await waitFor(() => expect(applicationsMock).toHaveBeenCalled())
 
-    renderPage()
+    fireEvent.mouseDown(screen.getByRole('tab', { name: '회원 관리' }))
 
-    await waitFor(() => expect(screen.getByText('박신청')).toBeTruthy())
-    expect(screen.getByRole('link').getAttribute('href')).toBe(
-      '/admin/dealer-applications/7',
-    )
+    await waitFor(() => expect(usersMock).toHaveBeenCalled())
+  })
+
+  /*
+   * 보이지 않는 탭의 목록을 미리 읽으면 관리자가 열지도 않은 회원 목록이 매번 조회된다.
+   * 그 조회는 인덱스를 타지 못하고 전체를 훑으므로 특히 헛되다
+   */
+  it('열려 있지 않은 탭의 목록은 읽지 않는다', async () => {
+    renderPage('/admin')
+
+    await waitFor(() => expect(applicationsMock).toHaveBeenCalled())
+    expect(usersMock).not.toHaveBeenCalled()
   })
 })

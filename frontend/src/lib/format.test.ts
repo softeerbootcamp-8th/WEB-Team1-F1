@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   formatDuration,
   formatManwon,
+  formatPhone,
   formatRelativeTime,
   maskNickname,
 } from './format'
@@ -82,5 +83,21 @@ describe('formatRelativeTime', () => {
     expect(formatRelativeTime(ago(3_600_000), now)).toBe('1시간 전')
     expect(formatRelativeTime(ago(86_400_000), now)).toBe('1일 전')
     expect(formatRelativeTime(ago(3 * 86_400_000), now)).toBe('3일 전')
+  })
+})
+
+describe('formatPhone', () => {
+  // 서버가 저장하는 형식은 하이픈 없는 숫자 11자리다
+  it('저장 형식을 하이픈이 있는 표기로 바꾼다', () => {
+    expect(formatPhone('01012345678')).toBe('010-1234-5678')
+  })
+
+  // 이미 하이픈이 있는 값이 들어와도 표기가 겹쳐 깨지지 않아야 한다
+  it('이미 하이픈이 있으면 그대로 둔다', () => {
+    expect(formatPhone('010-1234-5678')).toBe('010-1234-5678')
+  })
+
+  it('빈 값은 빈 값으로 둔다', () => {
+    expect(formatPhone('')).toBe('')
   })
 })

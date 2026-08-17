@@ -70,7 +70,8 @@ describe('딜러 심사 상세', () => {
     renderPage()
 
     await waitFor(() => expect(screen.getByText('applicant1')).toBeTruthy())
-    expect(screen.getByText('01011112222')).toBeTruthy()
+    // 저장은 숫자만, 사람이 읽는 자리에서는 하이픈을 붙인다
+    expect(screen.getByText('010-1111-2222')).toBeTruthy()
     expect(screen.getByRole('img', { name: /사원증/ }).getAttribute('src')).toBe(
       'https://s3.example/signed',
     )

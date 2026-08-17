@@ -1,5 +1,6 @@
 package com.softeer.race.auth.application;
 
+import static com.softeer.race.auth.exception.AuthErrorCode.ACCOUNT_SUSPENDED;
 import static com.softeer.race.auth.exception.AuthErrorCode.INVALID_CREDENTIALS;
 import static com.softeer.race.auth.exception.AuthErrorCode.UNAUTHENTICATED;
 
@@ -30,6 +31,10 @@ public class AuthService {
      * 다른 서비스와 달리 @Transactional을 붙이지 않는다. bcrypt 검증에 100ms 가까이 걸리는데 그 시간만큼
      * DB 커넥션을 점유할 이유가 없고, 조회와 세션 발급 사이에 원자성이 필요한 지점도 없다.
      * 세션 INSERT의 트랜잭션은 Repository의 save가 담당한다.
+     * <p>
+     * <b>이용정지 검사는 비밀번호 검증 뒤에 있다.</b> 앞에 두면 비밀번호를 모르는 사람도 아이디만으로
+     * "이 계정은 정지 상태"를 알아낼 수 있어, 없는 아이디와 틀린 비밀번호를 하나의 코드로 합쳐
+     * 막아 둔 계정 열거 경로가 그대로 다시 열린다. 자격이 맞는 본인에게만 이유를 알려준다.
      */
     public LoginInfo login(LoginCommand command) {
         // 아이디가 없을 때와 비밀번호가 틀릴 때 같은 예외를 던져야 계정 존재 여부가 드러나지 않는다
@@ -37,6 +42,11 @@ public class AuthService {
                 .orElseThrow(() -> new BusinessException(INVALID_CREDENTIALS));
         if (!matches(command.password(), user.getPassword())) {
             throw new BusinessException(INVALID_CREDENTIALS);
+        }
+        // 정지가 지금 접속 중인 사람에게 듣게 하는 것은 세션 폐기 쪽이고, 여기는 다시 들어오는 문을 막는다
+        // 둘이 함께여야 "정지된 회원에게는 살아 있는 세션이 없다"가 성립한다
+        if (user.isSuspended()) {
+            throw new BusinessException(ACCOUNT_SUSPENDED);
         }
 
         return new LoginInfo(sessionService.issue(user), AuthUserInfo.from(user));

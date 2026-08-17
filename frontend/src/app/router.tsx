@@ -50,7 +50,9 @@ export function AppRouter() {
         <Route path="/auctions/:id/result" element={<AuctionResultPage />} />
         {/* 운영 화면은 /admin 아래로만 모은다. 서버가 막는 /api/admin/** 과 같은 이름을 쓴다 */}
         <Route element={<AdminOnlyRoute />}>
+          {/* 운영 화면의 탭이 곧 경로다. 두 주소가 같은 컴포넌트를 쓰고 경로로 탭을 고른다 */}
           <Route path="/admin" element={<AdminHomePage />} />
+          <Route path="/admin/users" element={<AdminHomePage />} />
           <Route
             path="/admin/dealer-applications/:applicationId"
             element={<DealerApplicationDetailPage />}

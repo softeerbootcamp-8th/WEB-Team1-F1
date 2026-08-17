@@ -18,6 +18,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { EmptyState } from '@/components/common/empty-state'
 import { getErrorMessage } from '@/lib/axios'
+import { formatPhone } from '@/lib/format'
 import { approveDealerApplication, fetchDealerApplicationDetail, rejectDealerApplication } from '../api'
 import { DEALER_APPLICATIONS_QUERY_KEY, dealerApplicationDetailQueryKey } from '../query-keys'
 import {
@@ -131,7 +132,7 @@ export function DealerApplicationDetailPage() {
               <Field label="아이디" value={detail.username} />
               <Field label="실명" value={detail.realName} />
               <Field label="이메일" value={detail.email} />
-              <Field label="휴대전화" value={detail.phone} />
+              <Field label="휴대전화" value={formatPhone(detail.phone)} />
               <Field label="신청 시각" value={detail.appliedAt.replace('T', ' ').slice(0, 16)} />
               {detail.rejectReason && <Field label="반려 사유" value={detail.rejectReason} />}
             </CardContent>
