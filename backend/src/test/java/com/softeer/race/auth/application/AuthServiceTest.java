@@ -1,5 +1,6 @@
 package com.softeer.race.auth.application;
 
+import static com.softeer.race.auth.exception.AuthErrorCode.ACCOUNT_SUSPENDED;
 import static com.softeer.race.auth.exception.AuthErrorCode.INVALID_CREDENTIALS;
 import static com.softeer.race.auth.exception.AuthErrorCode.UNAUTHENTICATED;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -115,6 +116,42 @@ class AuthServiceTest {
 
         verify(passwordEncoder, never()).matches(any(), any());
         verify(sessionService, never()).issue(any());
+    }
+
+    // 세션 폐기는 지금 접속 중인 사람을 끊고, 이 검사는 다시 들어오는 문을 막는다
+    // 둘이 함께여야 "정지된 회원에게는 살아 있는 세션이 없다"가 성립한다
+    @Test
+    @DisplayName("이용이 정지된 계정은 자격이 맞아도 로그인할 수 없다")
+    void loginRejectsSuspendedAccount() {
+        User user = credentialUser();
+        when(user.isSuspended()).thenReturn(true);
+        when(userRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.login(new LoginCommand(USERNAME, RAW_PASSWORD)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(ACCOUNT_SUSPENDED));
+
+        verify(sessionService, never()).issue(any());
+    }
+
+    /*
+     * 검사 순서가 곧 계정 열거 방어다. 정지 여부를 비밀번호 검증보다 앞에 두면 비밀번호를 모르는
+     * 사람도 아이디만으로 그 계정이 정지 상태인지 알아낼 수 있어, 없는 아이디와 틀린 비밀번호를
+     * 한 코드로 합쳐 막아 둔 오라클이 그대로 다시 열린다
+     */
+    @Test
+    @DisplayName("정지된 계정이어도 비밀번호가 틀리면 정지 사실을 알려주지 않는다")
+    void loginDoesNotRevealSuspensionBeforeVerifyingPassword() {
+        User user = credentialUser();
+        when(userRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrongpass", ENCODED_PASSWORD)).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.login(new LoginCommand(USERNAME, "wrongpass")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(INVALID_CREDENTIALS));
+
+        verify(user, never()).isSuspended();
     }
 
     @Test
