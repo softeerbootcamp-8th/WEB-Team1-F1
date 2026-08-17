@@ -14,7 +14,7 @@ public enum AuthErrorCode implements ErrorCode {
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "이 기능에 접근할 권한이 없습니다."),
     // 정지 사유는 담지 않는다. 관리자가 남긴 내부 기록이고, BusinessException 이 ErrorCode 의 고정
     // 메시지만 나르는 구조라 담으려면 예외 구조부터 손대야 한다
-    ACCOUNT_SUSPENDED(HttpStatus.FORBIDDEN, "이용이 정지된 계정입니다. 고객센터에 문의해 주세요.");
+    ACCOUNT_SUSPENDED(HttpStatus.FORBIDDEN, "이용이 정지된 계정입니다.");
 
     private final HttpStatus status;
     private final String message;
