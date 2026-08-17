@@ -1,42 +1,36 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { ArrowRight, RefreshCw, ShieldCheck, Users } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { ShieldCheck } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { EmptyState } from '@/components/common/empty-state'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAuth } from '@/features/auth/auth-context'
-import { getErrorMessage } from '@/lib/axios'
-import { fetchDealerApplications } from '../api'
-import { dealerApplicationsQueryKey } from '../query-keys'
-import {
-  DEALER_APPLICATION_STATUS_LABEL,
-  type DealerApplicationStatus,
-  type DealerApplicationSummary,
-} from '../types'
-
-const TABS: DealerApplicationStatus[] = ['PENDING', 'APPROVED', 'REJECTED']
+import { DealerApplicationsPanel } from '../components/dealer-applications-panel'
+import { UsersPanel } from '../components/users-panel'
 
 /**
- * 운영 홈. 딜러 심사 목록을 그대로 첫 화면에 두고, 회원 관리는 링크로 넘긴다.
- * 홈을 탭으로 재구성하지 않은 것은 둘의 성격이 다르기 때문이다 — 심사는 대기 건이 쌓이면 처리하는
- * 할 일 목록이라 첫 화면에 있어야 하고, 회원 관리는 필요할 때 찾아 들어가는 도구다.
+ * 탭이 곧 주소다. `/admin/users` 처럼 경로에 실어야 딜러 심사 상세에서 돌아왔을 때 보던 탭이
+ * 유지되고, 관리자에게 특정 탭을 링크로 건네줄 수도 있다({@code MyPage}와 같은 규칙이다).
+ *
+ * 심사 목록은 `/admin` 그대로 둔다. 관리자의 첫 화면이고({@code RoleHome}), 상세 화면과
+ * 관리자 전용 라우트가 모두 이 주소로 되돌아온다.
  */
+const TABS = [
+  { value: 'dealer-applications', label: '딜러 자격 심사', path: '/admin' },
+  { value: 'users', label: '회원 관리', path: '/admin/users' },
+] as const
+
+type Tab = (typeof TABS)[number]['value']
+
+/** 운영 관리. 딜러 심사와 회원 관리를 탭으로 나눠 담는 껍데기다. */
 export function AdminHomePage() {
   const { user } = useAuth()
-  const [status, setStatus] = useState<DealerApplicationStatus>('PENDING')
-  const applicationsQuery = useQuery({
-    queryKey: dealerApplicationsQueryKey(status),
-    queryFn: () => fetchDealerApplications(status),
-  })
-  const applications = applicationsQuery.data?.applications ?? []
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+
+  // 모르는 경로가 들어와도 첫 탭으로 떨어뜨린다. `/admin` 자체가 그 경우다
+  const tab: Tab = pathname.split('/')[2] === 'users' ? 'users' : 'dealer-applications'
 
   return (
-    <main className="bg-muted/30 min-h-full" aria-label="관리자 홈">
+    <main className="bg-muted/30 min-h-full" aria-label="운영 관리">
       <div className="mx-auto max-w-5xl px-6 py-12">
         <header className="flex flex-wrap items-center gap-3">
           <span className="bg-foreground text-background flex size-11 items-center justify-center rounded-2xl">
@@ -48,96 +42,39 @@ export function AdminHomePage() {
               {user?.realName} 관리자님, 환영합니다
             </p>
           </div>
-          <div className="ml-auto flex gap-2">
-            <Button asChild variant="outline">
-              <Link to="/admin/users">
-                <Users />
-                회원 관리
-              </Link>
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => void applicationsQuery.refetch()}
-              disabled={applicationsQuery.isFetching}
-            >
-              <RefreshCw className={applicationsQuery.isFetching ? 'animate-spin' : undefined} />
-              새로고침
-            </Button>
-          </div>
         </header>
 
-        <Card className="mt-8">
-          <CardHeader className="gap-4">
-            <CardTitle>딜러 자격 심사</CardTitle>
-            <Tabs value={status} onValueChange={(next) => setStatus(next as DealerApplicationStatus)}>
-              <TabsList>
-                {TABS.map((tab) => (
-                  <TabsTrigger key={tab} value={tab}>
-                    {DEALER_APPLICATION_STATUS_LABEL[tab]}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          </CardHeader>
-          <CardContent>
-            {applicationsQuery.isLoading ? (
-              <div className="space-y-3" aria-label="목록 불러오는 중">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-            ) : applicationsQuery.isError ? (
-              <EmptyState
-                title="신청 목록을 불러오지 못했습니다"
-                description={getErrorMessage(applicationsQuery.error, '잠시 후 새로고침해 주세요.')}
-              />
-            ) : applications.length === 0 ? (
-              <EmptyState
-                title={`${DEALER_APPLICATION_STATUS_LABEL[status]} 상태의 신청이 없습니다`}
-              />
-            ) : (
-              <ul className="space-y-3">
-                {applications.map((application) => (
-                  <li key={application.id}>
-                    <ApplicationRow application={application} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+        <Tabs
+          className="mt-8"
+          value={tab}
+          onValueChange={(next) => {
+            const target = TABS.find((candidate) => candidate.value === next)
+            // replace 로 옮긴다. 탭을 오가는 것이 뒤로 가기 이력에 쌓이면 운영 화면을 벗어나려고
+            // 뒤로 가기를 여러 번 눌러야 한다(MyPage 와 같은 판단이다)
+            if (target) navigate(target.path, { replace: true })
+          }}
+        >
+          <TabsList>
+            {TABS.map((candidate) => (
+              <TabsTrigger key={candidate.value} value={candidate.value}>
+                {candidate.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {/*
+            * 보이지 않는 탭의 패널은 그리지 않는다. Radix 는 기본적으로 선택되지 않은 TabsContent 를
+            * 마운트하지 않으므로, 회원 목록 조회가 심사 탭에서 미리 나가는 일이 없다
+            */}
+          <TabsContent value="dealer-applications" className="mt-6">
+            <DealerApplicationsPanel />
+          </TabsContent>
+
+          <TabsContent value="users" className="mt-6">
+            <UsersPanel />
+          </TabsContent>
+        </Tabs>
       </div>
     </main>
   )
-}
-
-function ApplicationRow({ application }: { application: DealerApplicationSummary }) {
-  return (
-    <Link
-      to={`/admin/dealer-applications/${application.id}`}
-      className="border-border hover:bg-accent/50 flex items-center gap-4 rounded-xl border bg-white p-5 transition-colors"
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold">{application.realName}</span>
-          <span className="text-muted-foreground text-sm">@{application.username}</span>
-          <Badge variant="outline">
-            {DEALER_APPLICATION_STATUS_LABEL[application.status]}
-          </Badge>
-        </div>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {formatAppliedAt(application.appliedAt)} 신청
-        </p>
-      </div>
-      <ArrowRight className="text-muted-foreground size-5 shrink-0" />
-    </Link>
-  )
-}
-
-/**
- * 서버가 보내는 LocalDateTime에는 시간대가 없다. new Date에 그대로 넘기면 브라우저가 UTC로 읽어
- * 아홉 시간 어긋나므로, 자리만 잘라 그대로 보여준다.
- */
-function formatAppliedAt(appliedAt: string): string {
-  const [date, time = ''] = appliedAt.split('T')
-  return `${date.replaceAll('-', '.')} ${time.slice(0, 5)}`.trim()
 }

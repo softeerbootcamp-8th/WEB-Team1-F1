@@ -1,11 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { activateUser, fetchUserDetail, fetchUsers, suspendUser } from '../api'
 import type { UserDetail, UserSummary } from '../types'
-import { AdminUsersPage } from './admin-users-page'
+import { UsersPanel } from './users-panel'
 
 vi.mock('../api', () => ({
   fetchUsers: vi.fn(),
@@ -48,16 +47,14 @@ function givenUsers(users: UserSummary[], page = 0, totalPages = 1, totalUsers =
   fetchUsersMock.mockResolvedValue({ users, page, totalPages, totalUsers })
 }
 
-function renderPage() {
+function renderPanel() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
 
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/admin/users']}>
-        <AdminUsersPage />
-      </MemoryRouter>
+      <UsersPanel />
     </QueryClientProvider>,
   )
 }
@@ -70,7 +67,7 @@ describe('관리자 회원 관리', () => {
   it('처음에는 조건 없이 전체 회원의 첫 페이지를 읽는다', async () => {
     givenUsers([summary()], 0, 1, 1)
 
-    renderPage()
+    renderPanel()
 
     await waitFor(() => expect(screen.getByText('김레이스')).toBeTruthy())
     expect(fetchUsersMock).toHaveBeenCalledWith(NO_CONDITION)
@@ -84,7 +81,7 @@ describe('관리자 회원 관리', () => {
   it('검색어는 제출할 때만 조회에 걸린다', async () => {
     givenUsers([])
 
-    renderPage()
+    renderPanel()
     await waitFor(() => expect(fetchUsersMock).toHaveBeenCalledTimes(1))
 
     fireEvent.change(screen.getByLabelText('회원 검색'), { target: { value: 'race_kim' } })
@@ -101,7 +98,7 @@ describe('관리자 회원 관리', () => {
   it('상태 탭을 옮기면 그 상태로 다시 읽는다', async () => {
     givenUsers([])
 
-    renderPage()
+    renderPanel()
     await waitFor(() => expect(fetchUsersMock).toHaveBeenCalledTimes(1))
 
     fireEvent.mouseDown(screen.getByRole('tab', { name: '이용 정지' }))
@@ -118,7 +115,7 @@ describe('관리자 회원 관리', () => {
   it('조건을 바꾸면 첫 페이지로 돌아간다', async () => {
     givenUsers([summary()], 1, 3, 47)
 
-    renderPage()
+    renderPanel()
     // 이동 버튼은 응답이 도착한 뒤에야 그려진다. 호출만 기다리면 아직 없다
     await waitFor(() => expect(screen.getByRole('button', { name: /다음/ })).toBeTruthy())
 
@@ -135,7 +132,7 @@ describe('관리자 회원 관리', () => {
   it('페이지가 하나뿐이면 이동 버튼을 두지 않는다', async () => {
     givenUsers([summary()], 0, 1, 1)
 
-    renderPage()
+    renderPanel()
 
     await waitFor(() => expect(screen.getByText('김레이스')).toBeTruthy())
     expect(screen.queryByRole('navigation', { name: '페이지 이동' })).toBeNull()
@@ -145,7 +142,7 @@ describe('관리자 회원 관리', () => {
     givenUsers([summary()])
     fetchDetailMock.mockResolvedValue(detail())
 
-    renderPage()
+    renderPanel()
     await waitFor(() => expect(screen.getByText('김레이스')).toBeTruthy())
 
     fireEvent.click(screen.getByText('김레이스'))
@@ -166,7 +163,7 @@ describe('관리자 회원 관리', () => {
       suspendReason: '허위 매물을 반복 등록했습니다.',
     })
 
-    renderPage()
+    renderPanel()
     await waitFor(() => expect(screen.getByText('김레이스')).toBeTruthy())
     fireEvent.click(screen.getByText('김레이스'))
     await waitFor(() => expect(screen.getByRole('button', { name: '이용 정지' })).toBeTruthy())
@@ -187,7 +184,7 @@ describe('관리자 회원 관리', () => {
     givenUsers([summary()])
     fetchDetailMock.mockResolvedValue(detail())
 
-    renderPage()
+    renderPanel()
     await waitFor(() => expect(screen.getByText('김레이스')).toBeTruthy())
     fireEvent.click(screen.getByText('김레이스'))
     await waitFor(() => expect(screen.getByRole('button', { name: '이용 정지' })).toBeTruthy())
@@ -211,7 +208,7 @@ describe('관리자 회원 관리', () => {
       suspendReason: null,
     })
 
-    renderPage()
+    renderPanel()
     await waitFor(() => expect(screen.getByText('김레이스')).toBeTruthy())
     fireEvent.click(screen.getByText('김레이스'))
     await waitFor(() => expect(screen.getByRole('button', { name: '정지 해제' })).toBeTruthy())
@@ -229,7 +226,7 @@ describe('관리자 회원 관리', () => {
     givenUsers([summary({ role: 'EVALUATOR' })])
     fetchDetailMock.mockResolvedValue(detail({ role: 'EVALUATOR' }))
 
-    renderPage()
+    renderPanel()
     await waitFor(() => expect(screen.getByText('김레이스')).toBeTruthy())
     fireEvent.click(screen.getByText('김레이스'))
 
@@ -241,7 +238,7 @@ describe('관리자 회원 관리', () => {
   it('조건에 맞는 회원이 없으면 비어 있음을 알린다', async () => {
     givenUsers([], 0, 0, 0)
 
-    renderPage()
+    renderPanel()
 
     await waitFor(() => expect(screen.getByText('조건에 맞는 회원이 없습니다')).toBeTruthy())
   })

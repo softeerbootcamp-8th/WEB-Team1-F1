@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import { ArrowLeft, ChevronLeft, ChevronRight, LoaderCircle, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, LoaderCircle, Search } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +31,7 @@ import { getErrorMessage } from '@/lib/axios'
 import { formatPhone } from '@/lib/format'
 import type { UserRole } from '@/types/domain'
 import { activateUser, fetchUserDetail, fetchUsers, suspendUser } from '../api'
+import { formatServerDateTime } from '../format'
 import { ADMIN_USERS_QUERY_KEY, adminUserDetailQueryKey, adminUsersQueryKey } from '../query-keys'
 import {
   MAX_SUSPEND_REASON_LENGTH,
@@ -50,10 +50,10 @@ const ROLE_OPTIONS: UserRole[] = ['GENERAL', 'DEALER', 'EVALUATOR', 'ADMIN']
 const FIRST_PAGE: UserSearchCondition = { keyword: '', role: null, status: null, page: 0 }
 
 /**
- * 관리자 회원 관리. 검색 → 확인 → 조치가 한 화면에서 끝나도록 상세를 다이얼로그로 띄운다.
- * 별도 상세 페이지를 두면 정지 한 번에 화면을 두 번 옮겨야 하고, 돌아왔을 때 검색 조건이 날아간다.
+ * 회원 관리. 검색 → 확인 → 조치가 한 자리에서 끝나도록 상세를 다이얼로그로 띄운다.
+ * 별도 상세 화면을 두면 정지 한 번에 화면을 두 번 옮겨야 하고, 돌아왔을 때 검색 조건이 날아간다.
  */
-export function AdminUsersPage() {
+export function UsersPanel() {
   // 입력 중인 검색어와 조회에 걸린 검색어를 나눈다. 이 검색은 서버에서 인덱스를 타지 못해
   // 전체를 훑으므로, 타이핑마다 보내지 않고 제출한 순간에만 보낸다
   const [keywordInput, setKeywordInput] = useState('')
@@ -77,138 +77,124 @@ export function AdminUsersPage() {
   const totalUsers = usersQuery.data?.totalUsers ?? 0
 
   return (
-    <main className="bg-muted/30 min-h-full" aria-label="회원 관리">
-      <div className="mx-auto max-w-5xl px-6 py-12">
-        <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to="/admin">
-            <ArrowLeft />
-            운영 관리
-          </Link>
-        </Button>
+    <div>
+      <Card>
+        <CardHeader className="gap-4">
+          <CardTitle>
+            회원 목록
+            <span className="text-muted-foreground ml-2 text-sm font-normal">
+              총 {totalUsers}명
+            </span>
+          </CardTitle>
 
-        <h1 className="mt-4 text-2xl font-semibold tracking-tight">회원 관리</h1>
-        <p className="text-muted-foreground mt-0.5 text-sm">
-          회원을 찾아 서비스 이용을 정지하거나 다시 열 수 있습니다
-        </p>
-
-        <Card className="mt-8">
-          <CardHeader className="gap-4">
-            <CardTitle>
-              회원 목록
-              <span className="text-muted-foreground ml-2 text-sm font-normal">
-                총 {totalUsers}명
-              </span>
-            </CardTitle>
-
-            <form
-              className="flex flex-wrap gap-2"
-              onSubmit={(event) => {
-                event.preventDefault()
-                narrow({ keyword: keywordInput })
-              }}
-            >
-              <Input
-                className="max-w-xs"
-                value={keywordInput}
-                onChange={(event) => setKeywordInput(event.target.value)}
-                placeholder="아이디 · 이름 · 연락처"
-                aria-label="회원 검색"
-              />
-              <Button type="submit" variant="outline">
-                <Search />
-                검색
-              </Button>
-              <Select
-                value={condition.role ?? ALL}
-                onValueChange={(value) =>
-                  narrow({ role: value === ALL ? null : (value as UserRole) })
-                }
-              >
-                <SelectTrigger className="w-36" aria-label="역할 선택">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL}>역할 전체</SelectItem>
-                  {ROLE_OPTIONS.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {ROLE_LABEL[role]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </form>
-
-            <Tabs
-              value={condition.status ?? ALL}
+          <form
+            className="flex flex-wrap gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              narrow({ keyword: keywordInput })
+            }}
+          >
+            <Input
+              className="max-w-xs"
+              value={keywordInput}
+              onChange={(event) => setKeywordInput(event.target.value)}
+              placeholder="아이디 · 이름 · 연락처"
+              aria-label="회원 검색"
+            />
+            <Button type="submit" variant="outline">
+              <Search />
+              검색
+            </Button>
+            <Select
+              value={condition.role ?? ALL}
               onValueChange={(value) =>
-                narrow({ status: value === ALL ? null : (value as UserStatus) })
+                narrow({ role: value === ALL ? null : (value as UserRole) })
               }
             >
-              <TabsList>
-                {STATUS_TABS.map((tab) => (
-                  <TabsTrigger key={tab} value={tab}>
-                    {tab === ALL ? '전체' : USER_STATUS_LABEL[tab]}
-                  </TabsTrigger>
+              <SelectTrigger className="w-36" aria-label="역할 선택">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>역할 전체</SelectItem>
+                {ROLE_OPTIONS.map((role) => (
+                  <SelectItem key={role} value={role}>
+                    {ROLE_LABEL[role]}
+                  </SelectItem>
                 ))}
-              </TabsList>
-            </Tabs>
-          </CardHeader>
+              </SelectContent>
+            </Select>
+          </form>
 
-          <CardContent>
-            {usersQuery.isLoading ? (
-              <div className="space-y-3" aria-label="목록 불러오는 중">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-            ) : usersQuery.isError ? (
-              <EmptyState
-                title="회원 목록을 불러오지 못했습니다"
-                description={getErrorMessage(usersQuery.error, '잠시 후 다시 시도해 주세요.')}
-              />
-            ) : users.length === 0 ? (
-              <EmptyState title="조건에 맞는 회원이 없습니다" />
-            ) : (
-              <ul className="space-y-3">
-                {users.map((user) => (
-                  <li key={user.id}>
-                    <UserRow user={user} onOpen={() => setOpenUserId(user.id)} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+          <Tabs
+            value={condition.status ?? ALL}
+            onValueChange={(value) =>
+              narrow({ status: value === ALL ? null : (value as UserStatus) })
+            }
+          >
+            <TabsList>
+              {STATUS_TABS.map((tab) => (
+                <TabsTrigger key={tab} value={tab}>
+                  {tab === ALL ? '전체' : USER_STATUS_LABEL[tab]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </CardHeader>
 
-        {totalPages > 1 && (
-          <nav className="mt-6 flex items-center justify-center gap-4" aria-label="페이지 이동">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={condition.page === 0 || usersQuery.isFetching}
-              onClick={() => setCondition((prev) => ({ ...prev, page: prev.page - 1 }))}
-            >
-              <ChevronLeft />
-              이전
-            </Button>
-            {/* 서버는 0부터 세고 사람은 1부터 센다. 그 변환은 이 표기 한 곳에서만 한다 */}
-            <span className="text-muted-foreground text-sm">
-              {condition.page + 1} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={condition.page >= totalPages - 1 || usersQuery.isFetching}
-              onClick={() => setCondition((prev) => ({ ...prev, page: prev.page + 1 }))}
-            >
-              다음
-              <ChevronRight />
-            </Button>
-          </nav>
-        )}
-      </div>
+        <CardContent>
+          {usersQuery.isLoading ? (
+            <div className="space-y-3" aria-label="목록 불러오는 중">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : usersQuery.isError ? (
+            <EmptyState
+              title="회원 목록을 불러오지 못했습니다"
+              description={getErrorMessage(usersQuery.error, '잠시 후 다시 시도해 주세요.')}
+            />
+          ) : users.length === 0 ? (
+            <EmptyState title="조건에 맞는 회원이 없습니다" />
+          ) : (
+            <ul className="space-y-3">
+              {users.map((user) => (
+                <li key={user.id}>
+                  <UserRow user={user} onOpen={() => setOpenUserId(user.id)} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      {totalPages > 1 && (
+        <nav className="mt-6 flex items-center justify-center gap-4" aria-label="페이지 이동">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={condition.page === 0 || usersQuery.isFetching}
+            onClick={() => setCondition((prev) => ({ ...prev, page: prev.page - 1 }))}
+          >
+            <ChevronLeft />
+            이전
+          </Button>
+          {/* 서버는 0부터 세고 사람은 1부터 센다. 그 변환은 이 표기 한 곳에서만 한다 */}
+          <span className="text-muted-foreground text-sm">
+            {condition.page + 1} / {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={condition.page >= totalPages - 1 || usersQuery.isFetching}
+            onClick={() => setCondition((prev) => ({ ...prev, page: prev.page + 1 }))}
+          >
+            다음
+            <ChevronRight />
+          </Button>
+        </nav>
+      )}
 
       <UserDetailDialog userId={openUserId} onClose={() => setOpenUserId(null)} />
-    </main>
+    </div>
   )
 }
 
@@ -229,7 +215,9 @@ function UserRow({ user, onOpen }: { user: UserSummary; onOpen: () => void }) {
           {/* 정지만 눈에 띄어야 한다. 이용 중이 기본값이라 그 배지는 목록을 시끄럽게만 만든다 */}
           {suspended && <Badge variant="destructive">{USER_STATUS_LABEL.SUSPENDED}</Badge>}
         </div>
-        <p className="text-muted-foreground mt-1 text-sm">{formatJoinedAt(user.joinedAt)} 가입</p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          {formatServerDateTime(user.joinedAt)} 가입
+        </p>
       </div>
     </button>
   )
@@ -341,7 +329,7 @@ function UserDetailDialog({ userId, onClose }: { userId: number | null; onClose:
             <Field label="휴대전화" value={formatPhone(detail.phone)} />
             <Field label="역할" value={ROLE_LABEL[detail.role]} />
             <Field label="이용 상태" value={USER_STATUS_LABEL[detail.status]} />
-            <Field label="가입" value={formatJoinedAt(detail.joinedAt)} />
+            <Field label="가입" value={formatServerDateTime(detail.joinedAt)} />
             {detail.suspendReason && <Field label="정지 사유" value={detail.suspendReason} />}
           </div>
         )}
@@ -391,10 +379,4 @@ function Field({ label, value }: { label: string; value: string }) {
       <span className="min-w-0 break-words">{value}</span>
     </div>
   )
-}
-
-/** 시간대가 없는 서버 시각을 그대로 자른다. 이유는 admin-home-page 의 같은 함수에 적어 두었다 */
-function formatJoinedAt(joinedAt: string): string {
-  const [date, time = ''] = joinedAt.split('T')
-  return `${date.replaceAll('-', '.')} ${time.slice(0, 5)}`.trim()
 }
