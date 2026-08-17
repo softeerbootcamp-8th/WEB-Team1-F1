@@ -1,8 +1,10 @@
 package com.softeer.race.notification.infrastructure;
 
 import com.softeer.race.notification.application.NotificationPush;
+import com.softeer.race.notification.application.NotificationDeliveryMetrics;
 import com.softeer.race.notification.application.UserChannel;
 import com.softeer.race.notification.application.UserSubscriber;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
@@ -11,10 +13,18 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
+import static com.softeer.race.notification.application.NotificationDeliveryMetrics.Event.HEARTBEAT;
+import static com.softeer.race.notification.application.NotificationDeliveryMetrics.Event.NOTIFICATION;
+import static com.softeer.race.notification.application.NotificationDeliveryMetrics.Event.UNREAD_COUNT;
+
 @Component
+@RequiredArgsConstructor
 public class InMemoryUserChannel implements UserChannel {
 
-    // 등록은 요청 스레드, 해제는 컨테이너 콜백 스레드, 전송은 커밋한 스레드(요청 스레드거나 스케줄러)에서 온다
+    private final NotificationDeliveryMetrics deliveryMetrics;
+
+    // 등록은 요청 스레드, 해제는 컨테이너 콜백 스레드에서 온다.
+    // 알림·건수 전송은 전용 실행기, 하트비트는 알림 스트림 스케줄러에서 와 서로 겹칠 수 있다.
     private final Map<Long, Set<UserSubscriber>> subscribersByUser = new ConcurrentHashMap<>();
 
     @Override
@@ -25,7 +35,9 @@ public class InMemoryUserChannel implements UserChannel {
         subscribersByUser.compute(userId, (id, subscribers) -> {
             Set<UserSubscriber> opened =
                     subscribers != null ? subscribers : ConcurrentHashMap.newKeySet();
-            opened.add(subscriber);
+            if (opened.add(subscriber)) {
+                deliveryMetrics.connectionOpened();
+            }
 
             return opened;
         });
@@ -38,12 +50,12 @@ public class InMemoryUserChannel implements UserChannel {
 
     @Override
     public void send(long userId, NotificationPush push) {
-        forEachOpen(userId, subscriber -> subscriber.send(push));
+        forEachOpen(userId, NOTIFICATION, subscriber -> subscriber.send(push));
     }
 
     @Override
     public void sendUnreadCount(long userId, long unreadCount) {
-        forEachOpen(userId, subscriber -> subscriber.sendUnreadCount(unreadCount));
+        forEachOpen(userId, UNREAD_COUNT, subscriber -> subscriber.sendUnreadCount(unreadCount));
     }
 
     // 서버는 이 연결에 쓰기만 하고 읽지 않아서, 상대가 끊어도 다음 쓰기 전까지 모른다
@@ -51,11 +63,14 @@ public class InMemoryUserChannel implements UserChannel {
     @Override
     public void sweepClosed() {
         // 키만 훑고 전송은 위와 같은 길로 보낸다, 걷어내기가 한 곳에만 있게
-        subscribersByUser.keySet().forEach(userId -> forEachOpen(userId, UserSubscriber::ping));
+        subscribersByUser.keySet().forEach(userId -> forEachOpen(userId, HEARTBEAT, UserSubscriber::ping));
     }
 
     // 보낼 곳이 셋으로 늘었다. 정리를 각자 하면 한 곳만 빠뜨려도 그 응답이 만료까지 살아남는다
-    private void forEachOpen(long userId, Consumer<UserSubscriber> action) {
+    private void forEachOpen(
+            long userId,
+            NotificationDeliveryMetrics.Event event,
+            Consumer<UserSubscriber> action) {
         Set<UserSubscriber> subscribers = subscribersByUser.get(userId);
 
         // 접속하지 않은 회원이다, 보낼 곳이 없는 것은 실패가 아니다
@@ -67,7 +82,12 @@ public class InMemoryUserChannel implements UserChannel {
         Set<UserSubscriber> closed = new HashSet<>();
 
         for (UserSubscriber subscriber : subscribers) {
-            action.accept(subscriber);
+            if (subscriber.isOpen()) {
+                deliveryMetrics.recordSend(
+                        event,
+                        () -> action.accept(subscriber),
+                        subscriber::isOpen);
+            }
 
             if (!subscriber.isOpen()) {
                 closed.add(subscriber);
@@ -92,7 +112,9 @@ public class InMemoryUserChannel implements UserChannel {
         }
 
         subscribersByUser.computeIfPresent(userId, (id, subscribers) -> {
+            int before = subscribers.size();
             subscribers.removeAll(targets);
+            deliveryMetrics.connectionsClosed(before - subscribers.size());
             return subscribers.isEmpty() ? null : subscribers;
         });
     }

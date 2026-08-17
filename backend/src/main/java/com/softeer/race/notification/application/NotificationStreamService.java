@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import static com.softeer.race.notification.application.NotificationDeliveryMetrics.Event.UNREAD_COUNT;
+
 /**
  * 회원 알림을 열려 있는 구독으로 흘려보내는 서비스
  * <p>
@@ -26,6 +28,7 @@ public class NotificationStreamService {
 
     private final UserChannel userChannel;
     private final NotificationRepository notificationRepository;
+    private final NotificationDeliveryMetrics deliveryMetrics;
 
     /**
      * 구독을 등록하고, 그 구독에만 안 읽은 건수를 한 번 보낸다
@@ -38,7 +41,11 @@ public class NotificationStreamService {
 
         try {
             // 채널이 아니라 이 구독에만 보낸다, 이미 열려 있던 다른 탭은 자기 배지를 맞춰 둔 상태다
-            subscriber.sendUnreadCount(notificationRepository.countUnread(userId));
+            long unreadCount = notificationRepository.countUnread(userId);
+            deliveryMetrics.recordSend(
+                    UNREAD_COUNT,
+                    () -> subscriber.sendUnreadCount(unreadCount),
+                    subscriber::isOpen);
         } catch (RuntimeException e) {
             // 등록은 됐는데 응답이 시작되지 못한 구독은 청소로도 걷어낼 수 없다. 컨트롤러가 예외로
             // 끝나면 해제 콜백이 붙을 기회가 없고, 초기화 전 emitter 는 찔러 봐도 예외를 내지 않는다.
