@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,11 +15,18 @@ import com.softeer.race.auth.exception.AuthErrorCode;
 import com.softeer.race.auth.presentation.support.SessionCookieFactory;
 import com.softeer.race.common.exception.BusinessException;
 import com.softeer.race.common.presentation.GlobalExceptionHandler;
+import com.softeer.race.user.application.AdminUserQueryService;
 import com.softeer.race.user.application.UserSuspensionService;
+import com.softeer.race.user.application.dto.command.SearchUsersCommand;
+import com.softeer.race.user.application.dto.info.UserDetailInfo;
+import com.softeer.race.user.application.dto.info.UserPageInfo;
 import com.softeer.race.user.application.dto.info.UserStatusInfo;
+import com.softeer.race.user.application.dto.info.UserSummaryInfo;
 import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.UserStatus;
 import jakarta.servlet.http.Cookie;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,15 +47,99 @@ class AdminUserControllerTest {
     private static final long ADMIN_ID = 1L;
     private static final long TARGET_ID = 42L;
     private static final String REASON = "허위 매물을 반복 등록했습니다.";
+    private static final LocalDateTime JOINED_AT = LocalDateTime.of(2026, 7, 1, 10, 0);
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private AdminUserQueryService adminUserQueryService;
 
     @MockitoBean
     private UserSuspensionService userSuspensionService;
 
     @MockitoBean
     private SessionService sessionService;
+
+    @Test
+    @DisplayName("목록은 회원과 총 건수를 함께 돌려준다")
+    void search() throws Exception {
+        givenAdmin();
+        given(adminUserQueryService.search(any())).willReturn(new UserPageInfo(
+                List.of(new UserSummaryInfo(TARGET_ID, "race_kim", "김레이스",
+                        Role.DEALER, UserStatus.SUSPENDED, JOINED_AT)),
+                0, 3, 47));
+
+        mockMvc.perform(get("/api/admin/users").cookie(adminCookie()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users[0].username").value("race_kim"))
+                .andExpect(jsonPath("$.totalUsers").value(47))
+                .andExpect(jsonPath("$.totalPages").value(3))
+                // 목록에는 연락 수단과 정지 사유가 없어야 한다
+                .andExpect(jsonPath("$.users[0].phone").doesNotExist())
+                .andExpect(jsonPath("$.users[0].suspendReason").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("검색어와 필터가 그대로 조회 조건이 된다")
+    void searchPassesConditions() throws Exception {
+        givenAdmin();
+        given(adminUserQueryService.search(any()))
+                .willReturn(new UserPageInfo(List.of(), 2, 0, 0));
+
+        mockMvc.perform(get("/api/admin/users")
+                        .param("keyword", "race_kim")
+                        .param("role", "DEALER")
+                        .param("status", "SUSPENDED")
+                        .param("page", "2")
+                        .cookie(adminCookie()))
+                .andExpect(status().isOk());
+
+        verify(adminUserQueryService).search(
+                new SearchUsersCommand("race_kim", Role.DEALER, UserStatus.SUSPENDED, 2));
+    }
+
+    // 조건 없이 부르는 것이 첫 화면이다. 딜러 심사와 달리 기본 필터를 두지 않는다
+    @Test
+    @DisplayName("조건을 주지 않으면 전체 회원의 첫 페이지를 조회한다")
+    void searchDefaultsToFirstPageOfEveryone() throws Exception {
+        givenAdmin();
+        given(adminUserQueryService.search(any()))
+                .willReturn(new UserPageInfo(List.of(), 0, 0, 0));
+
+        mockMvc.perform(get("/api/admin/users").cookie(adminCookie()))
+                .andExpect(status().isOk());
+
+        verify(adminUserQueryService).search(new SearchUsersCommand(null, null, null, 0));
+    }
+
+    // 음수를 그대로 흘리면 PageRequest 가 IllegalArgumentException 을 던져 500 이 된다
+    @Test
+    @DisplayName("음수 페이지는 400이다")
+    void searchRejectsNegativePage() throws Exception {
+        givenAdmin();
+
+        mockMvc.perform(get("/api/admin/users").param("page", "-1").cookie(adminCookie()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        verify(adminUserQueryService, never()).search(any());
+    }
+
+    @Test
+    @DisplayName("상세는 연락 수단과 정지 사유까지 돌려준다")
+    void findDetail() throws Exception {
+        givenAdmin();
+        given(adminUserQueryService.findDetail(TARGET_ID)).willReturn(new UserDetailInfo(
+                TARGET_ID, "race_kim", "김레이스", "race@race.kr", "01012345678",
+                Role.DEALER, UserStatus.SUSPENDED, REASON, JOINED_AT));
+
+        mockMvc.perform(get("/api/admin/users/42").cookie(adminCookie()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("race@race.kr"))
+                .andExpect(jsonPath("$.phone").value("01012345678"))
+                .andExpect(jsonPath("$.suspendReason").value(REASON));
+    }
 
     @Test
     @DisplayName("정지는 200과 정지 상태·사유를 돌려준다")
@@ -112,6 +204,21 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
 
         verify(userSuspensionService, never()).suspend(any());
+    }
+
+    // 목록은 회원 개인정보를 스무 건씩 내보내는 자리라 차단이 뚫리면 피해가 조작보다 크다
+    @ParameterizedTest
+    @EnumSource(value = Role.class, names = {"GENERAL", "DEALER", "EVALUATOR"})
+    @DisplayName("관리자가 아닌 역할은 회원 목록을 볼 수 없다")
+    void searchRejectsNonAdmin(Role role) throws Exception {
+        given(sessionService.authenticate(RAW_TOKEN))
+                .willReturn(new AuthenticatedUser(ADMIN_ID, role));
+
+        mockMvc.perform(get("/api/admin/users").cookie(adminCookie()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("AUTH_ACCESS_DENIED"));
+
+        verify(adminUserQueryService, never()).search(any());
     }
 
     @Test

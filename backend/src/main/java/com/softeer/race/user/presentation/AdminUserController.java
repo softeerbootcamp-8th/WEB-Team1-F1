@@ -1,12 +1,17 @@
 package com.softeer.race.user.presentation;
 
+import com.softeer.race.user.application.AdminUserQueryService;
 import com.softeer.race.user.application.UserSuspensionService;
+import com.softeer.race.user.presentation.request.UserSearchRequest;
 import com.softeer.race.user.presentation.request.UserSuspendRequest;
+import com.softeer.race.user.presentation.response.UserDetailResponse;
 import com.softeer.race.user.presentation.response.UserStatusResponse;
+import com.softeer.race.user.presentation.response.UsersResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,7 +36,27 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AdminUserController {
 
+    private final AdminUserQueryService adminUserQueryService;
     private final UserSuspensionService userSuspensionService;
+
+    /**
+     * 조건은 전부 선택이라 아무것도 주지 않으면 전체 회원이 가입 최신순으로 나온다.
+     * <p>
+     * 페이지 크기를 요청이 정하지 못한다. 열어 두면 한 번의 요청으로 회원 전체를 긁어 갈 수 있다.
+     */
+    @Operation(summary = "회원 목록",
+            description = "검색어 · 역할 · 이용 상태로 좁혀 가입 최신순으로 한 페이지씩 돌려줍니다.")
+    @GetMapping
+    public UsersResponse search(@Valid UserSearchRequest request) {
+        return UsersResponse.from(adminUserQueryService.search(request.toCommand()));
+    }
+
+    /** 목록에 없는 이메일 · 연락처 · 정지 사유가 여기에 있다. */
+    @Operation(summary = "회원 상세", description = "회원의 기본 정보와 이용 상태를 돌려줍니다.")
+    @GetMapping("/{userId}")
+    public UserDetailResponse findDetail(@PathVariable Long userId) {
+        return UserDetailResponse.from(adminUserQueryService.findDetail(userId));
+    }
 
     /**
      * 200이다. 새로 조회할 자원이 생기지 않고, 기존 회원의 이용 상태가 옮겨질 뿐이다

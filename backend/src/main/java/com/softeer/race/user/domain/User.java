@@ -12,11 +12,20 @@ import lombok.NoArgsConstructor;
 @Entity
 // @Column(unique = true)는 제약명이 자동 생성되어 위반 시 어떤 컬럼인지 구분할 수 없다
 // UserService가 제약명으로 중복 원인을 가려내므로 이름을 직접 지정한다
-@Table(name = "users", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_users_username", columnNames = "username"),
-        @UniqueConstraint(name = "uk_users_email", columnNames = "email"),
-        @UniqueConstraint(name = "uk_users_phone", columnNames = "phone")
-})
+//
+// 인덱스는 관리자 회원 목록과 짝이다. 역할·이용 상태로 좁혀 가입 최신순으로 읽는다.
+// 뒤에 id 를 적지 않는 이유는 dealer_application 과 같다 — InnoDB 의 보조 인덱스는 PK 를 뒤에
+// 달고 있어 (role, status) 만으로 이미 (role, status, id) 순서다
+//
+// 검색어(keyword)는 이 인덱스를 타지 못한다. 아이디·이름·연락처를 OR 로 묶은 부분 일치라
+// 어떤 인덱스도 쓸 수 없고 전체를 훑는다. 회원 수가 수만을 넘어가면 검색 전용 인덱스가 필요하다
+@Table(name = "users",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_users_username", columnNames = "username"),
+                @UniqueConstraint(name = "uk_users_email", columnNames = "email"),
+                @UniqueConstraint(name = "uk_users_phone", columnNames = "phone")
+        },
+        indexes = @Index(name = "idx_users_role_status", columnList = "role, status"))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTimeEntity {
 
