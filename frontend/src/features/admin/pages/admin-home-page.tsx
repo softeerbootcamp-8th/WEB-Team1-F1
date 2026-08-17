@@ -54,9 +54,21 @@ export function AdminHomePage() {
             if (target) navigate(target.path, { replace: true })
           }}
         >
-          <TabsList>
+          {/*
+            * 경매 목록의 범위 전환(ScopeTabs)과 같은 형태다. 화면 폭을 반씩 꽉 채우고 선택된 쪽만
+            * 밑줄로 표시한다 — 강조는 채도가 아니라 대비로 준다.
+            * grid-cols-2 는 TABS 가 둘이라는 사실에 묶여 있다. 탭을 늘리면 여기도 함께 고쳐야 한다.
+            */}
+          <TabsList
+            aria-label="운영 관리 범위 선택"
+            className="bg-muted/40 grid h-14 w-full grid-cols-2 rounded-lg p-0"
+          >
             {TABS.map((candidate) => (
-              <TabsTrigger key={candidate.value} value={candidate.value}>
+              <TabsTrigger
+                key={candidate.value}
+                value={candidate.value}
+                className="data-[state=active]:bg-background data-[state=active]:border-b-foreground h-14 rounded-none border-b-2 border-transparent text-base first:rounded-tl-lg last:rounded-tr-lg data-[state=active]:font-semibold data-[state=active]:shadow-none"
+              >
                 {candidate.label}
               </TabsTrigger>
             ))}

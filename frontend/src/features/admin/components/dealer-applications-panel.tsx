@@ -5,7 +5,7 @@ import { ArrowRight, RefreshCw } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EmptyState } from '@/components/common/empty-state'
@@ -37,9 +37,18 @@ export function DealerApplicationsPanel() {
 
   return (
     <Card>
-      <CardHeader className="gap-4">
+      {/* 제목을 두지 않는다. 이 패널을 여는 탭이 이미 "딜러 자격 심사"라 같은 말이 두 번 나온다 */}
+      <CardHeader>
         <div className="flex flex-wrap items-center gap-3">
-          <CardTitle>딜러 자격 심사</CardTitle>
+          <Tabs value={status} onValueChange={(next) => setStatus(next as DealerApplicationStatus)}>
+            <TabsList>
+              {STATUS_TABS.map((tab) => (
+                <TabsTrigger key={tab} value={tab}>
+                  {DEALER_APPLICATION_STATUS_LABEL[tab]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
           <Button
             variant="outline"
             size="sm"
@@ -51,15 +60,6 @@ export function DealerApplicationsPanel() {
             새로고침
           </Button>
         </div>
-        <Tabs value={status} onValueChange={(next) => setStatus(next as DealerApplicationStatus)}>
-          <TabsList>
-            {STATUS_TABS.map((tab) => (
-              <TabsTrigger key={tab} value={tab}>
-                {DEALER_APPLICATION_STATUS_LABEL[tab]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
       </CardHeader>
       <CardContent>
         {applicationsQuery.isLoading ? (
