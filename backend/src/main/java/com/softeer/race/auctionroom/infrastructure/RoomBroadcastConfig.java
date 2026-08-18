@@ -19,11 +19,13 @@ public class RoomBroadcastConfig {
     public ThreadPoolTaskExecutor roomBroadcastExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 
-        // 큐가 무한이면 최대 크기에 영영 못 닿는다, 실제로 도는 수는 기본 크기다
+        // 큐가 사실상 안 차서 maxPoolSize 에는 닿지 않는다, 동시에 도는 수는 이 값이다
         executor.setCorePoolSize(workers);
         executor.setMaxPoolSize(workers);
 
-        // 구독 하나에 작업이 하나만 떠서 실제 상한이 구독 수다, 유계로 잡으면 거절된 구독의 칸이 영영 안 비워진다
+        // 기본값과 같은 값이지만 적어 둔다, 여기를 유계로 바꾸면 포화 때 거절이 나고
+        // 그 폴백이 입찰을 처리한 요청 스레드에서 배달을 돌려 느린 구독을 떼어 낸 이 설정이 부하에서만 무의미해진다
+        // 쌓이는 양은 구독 수를 넘지 않는다, 사서함이 구독 하나에 작업 하나만 띄운다
         executor.setQueueCapacity(Integer.MAX_VALUE);
         executor.setThreadNamePrefix("room-broadcast-");
 
