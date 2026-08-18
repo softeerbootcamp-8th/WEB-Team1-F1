@@ -56,6 +56,12 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
     // 느린 구독이 초당 읽는 양, 0 이면 한 바이트도 안 읽는다
     private static final int SLOW_READ_KBPS = Integer.getInteger("slowKbps", 0);
     private static final int BIDDERS = Integer.getInteger("bidders", 5);
+
+    // 입찰이 도는 중에 뒤늦게 붙는 구독 수다, 연결 만료로 전원이 한꺼번에 돌아오는 순간을 흉내 낸다
+    private static final int LATE_SUBSCRIBERS = Integer.getInteger("late", 0);
+
+    // 입찰 시작 뒤 이만큼 지나서 붙인다
+    private static final Duration LATE_AFTER = Duration.ofSeconds(Integer.getInteger("lateAfter", 30));
     private static final int RUNS = Integer.getInteger("runs", 1);
     private static final Duration BIDDING = Duration.ofSeconds(Integer.getInteger("seconds", 20));
 
@@ -85,9 +91,10 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
     @Test
     @DisplayName("동시 입찰 중 구독자가 받은 현재가 수열에 역전이 있는지 센다")
     void countPriceInversions() throws Exception {
-        System.out.printf("조건 구독 %d 느린구독 %d 읽기속도 %dKB/s 입찰자 %d 회차 %d 구간 %d초"
-                        + " 일꾼 %s 커넥션풀 %s%n",
-                SUBSCRIBERS, SLOW_SUBSCRIBERS, SLOW_READ_KBPS, BIDDERS, RUNS, BIDDING.toSeconds(),
+        System.out.printf("조건 구독 %d 뒤늦게 %d개 %d초뒤 느린구독 %d 읽기속도 %dKB/s"
+                        + " 입찰자 %d 회차 %d 구간 %d초 일꾼 %s 커넥션풀 %s%n",
+                SUBSCRIBERS, LATE_SUBSCRIBERS, LATE_AFTER.toSeconds(),
+                SLOW_SUBSCRIBERS, SLOW_READ_KBPS, BIDDERS, RUNS, BIDDING.toSeconds(),
                 environment.getProperty("race.room.broadcast-workers", "설정없음"),
                 environment.getProperty("spring.datasource.hikari.maximum-pool-size", "설정없음"));
 
@@ -124,10 +131,15 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         List<String> bidders = logins("입찰자", BIDDERS);
 
         try {
-            Audience audience = openSubscriptions(auctionId, watchers, threads, http);
+            int early = SUBSCRIBERS - LATE_SUBSCRIBERS;
+            Audience audience = openSubscriptions(auctionId, watchers.subList(0, early), threads, http);
             stalled.addAll(openStalledSubscriptions(auctionId, stallers, threads));
 
-            BidOutcome outcome = runBidders(auctionId, bidders, threads, http);
+            // 입찰을 옆으로 돌려 두고 그 사이에 뒤 무리를 붙인다, 붙는 순간이 입찰과 겹쳐야 재는 뜻이 있다
+            Future<BidOutcome> bidding = threads.submit(() -> runBidders(auctionId, bidders, threads, http));
+
+            Surge surge = joinLate(auctionId, watchers.subList(early, SUBSCRIBERS), audience, threads, http);
+            BidOutcome outcome = bidding.get();
 
             // 닫기 전에 읽은 양을 먼저 챙긴다, 속도 조절기가 먹었는지 보는 자기 검증이다
             long slowBytes = stalled.stream().mapToLong(StalledReader::bytesRead).sum();
@@ -147,10 +159,41 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
                 System.out.println("경고: 구독 읽기 스레드가 시간 안에 끝나지 않았다, 뒤쪽 표본이 빠졌을 수 있다");
             }
 
-            return report(run, audience, outcome, slowBytes);
+            return report(run, audience, outcome, slowBytes, surge);
         } finally {
             stalled.forEach(StalledReader::close);
         }
+    }
+
+    // 입찰이 도는 중에 뒤 무리를 붙이고, 그 구간을 가를 시각과 앞 무리가 받은 사람 수 프레임 증가분을 남긴다
+    // 앞 무리 기준으로 세는 것이 요점이다, 뒤 무리가 받은 것은 자기 입장 비용이지 남에게 준 부담이 아니다
+    private Surge joinLate(long auctionId, List<String> cookies, Audience early,
+                           ExecutorService threads, HttpClient http) throws Exception {
+        if (cookies.isEmpty()) {
+            return Surge.none();
+        }
+
+        Thread.sleep(LATE_AFTER.toMillis());
+
+        long startedAt = System.nanoTime();
+
+        // 붙기 직전의 값만 여기서 챙긴다, 뒤엣값은 배달이 끝난 회차 말미에 리포트가 잰다
+        List<Subscription> earlyOnly = List.copyOf(early.subscriptions());
+        long viewerFramesBefore = viewerFrames(earlyOnly);
+
+        Audience late = openSubscriptions(auctionId, cookies, threads, http);
+
+        long endedAt = System.nanoTime();
+
+        early.subscriptions().addAll(late.subscriptions());
+        early.connected().addAndGet(late.connected().get());
+
+        return new Surge(startedAt, endedAt, earlyOnly, viewerFramesBefore, late.connected().get());
+    }
+
+    // 가격이 없는 이벤트가 곧 사람 수 프레임이다, 입찰 방송은 가격을 실어 나가므로 안 섞인다
+    private long viewerFrames(List<Subscription> subscriptions) {
+        return subscriptions.stream().mapToLong(subscription -> subscription.skipped().get()).sum();
     }
 
     // 헤더를 받은 것과 실제로 읽고 있는 것은 다르다. 첫 현황을 받은 구독만 세고, 그 수가 찰 때까지 기다린다
@@ -158,10 +201,10 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
     private Audience openSubscriptions(long auctionId, List<String> cookies, ExecutorService threads, HttpClient http)
             throws Exception {
         List<Subscription> subscriptions = new ArrayList<>();
-        CountDownLatch reading = new CountDownLatch(SUBSCRIBERS);
+        CountDownLatch reading = new CountDownLatch(cookies.size());
         AtomicLong connected = new AtomicLong();
 
-        for (int i = 0; i < SUBSCRIBERS; i++) {
+        for (int i = 0; i < cookies.size(); i++) {
             Subscription subscription = new Subscription(i);
             subscriptions.add(subscription);
 
@@ -171,10 +214,10 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
 
         if (!reading.await(30, TimeUnit.SECONDS)) {
             System.out.printf("경고: 첫 현황을 받은 구독이 %d 개에 못 미친다, 이 회차 수치는 조건과 어긋난다%n",
-                    SUBSCRIBERS);
+                    cookies.size());
         }
 
-        return new Audience(subscriptions, connected.get());
+        return new Audience(subscriptions, connected);
     }
 
     // 느리게 읽거나 아예 안 읽는 구독이다. 수신 버퍼가 차면 서버 쓰기가 막혀 방송이 그 앞에서 멈춘다
@@ -289,13 +332,13 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         long deadline = System.nanoTime() + BIDDING.toNanos();
 
         // 재는 것이 재는 대상을 흔들지 않도록 입찰자마다 자기 목록에 담고 끝에서 한 번만 합친다
-        List<List<Long>> elapsedBatches = new CopyOnWriteArrayList<>();
+        List<List<BidSample>> elapsedBatches = new CopyOnWriteArrayList<>();
 
         for (int i = 0; i < BIDDERS; i++) {
             String cookie = cookies.get(i);
 
             threads.submit(() -> {
-                List<Long> elapsed = new ArrayList<>();
+                List<BidSample> elapsed = new ArrayList<>();
                 long known = START_PRICE;
 
                 while (System.nanoTime() < deadline) {
@@ -306,7 +349,7 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
                         boolean placed = place(auctionId, cookie, amount, http, timeouts);
 
                         // 시간 초과도 담는다, 빼면 제일 느린 건이 통계에서 사라져 p99 가 실제보다 좋아 보인다
-                        elapsed.add(System.nanoTime() - startedAt);
+                        elapsed.add(new BidSample(startedAt, System.nanoTime() - startedAt));
 
                         if (placed) {
                             accepted.incrementAndGet();
@@ -379,14 +422,14 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         return nanos / 1_000_000.0;
     }
 
-    private long report(int run, Audience audience, BidOutcome outcome, long slowBytes) {
+    private long report(int run, Audience audience, BidOutcome outcome, long slowBytes, Surge surge) {
         Tally tally = tally(audience.subscriptions());
-        Elapsed elapsed = Elapsed.of(outcome.elapsedNanos());
+        Elapsed elapsed = Elapsed.of(elapsedIn(outcome.samples(), 0, Long.MAX_VALUE));
 
         // 구독마다 같은 방송을 받으므로 평균 수신 수가 곧 방송 횟수다
         System.out.printf("%d회차 연결 %d/%d 수신구독 %d 성립입찰 %d 시간초과 %d 오류 %d "
                         + "방송 약 %d 수신 %d 역전 %d 최대낙폭 %,d 가격 %,d~%,d 가격없는data %d%n",
-                run, audience.connected(), SUBSCRIBERS, tally.receiving(),
+                run, audience.connected().get(), SUBSCRIBERS, tally.receiving(),
                 outcome.accepted(), outcome.timeouts(), outcome.errors(),
                 tally.events() / Math.max(1, audience.subscriptions().size()), tally.events(),
                 tally.inversions(), tally.maxDrop(), tally.lowestPrice(), tally.highestPrice(),
@@ -401,6 +444,20 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
                 run, heartbeats(audience.subscriptions()),
                 millis(maxHeartbeatGapNanos(audience.subscriptions())));
 
+        if (surge.happened()) {
+            Elapsed before = Elapsed.of(elapsedIn(outcome.samples(), 0, surge.startedAtNanos()));
+            Elapsed after = Elapsed.of(elapsedIn(outcome.samples(), surge.startedAtNanos(), Long.MAX_VALUE));
+
+            long viewerFramesAdded = viewerFrames(surge.earlyOnly()) - surge.viewerFramesBefore();
+
+            System.out.printf("%d회차 뒤늦게 %d개가 %.1fms 동안 붙음, 앞 무리 %d개가 받은 사람수프레임 %,d건%n",
+                    run, surge.connected(), millis(surge.endedAtNanos() - surge.startedAtNanos()),
+                    surge.earlyOnly().size(), viewerFramesAdded);
+
+            System.out.printf("%d회차 입찰응답 붙기전 %d건 p99 %.1fms, 붙은뒤 %d건 p99 %.1fms%n",
+                    run, before.count(), millis(before.p99()), after.count(), millis(after.p99()));
+        }
+
         // 목표보다 훨씬 적으면 서버가 그만큼 못 보낸 것이고, 목표를 넘으면 속도 조절기가 안 먹은 것이다
         if (SLOW_SUBSCRIBERS > 0) {
             System.out.printf("%d회차 느린구독 %d개가 %,d바이트 읽음, 목표 %,d바이트%n",
@@ -409,6 +466,14 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         }
 
         return tally.inversions();
+    }
+
+    // 반쯤 걸친 건은 시작 시각으로 가른다, 끝난 시각으로 가르면 느린 건이 뒤 구간으로 밀려 앞이 좋아 보인다
+    private List<Long> elapsedIn(List<BidSample> samples, long fromNanos, long toNanos) {
+        return samples.stream()
+                .filter(sample -> sample.startedAtNanos() >= fromNanos && sample.startedAtNanos() < toNanos)
+                .map(BidSample::elapsedNanos)
+                .toList();
     }
 
     private long heartbeats(List<Subscription> subscriptions) {
@@ -470,10 +535,27 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         return new Tally(events, receiving, inversions, maxDrop, lowestPrice, highestPrice, skipped);
     }
 
-    private record Audience(List<Subscription> subscriptions, long connected) {
+    private record Audience(List<Subscription> subscriptions, AtomicLong connected) {
     }
 
-    private record BidOutcome(long accepted, long timeouts, long errors, List<Long> elapsedNanos) {
+    // 언제 걸린 건인지를 함께 담는다, 안 담으면 뒤늦게 붙는 구간의 앞뒤를 가를 수 없다
+    private record BidSample(long startedAtNanos, long elapsedNanos) {
+    }
+
+    // 뒤 무리가 붙은 구간이다, startedAtNanos 가 0 이면 이번 회차에는 뒤 무리가 없었다
+    private record Surge(long startedAtNanos, long endedAtNanos, List<Subscription> earlyOnly,
+                         long viewerFramesBefore, long connected) {
+
+        static Surge none() {
+            return new Surge(0, 0, List.of(), 0, 0);
+        }
+
+        boolean happened() {
+            return startedAtNanos > 0;
+        }
+    }
+
+    private record BidOutcome(long accepted, long timeouts, long errors, List<BidSample> samples) {
     }
 
     // 입찰 요청을 보내고 응답을 받기까지 걸린 시간, 시간 초과는 제한 시간만큼 걸린 것으로 들어간다

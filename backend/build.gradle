@@ -67,6 +67,9 @@ tasks.register('experiment', Test) {
     // 풀을 줄이면 마르는 지점이 앞당겨진다, 닫힌 루프라 입찰자를 늘리는 것만으로는 조건이 안 선다
     systemProperty 'spring.datasource.hikari.maximum-pool-size', findProperty('pool') ?: '10'
     systemProperty 'bidders', findProperty('bidders') ?: '5'
+    // 입찰 도중에 뒤늦게 붙는 구독, 연결 만료로 전원이 한꺼번에 돌아오는 순간을 흉내 낸다
+    systemProperty 'late', findProperty('late') ?: '0'
+    systemProperty 'lateAfter', findProperty('lateAfter') ?: '30'
     systemProperty 'runs', findProperty('runs') ?: '1'
     systemProperty 'seconds', findProperty('seconds') ?: '20'
     // 실험 결과가 표준 출력으로 나온다

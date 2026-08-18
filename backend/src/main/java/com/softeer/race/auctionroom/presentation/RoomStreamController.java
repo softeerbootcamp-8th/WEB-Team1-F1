@@ -24,8 +24,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RequestMapping("/api/auctions")
 public class RoomStreamController implements RoomStreamApi {
 
-    // 경매 하나의 수명보다 짧게 잡아 오래 붙어 있는 연결을 주기적으로 새로 세운다
-    private static final long STREAM_TIMEOUT_MILLIS = Duration.ofMinutes(30).toMillis();
+    // 연결이 경매 하나를 끝까지 버티게 한다, 방 열림 30분에 연장까지 포함한 경매 최대 30분을 더한 값 위다
+    private static final long STREAM_TIMEOUT_MILLIS = Duration.ofMinutes(90).toMillis();
 
     // SSE 표준 헤더다, HttpHeaders 에 상수가 없어 직접 쓴다
     private static final String LAST_EVENT_ID = "Last-Event-ID";
