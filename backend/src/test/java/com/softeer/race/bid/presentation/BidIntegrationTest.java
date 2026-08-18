@@ -362,9 +362,12 @@ class BidIntegrationTest extends IntegrationTestSupport {
         } finally {
             release.countDown();
             holder.shutdown();
+
+            // 사용 등록 반납은 holder 가 실제로 잠금을 놓은 뒤여야 한다. 먼저 반납하면 사용자 수가
+            // 0 이 되어 항목이 지워지고, 아래 입찰이 새 잠금으로 성립해 이 검증이 통째로 우회된다.
+            assertThat(holder.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
             auctionLockRegistry.release(LIVE_AUCTION);
         }
-        assertThat(holder.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
 
         // 타임아웃이 잠금을 오염시키지 않았다면 풀린 뒤 같은 요청은 그대로 성립한다
         bid(LIVE_AUCTION, ALICE_TOKEN, START_PRICE).andExpect(status().isCreated());
