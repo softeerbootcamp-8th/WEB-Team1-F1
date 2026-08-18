@@ -127,6 +127,32 @@ class InMemoryAuctionListChannelTest {
         assertThat(alive.pinged).isTrue();
     }
 
+    @Test
+    @DisplayName("전부 끊으면 명부가 비고 열려 있던 구독이 끝난다")
+    void closeAllEndsEverySubscriber() {
+        FakeSubscriber first = new FakeSubscriber();
+        FakeSubscriber second = new FakeSubscriber();
+        channel.subscribe(first);
+        channel.subscribe(second);
+
+        channel.closeAll();
+
+        assertThat(channel.hasSubscribers()).isFalse();
+        assertThat(first.closed).isTrue();
+        assertThat(second.closed).isTrue();
+    }
+
+    @Test
+    @DisplayName("전부 끊을 때도 명부를 먼저 비운다")
+    void closeAllClearsRegistryBeforeClosing() {
+        FakeSubscriber subscriber = new FakeSubscriber();
+        channel.subscribe(subscriber);
+
+        channel.closeAll();
+
+        assertThat(subscriber.listedWhenClosed).isFalse();
+    }
+
     // 채널은 카드 내용을 보지 않고 그대로 넘기기만 하므로 식별자만 채운다
     private static AuctionCardInfo card(long auctionId) {
         return new AuctionCardInfo(auctionId, null, null, null, null, null, null,
