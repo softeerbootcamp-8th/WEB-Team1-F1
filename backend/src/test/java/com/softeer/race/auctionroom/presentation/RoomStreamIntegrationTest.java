@@ -292,6 +292,23 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("연결마다 재연결 간격을 한 번 내려준다")
+    void streamAdvertisesReconnectDelayOnce() throws Exception {
+        // given
+        long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
+
+        // when : 사람 수 하나와 현황 하나가 잇달아 나가는 상태를 만든다
+        MvcResult first = subscribe(liveAuctionId).andReturn();
+        roomStreamService.refresh(liveAuctionId);
+
+        // then : 브라우저 기본값 3초를 그대로 두면 회복 기준을 못 지키므로 서버가 정해 내려준다
+        String body = SseBodies.awaitUntil(first, sse -> sse.contains("\"phase\""));
+        assertThat(body)
+                .contains("retry:500")
+                .containsOnlyOnce("retry:");
+    }
+
+    @Test
     @DisplayName("다시 붙은 구독은 마지막 현황을 그 자리에서 받는다")
     void reconnectedSubscriptionCatchesUp() throws Exception {
         // given : 먼저 붙은 사람에게 현황이 한 번 나가야 채널이 그것을 들고 있다

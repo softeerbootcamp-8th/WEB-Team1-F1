@@ -28,6 +28,9 @@ class SseRoomSubscription implements RoomSubscription {
     // 숫자를 쓰지 않는다, 나중에 누가 순번을 싣기로 하면 브라우저에 남아 있던 옛 값이 유효한 순번으로 읽힌다
     private static final String RECONNECT_MARK = "room";
 
+    // 브라우저 기본값이 3초라 그대로 두면 #123 의 회복 기준을 못 지킨다, 실측 왕복 0.2초를 더해 0.7초가 된다
+    private static final long RECONNECT_DELAY_MILLIS = 500L;
+
     private final long auctionId;
     private final long viewerId;
     private final SseEmitter emitter;
@@ -45,6 +48,10 @@ class SseRoomSubscription implements RoomSubscription {
 
     // 전송 실패로 내려간 것과 이 연결을 끝낸 것은 다르다, 전자만 보고 끝내면 응답이 만료까지 남는다
     private final AtomicBoolean completed = new AtomicBoolean();
+
+    // retry 는 연결마다 한 번이면 브라우저가 기억한다, 매 프레임에 실으면 헛되이 나간다
+    // 배달이 구독마다 일꾼 하나라 이 표시에 동기화가 필요 없다
+    private boolean retryAdvertised;
 
     SseRoomSubscription(long auctionId, long viewerId, SseEmitter emitter, Executor workers) {
         this.auctionId = auctionId;
@@ -123,11 +130,8 @@ class SseRoomSubscription implements RoomSubscription {
 
         try {
             switch (message) {
-                case RoomState state -> emitter.send(SseEmitter.event()
-                        .id(RECONNECT_MARK)
-                        .data(RoomStateResponse.from(state)));
-                case ViewerCount viewers -> emitter.send(SseEmitter.event()
-                        .id(RECONNECT_MARK)
+                case RoomState state -> emitter.send(event().data(RoomStateResponse.from(state)));
+                case ViewerCount viewers -> emitter.send(event()
                         .name(VIEWERS_EVENT)
                         .data(ViewerCountResponse.from(viewers), MediaType.APPLICATION_JSON));
             }
@@ -141,6 +145,18 @@ class SseRoomSubscription implements RoomSubscription {
             log.warn("경매방 현황 전송 실패, 경매 {}", auctionId, e);
             alive = false;
         }
+    }
+
+    // 재연결 간격은 연결에 처음 나가는 한 건에만 싣는다, 구독 직후 사람 수가 반드시 나가므로 늘 실린다
+    private SseEmitter.SseEventBuilder event() {
+        SseEmitter.SseEventBuilder builder = SseEmitter.event().id(RECONNECT_MARK);
+
+        if (!retryAdvertised) {
+            retryAdvertised = true;
+            builder.reconnectTime(RECONNECT_DELAY_MILLIS);
+        }
+
+        return builder;
     }
 
     // 서버는 이 연결에 쓰기만 하고 읽지 않아서, 상대가 끊어도 다음 쓰기 전까지 모른다
