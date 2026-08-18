@@ -12,8 +12,9 @@ import { useAuth } from '@/features/auth/auth-context'
 import { fetchEvaluationDetail } from '@/features/evaluations/api'
 import {
   MY_REQUESTS_QUERY_KEY,
-  useVehicleAuctionStatus,
-} from '@/features/evaluations/use-vehicle-auction-status'
+  evaluationDetailQueryKey,
+} from '@/features/evaluations/query-keys'
+import { useVehicleAuctionStatus } from '@/features/evaluations/use-vehicle-auction-status'
 import {
   canRegisterAuction,
   getAuctionBlockReason,
@@ -75,7 +76,7 @@ export function AuctionPostPage() {
   const hasEvaluationId = Number.isInteger(evaluationId) && evaluationId > 0
 
   const { data, isLoading } = useQuery({
-    queryKey: ['evaluations', 'detail', user?.id, evaluationId],
+    queryKey: evaluationDetailQueryKey(evaluationId),
     queryFn: () => fetchEvaluationDetail(evaluationId),
     enabled: user != null && hasEvaluationId,
   })

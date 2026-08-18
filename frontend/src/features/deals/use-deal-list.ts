@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { fetchDealList } from './api'
+import { subscribeDealChanged } from './deal-events'
 import type { DealCard } from './types'
 
 /**
@@ -86,6 +87,16 @@ export function useDealList(enabled = true) {
 
   /** 거래를 한 단계 옮기고 목록으로 돌아왔을 때 첫 페이지부터 다시 읽는다 */
   const reload = useCallback(() => setReloadToken((token) => token + 1), [])
+
+  // 상대가 단계를 넘기면 알림이 먼저 도착한다. 그 신호로 첫 페이지부터 다시 읽어, 목록에 남아
+  // 있던 지난 단계와 "내 차례" 표시를 그 자리에서 맞춘다.
+  // 이어 읽어 둔 페이지는 버린다 — 단계가 바뀐 거래의 자리가 함께 움직여서, 뒷 페이지만 그대로
+  // 두면 같은 거래가 두 번 보이거나 통째로 빠진다
+  useEffect(() => {
+    if (!enabled) return
+
+    return subscribeDealChanged(reload)
+  }, [enabled, reload])
 
   return { deals, hasNext, isLoading, isLoadingMore, error, loadMoreError, loadMore, reload }
 }

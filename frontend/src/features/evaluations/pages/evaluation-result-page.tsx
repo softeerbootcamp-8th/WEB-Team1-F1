@@ -54,6 +54,7 @@ import {
   rejectEvaluation,
   submitEvaluationResult,
 } from '../api'
+import { evaluationDetailQueryKey } from '../query-keys'
 import {
   MAX_IMAGE_COUNT,
   prepareDocumentFile,
@@ -149,7 +150,7 @@ export function EvaluationResultPage() {
   } | null>(null)
 
   const detailQuery = useQuery({
-    queryKey: ['evaluations', 'detail', evaluationId],
+    queryKey: evaluationDetailQueryKey(evaluationId),
     queryFn: () => fetchEvaluationDetail(evaluationId),
     enabled: Number.isInteger(evaluationId) && evaluationId > 0,
   })
