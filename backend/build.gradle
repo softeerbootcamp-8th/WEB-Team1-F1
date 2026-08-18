@@ -64,6 +64,8 @@ tasks.register('experiment', Test) {
     systemProperty 'slowKbps', findProperty('slowKbps') ?: '0'
     // 스프링이 시스템 프로퍼티로 읽는다, 재는 조건이 아니라 서버 설정이라 이름이 다르다
     systemProperty 'race.room.broadcast-workers', findProperty('workers') ?: '32'
+    // 풀을 줄이면 마르는 지점이 앞당겨진다, 닫힌 루프라 입찰자를 늘리는 것만으로는 조건이 안 선다
+    systemProperty 'spring.datasource.hikari.maximum-pool-size', findProperty('pool') ?: '10'
     systemProperty 'bidders', findProperty('bidders') ?: '5'
     systemProperty 'runs', findProperty('runs') ?: '1'
     systemProperty 'seconds', findProperty('seconds') ?: '20'

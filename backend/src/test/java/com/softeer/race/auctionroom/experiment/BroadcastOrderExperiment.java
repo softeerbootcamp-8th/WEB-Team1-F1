@@ -11,13 +11,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.core.env.Environment;
 import org.springframework.test.context.jdbc.Sql;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URI;
@@ -31,11 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
@@ -50,7 +43,8 @@ import java.util.regex.Pattern;
 // 조건은 시스템 프로퍼티로 빼고 하네스 동작에 속하는 값은 상수로 둔다.
 //   ./gradlew experiment -Psubscribers=20 -Pslow=3 -Pruns=3
 @Tag("experiment")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "race.scheduling.enabled=true")
 @Sql("/sql/bid-increment-bands.sql")
 // 이름이 Test 로 끝나지 않는 것이 의도다, 초록이 아무것도 보장하지 않아 테스트로 읽히면 안 된다
 @SuppressWarnings("JUnitTestClassNamingConvention")
@@ -84,17 +78,25 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
     @Autowired
     private BidIncrementService bidIncrementService;
 
+    // 조건이 실제로 서버에 닿았는지 확인하는 용도다, 프로퍼티 이름이 틀리면 조용히 기본값으로 돌아간다
+    @Autowired
+    private Environment environment;
+
     @Test
     @DisplayName("동시 입찰 중 구독자가 받은 현재가 수열에 역전이 있는지 센다")
     void countPriceInversions() throws Exception {
-        System.out.printf("조건 구독 %d 느린구독 %d 읽기속도 %dKB/s 입찰자 %d 회차 %d 구간 %d초%n",
-                SUBSCRIBERS, SLOW_SUBSCRIBERS, SLOW_READ_KBPS, BIDDERS, RUNS, BIDDING.toSeconds());
+        System.out.printf("조건 구독 %d 느린구독 %d 읽기속도 %dKB/s 입찰자 %d 회차 %d 구간 %d초"
+                        + " 일꾼 %s 커넥션풀 %s%n",
+                SUBSCRIBERS, SLOW_SUBSCRIBERS, SLOW_READ_KBPS, BIDDERS, RUNS, BIDDING.toSeconds(),
+                environment.getProperty("race.room.broadcast-workers", "설정없음"),
+                environment.getProperty("spring.datasource.hikari.maximum-pool-size", "설정없음"));
 
         long totalInversions = 0;
 
         for (int run = 1; run <= RUNS; run++) {
             // 앞 회차의 연결이 서버에 남은 채 다음 회차가 시작하면 표본이 오염된다
-            // 정리는 채널 sweep 이 하므로 그 주기보다 넉넉히 쉰다
+            // 회차마다 경매를 새로 만들어 방이 갈리므로 이 쉼은 정리를 기다리는 것이 아니라
+            // 앞 회차의 소켓과 스레드가 실제로 접히는 틈이다
             if (run > 1) {
                 Thread.sleep(COOLDOWN.toMillis());
             }
@@ -236,6 +238,13 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
                 String line;
 
                 while ((line = reader.readLine()) != null) {
+                    // SSE 주석 줄이다, 서버가 연결을 찔러 본 시각이 여기 찍힌다
+                    if (line.startsWith(":")) {
+                        subscription.heartbeat();
+
+                        continue;
+                    }
+
                     if (!line.startsWith("data:")) {
                         continue;
                     }
@@ -387,6 +396,11 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
                 run, elapsed.count(), millis(elapsed.p50()), millis(elapsed.p95()),
                 millis(elapsed.p99()), millis(elapsed.max()));
 
+        // 건수를 함께 찍는다, 0 이면 서버가 안 보낸 것이 아니라 계측이 못 잡은 것이라 간격을 해석하면 안 된다
+        System.out.printf("%d회차 heartbeat %d건 구독당 최대간격 %.1fms%n",
+                run, heartbeats(audience.subscriptions()),
+                millis(maxHeartbeatGapNanos(audience.subscriptions())));
+
         // 목표보다 훨씬 적으면 서버가 그만큼 못 보낸 것이고, 목표를 넘으면 속도 조절기가 안 먹은 것이다
         if (SLOW_SUBSCRIBERS > 0) {
             System.out.printf("%d회차 느린구독 %d개가 %,d바이트 읽음, 목표 %,d바이트%n",
@@ -395,6 +409,28 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         }
 
         return tally.inversions();
+    }
+
+    private long heartbeats(List<Subscription> subscriptions) {
+        return subscriptions.stream().mapToLong(subscription -> subscription.heartbeatNanos().size()).sum();
+    }
+
+    // 구독 하나 안에서 이웃한 두 신호의 간격 중 제일 큰 값, 그중에서도 최악을 돌려준다
+    // 스케줄러가 막히면 방 전체가 함께 밀리므로 한 구독만 봐도 되지만, 최악을 보는 편이 놓치지 않는다
+    private long maxHeartbeatGapNanos(List<Subscription> subscriptions) {
+        long max = 0;
+
+        for (Subscription subscription : subscriptions) {
+            List<Long> beats = subscription.heartbeatNanos();
+
+            synchronized (beats) {
+                for (int i = 1; i < beats.size(); i++) {
+                    max = Math.max(max, beats.get(i) - beats.get(i - 1));
+                }
+            }
+        }
+
+        return max;
     }
 
     private Tally tally(List<Subscription> subscriptions) {
@@ -524,10 +560,16 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
 
     // 읽는 쪽은 스레드 하나뿐이고 리포트는 그 스레드가 끝난 뒤에 읽는다
     // 쓸 때마다 배열을 복사하면 이벤트 수의 제곱이 되어, 구독을 올렸을 때 읽는 쪽이 스스로 느려진다
-    private record Subscription(int id, List<Long> prices, AtomicLong skipped) {
+    private record Subscription(int id, List<Long> prices, AtomicLong skipped, List<Long> heartbeatNanos) {
 
         Subscription(int id) {
-            this(id, Collections.synchronizedList(new ArrayList<>()), new AtomicLong());
+            this(id, Collections.synchronizedList(new ArrayList<>()), new AtomicLong(),
+                    Collections.synchronizedList(new ArrayList<>()));
+        }
+
+        // sweepClosedSubscriptions 가 실제로 돈 시각이다, 스케줄러가 밀리면 간격이 벌어진다
+        void heartbeat() {
+            heartbeatNanos.add(System.nanoTime());
         }
 
         void add(long price) {

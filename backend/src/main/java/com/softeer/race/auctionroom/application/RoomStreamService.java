@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.TimeUnit;
+
 import static com.softeer.race.auctionroom.domain.RoomErrorCode.ROOM_NOT_FOUND;
 
 /**
@@ -21,8 +23,7 @@ public class RoomStreamService {
 
     // 알리지 않고 끊긴 사람이 이 시간 안에는 보고 있는 사람 수에서 빠진다, 프록시가 유휴 연결을 끊는 것도 이 신호가 막는다
     // 정상 종료는 해제 콜백이 즉시 빼 가므로 이 주기는 조용히 사라진 연결만 줍는 안전망이다
-    // 짧게 잡아도 싸다, 메모리를 돌며 소켓에 주석 한 줄을 쓸 뿐이고 DB 는 읽지 않는다
-    private static final long SWEEP_INTERVAL_MILLIS = 500L;
+    private static final long SWEEP_INTERVAL_SECONDS = 60L;
 
     // 마감 방송이 유실된 방의 연결이 이 시간 안에 끊긴다, 정상 경로는 방송 직후에 끊으므로 여기까지 오지 않는다
     // 위와 이유가 달라 값도 따로 간다, 이쪽은 구독이 있는 방마다 단계를 조회하므로 주기를 줄인 만큼 쿼리가 는다
@@ -67,7 +68,8 @@ public class RoomStreamService {
     /**
      * 끊긴 구독을 걷어내고, 사람이 빠진 방에는 줄어든 사람 수를 보낸다
      */
-    @Scheduled(fixedDelay = SWEEP_INTERVAL_MILLIS, scheduler = SchedulingConfig.ROOM_STREAM)
+    @Scheduled(fixedDelay = SWEEP_INTERVAL_SECONDS, timeUnit = TimeUnit.SECONDS,
+            scheduler = SchedulingConfig.ROOM_STREAM)
     public void sweepClosedSubscriptions() {
         // 한 방의 실패를 그 방에 가둔다, 여기서만 옳은 정책이라 방송 자체는 계속 던지게 둔다
         for (long auctionId : roomChannel.sweepClosed()) {
