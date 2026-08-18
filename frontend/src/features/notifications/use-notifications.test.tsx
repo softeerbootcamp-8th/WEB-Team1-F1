@@ -425,7 +425,7 @@ const APPROVED_NOTIFICATION: AppNotification = {
 const OUTBID_NOTIFICATION: AppNotification = {
   id: 46,
   type: 'OUTBID',
-  message: '내 입찰보다 높은 입찰이 등록되었습니다.',
+  message: '현대 그랜저 IG 경매에서 이*님이 24,850,000원에 상위 입찰했습니다.',
   read: false,
   link: '/auctions/3',
   createdAt: '2026-08-13T10:05:00',

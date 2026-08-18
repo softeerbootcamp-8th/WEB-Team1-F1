@@ -82,7 +82,7 @@ public record NotificationContent(NotificationType type, String message) {
         Objects.requireNonNull(bidderName, "마스킹된 입찰자 이름은 필수입니다.");
 
         return new NotificationContent(OUTBID,
-                "%s 경매에서 %s님이 %s원에 입찰했습니다."
+                "%s 경매에서 %s님이 %s원에 상위 입찰했습니다."
                         .formatted(text(vehicleModel), bidderName.value(), money(amount)));
     }
 
