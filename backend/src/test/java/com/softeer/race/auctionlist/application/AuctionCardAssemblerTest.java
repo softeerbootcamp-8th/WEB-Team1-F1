@@ -127,6 +127,11 @@ class AuctionCardAssemblerTest {
         }
 
         @Override
+        public void closeAll() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public Set<Long> subscribedRooms() {
             throw new UnsupportedOperationException();
         }
