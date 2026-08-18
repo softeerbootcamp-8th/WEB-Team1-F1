@@ -22,7 +22,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.function.Predicate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -47,6 +49,9 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 3, 20, 45, 12);
 
     private static final long START_PRICE = 10_000_000L;
+
+    private static final Duration ARRIVAL_TIMEOUT = Duration.ofSeconds(2);
+    private static final long POLL_MILLIS = 5L;
 
     @Autowired
     private AuctionListChannel auctionListChannel;
@@ -85,8 +90,8 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
                 .andReturn();
 
         // then 3 : 서버가 그 사람의 탭과 페이지를 몰라 첫 현황이 정의되지 않는다.
-        // 헤더를 밀어내는 주석 한 줄은 실리므로 데이터가 없는 것으로 단정한다
-        assertThat(body(opened)).doesNotContain("data:");
+        // 헤더를 밀어내는 주석이 도착한 뒤에 본다, 안 기다리면 아직 안 온 것을 없는 것으로 읽는다
+        assertThat(awaitBody(opened, sse -> sse.contains("keep-alive"))).doesNotContain("data:");
 
         // then 4 : 명부에 실제로 들어갔다, 안 들어가면 방송이 이 연결을 못 찾는다
         assertThat(auctionListChannel.hasSubscribers()).isTrue();
@@ -105,14 +110,15 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
         bid(auctionId, amount).andExpect(status().isCreated());
 
         // then 1 : 화면이 알 길 없는 값이 카드에 실려 온다. 마감은 연장 여부까지 담아야 해서 함께 온다
-        assertThat(body(opened))
+        String body = awaitBody(opened, sse -> sse.contains("\"auctionId\":" + auctionId));
+
+        assertThat(body)
                 .contains("event:card")
-                .contains("\"auctionId\":" + auctionId)
                 .contains("\"currentPrice\":" + amount)
                 .contains("\"endAt\"");
 
         // then 2 : 조회와 같은 모양이어야 한다, 비워 보내면 화면이 들고 있던 키워드가 방송에 지워진다
-        assertThat(body(opened)).contains("\"keywords\":[\"ACCIDENT_FREE\"]");
+        assertThat(body).contains("\"keywords\":[\"ACCIDENT_FREE\"]");
     }
 
     @Test
@@ -128,7 +134,7 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
 
         // then : 성립하지 않은 입찰은 방송의 근거가 아니다.
         // 이 경로는 이벤트가 아예 발행되지 않아 리스너의 phase 와 무관하다, 그쪽은 시나리오 4 가 본다
-        assertThat(body(opened)).doesNotContain("data:");
+        assertThat(afterSurelyDelivered(opened)).doesNotContain("\"auctionId\":" + auctionId);
     }
 
     @Test
@@ -148,7 +154,7 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
         });
 
         // then : AFTER_COMPLETION 이면 확정되지 않은 카드가 화면에 남는다
-        assertThat(body(opened)).doesNotContain("data:");
+        assertThat(afterSurelyDelivered(opened)).doesNotContain("\"auctionId\":" + auctionId);
     }
 
     @Test
@@ -163,7 +169,7 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
         auctionListStreamService.broadcastCard(auctionId);
 
         // then : 조회에서 빠진 경매가 방송으로 들어오면 목록에 없던 카드가 화면에 생긴다
-        assertThat(body(opened)).doesNotContain("data:");
+        assertThat(afterSurelyDelivered(opened)).doesNotContain("\"auctionId\":" + auctionId);
     }
 
     @Test
@@ -177,9 +183,8 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
         scheduler.advanceAuctions();
 
         // then : 목록에 없던 카드가 진행중 무리로 들어온다
-        assertThat(body(opened))
+        assertThat(awaitBody(opened, sse -> sse.contains("\"auctionId\":" + auctionId)))
                 .contains("event:card")
-                .contains("\"auctionId\":" + auctionId)
                 .contains("\"phase\":\"LIVE\"");
     }
 
@@ -198,10 +203,9 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
         scheduler.advanceAuctions();
 
         // then : 마감 후 5분이 지나 복기 구간도 끝났다
-        assertThat(body(opened))
+        assertThat(awaitBody(opened, sse -> sse.contains("\"phase\":\"CLOSED\"")))
                 .contains("event:card")
-                .contains("\"auctionId\":" + auctionId)
-                .contains("\"phase\":\"CLOSED\"");
+                .contains("\"auctionId\":" + auctionId);
     }
 
     @Test
@@ -215,8 +219,7 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
 
         auctionListStreamService.broadcastAudienceChanges();
 
-        assertThat(body(list))
-                .contains("event:audience")
+        assertThat(awaitBody(list, sse -> sse.contains("event:audience")))
                 .contains("\"auctionId\":" + auctionId)
                 .contains("\"viewerCount\":1");
     }
@@ -229,10 +232,14 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
         enterRoom(auctionId);
         auctionListStreamService.broadcastAudienceChanges();
 
+        awaitBody(list, sse -> sse.contains("event:audience"));
         int sent = audienceCount(list, auctionId);
+
         auctionListStreamService.broadcastAudienceChanges();
 
         // 조용한 방에도 매 주기 방송이 나가면 팬아웃이 보는 사람 수만큼 헛돈다
+        afterSurelyDelivered(list);
+
         assertThat(audienceCount(list, auctionId)).isEqualTo(sent);
     }
 
@@ -294,6 +301,44 @@ class AuctionListStreamIntegrationTest extends IntegrationTestSupport {
                 update auction_post p join auction a on a.post_id = p.id
                 set p.deleted_at = ? where a.id = ?
                 """, NOW, auctionId);
+    }
+
+    // 배달이 부른 스레드를 떠나 일꾼에서 돌므로 내보낸 직후에 읽으면 본문이 아직 비어 있다
+    // 못 기다리면 마지막 본문을 그대로 준다, 여기서 던지면 무엇이 안 왔는지가 아니라 시간 초과만 보인다
+    private static String awaitBody(MvcResult result, Predicate<String> arrived) {
+        long deadline = System.nanoTime() + ARRIVAL_TIMEOUT.toNanos();
+        String body = body(result);
+
+        while (!(arrived.test(body) && frameEnded(body)) && System.nanoTime() < deadline) {
+            sleep();
+            body = body(result);
+        }
+
+        return body;
+    }
+
+    // 배달이 비동기라 "안 보냈다" 와 "아직 안 왔다" 가 같은 모양이다.
+    // 반드시 나가는 카드를 뒤에 흘려보내고 그것이 도착한 뒤에 본다, 구독 하나에 일꾼도 하나라 순서가 보장된다
+    private String afterSurelyDelivered(MvcResult opened) {
+        long sentinel = liveAuction();
+        auctionListStreamService.broadcastCard(sentinel);
+
+        return awaitBody(opened, sse -> sse.contains("\"auctionId\":" + sentinel));
+    }
+
+    // 쓰는 도중에 읽으면 이름만 오고 실린 값이 아직 없다, SSE 프레임은 빈 줄로 끝나므로 그것까지 기다린다
+    private static boolean frameEnded(String body) {
+        return body.endsWith("\n\n");
+    }
+
+    private static void sleep() {
+        try {
+            Thread.sleep(POLL_MILLIS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+
+            throw new IllegalStateException(e);
+        }
     }
 
     // text/event-stream 에는 charset 이 안 붙어 getContentAsString() 이 ISO-8859-1 로 떨어진다
