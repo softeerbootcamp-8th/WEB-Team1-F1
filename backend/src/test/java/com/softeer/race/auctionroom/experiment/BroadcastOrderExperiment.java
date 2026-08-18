@@ -62,6 +62,9 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
 
     // 입찰 시작 뒤 이만큼 지나서 붙인다
     private static final Duration LATE_AFTER = Duration.ofSeconds(Integer.getInteger("lateAfter", 30));
+
+    // 구독만 하나씩 붙은 조용한 방을 이만큼 더 만든다, closeStreamEndedRooms 가 도는 방 수를 키우는 용도다
+    private static final int ROOMS = Integer.getInteger("rooms", 1);
     private static final int RUNS = Integer.getInteger("runs", 1);
     private static final Duration BIDDING = Duration.ofSeconds(Integer.getInteger("seconds", 20));
 
@@ -92,10 +95,11 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
     @DisplayName("동시 입찰 중 구독자가 받은 현재가 수열에 역전이 있는지 센다")
     void countPriceInversions() throws Exception {
         System.out.printf("조건 구독 %d 뒤늦게 %d개 %d초뒤 느린구독 %d 읽기속도 %dKB/s"
-                        + " 입찰자 %d 회차 %d 구간 %d초 일꾼 %s 커넥션풀 %s%n",
+                        + " 입찰자 %d 회차 %d 구간 %d초 방 %d개 일꾼 %s 끊기주기 %s초 커넥션풀 %s%n",
                 SUBSCRIBERS, LATE_SUBSCRIBERS, LATE_AFTER.toSeconds(),
-                SLOW_SUBSCRIBERS, SLOW_READ_KBPS, BIDDERS, RUNS, BIDDING.toSeconds(),
+                SLOW_SUBSCRIBERS, SLOW_READ_KBPS, BIDDERS, RUNS, BIDDING.toSeconds(), ROOMS,
                 environment.getProperty("race.room.broadcast-workers", "설정없음"),
+                environment.getProperty("race.room.ended-room-close-interval-seconds", "설정없음"),
                 environment.getProperty("spring.datasource.hikari.maximum-pool-size", "설정없음"));
 
         long totalInversions = 0;
@@ -129,8 +133,11 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         List<String> watchers = logins("구독자", SUBSCRIBERS);
         List<String> stallers = logins("안읽는구독자", SLOW_SUBSCRIBERS);
         List<String> bidders = logins("입찰자", BIDDERS);
+        List<String> idleWatchers = logins("조용한방구독자", ROOMS - 1);
 
         try {
+            openIdleRooms(seller, startAt, idleWatchers, threads, http);
+
             int early = SUBSCRIBERS - LATE_SUBSCRIBERS;
             Audience audience = openSubscriptions(auctionId, watchers.subList(0, early), threads, http);
             stalled.addAll(openStalledSubscriptions(auctionId, stallers, threads));
@@ -162,6 +169,16 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
             return report(run, audience, outcome, slowBytes, surge);
         } finally {
             stalled.forEach(StalledReader::close);
+        }
+    }
+
+    // 입찰도 방송도 없는 방을 늘린다, 주기 작업이 방마다 도는 부담만 만들고 측정 대상 방은 안 건드린다
+    private void openIdleRooms(User seller, LocalDateTime startAt, List<String> cookies,
+                               ExecutorService threads, HttpClient http) throws Exception {
+        for (String cookie : cookies) {
+            long idleAuctionId = rooms.room(seller, startAt).startPrice(START_PRICE).create();
+
+            openSubscriptions(idleAuctionId, List.of(cookie), threads, http);
         }
     }
 

@@ -70,6 +70,9 @@ tasks.register('experiment', Test) {
     // 입찰 도중에 뒤늦게 붙는 구독, 연결 만료로 전원이 한꺼번에 돌아오는 순간을 흉내 낸다
     systemProperty 'late', findProperty('late') ?: '0'
     systemProperty 'lateAfter', findProperty('lateAfter') ?: '30'
+    // 구독만 하나씩 붙은 조용한 방을 늘려 closeStreamEndedRooms 가 도는 방 수를 키운다
+    systemProperty 'rooms', findProperty('rooms') ?: '1'
+    systemProperty 'race.room.ended-room-close-interval-seconds', findProperty('disconnect') ?: '5'
     systemProperty 'runs', findProperty('runs') ?: '1'
     systemProperty 'seconds', findProperty('seconds') ?: '20'
     // 실험 결과가 표준 출력으로 나온다
