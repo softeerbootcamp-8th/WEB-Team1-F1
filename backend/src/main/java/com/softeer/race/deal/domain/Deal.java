@@ -33,7 +33,7 @@ public class Deal extends BaseTimeEntity {
     private Long id;
 
     // 판매자와 구매자가 같은 거래를 동시에 옮기려 할 때 한쪽만 통과시킨다.
-    // 전이는 단계당 한 번뿐이라 미리 잠그지 않는다, 기한 스케줄러가 사용자를 기다리게 된다
+    // 전이는 단계당 한 번뿐이라 미리 잠그지 않는다, 락을 쥔 채 기다릴 상대가 없다
     @Version
     private long version;
 
@@ -57,7 +57,7 @@ public class Deal extends BaseTimeEntity {
     @Column(nullable = false)
     private long finalPrice;
 
-    // 기한의 기준이다. updatedAt 은 탁송지 수정으로도 갱신돼 기한이 뒤로 밀린다
+    // 기한을 재게 될 때의 기준 자리다. updatedAt 은 탁송지 수정으로도 갱신돼 기한이 뒤로 밀린다
     @Column(nullable = false)
     private LocalDateTime statusChangedAt;
 
@@ -181,7 +181,7 @@ public class Deal extends BaseTimeEntity {
     }
 
     /**
-     * 거래를 취소한다, 사유가 귀책과 보증금 향방을 결정한다
+     * 거래를 그만둔다, 사유가 어느 쪽 귀책인지까지 정한다
      */
     public void cancel(CancellationReason reason, LocalDateTime now) {
         if (!status.isCancellable()) {
