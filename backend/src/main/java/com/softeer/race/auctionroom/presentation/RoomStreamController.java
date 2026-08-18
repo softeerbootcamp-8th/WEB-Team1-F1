@@ -34,7 +34,7 @@ public class RoomStreamController implements RoomStreamApi {
 
     private final Executor roomBroadcastExecutor;
 
-    // 롬복 생성자를 안 쓰는 것은 한정자 때문이다, 주기 작업 스케줄러 넷도 Executor 라 타입만으로는 후보가 다섯이다
+    // 롬복 생성자를 안 쓰는 것은 한정자 때문이다, 주기 작업 스케줄러 다섯도 Executor 라 타입만으로는 후보가 여섯이다
     public RoomStreamController(RoomStreamService roomStreamService,
                                 @Qualifier("roomBroadcastExecutor") Executor roomBroadcastExecutor) {
         this.roomStreamService = roomStreamService;

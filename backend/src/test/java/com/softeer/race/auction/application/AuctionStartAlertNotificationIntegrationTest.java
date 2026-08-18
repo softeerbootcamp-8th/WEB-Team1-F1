@@ -7,6 +7,7 @@ import com.softeer.race.user.domain.Role;
 import com.softeer.race.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Limit;
@@ -14,6 +15,11 @@ import org.springframework.data.domain.Limit;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.softeer.race.notification.domain.NotificationType.AUCTION_STARTED;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,9 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 신청해 둔 사람에게 경매 시작이 실제로 도착하는지
  * <p>
- * <b>발송을 직접 부르지 않고 {@code advanceAuctions()} 를 부른다.</b> 시작 알림은 상태 전이 뒤에 붙은
- * 단계라, 전이와 함께 한 주기로 돌 때만 실제와 같다. 발송 메서드만 따로 부르면 "전이 뒤에 둔다"는
- * 배치가 검증되지 않는다.
+ * 경매 진행과 시작 알림 스케줄러를 실제 순서대로 직접 부른다. 테스트에서는 배경 스케줄링을 꺼 두므로
+ * 상태 전이가 커밋된 뒤 독립적인 알림 틱이 신청을 읽는 운영 흐름을 흔들림 없이 재현할 수 있다.
  * <p>
  * <b>신청도 SQL 이 아니라 프로덕션 경로로 만든다.</b> 신청 가능 시각 판정을 통과한 신청만 표에 남아야
  * 하는데, SQL 로 심으면 그 규칙을 우회한 행으로 발송을 검증하게 된다. 상한 시나리오만 예외다 —
@@ -43,13 +48,16 @@ class AuctionStartAlertNotificationIntegrationTest extends IntegrationTestSuppor
     /** 경매 진행 20분, 이 시각에는 마감도 지나 한 주기에서 시작과 종료가 연달아 일어난다 */
     private static final LocalDateTime AFTER_CLOSING = STARTS_AT.plusMinutes(25);
 
-    /** AuctionProgressScheduler.ALERT_BATCH_LIMIT 과 같아야 이 시나리오가 성립한다 */
+    /** AuctionStartAlertScheduler.BATCH_LIMIT 과 같아야 이 시나리오가 성립한다 */
     private static final int BATCH_LIMIT = 100;
 
     private static final int BULK_SUBSCRIBERS = BATCH_LIMIT + 30;
 
     @Autowired
-    private AuctionProgressScheduler scheduler;
+    private AuctionProgressScheduler progressScheduler;
+
+    @Autowired
+    private AuctionStartAlertScheduler alertScheduler;
 
     @Autowired
     private AuctionStartAlertService auctionStartAlertService;
@@ -99,6 +107,23 @@ class AuctionStartAlertNotificationIntegrationTest extends IntegrationTestSuppor
         assertThat(countStartedNotifications()).isEqualTo(2);
 
         // then 5 : 처리한 신청은 지운다, 남겨 두면 다음 주기에 다시 뽑힌다
+        assertThat(countSubscriptions()).isZero();
+    }
+
+    @Test
+    @DisplayName("시나리오 1-1 : 경매 진행 틱은 시작 알림 신청을 처리하지 않는다")
+    void scenario1_1_ProgressTickDoesNotProcessStartAlerts() {
+        subscribedAuction(alice, bob);
+
+        fixClockAt(STARTS_AT);
+        progressScheduler.advanceAuctions();
+
+        assertThat(countStartedNotifications()).isZero();
+        assertThat(countSubscriptions()).isEqualTo(2);
+
+        alertScheduler.notifyStartAlerts();
+
+        assertThat(countStartedNotifications()).isEqualTo(2);
         assertThat(countSubscriptions()).isZero();
     }
 
@@ -190,6 +215,63 @@ class AuctionStartAlertNotificationIntegrationTest extends IntegrationTestSuppor
         assertThat(auctionStartAlertService.isSubscribed(auctionId, alice.getId())).isFalse();
     }
 
+    @Test
+    @Tag("experiment")
+    @DisplayName("실험 : 시작 알림 백로그 처리 중에도 경매 진행 틱은 독립적으로 돈다")
+    void startAlertBacklogDoesNotDelayAuctionProgress() throws Exception {
+        int subscribers = Integer.getInteger("subscribers", 1_000);
+        long auctionId = rooms.room(seller, STARTS_AT).create();
+        bulkSubscribe(auctionId, subscribers);
+
+        fixClockAt(STARTS_AT);
+        progressScheduler.advanceAuctions();
+
+        AtomicLong alertTickMaximumNanos = new AtomicLong();
+        CountDownLatch finished = new CountDownLatch(1);
+        ExecutorService alertWorker = Executors.newSingleThreadExecutor();
+        long backlogStartedAt = System.nanoTime();
+
+        alertWorker.submit(() -> {
+            try {
+                while (countSubscriptions() > 0) {
+                    long tickStartedAt = System.nanoTime();
+                    alertScheduler.notifyStartAlerts();
+                    alertTickMaximumNanos.accumulateAndGet(
+                            System.nanoTime() - tickStartedAt, Math::max);
+                }
+            } finally {
+                finished.countDown();
+            }
+        });
+
+        long progressTickMaximumNanos = 0L;
+        long progressTicks = 0L;
+        while (!finished.await(1, TimeUnit.MILLISECONDS)) {
+            long tickStartedAt = System.nanoTime();
+            progressScheduler.advanceAuctions();
+            progressTickMaximumNanos = Math.max(
+                    progressTickMaximumNanos, System.nanoTime() - tickStartedAt);
+            progressTicks++;
+        }
+
+        alertWorker.shutdown();
+        assertThat(alertWorker.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+
+        long backlogMillis = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - backlogStartedAt);
+        long alertTickMaximumMillis = TimeUnit.NANOSECONDS.toMillis(alertTickMaximumNanos.get());
+        long progressTickMaximumMillis = TimeUnit.NANOSECONDS.toMillis(progressTickMaximumNanos);
+
+        System.out.printf(
+                "START_ALERT_ISOLATION subscribers=%d backlog_ms=%d alert_tick_max_ms=%d "
+                        + "progress_tick_max_ms=%d progress_ticks=%d notifications=%d subscriptions=%d duplicates=%d%n",
+                subscribers, backlogMillis, alertTickMaximumMillis, progressTickMaximumMillis, progressTicks,
+                countStartedNotifications(), countSubscriptions(), usersWithDuplicateStartedNotification());
+
+        assertThat(countStartedNotifications()).isEqualTo(subscribers);
+        assertThat(countSubscriptions()).isZero();
+        assertThat(usersWithDuplicateStartedNotification()).isZero();
+    }
+
     /** 예정 경매를 세우고 주어진 회원들이 프로덕션 경로로 신청하게 한다 */
     private long subscribedAuction(User... subscribers) {
         long auctionId = rooms.room(seller, STARTS_AT).create();
@@ -238,7 +320,8 @@ class AuctionStartAlertNotificationIntegrationTest extends IntegrationTestSuppor
     /** 그 시각에 멈춘 채로 한 주기를 돌린다 */
     private void advanceAt(LocalDateTime now) {
         fixClockAt(now);
-        scheduler.advanceAuctions();
+        progressScheduler.advanceAuctions();
+        alertScheduler.notifyStartAlerts();
     }
 
     private List<NotificationRow> notificationsOf(User user) {

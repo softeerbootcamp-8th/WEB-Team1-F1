@@ -8,7 +8,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 // 주기 작업을 켜고, 어떤 작업이 어느 스레드에서 도는지를 여기서 정한다.
 //
-// 스케줄러를 셋으로 가른 이유는 소켓 쓰기와 시각 판정을 한 스레드에 섞을 수 없기 때문이다.
+// 스케줄러를 작업별로 가른 이유는 소켓 쓰기·알림 팬아웃과 시각 판정을 한 스레드에 섞을 수 없기 때문이다.
 // 나눠 쓰면 안 받아 가는 구독자 하나가 스레드를 붙잡는 동안 마감 확정이나 다른 채널 청소가 통째로 밀린다.
 //
 // 여기에 TaskScheduler 빈을 둔 대가로 부트의 기본 taskScheduler 는 back off 한다.
@@ -22,6 +22,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 @ConditionalOnProperty(name = "race.scheduling.enabled", havingValue = "true", matchIfMissing = true)
 public class SchedulingConfig {
     public static final String AUCTION_PROGRESS = "auctionProgressTaskScheduler";
+    public static final String AUCTION_START_ALERT = "auctionStartAlertTaskScheduler";
     public static final String ROOM_STREAM = "roomStreamTaskScheduler";
     public static final String LIST_STREAM = "listStreamTaskScheduler";
     public static final String NOTIFICATION_STREAM = "notificationStreamTaskScheduler";
@@ -32,6 +33,18 @@ public class SchedulingConfig {
 
         // 배포로 종료될 때 처리 중인 경매를 최대 2초까지 기다린다.
         // 그 안에 못 끝낸 건은 롤백되고 다음 기동의 첫 틱에 다시 잡히므로, 잘려도 상태가 어긋나지 않는다.
+        scheduler.setWaitForTasksToCompleteOnShutdown(true);
+        scheduler.setAwaitTerminationSeconds(2);
+
+        return scheduler;
+    }
+
+    @Bean(AUCTION_START_ALERT)
+    public ThreadPoolTaskScheduler auctionStartAlertTaskScheduler() {
+        ThreadPoolTaskScheduler scheduler = threadPool("auction-start-alert-");
+
+        // 알림 저장과 신청 삭제가 한 트랜잭션이라, 종료 중인 작업에는 짧은 완료 기회를 준다.
+        // 시간 안에 끝나지 못하면 롤백되고 다음 기동의 첫 알림 틱에서 다시 잡힌다.
         scheduler.setWaitForTasksToCompleteOnShutdown(true);
         scheduler.setAwaitTerminationSeconds(2);
 
