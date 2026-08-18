@@ -194,7 +194,7 @@ Docker가 실행 중이어야 한다.
 
 ## 👥 팀원 소개
 
-| <img src="https://github.com/eojinxx.png" width="100"> | <img src="https://github.com/tukjw.png" width="100"> | <img src="https://github.com/user-attachments/assets/cc09b641-801f-46a0-a2fa-e9de58ebdd4c" width="100"> | <img src="https://github.com/mookkae.png" width="100"> |
+| <img src="https://github.com/user-attachments/assets/f9abd491-6427-41d6-a36c-0dd3e91adafa" width="100"> | <img src="https://github.com/tukjw.png" width="100"> | <img src="https://github.com/user-attachments/assets/cc09b641-801f-46a0-a2fa-e9de58ebdd4c" width="100"> | <img src="https://github.com/mookkae.png" width="100"> |
 | --- | --- | --- | --- |
 | 김어진 | 김재완 | 박태은 | 정동현 |
 | BE | BE | BE | BE |
