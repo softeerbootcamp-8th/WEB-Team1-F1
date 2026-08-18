@@ -508,26 +508,9 @@ describe('useNotifications 의 평가 결과 연동과 안내 표시 규칙', ()
     )
   })
 
-  /** 마감 30초 창에서 초 단위로 들어온다, 팝업이 입찰 버튼을 가리면 안 된다 */
-  it('경매방 안에서는 상위 입찰 안내를 접는다', async () => {
+  /** 방 안에서는 현재가 숫자만 바뀌어, 안내가 없으면 밀려난 것을 알아채지 못한다 */
+  it('같은 경매방을 보고 있어도 상위 입찰 안내를 띄운다', async () => {
     const { result } = renderNotifications('/auctions/3')
-
-    await waitFor(() => expect(streamHandlers).not.toBeNull())
-
-    act(() => {
-      streamHandlers?.onNotification({
-        notification: OUTBID_NOTIFICATION,
-        unreadCount: 1,
-      })
-    })
-
-    expect(mocks.showNotificationToast).not.toHaveBeenCalled()
-    expect(result.current.notifications.items).toEqual([OUTBID_NOTIFICATION])
-    expect(result.current.notifications.unreadCount).toBe(1)
-  })
-
-  it('다른 경매방에 있으면 상위 입찰 안내를 띄운다', async () => {
-    renderNotifications('/auctions/8')
 
     await waitFor(() => expect(streamHandlers).not.toBeNull())
 
@@ -542,6 +525,8 @@ describe('useNotifications 의 평가 결과 연동과 안내 표시 규칙', ()
       OUTBID_NOTIFICATION,
       expect.any(Function),
     )
+    expect(result.current.notifications.items).toEqual([OUTBID_NOTIFICATION])
+    expect(result.current.notifications.unreadCount).toBe(1)
   })
 })
 
