@@ -1,12 +1,12 @@
 package com.softeer.race.auth.application;
 
-import static com.softeer.race.auth.exception.AuthErrorCode.ACCOUNT_SUSPENDED;
 import static com.softeer.race.auth.exception.AuthErrorCode.INVALID_CREDENTIALS;
 import static com.softeer.race.auth.exception.AuthErrorCode.UNAUTHENTICATED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -48,22 +48,27 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
+    private LoginSessionIssuer loginSessionIssuer;
+
+    @Mock
     private SessionService sessionService;
 
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, passwordEncoder, sessionService);
+        authService = new AuthService(userRepository, passwordEncoder, loginSessionIssuer, sessionService);
     }
 
     @Test
     @DisplayName("로그인에 성공하면 세션 토큰과 회원 정보를 함께 반환한다")
     void login() {
         User user = loginableUser();
+        AuthUserInfo authUser = AuthUserInfo.from(user);
         when(userRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
-        when(sessionService.issue(user)).thenReturn(SESSION_TOKEN);
+        when(loginSessionIssuer.issue(USER_ID))
+                .thenReturn(new LoginInfo(SESSION_TOKEN, authUser));
 
         LoginInfo info = authService.login(new LoginCommand(USERNAME, RAW_PASSWORD));
 
@@ -99,7 +104,7 @@ class AuthServiceTest {
                         exception -> assertThat(exception.errorCode()).isEqualTo(INVALID_CREDENTIALS));
 
         verify(passwordEncoder, never()).matches(any(), any());
-        verify(sessionService, never()).issue(any());
+        verify(loginSessionIssuer, never()).issue(anyLong());
     }
 
     // 로그인 요청에는 가입 경로의 ASCII 제약이 없어 64자 한글(192바이트)이 들어올 수 있다
@@ -115,30 +120,12 @@ class AuthServiceTest {
                         exception -> assertThat(exception.errorCode()).isEqualTo(INVALID_CREDENTIALS));
 
         verify(passwordEncoder, never()).matches(any(), any());
-        verify(sessionService, never()).issue(any());
-    }
-
-    // 세션 폐기는 지금 접속 중인 사람을 끊고, 이 검사는 다시 들어오는 문을 막는다
-    // 둘이 함께여야 "정지된 회원에게는 살아 있는 세션이 없다"가 성립한다
-    @Test
-    @DisplayName("이용이 정지된 계정은 자격이 맞아도 로그인할 수 없다")
-    void loginRejectsSuspendedAccount() {
-        User user = credentialUser();
-        when(user.isSuspended()).thenReturn(true);
-        when(userRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
-
-        assertThatThrownBy(() -> authService.login(new LoginCommand(USERNAME, RAW_PASSWORD)))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.errorCode()).isEqualTo(ACCOUNT_SUSPENDED));
-
-        verify(sessionService, never()).issue(any());
+        verify(loginSessionIssuer, never()).issue(anyLong());
     }
 
     /*
-     * 검사 순서가 곧 계정 열거 방어다. 정지 여부를 비밀번호 검증보다 앞에 두면 비밀번호를 모르는
-     * 사람도 아이디만으로 그 계정이 정지 상태인지 알아낼 수 있어, 없는 아이디와 틀린 비밀번호를
-     * 한 코드로 합쳐 막아 둔 오라클이 그대로 다시 열린다
+     * 정지 검사가 든 LoginSessionIssuer를 비밀번호 검증보다 앞에 부르면 비밀번호를 모르는 사람도
+     * 아이디만으로 그 계정의 정지 상태를 알아낼 수 있다.
      */
     @Test
     @DisplayName("정지된 계정이어도 비밀번호가 틀리면 정지 사실을 알려주지 않는다")
@@ -151,7 +138,7 @@ class AuthServiceTest {
                 .isInstanceOfSatisfying(BusinessException.class,
                         exception -> assertThat(exception.errorCode()).isEqualTo(INVALID_CREDENTIALS));
 
-        verify(user, never()).isSuspended();
+        verify(loginSessionIssuer, never()).issue(anyLong());
     }
 
     @Test

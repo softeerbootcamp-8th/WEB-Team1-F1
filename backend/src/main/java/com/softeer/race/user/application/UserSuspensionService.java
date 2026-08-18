@@ -38,6 +38,9 @@ public class UserSuspensionService {
      * 시점에 복사된 세션 하나로 끝나므로, 끊지 않으면 최대 세션 TTL 만큼 정지 전 그대로 이용한다 —
      * 악성 이용을 막으려고 누른 버튼이 정작 지금 이용 중인 사람에게만 안 듣는 것이 된다.
      * <p>
+     * 로그인 세션 발급과 같은 회원 행을 잠근다. 로그인이 먼저면 여기서 그 신규 세션까지 지우고,
+     * 정지가 먼저면 로그인은 커밋 뒤 정지 상태를 읽고 거절된다.
+     * <p>
      * 폐기를 트랜잭션 안에서 부른다. 롤백됐는데 폐기만 남으면 그 회원이 한 번 더 로그인하면 그만이지만,
      * 커밋됐는데 폐기가 빠지면 위의 어긋난 상태가 그대로 남는다
      * ({@code DealerApplicationReviewService.approve}와 같은 판단이다).
@@ -68,16 +71,9 @@ public class UserSuspensionService {
         return UserStatusInfo.from(user);
     }
 
-    /**
-     * 잠그지 않고 읽는다. 잠가도 얻는 것이 없어서다 — 같은 회원 행을 함께 건드리는 딜러 승인
-     * ({@code DealerApplicationReviewService.approve})이 신청 행만 잠그고 회원 행은 잠그지 않으므로,
-     * 여기서만 {@code FOR UPDATE}를 걸어도 그 경로와는 배타가 되지 않는다.
-     * <p>
-     * 관리자 둘이 같은 회원을 동시에 누르는 경우는 재정지 차단({@code validateSuspendable})이
-     * 대부분 걸러내고, 통과한 나머지는 사유가 나중 것으로 덮이는 정도라 감수한다.
-     */
+    /** 로그인 세션 발급과 모든 이용 상태 전이가 같은 사용자 행에서 순서를 정하도록 잠그고 읽는다. */
     private User findUser(Long userId) {
-        return userRepository.findById(userId)
+        return userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new BusinessException(NOT_FOUND));
     }
 }
