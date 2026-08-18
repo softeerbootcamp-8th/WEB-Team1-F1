@@ -83,6 +83,15 @@ const DEAL_NOTIFICATION: AppNotification = {
   createdAt: '2026-08-13T10:02:00',
 }
 
+const SOLD_IN_SALES: AppNotification = {
+  id: 49,
+  type: 'AUCTION_SOLD',
+  message: '현대 그랜저 IG 차량이 24,950,000원에 낙찰되었습니다.',
+  read: false,
+  link: '/auctions/3',
+  createdAt: '2026-08-13T10:03:00',
+}
+
 const WON_NOTIFICATION: AppNotification = {
   id: 44,
   type: 'AUCTION_WON',
@@ -386,6 +395,25 @@ describe('useNotifications 의 거래 단계 연동', () => {
     act(() => {
       streamHandlers?.onNotification({
         notification: WON_NOTIFICATION,
+        unreadCount: 1,
+      })
+    })
+
+    expect(reload).toHaveBeenCalledTimes(1)
+    unsubscribe()
+  })
+
+  /** 같은 낙찰이 판매자에게는 다른 종류로 오고, 판매 내역에도 같은 거래가 새로 생긴다 */
+  it('판매자 낙찰 알림도 거래 목록을 다시 읽게 한다', async () => {
+    const reload = vi.fn()
+    const unsubscribe = subscribeDealChanged(reload)
+
+    renderNotifications('/mypage/sales')
+    await waitFor(() => expect(streamHandlers).not.toBeNull())
+
+    act(() => {
+      streamHandlers?.onNotification({
+        notification: SOLD_IN_SALES,
         unreadCount: 1,
       })
     })

@@ -3,11 +3,13 @@ import type { NotificationType } from '@/types/domain'
 /**
  * "내 거래가 방금 바뀌었다"를 뜻하는 알림 종류.
  *
- * 낙찰(AUCTION_WON)이 함께 들어 있는 것은 그 순간 거래가 만들어져 구매 내역에 새 행이 생기기
- * 때문이다. 종류가 늘면 여기에 함께 넣어야 화면이 따라 움직인다.
+ * 낙찰이 두 종류로 들어 있는 것은 거래가 낙찰 순간 양쪽에 한꺼번에 생기기 때문이다 —
+ * 낙찰자는 AUCTION_WON 을, 판매자는 AUCTION_SOLD 를 받고 각각 구매 내역과 판매 내역에 새 행이
+ * 생긴다. 종류가 늘면 여기에 함께 넣어야 화면이 따라 움직인다.
  */
 const DEAL_NOTIFICATION_TYPES: ReadonlySet<NotificationType> = new Set<NotificationType>([
   'AUCTION_WON',
+  'AUCTION_SOLD',
   'DEAL_SELLER_SUBMIT_REQUIRED',
   'DEAL_BUYER_SCHEDULE_REQUIRED',
   'DEAL_CONFIRMED',
