@@ -1,16 +1,29 @@
 package com.softeer.race.user.domain;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByUsername(String username);
+
+    /**
+     * 로그인 세션 발급과 이용 상태 변경을 한 회원 단위로 직렬화한다.
+     * <p>
+     * 로그인은 비밀번호 검증을 끝낸 뒤 이 메서드로 다시 읽는다. 처음 조회한 상태만 믿으면 그 사이
+     * 관리자가 이용을 정지하고 세션을 모두 지운 뒤에도, 로그인 요청이 새 세션을 만들 수 있다.
+     * 정지·해제도 같은 행을 잠가야 어느 한쪽만 잠그는 반쪽짜리 배제가 되지 않는다.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :userId")
+    Optional<User> findByIdForUpdate(@Param("userId") long userId);
 
     boolean existsByUsername(String username);
 

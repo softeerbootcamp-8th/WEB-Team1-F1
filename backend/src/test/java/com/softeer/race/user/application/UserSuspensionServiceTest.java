@@ -142,7 +142,7 @@ class UserSuspensionServiceTest {
     @Test
     @DisplayName("없는 회원을 정지하려 하면 404다")
     void suspendRejectsMissingUser() {
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+        when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
                 userSuspensionService.suspend(new SuspendUserCommand(USER_ID, REASON)))
@@ -152,7 +152,7 @@ class UserSuspensionServiceTest {
     }
 
     private void given(User user) {
-        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
     }
 
     // 실제 저장은 IDENTITY 라 save 시점에 식별자가 붙는다, 세션 폐기가 그 값을 쓰므로 대역에도 넣는다
