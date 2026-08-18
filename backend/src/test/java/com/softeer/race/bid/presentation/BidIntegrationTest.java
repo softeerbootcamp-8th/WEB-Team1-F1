@@ -332,7 +332,8 @@ class BidIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("시나리오 11-1 : 잠금을 기한 안에 얻지 못한 입찰은 거절되고, 잠금이 풀리면 다시 성립한다")
     void rejectsWhenLockTimesOut() throws Exception {
-        ReentrantLock lock = auctionLockRegistry.obtain(LIVE_AUCTION);
+        // acquire 로 사용자에 등록해 두면 이 테스트가 잠금을 쥐고 있는 동안 항목이 지워지지 않는다
+        ReentrantLock lock = auctionLockRegistry.acquire(LIVE_AUCTION);
         CountDownLatch held = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         ExecutorService holder = Executors.newSingleThreadExecutor();
@@ -361,6 +362,7 @@ class BidIntegrationTest extends IntegrationTestSupport {
         } finally {
             release.countDown();
             holder.shutdown();
+            auctionLockRegistry.release(LIVE_AUCTION);
         }
         assertThat(holder.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
 

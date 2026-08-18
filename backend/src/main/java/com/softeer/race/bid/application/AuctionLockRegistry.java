@@ -10,10 +10,24 @@ import java.util.concurrent.locks.ReentrantLock;
 @Component
 public class AuctionLockRegistry {
 
-    // 항목을 지우지 않는다 - 지우는 순간과 집어 가는 순간이 겹치면 서로 다른 잠금을 들고 같은 경매에 들어간다.
-    private final Map<Long, ReentrantLock> locks = new ConcurrentHashMap<>();
+    // 잠금과 그것을 잡고 있거나 기다리는 스레드 수. compute 안에서만 만들고 바꾼다.
+    private record Entry(ReentrantLock lock, int users) { }
 
-    public ReentrantLock obtain(long auctionId) {
-        return locks.computeIfAbsent(auctionId, id -> new ReentrantLock());
+    // 키가 요청 경로의 숫자라 로그인한 사용자가 임의 값으로 무한히 만들 수 있다.
+    private final Map<Long, Entry> locks = new ConcurrentHashMap<>();
+
+    // 사용자 수가 0 이 되는 순간에만 항목이 지워지므로, 겹치는 요청들은 언제나 같은 잠금을 본다.
+    public ReentrantLock acquire(long auctionId) {
+        return locks.compute(auctionId, (id, entry) ->
+                entry == null
+                        ? new Entry(new ReentrantLock(), 1)
+                        : new Entry(entry.lock(), entry.users() + 1)
+        ).lock();
+    }
+
+    // 사용 등록을 반납한다. 마지막 사용자였으면 항목이 함께 사라진다.
+    public void release(long auctionId) {
+        locks.compute(auctionId, (id, entry) ->
+                entry.users() == 1 ? null : new Entry(entry.lock(), entry.users() - 1));
     }
 }

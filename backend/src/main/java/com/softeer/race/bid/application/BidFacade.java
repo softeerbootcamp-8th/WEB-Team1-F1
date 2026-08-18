@@ -27,7 +27,7 @@ public class BidFacade {
     public BidPlaceInfo place(long auctionId, long bidderId, long amount) {
         auctionBidGate.rejectIfDoomed(auctionId, bidderId, amount);
 
-        ReentrantLock lock = auctionLockRegistry.obtain(auctionId);
+        ReentrantLock lock = auctionLockRegistry.acquire(auctionId);
 
         boolean acquired = false;
         try {
@@ -46,9 +46,11 @@ public class BidFacade {
             Thread.currentThread().interrupt();
             throw new BusinessException(BidErrorCode.BID_LOCK_TIMEOUT);
         } finally {
+            // unlock 이 release 보다 먼저다. 반납을 먼저 하면 내가 아직 잠금을 쥔 채 항목이 지워질 수 있어, 새 요청이 다른 잠금을 만들어 같은 경매에 들고 들어온다.
             if (acquired) {
                 lock.unlock();
             }
+            auctionLockRegistry.release(auctionId);
         }
     }
 }
