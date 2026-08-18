@@ -35,6 +35,11 @@ public interface AuctionListChannel {
     void sweepClosed();
 
     /**
+     * 열려 있는 구독 전부를 끝낸다, 서버가 내려갈 때 부른다
+     */
+    void closeAll();
+
+    /**
      * 목록을 보고 있는 구독이 하나라도 있는지
      */
     // 방송이 이것으로 먼저 걸러 아무도 안 볼 때 DB 를 읽지 않는다

@@ -162,6 +162,12 @@ public class InMemoryRoomChannel implements RoomChannel {
         return Set.copyOf(subscriptionsByRoom.keySet());
     }
 
+    // 순회를 여기 둔다, 밖에서 돌면 그사이 새로 생긴 방을 놓친다
+    @Override
+    public void closeAll() {
+        subscribedRooms().forEach(this::closeRoom);
+    }
+
     @Override
     public void closeRoom(long auctionId) {
         // 명부에서 먼저 뺀다, 끝난 연결이 해제 콜백으로 돌아왔을 때 방이 비어 있어야 갱신이 돌지 않는다

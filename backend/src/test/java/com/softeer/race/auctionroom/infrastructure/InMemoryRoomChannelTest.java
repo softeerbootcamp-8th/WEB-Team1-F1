@@ -286,6 +286,21 @@ class InMemoryRoomChannelTest {
     }
 
     @Test
+    @DisplayName("전부 끊으면 열려 있던 방들의 구독이 모두 끝난다")
+    void closeAllEndsEveryRoom() {
+        FakeSubscription here = new FakeSubscription();
+        FakeSubscription there = new FakeSubscription();
+        channel.subscribe(AUCTION, here);
+        channel.subscribe(OTHER_AUCTION, there);
+
+        channel.closeAll();
+
+        assertThat(here.closedByServer).isTrue();
+        assertThat(there.closedByServer).isTrue();
+        assertThat(channel.subscribedRooms()).isEmpty();
+    }
+
+    @Test
     @DisplayName("다른 방의 구독은 끊지 않는다")
     void closeRoomLeavesOtherRooms() {
         FakeSubscription other = new FakeSubscription();

@@ -1,5 +1,6 @@
 package com.softeer.race.auctionlist.experiment;
 
+import com.softeer.race.auctionlist.application.AuctionListStreamService;
 import com.softeer.race.bid.application.BidIncrementService;
 import com.softeer.race.bid.domain.BidIncrementTable;
 import com.softeer.race.support.IntegrationTestSupport;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.test.context.jdbc.Sql;
 
 import java.io.BufferedReader;
@@ -74,6 +76,15 @@ class AuctionListBroadcastExperiment extends IntegrationTestSupport {
     @Autowired
     private BidIncrementService bidIncrementService;
 
+    @Autowired
+    private AuctionListStreamService auctionListStreamService;
+
+    @Autowired
+    private ConfigurableApplicationContext context;
+
+    // 종료 직전에 보내는 마지막 카드다, 이것이 도착해야 끊기 전에 내보냈다는 뜻이다
+    private final AtomicLong farewellAuctionId = new AtomicLong();
+
     @Test
     @DisplayName("느린 목록 구독자가 있을 때 남은 구독의 갱신과 입찰 응답을 잰다")
     void measureSlowSubscriberImpact() throws Exception {
@@ -99,17 +110,23 @@ class AuctionListBroadcastExperiment extends IntegrationTestSupport {
             // 아주 크면 커널 버퍼가 다 삼켜서 서버 쓰기가 막히지 않은 것이라 조건이 안 선 것이다
             long buffered = stalled.stream().mapToLong(StalledReader::buffered).sum();
 
-            // 막힌 소켓을 먼저 닫아 서버 쓰기를 풀어준다, 안 그러면 거기 걸린 배달이 정리 뒤에 깨어난다
-            stalled.forEach(StalledReader::close);
-            stalled.clear();
-
+            // 안 읽는 소켓은 열어 둔 채 내린다, 종료가 그 구독의 완료 쓰기를 감당하는지가 재는 대상이다
             // 마지막 방송이 도착할 틈을 준다, 곧바로 끊으면 보낸 것과 받은 것이 어긋난다
             Thread.sleep(DRAIN.toMillis());
 
+            // 내리기 직전에 갱신을 하나 보낸다, 이것이 도착한 뒤에 끊겨야 한다
+            farewellAuctionId.set(rooms.room(seller, startAt).startPrice(START_PRICE).create());
+            auctionListStreamService.broadcastCard(farewellAuctionId.get());
+
+            // 읽기를 먼저 끊으면 서버가 무엇을 보냈는지 볼 수 없다, 컨텍스트를 닫은 뒤에 정리한다
+            long closingStartedAt = System.nanoTime();
+            context.close();
+            long closingNanos = System.nanoTime() - closingStartedAt;
+
+            report(watchers, outcome, buffered, closingNanos);
+
             http.shutdownNow();
             threads.shutdownNow();
-
-            report(watchers, outcome, buffered);
         } finally {
             stalled.forEach(StalledReader::close);
         }
@@ -148,9 +165,19 @@ class AuctionListBroadcastExperiment extends IntegrationTestSupport {
 
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith("data:")) {
-                    watcher.sawCard(currentPrice(line));
+                    long farewell = farewellAuctionId.get();
+
+                    // 마지막 카드는 다른 경매라 현재가가 시작가다, 값에 섞으면 따라왔는지 판정이 망가진다
+                    if (farewell > 0 && line.contains("\"auctionId\":" + farewell)) {
+                        watcher.markFarewell();
+                    } else {
+                        watcher.sawCard(currentPrice(line));
+                    }
                 }
             }
+
+            // readLine 이 널을 준 것은 서버가 응답을 끝냈다는 뜻이다, 예외로 빠지면 그냥 끊긴 것이다
+            watcher.markEndedNormally();
         } catch (IOException | InterruptedException e) {
             // 실험이 끝나며 끊는 것이 정상 경로다, 여기서 세울 것이 없다
             opened.countDown();
@@ -249,7 +276,7 @@ class AuctionListBroadcastExperiment extends IntegrationTestSupport {
         }
     }
 
-    private void report(List<Watcher> watchers, BidOutcome outcome, long buffered) {
+    private void report(List<Watcher> watchers, BidOutcome outcome, long buffered, long closingNanos) {
         long cards = watchers.stream().mapToLong(Watcher::cards).sum();
         long upToDate = watchers.stream().filter(watcher -> watcher.lastPrice() == outcome.highest()).count();
         double worstGap = watchers.stream().mapToDouble(watcher -> millis(watcher.maxGapNanos())).max().orElse(0);
@@ -261,12 +288,17 @@ class AuctionListBroadcastExperiment extends IntegrationTestSupport {
                         정상 구독이 받은 카드 %d, 최종가까지 따라온 구독 %d/%d
                         정상 구독의 카드 도착 최대 간격 %.1fms
                         안 읽는 구독에 쌓인 바이트 %d
+                        종료에 걸린 시간 %.1fms
+                        마지막 갱신을 받은 구독 %d/%d, 정상 종료로 끝난 구독 %d/%d
                         %n""",
                 SUBSCRIBERS, SLOW_SUBSCRIBERS, BIDDERS, BIDDING.toSeconds(),
                 outcome.accepted(), outcome.timeouts(), outcome.highest(),
                 millis(outcome.at(0.50)), millis(outcome.at(0.95)), millis(outcome.max()),
                 cards, upToDate, SUBSCRIBERS,
-                worstGap, buffered);
+                worstGap, buffered,
+                millis(closingNanos),
+                watchers.stream().filter(Watcher::sawFarewell).count(), SUBSCRIBERS,
+                watchers.stream().filter(Watcher::endedNormally).count(), SUBSCRIBERS);
     }
 
     private long currentPrice(String line) {
@@ -308,6 +340,25 @@ class AuctionListBroadcastExperiment extends IntegrationTestSupport {
         private volatile long lastPrice;
         private volatile long lastCardNanos;
         private volatile long maxGapNanos;
+
+        private volatile boolean farewellSeen;
+        private volatile boolean normalEnd;
+
+        void markFarewell() {
+            farewellSeen = true;
+        }
+
+        boolean sawFarewell() {
+            return farewellSeen;
+        }
+
+        void markEndedNormally() {
+            normalEnd = true;
+        }
+
+        boolean endedNormally() {
+            return normalEnd;
+        }
 
         void sawCard(long price) {
             long now = System.nanoTime();
