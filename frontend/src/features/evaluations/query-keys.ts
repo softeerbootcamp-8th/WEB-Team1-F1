@@ -29,6 +29,21 @@ export const ASSIGNABLE_EVALUATIONS_LIST_QUERY_KEY = [
 export const assignableEvaluationsQueryKey = (sort: AssignableEvaluationSort) =>
   [...ASSIGNABLE_EVALUATIONS_LIST_QUERY_KEY, sort] as const
 
+/**
+ * 신청 한 건의 상세. 종류를 접두사로 두어, 어느 신청인지 모르는 자리(알림 수신)에서도
+ * `EVALUATION_DETAIL_QUERY_KEY` 하나로 열려 있는 상세를 함께 내릴 수 있다.
+ */
+export const EVALUATION_DETAIL_QUERY_KEY = ['evaluations', 'detail'] as const
+
+export const evaluationDetailQueryKey = (evaluationId: number) =>
+  [...EVALUATION_DETAIL_QUERY_KEY, evaluationId] as const
+
+/**
+ * 내 신청 목록. 상세와 같은 사건(평가 승인·반려)으로 함께 낡는다 —
+ * 목록의 상태 배지와 상세의 결과가 서로 다른 말을 하면 안 된다.
+ */
+export const MY_REQUESTS_QUERY_KEY = ['evaluations', 'my-requests'] as const
+
 export const MY_ASSIGNMENTS_QUERY_KEY = ['evaluations', 'my-assignments'] as const
 
 /**

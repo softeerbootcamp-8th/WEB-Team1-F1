@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { getErrorMessage } from '@/lib/axios'
 import { cn } from '@/lib/utils'
 import { fetchMyRequests } from '../api'
+import { MY_REQUESTS_QUERY_KEY } from '../query-keys'
 import {
   DEFAULT_BUCKET,
   countRequests,
@@ -101,7 +102,7 @@ export function MyRequestsPanel() {
     : null
 
   const query = useQuery({
-    queryKey: ['evaluations', 'my-requests'],
+    queryKey: MY_REQUESTS_QUERY_KEY,
     queryFn: fetchMyRequests,
   })
   const evaluations = query.data?.evaluations ?? []

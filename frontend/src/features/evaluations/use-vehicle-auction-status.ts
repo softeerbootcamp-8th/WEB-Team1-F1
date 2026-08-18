@@ -1,10 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { fetchMyRequests } from './api'
+import { MY_REQUESTS_QUERY_KEY } from './query-keys'
 import type { EvaluationAuctionStatus } from './types'
-
-/** 신청 목록 쿼리 키. 출품 뒤 이 키를 무효화해야 등록 버튼의 판정이 최신이 된다. */
-export const MY_REQUESTS_QUERY_KEY = ['evaluations', 'my-requests'] as const
 
 /**
  * 이 신청에 걸린 차량의 최신 경매 상태. 상세 응답에는 경매 상태가 없어 신청 목록에서 읽는다.
