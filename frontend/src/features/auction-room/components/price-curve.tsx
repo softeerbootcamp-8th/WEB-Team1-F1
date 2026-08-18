@@ -13,20 +13,16 @@ const PAD_RIGHT = 16
 const PAD_TOP = 28
 const PAD_BOTTOM = 32
 
-// 점을 다 찍으면 뭉치는 경계. 마감 임박 호가는 몇 초 간격으로 들어와 자리가 겹친다
-const DOT_LIMIT = 12
-
 // 라벨 한 줄 높이. 두 값이 이보다 가까우면 각각 적어도 서로를 덮는다
 const LABEL_LINE_HEIGHT = 14
 
 interface PriceCurveProps {
   shape: CurveShape
-  /** 곡선 아래에 적을 시각 눈금, 시작과 끝 둘 */
-  startAt: string
+  /** 곡선 아래 오른쪽 눈금. 왼쪽은 첫 입찰이라 shape 이 들고 있다 */
   endAt: string
   /** 내 최고 입찰, 입찰한 적이 없으면 null */
   myAmount: number | null
-  /** 내가 낙찰자인지. 낙찰 자리와 내 최고가가 같은 점이라 표시를 하나로 합친다 */
+  /** 내가 낙찰자인지. 낙찰 자리와 내 최고가가 같은 점이라 라벨을 하나로 합친다 */
   mineWon: boolean
 }
 
@@ -36,7 +32,7 @@ interface PriceCurveProps {
  * 좌표 계산은 curveShapeOf 가 이미 끝냈다. 여기서 하는 일은 0에서 1 사이의 값을 viewBox 안의
  * 자리로 옮기는 것뿐이라, 눈금이 어떻게 정해졌는지는 이 파일이 몰라도 된다.
  */
-export function PriceCurve({ shape, startAt, endAt, myAmount, mineWon }: PriceCurveProps) {
+export function PriceCurve({ shape, endAt, myAmount, mineWon }: PriceCurveProps) {
   // 한 화면에 곡선이 둘 있어도 그라데이션이 서로를 덮지 않게 한다
   const fillId = useId()
 
@@ -72,15 +68,12 @@ export function PriceCurve({ shape, startAt, endAt, myAmount, mineWon }: PriceCu
   // 글자 폭을 재지 않고 어림한다. 오른쪽 끝에서 잘리는 것만 막으면 된다
   const labelFitsCentered = x(last.x) + (mergedLabel ? 130 : 26) / 2 <= WIDTH - PAD_RIGHT
 
-  // 뭉치면 남의 입찰 점을 지운다. 내가 부른 자리는 몇 건이든 남겨야 내가 어디까지 따라갔는지 보인다.
-  // 라벨을 합친 경우에는 내 최고가 점도 뺀다, 낙찰 점과 같은 자리라 서로를 덮는다
-  const dots = (
-    shape.points.length > DOT_LIMIT
-      ? shape.points.filter(
-          (point, index) => point.mine || index === 0 || index === shape.points.length - 1,
-        )
-      : shape.points
-  ).filter((point) => !(mergedLabel && point.mine && point.amount === myAmount))
+  // 시작가 캡션은 내 입찰선 라벨과 같은 자리를 쓴다. 둘이 가까우면 내 값을 살린다.
+  // 라벨을 합쳤으면 그 자리에 내 입찰선 라벨이 없어 캡션이 갈 곳이 남는다
+  const startPriceLabelFits =
+    mergedLabel ||
+    shape.myLineY === null ||
+    Math.abs(y(shape.myLineY) - y(0)) >= LABEL_LINE_HEIGHT
 
   // 폭이 0인 경매는 가운데 눈금이 위아래와 같은 금액이라 세 줄이 같은 값을 말하게 된다
   const ticks = [
@@ -154,6 +147,12 @@ export function PriceCurve({ shape, startAt, endAt, myAmount, mineWon }: PriceCu
           >
             {formatManwon(tick.amount)}
           </text>
+          {/* 곡선은 첫 입찰에서 시작한다. 시작가가 어디였는지는 이 바닥선이 대신 말한다 */}
+          {tick.value === 0 && startPriceLabelFits && (
+            <text x={PAD_LEFT + 6} y={y(0) - 6} className="fill-muted-foreground text-[11px]">
+              시작가
+            </text>
+          )}
         </g>
       ))}
 
@@ -165,7 +164,7 @@ export function PriceCurve({ shape, startAt, endAt, myAmount, mineWon }: PriceCu
             x2={WIDTH - PAD_RIGHT}
             y1={y(shape.myLineY)}
             y2={y(shape.myLineY)}
-            className="stroke-destructive"
+            className="stroke-bid-mine"
             strokeWidth={1.5}
             strokeDasharray="6 4"
           />
@@ -173,7 +172,7 @@ export function PriceCurve({ shape, startAt, endAt, myAmount, mineWon }: PriceCu
           <text
             x={PAD_LEFT + 6}
             y={y(shape.myLineY) - 6}
-            className="fill-destructive text-[11px] font-medium"
+            className="fill-bid-mine text-[11px] font-medium"
           >
             내 입찰 {formatManwon(myAmount)}
           </text>
@@ -189,25 +188,54 @@ export function PriceCurve({ shape, startAt, endAt, myAmount, mineWon }: PriceCu
         strokeLinecap="round"
       />
 
-      {dots.map((point, index) => (
+      {/*
+        점 하나가 입찰 하나다. 남의 입찰은 작은 빈 점으로 남긴다 — 지워 버리면 몇십 건이
+        들어온 경매도 매끈한 선 하나가 되어 마감 직전에 몰린 밀도가 사라진다.
+        색은 누구인지만 말한다. 이겼는지는 낙찰 링이 따로 말한다
+      */}
+      {shape.points.map((point, index) => (
         <circle
           key={index}
           cx={x(point.x)}
           cy={y(point.y)}
-          r={point.mine ? 5.5 : 4.5}
-          strokeWidth={2}
-          className={
-            point.mine ? 'fill-destructive stroke-destructive' : 'fill-card stroke-price-up'
-          }
+          r={point.mine ? 5.5 : 2.6}
+          strokeWidth={point.mine ? 2 : 1.5}
+          strokeOpacity={point.mine ? 1 : 0.8}
+          className={point.mine ? 'fill-bid-mine stroke-bid-mine' : 'fill-card stroke-price-up'}
         />
       ))}
 
-      {/* 마지막 점만 채워 낙찰 자리를 표시한다 */}
+      {/*
+        낙찰 자리는 점의 색을 빼앗지 않고 링을 덧씌운다. 색이 "누구"와 "낙찰"을 함께 지면
+        내가 낙찰받은 순간 두 뜻이 한 점에서 부딪혀 어느 점이 내 것인지 읽히지 않는다.
+        링 아래 카드색 테를 깔아 마감 직전에 붙은 점들과 갈라 놓는다
+      */}
       <g>
-        <circle cx={x(last.x)} cy={y(last.y)} r={5.5} className="fill-price-up stroke-price-up" />
+        <circle
+          cx={x(last.x)}
+          cy={y(last.y)}
+          r={9.5}
+          fill="none"
+          className="stroke-card"
+          strokeWidth={4}
+        />
+        <circle
+          cx={x(last.x)}
+          cy={y(last.y)}
+          r={5.5}
+          className={mineWon ? 'fill-bid-mine stroke-bid-mine' : 'fill-price-up stroke-price-up'}
+        />
+        <circle
+          cx={x(last.x)}
+          cy={y(last.y)}
+          r={9.5}
+          fill="none"
+          className="stroke-price-up"
+          strokeWidth={1.75}
+        />
         <text
           x={labelFitsCentered ? x(last.x) : WIDTH - PAD_RIGHT}
-          y={y(last.y) - 12}
+          y={y(last.y) - 16}
           textAnchor={labelFitsCentered ? 'middle' : 'end'}
           className="fill-price-up text-[11px] font-semibold"
         >
@@ -215,11 +243,14 @@ export function PriceCurve({ shape, startAt, endAt, myAmount, mineWon }: PriceCu
         </text>
       </g>
 
-      {/* 가로축은 시작에서 마감까지다, 가운데 눈금이 있어야 오른쪽 여백이 남은 시간으로 읽힌다 */}
+      {/*
+        가로축은 첫 입찰에서 마감까지다, 가운데 눈금이 있어야 오른쪽 여백이 남은 시간으로 읽힌다.
+        왼쪽에 "첫 입찰"을 적어야 그 시각이 방이 열린 시각으로 오독되지 않는다
+      */}
       {[
-        { at: startAt, x: 0, anchor: 'start' as const },
-        { at: middleOf(startAt, endAt), x: 0.5, anchor: 'middle' as const },
-        { at: endAt, x: 1, anchor: 'end' as const },
+        { at: shape.originAt, x: 0, anchor: 'start' as const, tag: '첫 입찰 ' },
+        { at: middleOf(shape.originAt, endAt), x: 0.5, anchor: 'middle' as const, tag: '' },
+        { at: endAt, x: 1, anchor: 'end' as const, tag: '' },
       ].map((tick) => (
         <text
           key={tick.x}
@@ -228,6 +259,7 @@ export function PriceCurve({ shape, startAt, endAt, myAmount, mineWon }: PriceCu
           textAnchor={tick.anchor}
           className="fill-muted-foreground text-[11px]"
         >
+          {tick.tag}
           {clock(tick.at)}
         </text>
       ))}
