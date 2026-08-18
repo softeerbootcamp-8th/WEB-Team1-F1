@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import { formatDateTime, formatKRW, formatMileage } from '@/lib/format'
 import { cancelDeal, fetchDealDetail } from '../api'
 import { DealActions } from '../components/deal-actions'
+import { dealDetailQueryKey } from '../query-keys'
 import { DEAL_FLOW, DEAL_STATUS_META, dealGuide } from '../types'
 import type { DealStatus } from '../types'
 
@@ -41,13 +42,13 @@ export function DealDetailPage() {
   const [isCancelling, setIsCancelling] = useState(false)
 
   const query = useQuery({
-    queryKey: ['deals', 'detail', dealId],
+    queryKey: dealDetailQueryKey(dealId),
     queryFn: () => fetchDealDetail(dealId),
     enabled: Number.isInteger(dealId) && dealId > 0,
   })
 
   const refresh = () => {
-    void queryClient.invalidateQueries({ queryKey: ['deals', 'detail', dealId] })
+    void queryClient.invalidateQueries({ queryKey: dealDetailQueryKey(dealId) })
   }
 
   const cancel = async () => {

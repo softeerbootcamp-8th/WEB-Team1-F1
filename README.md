@@ -1,163 +1,84 @@
-# 🏁 RACE — 실시간 중고차 경매 플랫폼
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fd25272e-2328-4a58-92f6-2b88b1deffcf" width="420" alt="RACE 로고">
+</p>
 
-> 소프티어 부트캠프 8기 · WEB Team1 (F1)
-> 
+<h1 align="center">🏁 RACE</h1>
+
+<p align="center">
+  <strong>누구나 사고팔 수 있는 실시간 중고차 경매 플랫폼</strong><br>
+  방문 평가부터 실시간 경매, 낙찰 이후 거래까지 하나의 흐름으로 이어집니다.
+</p>
+
+<p align="center">
+  <a href="https://www.f1race.site"><strong>🌐 서비스 바로가기</strong></a>
+  ·
+  <a href="https://github.com/softeerbootcamp-8th/WEB-Team1-F1/wiki"><strong>📖 팀 위키</strong></a>
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/35d4eca8-5120-4858-8fee-e7a0a535d371" width="100%" alt="RACE 서비스 메인 화면">
+</p>
+
+<p align="center">
+  <sub>소프티어 부트캠프 8기 · WEB Team1 (F1)</sub>
+</p>
+
+---
 
 ## 📚 목차
 
 - [🚀 프로젝트 개요](#-프로젝트-개요)
+- [🗺️ 서비스 전체 흐름](#-서비스-전체-흐름)
 - [✨ 주요 기능](#-주요-기능)
-- [🤝 협업 전략](#-협업-전략)
-- [⏰ 정기 일정](#-정기-일정)
-- [🌱 지향하는 코드리뷰 문화](#-지향하는-코드리뷰-문화)
-- [📎 커밋 · 이슈 · PR 템플릿](#-커밋--이슈--pr-템플릿)
-- [📚 회의록 · 위키 · 프로젝트 보드](#-회의록--위키--프로젝트-보드)
-- [🔗 기획/디자인 링크](#-기획디자인-링크)
-- [🔧 Tech Stack](#-tech-stack)
-- [▶️ 실행](#-실행)
-- [📦 배포](#-배포)
+- [🔧 기술 스택](#-기술-스택)
+- [🏗️ 시스템 아키텍처](#-시스템-아키텍처)
 - [👥 팀원 소개](#-팀원-소개)
 
 ## 🚀 프로젝트 개요
 
-- 딜러를 거쳐야만하고, 그 마진이 고스란히 딜러에게 귀속되던 중고차 시장을 대상으로 합니다.
-- 일반인과 딜러가 함께 참여하는 실시간 경매로, 시장이 차량의 적정 가치를 직접 발견하게 합니다.
-- 딜러 마진 없이 개인 간 거래(C2C)가 가능해, 판매자는 더 비싸게 팔고 구매자는 더 싸게 살 수 있습니다.
+- 누구나 중고차를 직접 사고팔 수 있는 실시간 경매 플랫폼입니다. 개인 판매자와 구매자, 중고차 딜러가 같은 경매에 참여합니다.
+- **합리적인 가격** — 딜러의 유통 마진을 없애 판매자는 딜러 매입가보다 더 받고, 구매자는 딜러 소매가보다 더 싸게 삽니다.
+- **평가사가 검증한 신뢰성** — 평가사가 직접 차량을 방문해 사진과 진단 결과를 기록하고, 승인된 차량만 경매에 오릅니다.
+- **입찰 현황을 공개하는 투명성** — 현재가와 최근 입찰 내역, 참여 인원이 경매방을 보고 있는 모든 이용자에게 실시간으로 동일하게 보입니다.
+
+## 🗺️ 서비스 전체 흐름
+
+- 차량 시세 조회부터 방문 진단, 실시간 경매, 낙찰 후 거래 4단계까지 이어지는 전체 흐름입니다.
+- 평가 반려 시 방문평가 재신청으로, 유찰 시 경매 재출품으로 되돌아갑니다.
+
+![RACE 서비스 전체 플로우](https://github.com/user-attachments/assets/9bae55a2-4b83-44c1-8207-54ed5c2071e8)
 
 ## ✨ 주요 기능
 
-- 실시간 경매
-    - 마감 전까지 실시간으로 입찰하며 최고가 갱신을 바로 확인할 수 있습니다.
-    - 소프트 클로즈 방식을 적용하여 마감 직전에 입찰이 들어오면 마감 시각이 연장되어, 실시간 라이브 경매의 치열한 경쟁을 웹에서 구현합니다.
-    - 마지막 30초동안 더 이상 입찰이 없으면 최고 입찰자가 낙찰됩니다.
+- **차량 방문 평가** — 판매자가 차량이 있는 장소와 원하는 방문 일정을 골라 평가를 신청하면, 평가사가 직접 방문해 사진과 진단 결과를 기록하고 승인된 차량만 경매에 오릅니다.
+- **경매글 목록** — 시작 전·진행 중·종료로 상태를 나눠 보고, 차량 제원과 가격 조건으로 원하는 매물만 걸러 찾습니다.
+- **입찰** — 가격대별 최소 상승 단위가 정해져 있어 첫 입찰은 시작가부터, 이후에는 현재가에서 한 칸 이상 올려 입찰합니다. 마감까지 30초가 남지 않은 시점에 입찰이 들어오면 마감 시각이 그 입찰 시점부터 다시 30초로 늘어납니다.
+- **실시간 호가 반영** — 입찰이 성사되면 현재가와 최근 입찰 내역, 참여 인원, 남은 시간이 그 경매방을 보고 있는 모든 이용자의 화면에 실시간으로 함께 반영됩니다.
+- **사용자 알림** — 방문 평가 결과, 경매 시작, 최고 입찰자 변경, 낙찰과 유찰, 거래 단계 전이를 실시간 알림으로 안내하고, 아직 시작하지 않은 경매는 시작 알림을 미리 신청해 둘 수 있습니다.
+- **낙찰 이후 거래 진행** — 낙찰과 동시에 거래가 자동으로 생성되고, 구매 확정 → 판매 서류와 탁송 일정 등록 → 인도 일정 확정 순으로 구매자와 판매자가 번갈아 단계를 밟습니다.
 
-## 🤝 협업 전략
+## 🔧 기술 스택
 
-- 브랜치 전략은 Git Flow를 기반으로 합니다.
-- main은 릴리즈, dev는 통합 브랜치입니다.
-- 작업 브랜치는 이슈 단위로 dev에서 분기합니다 (type/이슈번호-설명, 예: feat/12-auction-bidding).
-- hotfix만 예외로 main에서 분기해 main과 dev 양쪽에 반영합니다.
-- 세부 포맷은 📎 커밋·이슈·PR 템플릿 참고.
+| 영역 | 스택 |
+| --- | --- |
+| **Backend** | ![Java](https://img.shields.io/badge/Java%2021-007396?style=for-the-badge&logo=openjdk&logoColor=white) ![Spring Boot](https://img.shields.io/badge/Spring%20Boot%204.1.0-6DB33F?style=for-the-badge&logo=springboot&logoColor=white) ![Spring Data JPA](https://img.shields.io/badge/Spring%20Data%20JPA-6DB33F?style=for-the-badge&logo=spring&logoColor=white) ![Swagger](https://img.shields.io/badge/Swagger%20UI-85EA2D?style=for-the-badge&logo=swagger&logoColor=black) |
+| **Database** | ![MySQL](https://img.shields.io/badge/MySQL%208.4-4479A1?style=for-the-badge&logo=mysql&logoColor=white) ![Redis](https://img.shields.io/badge/Redis-FF4438?style=for-the-badge&logo=redis&logoColor=white) |
+| **Frontend** | ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white) ![pnpm](https://img.shields.io/badge/pnpm-F69220?style=for-the-badge&logo=pnpm&logoColor=white) |
+| **Test** | ![JUnit5](https://img.shields.io/badge/JUnit%205-25A162?style=for-the-badge&logo=junit5&logoColor=white) ![Mockito](https://img.shields.io/badge/Mockito-78A641?style=for-the-badge) ![Testcontainers](https://img.shields.io/badge/Testcontainers-291A38?style=for-the-badge&logo=testcontainers&logoColor=white) |
+| **Infra** | ![EC2](https://img.shields.io/badge/EC2-FF9900?style=for-the-badge) ![S3](https://img.shields.io/badge/S3-569A31?style=for-the-badge) ![CloudFront](https://img.shields.io/badge/CloudFront-8C4FFF?style=for-the-badge) ![VPC](https://img.shields.io/badge/VPC-8C4FFF?style=for-the-badge) ![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white) |
+| **CI/CD** | ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white) ![GHCR](https://img.shields.io/badge/GHCR-181717?style=for-the-badge&logo=github&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white) |
 
-## ⏰ 정기 일정
+## 🏗️ 시스템 아키텍처
 
-- 매일 오전 10:00~10:20 데일리 스크럼을 진행합니다 (아침 컨디션, 어제 한 일과 이슈, 오늘 할 일 공유).
-- 매일 저녁 18:30부터 일일 회고를 진행합니다.
-- 매주 목요일 30분간 KPT 주간 회고를 진행합니다.
-- 회의나 데일리 스크럼에 지각하면 2회마다 팀원에게 커피를 쏩니다.
-
-## 🌱 지향하는 코드리뷰 문화
-
-- 리뷰는 단순한 코드 품질 검토가 아닌 같이 성장하기 위한 대화의 장입니다.
-- 리뷰를 통해 협업 중심 사고, 클린 코드 실천을 함께 키워나갑니다.
-
-### 리뷰 타임라인
-
-- PR이 올라오면 24시간 내에 리뷰합니다.
-- 리뷰가 어려우면, 리뷰어는 언제 볼 수 있는지 미리 공유합니다.
-- Slack 요청을 확인하면 답장이나 이모지로 반응합니다 (읽씹 금지).
-    
-    > ex. "오늘은 일정상 어려울 것 같아요. 내일 오전까지 확인할게요!"
-    > 
-
-### 리뷰 방식
-
-- 리뷰어는 핵심 로직, 설계, 책임 분리 등 학습 중심 관점에서 피드백합니다.
-    
-    > ex. "이 부분은 단일 책임 원칙에 어긋날 수 있어요. 상태 관련 로직과 UI 출력 로직을 분리해보면 어때요?"
-    > 
-- 이해하지 않은 코드에는 Approve 하지 않습니다.
-- 이해되지 않는 코드는 AI를 통해서라도 작성자의 의도를 분석하고, 그래도 모르겠으면 설명을 요청합니다.
-- AI와 토의한 내용을 본인의 생각으로 소화해서 전달하는 것도 괜찮습니다 (단, 상대방을 몰아붙이듯 괴롭히지 않습니다).
-    
-    > ex. "실시간 처리를 설명해보세요" → "제가 그거 안 했습니다"처럼 넘기면 안 됩니다. 리뷰했다면 아는 만큼 개요는 설명할 수 있어야 하고, 더 구체적인 내용은 담당자가 설명하면 됩니다.
-    > 
-- AI 피드백을 전달할 때는 작성자의 의도 파악이 먼저입니다.
-    
-    > BAD: "AI가 별로라고 하네요" — 근거 없이 그대로 전달하면 상대방에게 상처만 남는 나쁜 예시입니다.
-    > 
-    > 
-    > ex) 상대방이 세션 기반 로그인을 구현한 PR을 올렸고, 내가 리뷰어로서 AI로 분석했더니 JWT를 쓰라는 지적이 나온 상황 → "세션 대신 JWT를 쓰는 게 낫지 않나요? JWT가 스테이트리스인데요" ❌
-    > — 세션을 쓴 사람의 의도를 파악하지 않고 AI의 지적만 그대로 전달한 것입니다. 왜 세션을 선택했는지 먼저 충분히 파악한 뒤,
-    > "세션을 선택하신 이유가 있을까요? 저는 X 때문에 JWT도 고려해볼 만한 것 같아요" ⭕ 처럼
-    > 본인의 의견과 해결책을 담아 코멘트로 답합니다.
-    > 
-
-### 리뷰 태도
-
-- 비난이 아닌 제안의 어조를 사용합니다.
-    
-    > ex. ❌ "이렇게 하면 안 돼요" → ✅ "이렇게 바꿔보면 더 명확할 것 같아요!"
-    > 
-- 궁금한 점이 있으면 질문을 던지는 방식으로 함께 고민합니다.
-    
-    > ex. "이 부분을 이렇게 나눈 이유가 있을까요?"
-    > 
-
-### 상호 존대하여 대화하기
-
-- 코드리뷰 시에는 상호 존대로 진행합니다.
-    
-    > ex. "원영님! 혹시 useCommentDelete 훅 분리가 적절한지 확인 부탁드립니다 ㅎㅎ!"
-    > 
-
-### 2인의 Approve 필수
-
-- 모든 PR은 최소 2명의 Approve를 받은 후에만 Merge할 수 있습니다.
-- 형식적인 절차가 아니라, 다양한 시각으로 코드의 구조와 설계, 의도를 함께 점검하는 과정입니다.
-- 서로의 코드를 함께 검토함으로써 버그를 사전에 방지하고, 팀 전체의 코드 이해도와 설계 기준을 일관되게 유지합니다.
-    
-    > ❗️ 예외가 필요한 경우(예: 긴급 패치)는 팀원 모두에게 공유 후 공감대가 형성되었을 때만 허용합니다.
-    branch protection이 우회를 막고 있으므로, 이때는 조장이 보호 규칙을 일시 해제 → 머지 → 즉시 복원하는 절차로 진행합니다.
-    > 
-
-## 📎 커밋 · 이슈 · PR 템플릿
-
-- 이슈, 브랜치, 커밋, PR은 아래 컨벤션을 따릅니다.
-- 팀 전체가 Claude Code를 사용하기 때문에, 컨벤션은 Skills(`/issue` `/branch` `/commit` `/pr`)로 자동화해두었습니다.
-- 전체 포맷은 위키 - 컨벤션에서 확인하세요.
-
-## 📚 회의록 · 위키 · 프로젝트 보드
-
-- 회의록: 위키 - 회의록
-- 그라운드룰 상세: 위키 - 그라운드룰
-- 백엔드 아키텍처 상세: 위키 - 백엔드 아키텍처
-- 스프린트 보드: GitHub Projects
-
-## 🔗 기획/디자인 링크
-
-- 기획서: (예정)
-- 디자인: (예정)
-
-## 🔧 Tech Stack
-
-### Backend (`backend/`)
-
-- Java 21 · Spring Boot 4.1.0 · Gradle 9.5
-- MySQL 8.4 · Spring Data JPA (도입 예정 — ERD 확정 후)
-
-### Frontend (`frontend/`)
-
-- (세팅 예정)
-
-## ▶️ 실행
-
-Docker가 실행 중이어야 한다.
-
-`docker compose up -d` 로 개발용 MySQL을 띄우고 `./gradlew bootRun` 으로 서버를 실행한다.
-
-통합테스트는 개발용 DB를 쓰지 않는다. 실행할 때마다 별도 MySQL 컨테이너를 띄워 거기에 붙으므로, Docker만 떠 있으면 `./gradlew test` 한 줄로 돌아가고 개발 데이터는 영향을 받지 않는다. 새 통합테스트는 `IntegrationTestSupport` 를 상속한다.
-
-## 📦 배포
-
-- 백엔드는 main에 머지되면 자동으로 배포된다.
-- 프론트는 Actions의 Frontend CI가 main에서 만든 산출물을 받아 콘솔에서 올린다.
-- 올린 뒤 CloudFront에서 /index.html을 무효화한다. 나머지 파일은 이름에 해시가 붙어 필요 없다.
-- 릴리즈에 프론트 변경이 없으면 산출물이 없다. 그때는 다시 올리지 않는다.
+![RACE 시스템 아키텍처](https://github.com/user-attachments/assets/7befdd14-e1c3-4dfc-96af-fa9c3f221b2f)
 
 ## 👥 팀원 소개
 
-| <img src="https://github.com/eojinxx.png" width="100"> | <img src="https://github.com/tukjw.png" width="100"> | <img src="https://github.com/ReusCap.png" width="100"> | <img src="https://github.com/mookkae.png" width="100"> |
+<div align="center">
+
+| <img src="https://github.com/user-attachments/assets/f9abd491-6427-41d6-a36c-0dd3e91adafa" width="150"> | <img src="https://github.com/user-attachments/assets/7aa5297a-cc04-495a-bbde-36086cee4579" width="150"> | <img src="https://github.com/user-attachments/assets/cc09b641-801f-46a0-a2fa-e9de58ebdd4c" width="150"> | <img src="https://github.com/user-attachments/assets/6013009d-912f-4529-b136-a60c8bbf5ca1" width="150"> |
 | --- | --- | --- | --- |
 | 김어진 | 김재완 | 박태은 | 정동현 |
 | BE | BE | BE | BE |
+
+</div>

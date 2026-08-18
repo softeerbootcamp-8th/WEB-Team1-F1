@@ -150,7 +150,7 @@ class BidServiceTest {
         when(bidIncrementService.loadTable()).thenReturn(table);
         when(bidPreCheckRepository.find(AUCTION_ID, BIDDER_ID))
                 .thenReturn(Optional.of(new BidPreCheck(
-                        Role.DEALER, BIDDER_REAL_NAME, SELLER_ID, MANUFACTURER, VEHICLE_MODEL,
+                        BIDDER_REAL_NAME, SELLER_ID, MANUFACTURER, VEHICLE_MODEL,
                         START_PRICE, START_PRICE, START_TIME, END_TIME)));
         when(table.ruleFor(START_PRICE, START_PRICE))
                 .thenReturn(new BidRule(START_PRICE, INCREMENT, START_PRICE + INCREMENT));
@@ -172,7 +172,7 @@ class BidServiceTest {
 
         when(bidPreCheckRepository.find(AUCTION_ID, BIDDER_ID))
                 .thenReturn(Optional.of(new BidPreCheck(
-                        Role.DEALER, BIDDER_REAL_NAME, SELLER_ID, MANUFACTURER, VEHICLE_MODEL,
+                        BIDDER_REAL_NAME, SELLER_ID, MANUFACTURER, VEHICLE_MODEL,
                         START_PRICE, START_PRICE, START_TIME, END_TIME)));
         when(auctionRepository.findByIdForUpdate(AUCTION_ID)).thenReturn(Optional.of(auction));
 
@@ -206,7 +206,7 @@ class BidServiceTest {
     // 입찰이 없는 진행 중 경매, 입찰자는 판매자도 평가사도 아니다
     private BidPreCheck preCheck() {
         return new BidPreCheck(
-                Role.DEALER, BIDDER_REAL_NAME, SELLER_ID, MANUFACTURER, VEHICLE_MODEL,
+                BIDDER_REAL_NAME, SELLER_ID, MANUFACTURER, VEHICLE_MODEL,
                 START_PRICE, null, START_TIME, END_TIME);
     }
 

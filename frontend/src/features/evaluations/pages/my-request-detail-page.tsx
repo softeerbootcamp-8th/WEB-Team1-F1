@@ -25,6 +25,7 @@ import {
 import { getErrorMessage } from '@/lib/axios'
 import { formatDateTime, formatKRW, formatMileage } from '@/lib/format'
 import { fetchEvaluationDetail } from '../api'
+import { evaluationDetailQueryKey } from '../query-keys'
 import { DEFAULT_BUCKET, isBucket, isStateOf } from '../request-scope'
 import { useVehicleAuctionStatus } from '../use-vehicle-auction-status'
 import {
@@ -49,7 +50,7 @@ export function MyRequestDetailPage() {
    */
   const listPath = `/mypage/evaluations${listQuery(searchParams)}`
   const query = useQuery({
-    queryKey: ['evaluations', 'detail', evaluationId],
+    queryKey: evaluationDetailQueryKey(evaluationId),
     queryFn: () => fetchEvaluationDetail(evaluationId),
     enabled: Number.isInteger(evaluationId) && evaluationId > 0,
   })

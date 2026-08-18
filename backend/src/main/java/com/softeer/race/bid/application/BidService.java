@@ -28,7 +28,6 @@ import java.time.LocalDateTime;
 import static com.softeer.race.bid.exception.BidErrorCode.AUCTION_NOT_FOUND;
 import static com.softeer.race.bid.exception.BidErrorCode.AUCTION_NOT_LIVE;
 import static com.softeer.race.bid.exception.BidErrorCode.BIDDER_NOT_FOUND;
-import static com.softeer.race.bid.exception.BidErrorCode.EVALUATOR_CANNOT_BID;
 import static com.softeer.race.bid.exception.BidErrorCode.SELF_OUTBID;
 
 /**
@@ -63,18 +62,13 @@ public class BidService {
             throw new BusinessException(AUCTION_NOT_FOUND);
         }
 
-        if (preCheck.isEvaluator()) {
-            throw new BusinessException(EVALUATOR_CANNOT_BID);
-        }
-
         // 확실히 떨어질 요청은 잠금 대기열에 세우지 않는다.
         preCheck.toSnapshot().rejectIfDoomed(table, bidderId, amount, LocalDateTime.now(clock));
 
         // 여기부터 이 경매에 대한 입찰이 한 번에 하나씩 처리된다.
         Auction auction = auctionRepository.findByIdForUpdate(auctionId)
                 .orElseThrow(() -> new BusinessException(AUCTION_NOT_FOUND));
-
-        // 이 줄을 잠금 위로 올리지 마라. 잠금 대기 시간만큼 시각이 낡아 이미 마감된 경매에 입찰이 성립한다.
+        
         // 여기서 찍은 값은 요청 도착 시각이 아니라 이 입찰이 순서를 배정받은 시각이고,
         // 순서를 정하는 것도 잠금이므로 순서와 시각이 같은 기준을 쓰게 된다.
         LocalDateTime acceptedAt = LocalDateTime.now(clock);
@@ -105,7 +99,7 @@ public class BidService {
         auction.acceptBid(bidder, amount, acceptedAt);
 
         // 입찰과 알림을 원자적으로 남기려고 같은 트랜잭션에 둔다. 그 대가로 알림 INSERT와
-        // 안 읽은 건수 COUNT가 경매 락 보유 시간에 포함된다. 락 대기가 관측되면 아웃박스로 다시 본다.
+        // 안 읽은 건수 COUNT가 경매 락 보유 시간에 포함된다.
         if (previousTopBidderId != null) {
             notificationPublisher.publishContent(
                     previousTopBidderId,

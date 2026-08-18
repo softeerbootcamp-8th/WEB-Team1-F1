@@ -4,6 +4,7 @@ import com.softeer.race.auction.application.AuctionCloser;
 import com.softeer.race.auction.application.AuctionStarter;
 import com.softeer.race.auction.domain.AuctionRepository;
 import com.softeer.race.auth.config.AuthProperties;
+import com.softeer.race.auctionroom.application.RoomChannel;
 import com.softeer.race.auth.domain.SessionStore;
 import com.softeer.race.bid.application.AuctionBidGate;
 import com.softeer.race.auctionpost.domain.AuctionPostRepository;
@@ -132,6 +133,16 @@ public abstract class IntegrationTestSupport {
         try (RedisConnection connection = redisConnectionFactory.getConnection()) {
             connection.serverCommands().flushDb();
         }
+    }
+
+    @Autowired
+    private RoomChannel roomChannel;
+
+    // 테이블은 지우면서 채널은 안 지우면, 앞 테스트가 열어 둔 구독이 스키마 재생성으로 되돌아온
+    // 같은 경매 식별자에 그대로 붙어 있어 다음 테스트의 사람 수를 늘린다
+    @AfterEach
+    void closeOpenRooms() {
+        roomChannel.subscribedRooms().forEach(roomChannel::closeRoom);
     }
 
     @Autowired

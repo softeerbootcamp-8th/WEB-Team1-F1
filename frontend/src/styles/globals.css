@@ -57,6 +57,8 @@
   --closing-soon: oklch(0.72 0.17 65); /* 마감 임박 경고 (앰버) */
   --success: oklch(0.6 0.15 150);
   --warning: oklch(0.72 0.17 65);
+  /* 내 입찰 (블루) — 잘했는지가 아니라 누구인지를 뜻한다. 승패는 낙찰 표시가 따로 말한다 */
+  --bid-mine: oklch(0.55 0.14 240);
 
   /* 경매 상태 뱃지: 입장 전 / 입장 가능 / 진행 / 종료 */
   --status-scheduled: oklch(0.55 0 0); /* 입장 전 — 중립 실버, 예정 카드 대부분이 이 상태다 */
@@ -118,6 +120,7 @@
   --closing-soon: oklch(0.78 0.16 65);
   --success: oklch(0.72 0.16 150);
   --warning: oklch(0.78 0.16 65);
+  --bid-mine: oklch(0.7 0.13 240);
 
   --status-scheduled: oklch(0.7 0 0);
   --status-waiting: oklch(0.8 0.15 68);
@@ -176,6 +179,7 @@
   --color-closing-soon: var(--closing-soon);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-bid-mine: var(--bid-mine);
   --color-status-scheduled: var(--status-scheduled);
   --color-status-waiting: var(--status-waiting);
   --color-status-live: var(--status-live);

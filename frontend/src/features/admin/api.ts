@@ -4,6 +4,10 @@ import type {
   DealerApplicationDetail,
   DealerApplicationStatus,
   DealerApplicationsResponse,
+  UserDetail,
+  UserSearchCondition,
+  UserStatusResult,
+  UsersResponse,
 } from './types'
 
 /**
@@ -49,6 +53,46 @@ export async function rejectDealerApplication(
   const { data } = await axiosInstance.post<DealerApplicationDecision>(
     `/api/admin/dealer-applications/${applicationId}/rejection`,
     { reason },
+  )
+  return data
+}
+
+/**
+ * 회원 목록. 페이지 크기는 서버가 고정하므로 여기서 정하지 않는다.
+ *
+ * 빈 값은 파라미터째 빼서 보낸다. `keyword=` 를 실어 보내면 서버가 그 빈 문자열을 조건으로
+ * 오해할 여지를 남기는데, 아예 보내지 않으면 "조건 없음"이라는 뜻이 한 가지로만 읽힌다.
+ */
+export async function fetchUsers(condition: UserSearchCondition): Promise<UsersResponse> {
+  const { data } = await axiosInstance.get<UsersResponse>('/api/admin/users', {
+    params: {
+      keyword: condition.keyword.trim() || undefined,
+      role: condition.role ?? undefined,
+      status: condition.status ?? undefined,
+      page: condition.page,
+    },
+  })
+  return data
+}
+
+/** 회원 상세. 목록에 없는 이메일·연락처·정지 사유가 여기에 있다 */
+export async function fetchUserDetail(userId: number): Promise<UserDetail> {
+  const { data } = await axiosInstance.get<UserDetail>(`/api/admin/users/${userId}`)
+  return data
+}
+
+/** 정지는 그 회원의 세션까지 끊는다. 당사자는 즉시 로그아웃되고 다시 로그인할 수도 없다 */
+export async function suspendUser(userId: number, reason: string): Promise<UserStatusResult> {
+  const { data } = await axiosInstance.post<UserStatusResult>(
+    `/api/admin/users/${userId}/suspension`,
+    { reason },
+  )
+  return data
+}
+
+export async function activateUser(userId: number): Promise<UserStatusResult> {
+  const { data } = await axiosInstance.post<UserStatusResult>(
+    `/api/admin/users/${userId}/activation`,
   )
   return data
 }

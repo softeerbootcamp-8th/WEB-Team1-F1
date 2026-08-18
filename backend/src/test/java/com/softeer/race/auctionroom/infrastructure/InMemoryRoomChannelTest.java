@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
@@ -433,10 +434,84 @@ class InMemoryRoomChannelTest {
         }
     }
 
+    @Test
+    @DisplayName("방송 뒤에 붙은 구독이 마지막 현황을 따라잡는다")
+    void lateSubscriberCatchesUpToLastState() {
+        channel.subscribe(AUCTION, new FakeSubscription());
+        RoomState state = liveState();
+        channel.broadcast(AUCTION, state);
+
+        FakeSubscription late = new FakeSubscription();
+        channel.subscribe(AUCTION, late);
+        channel.catchUp(AUCTION, late);
+
+        assertThat(late.received).containsExactly(state);
+    }
+
+    @Test
+    @DisplayName("나간 현황이 없으면 따라잡을 것도 없다")
+    void catchUpSendsNothingWithoutBroadcast() {
+        FakeSubscription late = new FakeSubscription();
+        channel.subscribe(AUCTION, late);
+
+        channel.catchUp(AUCTION, late);
+
+        assertThat(late.received).isEmpty();
+    }
+
+    @Test
+    @DisplayName("낡은 현황이 늦게 도착해도 기억하는 것은 최신이다")
+    void catchUpKeepsTheNewestState() {
+        channel.subscribe(AUCTION, new FakeSubscription());
+        RoomState newer = liveState(2_000L);
+        channel.broadcast(AUCTION, newer);
+        channel.broadcast(AUCTION, liveState(1_000L));
+
+        FakeSubscription late = new FakeSubscription();
+        channel.subscribe(AUCTION, late);
+        channel.catchUp(AUCTION, late);
+
+        assertThat(late.received).containsExactly(newer);
+    }
+
+    @Test
+    @DisplayName("방이 닫히면 기억한 현황도 지워진다")
+    void closingRoomForgetsLastState() {
+        channel.subscribe(AUCTION, new FakeSubscription());
+        channel.broadcast(AUCTION, liveState());
+        channel.closeRoom(AUCTION);
+
+        FakeSubscription late = new FakeSubscription();
+        channel.subscribe(AUCTION, late);
+        channel.catchUp(AUCTION, late);
+
+        assertThat(late.received).isEmpty();
+    }
+
+    @Test
+    @DisplayName("마지막 구독이 빠지면 기억한 현황도 지워진다")
+    void emptyingRoomForgetsLastState() {
+        FakeSubscription only = new FakeSubscription();
+        channel.subscribe(AUCTION, only);
+        channel.broadcast(AUCTION, liveState());
+        channel.unsubscribe(AUCTION, only);
+
+        FakeSubscription late = new FakeSubscription();
+        channel.subscribe(AUCTION, late);
+        channel.catchUp(AUCTION, late);
+
+        assertThat(late.received).isEmpty();
+    }
+
     // 채널은 현황을 나르기만 하고 안을 들여다보지 않으므로, 같은 객체가 갔는지만 확인하면 된다
     private static RoomState liveState() {
+        return liveState(0);
+    }
+
+    // 낡음을 가리는 것이 현재가이므로 그 값을 정할 수 있어야 한다
+    private static RoomState liveState(long currentPrice) {
         return new RoomState(
-                AUCTION, RoomPhase.LIVE, 0,
+                AUCTION, RoomPhase.LIVE, currentPrice,
                 null, null, new BidCounts(0, 0), null, List.of());
     }
 
@@ -493,6 +568,9 @@ class InMemoryRoomChannelTest {
 
         @Override
         public void send(RoomMessage message) {
+            // 진짜 구독은 널을 받으면 사서함에서 터진다, 페이크가 더 관대하면 널을 보내는 실수를 여기서 못 잡는다
+            Objects.requireNonNull(message, "보낼 것이 없으면 send 를 부르지 않는다");
+
             if (!open) {
                 return;
             }

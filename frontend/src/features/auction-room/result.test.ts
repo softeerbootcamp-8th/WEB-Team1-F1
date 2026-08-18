@@ -98,7 +98,8 @@ describe('dealListPathOf', () => {
 
 describe('curveShapeOf', () => {
   const curve = [
-    point(0, 8_500_000),
+    // 방이 열린 뒤 5분 동안은 아무도 부르지 않았다. 곡선의 왼쪽 끝은 이 첫 입찰이어야 한다
+    point(5, 8_500_000),
     point(10, 9_300_000, true),
     point(15, 9_800_000),
     // 마감 정각에는 입찰이 성립하지 않고, 임박 입찰은 소프트클로즈가 마감을 밀어낸다
@@ -106,17 +107,17 @@ describe('curveShapeOf', () => {
     point(19, 10_100_000),
   ]
 
-  it('서버가 주지 않는 시작가 점을 앞에 붙인다', () => {
+  // 방이 열린 뒤 첫 입찰까지는 아무 일도 없었다. 그 구간을 사선으로 이으면 상승으로 읽힌다
+  it('곡선은 첫 입찰에서 시작하고 시작가는 점이 되지 않는다', () => {
     const shape = curveShapeOf(result({ priceCurve: curve }))
 
-    // 이미지의 곡선은 800만에서 출발한다, 그 점은 입찰이 아니라 시작가다
-    expect(shape?.points[0].amount).toBe(8_000_000)
-    expect(shape?.points[0].mine).toBe(false)
-    expect(shape?.points).toHaveLength(curve.length + 1)
+    expect(shape?.points).toHaveLength(curve.length)
+    expect(shape?.points[0].amount).toBe(8_500_000)
+    expect(shape?.originAt).toBe(curve[0].bidAt)
   })
 
-  // 가로축 라벨이 시작과 마감이므로 점도 그 사이에 놓여야 한다, 마지막 입찰을 끝에 붙이면 라벨이 거짓이 된다
-  it('가로는 시작에서 마감까지이고 마지막 입찰은 그 안쪽이다', () => {
+  // 가로축 라벨이 첫 입찰과 마감이므로 점도 그 사이에 놓여야 한다, 마지막 입찰을 끝에 붙이면 라벨이 거짓이 된다
+  it('가로는 첫 입찰에서 마감까지이고 마지막 입찰은 그 안쪽이다', () => {
     const shape = curveShapeOf(result({ priceCurve: curve }))
 
     expect(shape?.points.at(0)?.x).toBe(0)
@@ -124,11 +125,20 @@ describe('curveShapeOf', () => {
     expect(shape?.points.at(-1)?.x).toBeGreaterThan(0.9)
   })
 
+  // 점에서 빠진 시작가는 세로 눈금의 바닥으로 남는다, 첫 입찰이 시작가보다 얼마나 높았는지가 그 거리다
   it('세로는 시작가가 바닥이고 낙찰가가 꼭대기다', () => {
     const shape = curveShapeOf(result({ priceCurve: curve }))
 
-    expect(shape?.points.at(0)?.y).toBe(0)
+    expect(shape?.minAmount).toBe(8_000_000)
+    expect(shape?.points.at(0)?.y).toBeGreaterThan(0)
     expect(shape?.points.at(-1)?.y).toBe(1)
+  })
+
+  // 마감 정각 입찰은 성립하지 않지만, 서버 시각이 그렇게 내려와도 좌표가 NaN 이 되면 곡선이 사라진다
+  it('마지막 입찰이 마감과 같은 시각이어도 좌표가 무너지지 않는다', () => {
+    const shape = curveShapeOf(result({ priceCurve: [point(20, 10_100_000)] }))
+
+    expect(shape?.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true)
   })
 
   it('내 최고 입찰선은 그 금액의 높이에 놓이고, 입찰하지 않았으면 없다', () => {
@@ -172,7 +182,6 @@ describe('curveShapeOf', () => {
       }),
     )
 
-    // 앞에 붙는 시작가 점은 입찰이 아니라 마감을 밀 수 없다
-    expect(shape?.points.map((p) => p.extended)).toEqual([false, false, true])
+    expect(shape?.points.map((p) => p.extended)).toEqual([false, true])
   })
 })

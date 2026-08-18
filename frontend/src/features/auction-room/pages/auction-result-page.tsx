@@ -285,13 +285,28 @@ function CurveCard({ result }: { result: RoomResultView }) {
         <h3 className="font-semibold">가격이 오른 과정</h3>
 
         <div className="text-muted-foreground flex items-center gap-3 text-sm">
-          {/* 빨강이 나라는 뜻은 입찰한 사람에게만 필요하다, 안 넣었으면 곡선에 빨강이 없다 */}
+          {/* 파랑이 나라는 뜻은 입찰한 사람에게만 필요하다, 안 넣었으면 곡선에 파랑이 없다 */}
           {result.myStanding && (
             <span className="flex items-center gap-1.5">
-              <span className="bg-destructive size-2 rounded-full" aria-hidden />
+              <span className="bg-bid-mine size-2 rounded-full" aria-hidden />
               내 입찰
             </span>
           )}
+          {/* 색과 링이 각각 다른 것을 뜻하게 갈랐으니(#447), 링이 장식으로 읽히지 않게 적어 둔다 */}
+          <span className="flex items-center gap-1.5">
+            <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
+              <circle cx="8" cy="8" r="2.6" className="fill-price-up" />
+              <circle
+                cx="8"
+                cy="8"
+                r="6"
+                fill="none"
+                className="stroke-price-up"
+                strokeWidth={1.25}
+              />
+            </svg>
+            낙찰
+          </span>
           <span>
             {minutesBetween(result.startAt, result.endAt)}분 동안 {result.bidCount}번
           </span>
@@ -301,7 +316,6 @@ function CurveCard({ result }: { result: RoomResultView }) {
       {shape ? (
         <PriceCurve
           shape={shape}
-          startAt={result.startAt}
           endAt={result.endAt}
           myAmount={result.myStanding?.highestAmount ?? null}
           mineWon={mineWon}

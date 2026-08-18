@@ -3,7 +3,14 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/features/auth/auth-context'
-import { ASSIGNABLE_EVALUATIONS_QUERY_KEY } from '@/features/evaluations/query-keys'
+import { emitDealChanged, isDealNotification } from '@/features/deals/deal-events'
+import { DEALS_QUERY_KEY } from '@/features/deals/query-keys'
+import {
+  ASSIGNABLE_EVALUATIONS_QUERY_KEY,
+  EVALUATION_DETAIL_QUERY_KEY,
+  MY_REQUESTS_QUERY_KEY,
+} from '@/features/evaluations/query-keys'
+import type { NotificationType } from '@/types/domain'
 import type { AppNotification } from '@/types/domain'
 import {
   fetchNotifications,
@@ -13,6 +20,20 @@ import {
   subscribeNotifications,
 } from './api'
 import { showNotificationToast } from './notification-toast'
+
+/**
+ * 같은 대상을 보고 있을 때 팝업을 접는 종류. 지금은 상위 입찰 하나다.
+ *
+ * 상위 입찰은 마감 30초 창에서 초 단위로 들어오고, 현재가·호가창·최저 상승가를 방이 이미
+ * 그리고 있다. 팝업은 정보를 더하지 않으면서 입찰 버튼을 가린다.
+ *
+ * 마감 알림(종료·낙찰·유찰)은 여기 두지 않는다. 방이 스스로 세는 마감과 서버가 보내는 알림이
+ * 각자의 시계로 움직여, 접기 판정이 "어느 쪽이 먼저 도착했는가"에 달리게 된다 — 같은 상황에서
+ * 떴다 안 떴다 하는 것이 접히는 것보다 나쁘다.
+ */
+const SILENT_ON_SAME_TARGET: ReadonlySet<NotificationType> = new Set<NotificationType>([
+  'OUTBID',
+])
 
 /**
  * 서버가 준 목록과 화면이 들고 있던 목록을 합친다.
@@ -212,11 +233,40 @@ export function useNotifications() {
           })
         }
 
-        // 지금 화면이 이미 같은 사건을 보여 주면 팝업만 생략한다. 위에서 목록과 배지는 먼저
-        // 반영했으므로 기록은 남는다. 경매·거래 id나 query가 다르면 다른 대상이라 그대로 띄운다.
-        // 배정 대기 목록은 다시 읽더라도 새 행을 사용자가 놓치지 않게 신청 안내를 함께 보여 준다.
+        // 평가 결과는 신청 상세와 목록 배지를 동시에 바꾼다. 어느 신청인지는 알림이 실어 오지
+        // 않으므로 종류 접두사로 함께 내린다 — 열려 있는 상세만 즉시 다시 읽히고 나머지는 stale 로 남는다
+        if (notification.type === 'EVAL_APPROVED' || notification.type === 'EVAL_REJECTED') {
+          for (const queryKey of [EVALUATION_DETAIL_QUERY_KEY, MY_REQUESTS_QUERY_KEY]) {
+            void queryClient.invalidateQueries({ queryKey, refetchType: 'active' })
+          }
+        }
+
+        // 마감은 판매자의 신청 내역에 있는 경매 배지와 재등록 버튼 판정을 뒤집는다. 유찰이면
+        // 다시 등록할 수 있게 되는데, 그 판정이 신청 목록의 경매 상태 위에 서 있다(canRegisterAuction).
+        // 경매 목록은 자체 스트림이 카드를 통째로 다시 보내므로 여기서 건드릴 것이 없다
+        if (notification.type === 'AUCTION_SOLD' || notification.type === 'AUCTION_FAILED') {
+          void queryClient.invalidateQueries({
+            queryKey: MY_REQUESTS_QUERY_KEY,
+            refetchType: 'active',
+          })
+        }
+
+        // 거래는 단계마다 움직일 수 있는 사람이 한 명이라, 상대가 넘긴 순간이 곧 내 차례가 된
+        // 순간이다. 알림 종류로 다음 단계를 계산하지 않고 상세와 목록을 다시 읽는다 — 화면이
+        // 단계 표를 복제하면 서버와 어긋나는 순간 조용히 틀린다.
+        // 상세는 조회 캐시가, 목록은 자체 상태를 들고 있어(use-deal-list) 신호를 따로 흘린다
+        if (isDealNotification(notification.type)) {
+          void queryClient.invalidateQueries({
+            queryKey: DEALS_QUERY_KEY,
+            refetchType: 'active',
+          })
+          emitDealChanged()
+        }
+
+        // 같은 화면을 보고 있어도 기본은 띄우는 것이다. 접는 것은 아래 목록에 든 종류뿐이고,
+        // 그마저 대상이 정확히 같을 때만이다 — 경매·거래 id나 query가 다르면 다른 사건이다
         if (
-          notification.type === 'EVAL_REQUESTED' ||
+          !SILENT_ON_SAME_TARGET.has(notification.type) ||
           notification.link !== currentTargetRef.current
         ) {
           showNotificationToast(notification, () => openRef.current(notification))

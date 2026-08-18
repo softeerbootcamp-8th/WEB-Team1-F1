@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -47,22 +48,27 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
+    private LoginSessionIssuer loginSessionIssuer;
+
+    @Mock
     private SessionService sessionService;
 
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, passwordEncoder, sessionService);
+        authService = new AuthService(userRepository, passwordEncoder, loginSessionIssuer, sessionService);
     }
 
     @Test
     @DisplayName("로그인에 성공하면 세션 토큰과 회원 정보를 함께 반환한다")
     void login() {
         User user = loginableUser();
+        AuthUserInfo authUser = AuthUserInfo.from(user);
         when(userRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(RAW_PASSWORD, ENCODED_PASSWORD)).thenReturn(true);
-        when(sessionService.issue(user)).thenReturn(SESSION_TOKEN);
+        when(loginSessionIssuer.issue(USER_ID))
+                .thenReturn(new LoginInfo(SESSION_TOKEN, authUser));
 
         LoginInfo info = authService.login(new LoginCommand(USERNAME, RAW_PASSWORD));
 
@@ -98,7 +104,7 @@ class AuthServiceTest {
                         exception -> assertThat(exception.errorCode()).isEqualTo(INVALID_CREDENTIALS));
 
         verify(passwordEncoder, never()).matches(any(), any());
-        verify(sessionService, never()).issue(any());
+        verify(loginSessionIssuer, never()).issue(anyLong());
     }
 
     // 로그인 요청에는 가입 경로의 ASCII 제약이 없어 64자 한글(192바이트)이 들어올 수 있다
@@ -114,7 +120,25 @@ class AuthServiceTest {
                         exception -> assertThat(exception.errorCode()).isEqualTo(INVALID_CREDENTIALS));
 
         verify(passwordEncoder, never()).matches(any(), any());
-        verify(sessionService, never()).issue(any());
+        verify(loginSessionIssuer, never()).issue(anyLong());
+    }
+
+    /*
+     * 정지 검사가 든 LoginSessionIssuer를 비밀번호 검증보다 앞에 부르면 비밀번호를 모르는 사람도
+     * 아이디만으로 그 계정의 정지 상태를 알아낼 수 있다.
+     */
+    @Test
+    @DisplayName("정지된 계정이어도 비밀번호가 틀리면 정지 사실을 알려주지 않는다")
+    void loginDoesNotRevealSuspensionBeforeVerifyingPassword() {
+        User user = credentialUser();
+        when(userRepository.findByUsername(USERNAME)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrongpass", ENCODED_PASSWORD)).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.login(new LoginCommand(USERNAME, "wrongpass")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.errorCode()).isEqualTo(INVALID_CREDENTIALS));
+
+        verify(loginSessionIssuer, never()).issue(anyLong());
     }
 
     @Test

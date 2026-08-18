@@ -137,7 +137,8 @@ public class Auction extends BaseTimeEntity {
         // 연장 횟수에 상한을 두지 않는다
     }
 
-    // 스케줄러가 들어오면 status와 시각 판정의 관계를 다시 정리한다.
+    // 시각은 사실을, status는 처리 여부를 답한다. 입찰 가능은 시각만으로 결정되는 사실이라
+    // status를 보면 스케줄러 지연이 정당한 입찰을 거절하고, 종료는 부작용이 있는 1회성 작업이라 이미 했는지를 status로만 알 수 있다.
     public boolean isBiddableAt(LocalDateTime now) {
         return !now.isBefore(startTime) && now.isBefore(currentEndTime);
     }
@@ -159,6 +160,8 @@ public class Auction extends BaseTimeEntity {
      * 예약 상태는 종료 대상이 아니다. 시작 전이를 건너뛰고 바로 낙찰로 뛰면
      * 예약 → 진행 중 → 종료 순서를 후보 조회 한 줄만 지키게 된다.
      * 이미 끝난 경매도 IN_PROGRESS 가 아니라 그대로 걸러지므로 재종료가 막힌다.
+     * 그래서 예약 상태로 마감을 지난 경매는 advanceAuctions 가 시작 전이를 먼저 돌려야
+     * 같은 주기에 닫힌다. 두 단계의 순서가 이 판정을 지탱한다.
      * <p>
      * 종료 후보를 뽑은 시각과 잠금을 얻은 시각 사이에 소프트 클로즈로 마감이 밀릴 수 있다.
      * 호출자는 잠금을 얻은 뒤 이 판정을 다시 통과시켜야 한다.
