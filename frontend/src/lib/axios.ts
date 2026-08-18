@@ -4,10 +4,10 @@ import type { AxiosError, AxiosRequestConfig } from 'axios'
 // orval mutator가 사용할 프로젝트 공용 axios 인스턴스
 // 인증이 HttpOnly 쿠키 세션이라 withCredentials 없이는 Set-Cookie/쿠키 전송이 모두 안 된다
 //
-// baseURL은 Vite가 빌드 시점에 문자열로 박아 넣는다. 배포는 CloudFront가 /api/* 를 백엔드
-// 오리진으로 넘겨 프론트와 API가 같은 오리진이 되므로 빈 값(=상대 경로)이 정상이다.
-// 기본값을 로컬 주소로 두면 안 된다 — 값을 빠뜨린 채 빌드했을 때 방문자의 8080을 때리는
-// 번들이 조용히 배포된다. 기본값을 상대 경로로 둬야 그 실수가 로컬에서 먼저 깨진다.
+// baseURL은 Vite가 빌드 시점에 문자열로 박아 넣는다. 운영은 .env.production의
+// https://api.f1race.site를 쓰며, www 프론트와 API는 오리진이 달라 백엔드 CORS 허용과
+// withCredentials가 모두 필요하다. 이 값을 빠뜨리면 요청이 www.f1race.site/api/*로 가 404가 난다.
+// 기본값을 로컬 주소로 두면 방문자의 8080을 때리는 번들이 배포되므로 상대 경로까지만 허용한다.
 export const axiosInstance = Axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? '',
   withCredentials: true,
