@@ -5,7 +5,7 @@
 <h1 align="center">🏁 RACE</h1>
 
 <p align="center">
-  <strong>누구나 직접 사고팔 수 있는 실시간 중고차 경매 플랫폼</strong><br>
+  <strong>누구나 사고팔 수 있는 실시간 중고차 경매 플랫폼</strong><br>
   방문 평가부터 실시간 경매, 낙찰 이후 거래까지 하나의 흐름으로 이어집니다.
 </p>
 
@@ -13,8 +13,6 @@
   <a href="https://www.f1race.site"><strong>🌐 서비스 바로가기</strong></a>
   ·
   <a href="https://github.com/softeerbootcamp-8th/WEB-Team1-F1/wiki"><strong>📖 팀 위키</strong></a>
-  ·
-  <a href="#️-시스템-아키텍처"><strong>🏗️ 시스템 아키텍처</strong></a>
 </p>
 
 <p align="center">
@@ -76,7 +74,11 @@
 
 ## 👥 팀원 소개
 
-| <img src="https://github.com/user-attachments/assets/f9abd491-6427-41d6-a36c-0dd3e91adafa" width="100"> | <img src="https://github.com/user-attachments/assets/7aa5297a-cc04-495a-bbde-36086cee4579" width="100"> | <img src="https://github.com/user-attachments/assets/cc09b641-801f-46a0-a2fa-e9de58ebdd4c" width="100"> | <img src="https://github.com/user-attachments/assets/6013009d-912f-4529-b136-a60c8bbf5ca1" width="100"> |
+<div align="center">
+
+| <img src="https://github.com/user-attachments/assets/f9abd491-6427-41d6-a36c-0dd3e91adafa" width="150"> | <img src="https://github.com/user-attachments/assets/7aa5297a-cc04-495a-bbde-36086cee4579" width="150"> | <img src="https://github.com/user-attachments/assets/cc09b641-801f-46a0-a2fa-e9de58ebdd4c" width="150"> | <img src="https://github.com/user-attachments/assets/6013009d-912f-4529-b136-a60c8bbf5ca1" width="150"> |
 | --- | --- | --- | --- |
 | 김어진 | 김재완 | 박태은 | 정동현 |
 | BE | BE | BE | BE |
+
+</div>
