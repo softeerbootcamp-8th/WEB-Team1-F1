@@ -110,10 +110,7 @@ class AuctionListBroadcastExperiment extends IntegrationTestSupport {
             // 아주 크면 커널 버퍼가 다 삼켜서 서버 쓰기가 막히지 않은 것이라 조건이 안 선 것이다
             long buffered = stalled.stream().mapToLong(StalledReader::buffered).sum();
 
-            // 막힌 소켓을 먼저 닫아 서버 쓰기를 풀어준다, 안 그러면 거기 걸린 배달이 정리 뒤에 깨어난다
-            stalled.forEach(StalledReader::close);
-            stalled.clear();
-
+            // 안 읽는 소켓은 열어 둔 채 내린다, 종료가 그 구독의 완료 쓰기를 감당하는지가 재는 대상이다
             // 마지막 방송이 도착할 틈을 준다, 곧바로 끊으면 보낸 것과 받은 것이 어긋난다
             Thread.sleep(DRAIN.toMillis());
 
