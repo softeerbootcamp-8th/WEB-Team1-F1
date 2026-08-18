@@ -76,3 +76,12 @@ notification:
       per-user-queue-capacity: 256
       # 배포 종료 때 이 시간까지만 대기 작업을 비운다. 이후 SSE는 버려도 DB 알림은 남는다.
       shutdown-await: 10s
+
+race:
+  room:
+    # 열린 연결마다 keep-alive 를 보내고 실패한 것을 명부에서 뺀다, 상한은 앞단 프록시의 90초다
+    heartbeat-interval-seconds: 60
+    # 마감 방송이 유실된 방을 끊는다, 정상 경로는 방송 직후에 끊으므로 여기까지 오지 않는다
+    # 부하가 이 값을 안 가른다, 방 200개에서 1초와 30초 사이 입찰 응답이 회차 흔들림 안이었다
+    ended-room-close-interval-seconds: 5
+    broadcast-workers: 32

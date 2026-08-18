@@ -39,3 +39,7 @@ auth:
 race:
   scheduling:
     enabled: false
+  room:
+    heartbeat-interval-seconds: 60
+    ended-room-close-interval-seconds: 5
+    broadcast-workers: 32
