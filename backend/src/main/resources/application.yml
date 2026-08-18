@@ -85,3 +85,7 @@ race:
     # 부하가 이 값을 안 가른다, 방 200개에서 1초와 30초 사이 입찰 응답이 회차 흔들림 안이었다
     ended-room-close-interval-seconds: 5
     broadcast-workers: 32
+  list:
+    # 느린 구독 하나가 일꾼 하나를 붙잡는다. 안 읽는 구독 10에서 일꾼 2와 8과 32의 차이가
+    # 관찰되지 않아 경매방과 같은 값으로 둔다, 갈리는 지점이 보이면 그때 조정한다
+    broadcast-workers: 32
