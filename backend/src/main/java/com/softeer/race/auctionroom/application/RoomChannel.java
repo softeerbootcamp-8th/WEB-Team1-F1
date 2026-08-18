@@ -43,6 +43,11 @@ public interface RoomChannel {
     void broadcast(long auctionId, RoomMessage message);
 
     /**
+     * 방의 마지막 현황을 구독 하나에만 보낸다, 아직 나간 현황이 없으면 보내지 않는다
+     */
+    void catchUp(long auctionId, RoomSubscription subscription);
+
+    /**
      * 모든 방을 찔러 보고 닫힌 구독을 걷어낸다, 실제로 걷어낸 방의 식별자를 돌려준다
      */
     Set<Long> sweepClosed();

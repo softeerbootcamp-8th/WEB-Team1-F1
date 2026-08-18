@@ -65,7 +65,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     void liveStateReachesWatchers() {
         // given : 시작을 기다리는 방을 한 사람이 보고 있다
         auctionId = waitingRoom();
-        roomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher, false);
 
         // 구독만으로는 현황이 오지 않는다, 이 단정이 있어야 아래 현황이 전이에서 온 것임이 갈린다
         assertThat(watcher.received()).isEmpty();
@@ -85,7 +85,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         // given : 입찰이 한 건 들어온 진행중 방을 한 사람이 보고 있다
         auctionId = liveRoomWithBid();
         auctionInProgress();
-        roomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher, false);
 
         // 구독만으로는 현황이 오지 않는다, 이 단정이 있어야 아래 현황이 마감에서 온 것임이 갈린다
         assertThat(watcher.received()).isEmpty();
@@ -107,7 +107,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         // given : 입찰이 한 건도 없는 진행중 방을 한 사람이 보고 있다
         auctionId = liveRoom();
         auctionInProgress();
-        roomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher, false);
 
         // when : 마감 시각이 지나 유찰로 끝난다
         fixClockAt(END_AT);
@@ -125,7 +125,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
     void alreadyStartedAuctionStaysQuiet() {
         // given : 시작 시각이 지나 한 번 진행중으로 넘어간 방을 한 사람이 보고 있다
         auctionId = waitingRoom();
-        roomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher, false);
         fixClockAt(START_AT);
         auctionStarter.start(auctionId);
         int receivedAfterStart = watcher.received().size();
@@ -143,7 +143,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         // given : 마감 시각이 지나 낙찰까지 확정된 방을 한 사람이 보고 있다
         auctionId = liveRoomWithBid();
         auctionInProgress();
-        roomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher, false);
         fixClockAt(END_AT);
         auctionCloser.close(auctionId);
         int receivedAfterClose = watcher.received().size();
@@ -161,7 +161,7 @@ class AuctionPhaseBroadcastIntegrationTest extends IntegrationTestSupport {
         // given : 입찰이 한 건 들어온 진행중 방을 한 사람이 보고 있다
         auctionId = liveRoomWithBid();
         auctionInProgress();
-        roomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher, false);
 
         // when : 마감 시각이 지나 낙찰자가 확정된다
         fixClockAt(END_AT);
