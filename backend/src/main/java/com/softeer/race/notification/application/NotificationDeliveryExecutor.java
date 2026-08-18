@@ -61,7 +61,7 @@ public class NotificationDeliveryExecutor implements DisposableBean {
     private final Map<Long, UserQueue> queues = new ConcurrentHashMap<>();
 
     // 전체 대기·실행 작업의 허용권이다. execute 때 하나를 얻고 작업이 끝나거나 폐기될 때 돌려준다.
-    // 허용권이 없으면 1,024개 경계를 넘었다는 뜻이므로 새 SSE만 버린다.
+    // 허용권이 없으면 queue-capacity 경계를 넘었다는 뜻이므로 새 SSE만 버린다.
     private final Semaphore capacity;
 
     // 전체 여유가 남아 있어도 한 회원이 이 개수 이상을 차지하지 못하게 하는 두 번째 경계다.

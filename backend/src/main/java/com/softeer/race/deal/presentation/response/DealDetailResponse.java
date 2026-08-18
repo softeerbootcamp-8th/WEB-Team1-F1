@@ -19,7 +19,7 @@ public record DealDetailResponse(
         @Schema(description = "낙찰된 경매 식별자, 경매 결과로 돌아갈 때 쓴다", example = "77")
         Long auctionId,
 
-        @Schema(description = "현재 거래 단계", example = "DEPOSIT_PENDING")
+        @Schema(description = "현재 거래 단계", example = "SELLER_SUBMIT_PENDING")
         DealStatus status,
 
         @Schema(description = "이 거래에서 조회한 사람이 선 쪽", example = "BUYER")
@@ -50,10 +50,10 @@ public record DealDetailResponse(
         @Schema(description = "현재 단계로 넘어온 시각", example = "2026-08-09T11:20:00")
         LocalDateTime statusChangedAt,
 
-        @Schema(description = "취소 사유, 취소되지 않았으면 null", example = "DEPOSIT_TIMEOUT")
+        @Schema(description = "취소 사유, 취소되지 않았으면 null", example = "BUYER_CANCELLED")
         CancellationReason cancellationReason,
 
-        @Schema(description = "취소의 귀책, 보증금 향방이 여기서 갈린다. 취소되지 않았으면 null",
+        @Schema(description = "취소의 귀책이 어느 쪽인지. 취소되지 않았으면 null",
                 example = "BUYER")
         FaultParty faultParty,
 
