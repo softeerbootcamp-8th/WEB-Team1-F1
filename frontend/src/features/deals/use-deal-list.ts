@@ -33,6 +33,9 @@ export function useDealList(enabled = true) {
     setCursor(null)
     setHasNext(false)
     setLoadMoreError(null)
+    // 이어 읽기가 날아가는 중이었다면 그 응답은 세대가 어긋나 버려진다. 그쪽 finally 도 같은
+    // 이유로 표시를 못 내리므로 여기서 내린다 — 안 내리면 "더 보기"가 영영 잠긴다
+    setIsLoadingMore(false)
 
     if (!enabled) {
       setDeals([])

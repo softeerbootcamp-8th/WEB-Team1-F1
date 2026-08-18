@@ -42,9 +42,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (payload: LoginPayload) => {
     const next = await loginRequest(payload)
+    // 로그아웃 없이 다른 계정으로 들어올 수 있다(/login 은 로그인 상태에서도 열린다).
+    // 조회 키에 회원을 넣지 않으므로, 비우지 않으면 새 회원의 화면에 앞사람의 응답이 먼저 보인다
+    queryClient.clear()
+    clearAuctionListCache()
     setUser(next)
     return next
-  }, [])
+  }, [queryClient])
 
   const logout = useCallback(async () => {
     try {
