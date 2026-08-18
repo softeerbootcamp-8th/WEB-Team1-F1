@@ -46,28 +46,32 @@ export interface CurveShape {
   myLineY: number | null
   minAmount: number
   maxAmount: number
+  /** 가로축의 왼쪽 끝, 곧 첫 입찰 시각 */
+  originAt: string
 }
 
 /**
  * 가격이 오른 과정을 그릴 좌표. 입찰이 한 건도 없으면 그릴 선이 없어 null 이다.
  *
- * 서버는 입찰만 준다. 곡선의 첫 점인 시작가는 여기서 앞에 붙인다.
+ * 곡선은 첫 입찰에서 시작한다. 방이 열린 시각에 시작가 점을 붙이면 첫 입찰까지의 빈 시간이
+ * 값이 오르는 사선으로 그려져, 아무도 부르지 않은 구간이 상승 구간으로 읽힌다.
+ * 시작가는 점 대신 세로 눈금의 바닥이 맡는다 — 입찰은 시작가 아래로 내려갈 수 없다.
  */
 export function curveShapeOf(result: RoomResultView): CurveShape | null {
   if (result.priceCurve.length === 0) return null
 
+  // 시작가는 점이 되지 않지만 눈금의 바닥이라 폭 계산에는 남는다
   const amounts = [result.startPrice, ...result.priceCurve.map((p) => p.amount)]
-  const times = [result.startAt, ...result.priceCurve.map((p) => p.bidAt)].map((at) =>
-    new Date(at).getTime(),
-  )
 
   const minAmount = Math.min(...amounts)
   const maxAmount = Math.max(...amounts)
 
-  // 가로는 마지막 입찰이 아니라 마감까지다. 축 라벨이 시작과 마감이라 여기를 마지막 입찰로 잡으면
-  // 라벨과 선 끝이 다른 시각을 가리킨다. 남는 오른쪽 여백이 곧 아무도 부르지 않은 시간이다
-  const startTime = new Date(result.startAt).getTime()
-  const spanX = new Date(result.endAt).getTime() - startTime
+  // 가로는 마지막 입찰이 아니라 마감까지다. 축 라벨의 오른쪽이 마감이라 여기를 마지막 입찰로
+  // 잡으면 라벨과 선 끝이 다른 시각을 가리킨다. 남는 오른쪽 여백이 곧 아무도 부르지 않은 시간이다
+  const originAt = result.priceCurve[0].bidAt
+  const originTime = new Date(originAt).getTime()
+  // 마감 정각 입찰은 성립하지 않지만, 그래도 폭이 0이면 좌표가 NaN 이 된다
+  const spanX = Math.max(1, new Date(result.endAt).getTime() - originTime)
 
   // 세로 폭이 0인 경매도 있다. 첫 입찰의 하한이 시작가라(BidIncrementTable.ruleFor)
   // 시작가와 같은 금액 한 건으로 끝날 수 있고, 그때는 모든 점이 같은 높이에 놓인다
@@ -75,12 +79,12 @@ export function curveShapeOf(result: RoomResultView): CurveShape | null {
 
   const heightOf = (amount: number) => (spanY === 0 ? 0 : (amount - minAmount) / spanY)
 
-  const points = amounts.map((amount, index) => ({
-    x: (times[index] - startTime) / spanX,
-    y: heightOf(amount),
-    amount,
-    mine: index === 0 ? false : result.priceCurve[index - 1].mine,
-    extended: index === 0 ? false : result.priceCurve[index - 1].extended,
+  const points = result.priceCurve.map((bid) => ({
+    x: (new Date(bid.bidAt).getTime() - originTime) / spanX,
+    y: heightOf(bid.amount),
+    amount: bid.amount,
+    mine: bid.mine,
+    extended: bid.extended,
   }))
 
   return {
@@ -88,5 +92,6 @@ export function curveShapeOf(result: RoomResultView): CurveShape | null {
     myLineY: result.myStanding ? heightOf(result.myStanding.highestAmount) : null,
     minAmount,
     maxAmount,
+    originAt,
   }
 }
