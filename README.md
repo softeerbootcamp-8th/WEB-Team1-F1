@@ -1,11 +1,36 @@
-# 🏁 RACE — 실시간 중고차 경매 플랫폼
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fd25272e-2328-4a58-92f6-2b88b1deffcf" width="420" alt="RACE 로고">
+</p>
 
-> 소프티어 부트캠프 8기 · WEB Team1 (F1)
-> 
+<h1 align="center">🏁 RACE</h1>
+
+<p align="center">
+  <strong>누구나 직접 사고팔 수 있는 실시간 중고차 경매 플랫폼</strong><br>
+  방문 평가부터 실시간 경매, 낙찰 이후 거래까지 하나의 흐름으로 이어집니다.
+</p>
+
+<p align="center">
+  <a href="https://www.f1race.site"><strong>🌐 서비스 바로가기</strong></a>
+  ·
+  <a href="https://github.com/softeerbootcamp-8th/WEB-Team1-F1/wiki"><strong>📖 팀 위키</strong></a>
+  ·
+  <a href="#️-시스템-아키텍처"><strong>🏗️ 시스템 아키텍처</strong></a>
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/35d4eca8-5120-4858-8fee-e7a0a535d371" width="100%" alt="RACE 서비스 메인 화면">
+</p>
+
+<p align="center">
+  <sub>소프티어 부트캠프 8기 · WEB Team1 (F1)</sub>
+</p>
+
+---
 
 ## 📚 목차
 
 - [🚀 프로젝트 개요](#-프로젝트-개요)
+- [🗺️ 서비스 전체 흐름](#-서비스-전체-흐름)
 - [✨ 주요 기능](#-주요-기능)
 - [🤝 협업 전략](#-협업-전략)
 - [⏰ 정기 일정](#-정기-일정)
@@ -16,6 +41,7 @@
 - [🔧 Tech Stack](#-tech-stack)
 - [▶️ 실행](#-실행)
 - [📦 배포](#-배포)
+- [🏗️ 시스템 아키텍처](#-시스템-아키텍처)
 - [👥 팀원 소개](#-팀원-소개)
 
 ## 🚀 프로젝트 개요
@@ -23,6 +49,13 @@
 - 딜러를 거쳐야만하고, 그 마진이 고스란히 딜러에게 귀속되던 중고차 시장을 대상으로 합니다.
 - 일반인과 딜러가 함께 참여하는 실시간 경매로, 시장이 차량의 적정 가치를 직접 발견하게 합니다.
 - 딜러 마진 없이 개인 간 거래(C2C)가 가능해, 판매자는 더 비싸게 팔고 구매자는 더 싸게 살 수 있습니다.
+
+## 🗺️ 서비스 전체 흐름
+
+- 차량 시세 조회부터 방문 진단, 실시간 경매, 낙찰 후 거래 4단계까지 이어지는 전체 흐름입니다.
+- 평가 반려 시 방문평가 재신청으로, 유찰 시 경매 재출품으로 되돌아갑니다.
+
+![RACE 서비스 전체 플로우](https://github.com/user-attachments/assets/9bae55a2-4b83-44c1-8207-54ed5c2071e8)
 
 ## ✨ 주요 기능
 
@@ -155,9 +188,13 @@ Docker가 실행 중이어야 한다.
 - 올린 뒤 CloudFront에서 /index.html을 무효화한다. 나머지 파일은 이름에 해시가 붙어 필요 없다.
 - 릴리즈에 프론트 변경이 없으면 산출물이 없다. 그때는 다시 올리지 않는다.
 
+## 🏗️ 시스템 아키텍처
+
+![RACE 시스템 아키텍처](https://github.com/user-attachments/assets/7befdd14-e1c3-4dfc-96af-fa9c3f221b2f)
+
 ## 👥 팀원 소개
 
-| <img src="https://github.com/eojinxx.png" width="100"> | <img src="https://github.com/tukjw.png" width="100"> | <img src="https://github.com/ReusCap.png" width="100"> | <img src="https://github.com/mookkae.png" width="100"> |
+| <img src="https://github.com/eojinxx.png" width="100"> | <img src="https://github.com/tukjw.png" width="100"> | <img src="https://github.com/user-attachments/assets/cc09b641-801f-46a0-a2fa-e9de58ebdd4c" width="100"> | <img src="https://github.com/mookkae.png" width="100"> |
 | --- | --- | --- | --- |
 | 김어진 | 김재완 | 박태은 | 정동현 |
 | BE | BE | BE | BE |
