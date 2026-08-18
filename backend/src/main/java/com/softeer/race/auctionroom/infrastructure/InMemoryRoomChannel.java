@@ -2,6 +2,7 @@ package com.softeer.race.auctionroom.infrastructure;
 
 import com.softeer.race.auctionroom.application.RoomChannel;
 import com.softeer.race.auctionroom.application.RoomMessage;
+import com.softeer.race.auctionroom.application.RoomState;
 import com.softeer.race.auctionroom.application.RoomSubscription;
 import com.softeer.race.auctionroom.application.ViewerCount;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,9 @@ public class InMemoryRoomChannel implements RoomChannel {
 
     // 방마다 두지 않는다, 전체가 하나여도 방 안에서 단조 증가하면 그 방의 순서를 가리는 데 충분하다
     private final AtomicLong sequence = new AtomicLong();
+
+    // 뒤늦게 붙은 구독에게 줄 마지막 현황이다, 사람 수는 붙는 순간 새로 방송되므로 담지 않는다
+    private final Map<Long, RoomState> lastStateByRoom = new ConcurrentHashMap<>();
 
     @Override
     public void subscribe(long auctionId, RoomSubscription subscription) {
@@ -90,6 +94,8 @@ public class InMemoryRoomChannel implements RoomChannel {
             return;
         }
 
+        remember(auctionId, message);
+
         // 순회 중에는 집합을 건드리지 않는다, 보내다 닫힌 구독은 모아 두었다가 끝나고 걷어낸다
         Set<RoomSubscription> closed = new HashSet<>();
 
@@ -104,6 +110,24 @@ public class InMemoryRoomChannel implements RoomChannel {
         // 걷어내기는 정리 작업이라 다시 전송하지 않는다, 전송이 제거를 부르고 제거가 다시 전송을 부르면 재귀가 된다
         // 이미 닫힌 구독의 주인은 방을 떠났으므로 줄어든 사람 수는 다음 사건에서 맞춰진다
         discard(auctionId, closed);
+    }
+
+    @Override
+    public void catchUp(long auctionId, RoomSubscription subscription) {
+        RoomState state = lastStateByRoom.get(auctionId);
+
+        if (state != null) {
+            subscription.send(state);
+        }
+    }
+
+    // 낡은 것이 뒤늦게 덮어쓰지 않게 한다, 사서함이 구독마다 하는 판정을 방 단위로 한 번 더 하는 것이다
+    private void remember(long auctionId, RoomMessage message) {
+        if (!(message instanceof RoomState state)) {
+            return;
+        }
+
+        lastStateByRoom.merge(auctionId, state, (kept, arrived) -> arrived.isStalerThan(kept) ? kept : arrived);
     }
 
     // 서버는 이 연결에 쓰기만 하고 읽지 않아서, 상대가 끊어도 다음 쓰기 전까지 모른다
@@ -142,6 +166,7 @@ public class InMemoryRoomChannel implements RoomChannel {
     public void closeRoom(long auctionId) {
         // 명부에서 먼저 뺀다, 끝난 연결이 해제 콜백으로 돌아왔을 때 방이 비어 있어야 갱신이 돌지 않는다
         Set<RoomSubscription> subscriptions = subscriptionsByRoom.remove(auctionId);
+        lastStateByRoom.remove(auctionId);
 
         if (subscriptions == null) {
             return;
@@ -169,7 +194,15 @@ public class InMemoryRoomChannel implements RoomChannel {
 
         subscriptionsByRoom.computeIfPresent(auctionId, (id, subscriptions) -> {
             removed.set(subscriptions.removeAll(targets));
-            return subscriptions.isEmpty() ? null : subscriptions;
+
+            if (subscriptions.isEmpty()) {
+                // 방이 명부에서 빠지는 자리가 여기와 closeRoom 둘뿐이다, 안 지우면 끝난 방의 현황이 남는다
+                lastStateByRoom.remove(auctionId);
+
+                return null;
+            }
+
+            return subscriptions;
         });
 
         return removed.get();

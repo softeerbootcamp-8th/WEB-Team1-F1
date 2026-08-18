@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -26,6 +27,9 @@ public class RoomStreamController implements RoomStreamApi {
     // 경매 하나의 수명보다 짧게 잡아 오래 붙어 있는 연결을 주기적으로 새로 세운다
     private static final long STREAM_TIMEOUT_MILLIS = Duration.ofMinutes(30).toMillis();
 
+    // SSE 표준 헤더다, HttpHeaders 에 상수가 없어 직접 쓴다
+    private static final String LAST_EVENT_ID = "Last-Event-ID";
+
     private final RoomStreamService roomStreamService;
 
     private final Executor roomBroadcastExecutor;
@@ -41,6 +45,9 @@ public class RoomStreamController implements RoomStreamApi {
     @GetMapping(path = "/{auctionId}/room/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<SseEmitter> stream(
             @PathVariable("auctionId") long auctionId,
+
+            // 브라우저가 스스로 다시 붙을 때만 실린다, 값은 우리가 내보낸 표시 그대로라 읽지 않고 유무만 본다
+            @RequestHeader(value = LAST_EVENT_ID, required = false) String lastEventId,
 
             // AuthInterceptor 가 인증 요구를 이 파라미터의 유무로만 판정하므로 로그인을 요구하는
             // 유일한 선언 수단이다, 값을 안 쓰게 바뀌더라도 지우면 구독이 조용히 비로그인에 열린다
@@ -66,7 +73,7 @@ public class RoomStreamController implements RoomStreamApi {
             unsubscribe.run();
         });
 
-        roomStreamService.subscribe(auctionId, subscription);
+        roomStreamService.subscribe(auctionId, subscription, lastEventId != null);
 
         return ResponseEntity.ok(emitter);
     }

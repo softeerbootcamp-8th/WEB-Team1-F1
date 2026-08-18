@@ -24,6 +24,10 @@ class SseRoomSubscription implements RoomSubscription {
     // 화면이 이 이름으로 리스너를 나눠 단다
     private static final String VIEWERS_EVENT = "viewers";
 
+    // 브라우저가 다시 붙을 때 Last-Event-ID 로 되돌려 주는 값이다, 우리는 있고 없고만 보고 값은 읽지 않는다
+    // 숫자를 쓰지 않는다, 나중에 누가 순번을 싣기로 하면 브라우저에 남아 있던 옛 값이 유효한 순번으로 읽힌다
+    private static final String RECONNECT_MARK = "room";
+
     private final long auctionId;
     private final long viewerId;
     private final SseEmitter emitter;
@@ -119,8 +123,11 @@ class SseRoomSubscription implements RoomSubscription {
 
         try {
             switch (message) {
-                case RoomState state -> emitter.send(RoomStateResponse.from(state));
+                case RoomState state -> emitter.send(SseEmitter.event()
+                        .id(RECONNECT_MARK)
+                        .data(RoomStateResponse.from(state)));
                 case ViewerCount viewers -> emitter.send(SseEmitter.event()
+                        .id(RECONNECT_MARK)
                         .name(VIEWERS_EVENT)
                         .data(ViewerCountResponse.from(viewers), MediaType.APPLICATION_JSON));
             }

@@ -60,7 +60,7 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     void bidReachesWatchers() {
         // given : 진행 중인 방을 한 사람이 보고 있다, 들어올 때 받은 첫 현황은 아직 시작가다
         auctionId = liveRoom();
-        roomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher, false);
 
         // 구독만으로는 현황이 오지 않는다, 이 단정이 있어야 아래 현황이 입찰에서 온 것임이 갈린다
         assertThat(watcher.received()).isEmpty();
@@ -82,7 +82,7 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     void extendedDeadlineReachesWatchers() {
         // given : 마감이 10초 남은 방을 한 사람이 보고 있다
         auctionId = closingRoom();
-        roomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher, false);
 
         // 구독만으로는 현황이 오지 않는다, 밀린 마감이 입찰에서 온 것임이 이 단정으로 갈린다
         assertThat(watcher.received()).isEmpty();
@@ -101,7 +101,7 @@ class BidBroadcastIntegrationTest extends IntegrationTestSupport {
     void rolledBackBidIsNotBroadcast() {
         // given : 진행 중인 방을 한 사람이 보고 있다
         auctionId = liveRoom();
-        roomStreamService.subscribe(auctionId, watcher);
+        roomStreamService.subscribe(auctionId, watcher, false);
         int beforeBid = watcher.received().size();
 
         // when : 이 메서드의 트랜잭션 안에서 입찰한다, 테스트가 끝나며 롤백된다

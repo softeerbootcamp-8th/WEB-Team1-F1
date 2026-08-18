@@ -117,6 +117,11 @@ class AuctionCardAssemblerTest {
         }
 
         @Override
+        public void catchUp(long auctionId, RoomSubscription subscription) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public Set<Long> sweepClosed() {
             throw new UnsupportedOperationException();
         }

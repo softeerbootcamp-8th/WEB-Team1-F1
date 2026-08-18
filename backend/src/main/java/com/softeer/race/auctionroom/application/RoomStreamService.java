@@ -32,9 +32,9 @@ public class RoomStreamService {
     private final RoomChannel roomChannel;
 
     /**
-     * 구독을 등록하고 방 전체에 늘어난 사람 수를 보낸다
+     * 구독을 등록하고 방 전체에 늘어난 사람 수를 보낸다, 다시 붙은 구독에는 마지막 현황도 보낸다
      */
-    public void subscribe(long auctionId, RoomSubscription subscription) {
+    public void subscribe(long auctionId, RoomSubscription subscription, boolean reconnected) {
         // 연결을 열어 두지 않는 단계의 구독이 채널에 남지 않도록 등록 전에 판정한다
         RoomPhase phase = roomReader.findPhase(auctionId)
                 .orElseThrow(() -> new BusinessException(ROOM_NOT_FOUND));
@@ -46,6 +46,11 @@ public class RoomStreamService {
         roomChannel.subscribe(auctionId, subscription);
 
         // 첫 화면은 방 조회가 이미 줬다, 여기서 현황을 다시 보내면 같은 것을 두 번 그린다
+        // 다시 붙은 화면은 그 조회를 거치지 않아 다음 사건까지 낡은 채로 남으므로 여기서 따라잡게 한다
+        if (reconnected) {
+            roomChannel.catchUp(auctionId, subscription);
+        }
+
         broadcastViewerCount(auctionId);
     }
 

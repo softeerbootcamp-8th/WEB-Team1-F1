@@ -277,8 +277,76 @@ class RoomStreamIntegrationTest extends IntegrationTestSupport {
 
     // ================= 요청 ====================
     // 부를 때마다 다른 사람이 붙는다, UserSeeder 가 호출마다 새 회원을 만들기 때문이다
+    @Test
+    @DisplayName("나가는 이벤트에 재연결 표시가 붙는다")
+    void eventsCarryReconnectId() throws Exception {
+        // given
+        long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
+
+        // when
+        MvcResult first = subscribe(liveAuctionId).andReturn();
+
+        // then : 처음 붙은 화면에 나가는 것은 사람 수뿐이다, 여기에 표시가 없으면 브라우저가 다시 붙을 때 헤더를 안 보낸다
+        String body = SseBodies.awaitUntil(first, sse -> sse.contains("event:viewers"));
+        assertThat(body).contains("id:");
+    }
+
+    @Test
+    @DisplayName("다시 붙은 구독은 마지막 현황을 그 자리에서 받는다")
+    void reconnectedSubscriptionCatchesUp() throws Exception {
+        // given : 먼저 붙은 사람에게 현황이 한 번 나가야 채널이 그것을 들고 있다
+        long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
+        MvcResult first = subscribe(liveAuctionId).andReturn();
+        roomStreamService.refresh(liveAuctionId);
+        SseBodies.awaitUntil(first, sse -> sse.contains("\"phase\""));
+
+        // when
+        MvcResult reconnected = subscribeReconnecting(liveAuctionId).andReturn();
+
+        // then
+        String body = SseBodies.awaitUntil(reconnected, sse -> sse.contains("\"phase\""));
+        assertThat(body).contains("\"currentPrice\":12500000");
+    }
+
+    @Test
+    @DisplayName("처음 붙은 구독은 이미 방송이 나간 방에서도 현황을 받지 않는다")
+    void firstSubscriptionDoesNotCatchUp() throws Exception {
+        // given : 채널이 마지막 현황을 들고 있는 상태
+        long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
+        MvcResult first = subscribe(liveAuctionId).andReturn();
+        roomStreamService.refresh(liveAuctionId);
+        SseBodies.awaitUntil(first, sse -> sse.contains("\"phase\""));
+
+        // when : 두 번째 사람이 처음 들어온다
+        MvcResult second = subscribe(liveAuctionId).andReturn();
+
+        // then : 첫 화면은 방 조회가 주므로 여기서 또 오면 같은 것을 두 번 그린다
+        String body = SseBodies.awaitUntil(second, sse -> sse.contains("event:viewers"));
+        assertThat(body).doesNotContain("\"phase\"");
+    }
+
+    @Test
+    @DisplayName("현황이 한 번도 안 나간 방에 다시 붙어도 조용하다")
+    void reconnectingToSilentRoomSendsNoState() throws Exception {
+        // given
+        long liveAuctionId = liveRoomWithTopBid("김민현", 12_500_000L);
+
+        // when
+        MvcResult reconnected = subscribeReconnecting(liveAuctionId).andReturn();
+
+        // then
+        String body = SseBodies.awaitUntil(reconnected, sse -> sse.contains("event:viewers"));
+        assertThat(body).doesNotContain("\"phase\"");
+    }
+
     private ResultActions subscribe(long auctionId) throws Exception {
         return subscribeAs(auctionId, loginAs(users.user("한구경", Role.DEALER)));
+    }
+
+    private ResultActions subscribeReconnecting(long auctionId) throws Exception {
+        return mockMvc.perform(get("/api/auctions/{auctionId}/room/stream", auctionId)
+                .cookie(new Cookie(SessionCookieFactory.COOKIE_NAME, loginAs(users.user("한구경", Role.DEALER))))
+                .header("Last-Event-ID", "room"));
     }
 
     // 한 사람이 창을 여럿 여는 것을 흉내내려면 세션을 밖에서 정할 수 있어야 한다
