@@ -1,8 +1,8 @@
 package com.softeer.race.auctionlist.presentation;
 
 import com.softeer.race.auctionlist.application.AuctionListStreamService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,25 +11,33 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Duration;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/auctions")
-@RequiredArgsConstructor
 public class AuctionListStreamController implements AuctionListStreamApi {
 
     // 오래 붙어 있는 연결을 주기적으로 새로 세운다, 경매방과 달리 경매 하나의 수명에 맞출 이유가 없다
     private static final long STREAM_TIMEOUT_MILLIS = Duration.ofMinutes(30).toMillis();
 
     private final AuctionListStreamService auctionListStreamService;
+    private final Executor broadcastWorkers;
+
+    // 롬복 생성자를 안 쓰는 것은 한정자 때문이다, 경매방 풀과 주기 작업 스케줄러들도 Executor 라 타입만으로는 못 고른다
+    public AuctionListStreamController(AuctionListStreamService auctionListStreamService,
+                                       @Qualifier("auctionListBroadcastExecutor") Executor broadcastWorkers) {
+        this.auctionListStreamService = auctionListStreamService;
+        this.broadcastWorkers = broadcastWorkers;
+    }
 
     // @LoginUser 파라미터를 두지 않는 것이 곧 비로그인 허용이다, AuthInterceptor 가 그 유무로만 인증을 요구한다
     @Override
     @GetMapping(path = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<SseEmitter> stream() {
         SseEmitter emitter = new SseEmitter(STREAM_TIMEOUT_MILLIS);
-        SseAuctionListSubscriber subscriber = new SseAuctionListSubscriber(emitter);
+        SseAuctionListSubscriber subscriber = new SseAuctionListSubscriber(emitter, broadcastWorkers);
 
         // 타임아웃 뒤에 완료 콜백이 잇달아 와서 해제가 두 번 불린다
         AtomicBoolean released = new AtomicBoolean();
