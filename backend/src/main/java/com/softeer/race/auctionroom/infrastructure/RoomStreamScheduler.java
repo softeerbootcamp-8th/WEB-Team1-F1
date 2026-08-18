@@ -1,7 +1,6 @@
 package com.softeer.race.auctionroom.infrastructure;
 
 import com.softeer.race.auctionroom.application.RoomStreamService;
-import com.softeer.race.common.config.SchedulingConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -17,13 +16,13 @@ public class RoomStreamScheduler {
     private final RoomStreamService roomStreamService;
 
     @Scheduled(fixedDelayString = "${race.room.heartbeat-interval-seconds}", timeUnit = TimeUnit.SECONDS,
-            scheduler = SchedulingConfig.ROOM_STREAM)
+            scheduler = RoomSchedulingConfig.ROOM_STREAM)
     public void sweepClosedSubscriptions() {
         roomStreamService.sweepClosedSubscriptions();
     }
 
     @Scheduled(fixedDelayString = "${race.room.ended-room-close-interval-seconds}", timeUnit = TimeUnit.SECONDS,
-            scheduler = SchedulingConfig.ROOM_STREAM)
+            scheduler = RoomSchedulingConfig.ROOM_CLOSE)
     public void closeStreamEndedRooms() {
         roomStreamService.closeStreamEndedRooms();
     }
