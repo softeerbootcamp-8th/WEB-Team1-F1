@@ -43,3 +43,6 @@ race:
     heartbeat-interval-seconds: 60
     ended-room-close-interval-seconds: 5
     broadcast-workers: 32
+  list:
+    # 느린 구독 하나가 일꾼 하나를 붙잡는다. 이 값의 근거는 측정으로 채운다
+    broadcast-workers: 32
