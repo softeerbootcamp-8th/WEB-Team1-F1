@@ -12,9 +12,7 @@ public class RoomBroadcastConfig {
     // 느린 구독 하나가 일꾼 하나를 붙잡는다. 이 수보다 동시에 느린 사람이 많아지면 정상 구독자의
     // 화면 갱신이 성겨진다, 입찰 응답은 그때도 안 밀린다. 실측으로 느린 10에 일꾼 8이면 프레임의
     // 41% 만 나가고 일꾼 16이면 100% 나갔다.
-    //
-    // 32 는 목표 규모 300명의 10% 를 동시에 느린 사람으로 잡은 값이다. 10% 는 잰 값이 아니라 가정이다.
-    @Value("${race.room.broadcast-workers:32}")
+    @Value("${race.room.broadcast-workers}")
     private int workers;
 
     @Bean

@@ -1,14 +1,10 @@
 package com.softeer.race.auctionroom.application;
 
 import com.softeer.race.auctionroom.domain.RoomPhase;
-import com.softeer.race.common.config.SchedulingConfig;
 import com.softeer.race.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
-import java.util.concurrent.TimeUnit;
 
 import static com.softeer.race.auctionroom.domain.RoomErrorCode.ROOM_NOT_FOUND;
 
@@ -20,14 +16,6 @@ import static com.softeer.race.auctionroom.domain.RoomErrorCode.ROOM_NOT_FOUND;
 @Service
 @RequiredArgsConstructor
 public class RoomStreamService {
-
-    // 알리지 않고 끊긴 사람이 이 시간 안에는 보고 있는 사람 수에서 빠진다, 프록시가 유휴 연결을 끊는 것도 이 신호가 막는다
-    // 정상 종료는 해제 콜백이 즉시 빼 가므로 이 주기는 조용히 사라진 연결만 줍는 안전망이다
-    private static final long SWEEP_INTERVAL_SECONDS = 60L;
-
-    // 마감 방송이 유실된 방의 연결이 이 시간 안에 끊긴다, 정상 경로는 방송 직후에 끊으므로 여기까지 오지 않는다
-    // 위와 이유가 달라 값도 따로 간다, 이쪽은 구독이 있는 방마다 단계를 조회하므로 주기를 줄인 만큼 쿼리가 는다
-    private static final long DISCONNECT_INTERVAL_MILLIS = 5_000L;
 
     private final RoomReader roomReader;
     private final RoomChannel roomChannel;
@@ -68,8 +56,6 @@ public class RoomStreamService {
     /**
      * 끊긴 구독을 걷어내고, 사람이 빠진 방에는 줄어든 사람 수를 보낸다
      */
-    @Scheduled(fixedDelay = SWEEP_INTERVAL_SECONDS, timeUnit = TimeUnit.SECONDS,
-            scheduler = SchedulingConfig.ROOM_STREAM)
     public void sweepClosedSubscriptions() {
         // 한 방의 실패를 그 방에 가둔다, 여기서만 옳은 정책이라 방송 자체는 계속 던지게 둔다
         for (long auctionId : roomChannel.sweepClosed()) {
@@ -85,7 +71,6 @@ public class RoomStreamService {
      * 연결을 열어 두지 않는 단계가 된 방의 구독을 서버가 끊는다
      */
     // 마감 방송이 이미 끊고 지나가므로 여기 걸리는 것은 그 방송이 유실된 방뿐이다
-    @Scheduled(fixedDelay = DISCONNECT_INTERVAL_MILLIS, scheduler = SchedulingConfig.ROOM_STREAM)
     public void closeStreamEndedRooms() {
         for (long auctionId : roomChannel.subscribedRooms()) {
             // 한 방의 실패를 그 방에 가둔다, 남은 방은 이번 주기에 그대로 정리한다
