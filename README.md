@@ -79,7 +79,7 @@
 
 ## 🏗️ 시스템 아키텍처
 
-![RACE 시스템 아키텍처](https://github.com/user-attachments/assets/7befdd14-e1c3-4dfc-96af-fa9c3f221b2f)
+![RACE 시스템 아키텍처](https://github.com/user-attachments/assets/feb656f2-178a-4273-ae6d-de6d981ad362)
 
 ## 👥 팀원 소개
 
