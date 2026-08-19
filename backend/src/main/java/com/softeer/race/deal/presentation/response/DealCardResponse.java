@@ -17,7 +17,7 @@ public record DealCardResponse(
         @Schema(description = "낙찰된 경매 식별자", example = "77")
         Long auctionId,
 
-        @Schema(description = "현재 거래 단계", example = "DEPOSIT_PENDING")
+        @Schema(description = "현재 거래 단계", example = "SELLER_SUBMIT_PENDING")
         DealStatus status,
 
         @Schema(description = "이 거래에서 조회한 사람이 선 쪽, 화면이 액션 버튼을 가르는 기준",
@@ -36,7 +36,7 @@ public record DealCardResponse(
         @Schema(description = "상대방 이름, 가운데를 가린다", example = "김*현")
         String counterpartName,
 
-        @Schema(description = "현재 단계로 넘어온 시각, 상대 시각 표시와 기한 안내에 쓴다",
+        @Schema(description = "현재 단계로 넘어온 시각, 카드의 상대 시각 표시에 쓴다",
                 example = "2026-08-09T12:00:00")
         LocalDateTime statusChangedAt,
 

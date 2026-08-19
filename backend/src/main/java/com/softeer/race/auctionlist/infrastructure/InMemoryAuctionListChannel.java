@@ -45,6 +45,14 @@ public class InMemoryAuctionListChannel implements AuctionListChannel {
     }
 
     @Override
+    public void closeAll() {
+        Set<AuctionListSubscriber> closing = Set.copyOf(subscribers);
+
+        subscribers.removeAll(closing);
+        closing.forEach(AuctionListSubscriber::close);
+    }
+
+    @Override
     public boolean hasSubscribers() {
         return !subscribers.isEmpty();
     }

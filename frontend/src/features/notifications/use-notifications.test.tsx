@@ -83,6 +83,15 @@ const DEAL_NOTIFICATION: AppNotification = {
   createdAt: '2026-08-13T10:02:00',
 }
 
+const SOLD_IN_SALES: AppNotification = {
+  id: 49,
+  type: 'AUCTION_SOLD',
+  message: '현대 그랜저 IG 차량이 24,950,000원에 낙찰되었습니다.',
+  read: false,
+  link: '/auctions/3',
+  createdAt: '2026-08-13T10:03:00',
+}
+
 const WON_NOTIFICATION: AppNotification = {
   id: 44,
   type: 'AUCTION_WON',
@@ -394,6 +403,25 @@ describe('useNotifications 의 거래 단계 연동', () => {
     unsubscribe()
   })
 
+  /** 같은 낙찰이 판매자에게는 다른 종류로 오고, 판매 내역에도 같은 거래가 새로 생긴다 */
+  it('판매자 낙찰 알림도 거래 목록을 다시 읽게 한다', async () => {
+    const reload = vi.fn()
+    const unsubscribe = subscribeDealChanged(reload)
+
+    renderNotifications('/mypage/sales')
+    await waitFor(() => expect(streamHandlers).not.toBeNull())
+
+    act(() => {
+      streamHandlers?.onNotification({
+        notification: SOLD_IN_SALES,
+        unreadCount: 1,
+      })
+    })
+
+    expect(reload).toHaveBeenCalledTimes(1)
+    unsubscribe()
+  })
+
   it('거래와 무관한 알림은 거래 목록을 건드리지 않는다', async () => {
     const reload = vi.fn()
     const unsubscribe = subscribeDealChanged(reload)
@@ -425,7 +453,7 @@ const APPROVED_NOTIFICATION: AppNotification = {
 const OUTBID_NOTIFICATION: AppNotification = {
   id: 46,
   type: 'OUTBID',
-  message: '내 입찰보다 높은 입찰이 등록되었습니다.',
+  message: '현대 그랜저 IG 경매에서 이*님이 24,850,000원에 상위 입찰했습니다.',
   read: false,
   link: '/auctions/3',
   createdAt: '2026-08-13T10:05:00',
@@ -508,26 +536,9 @@ describe('useNotifications 의 평가 결과 연동과 안내 표시 규칙', ()
     )
   })
 
-  /** 마감 30초 창에서 초 단위로 들어온다, 팝업이 입찰 버튼을 가리면 안 된다 */
-  it('경매방 안에서는 상위 입찰 안내를 접는다', async () => {
+  /** 방 안에서는 현재가 숫자만 바뀌어, 안내가 없으면 밀려난 것을 알아채지 못한다 */
+  it('같은 경매방을 보고 있어도 상위 입찰 안내를 띄운다', async () => {
     const { result } = renderNotifications('/auctions/3')
-
-    await waitFor(() => expect(streamHandlers).not.toBeNull())
-
-    act(() => {
-      streamHandlers?.onNotification({
-        notification: OUTBID_NOTIFICATION,
-        unreadCount: 1,
-      })
-    })
-
-    expect(mocks.showNotificationToast).not.toHaveBeenCalled()
-    expect(result.current.notifications.items).toEqual([OUTBID_NOTIFICATION])
-    expect(result.current.notifications.unreadCount).toBe(1)
-  })
-
-  it('다른 경매방에 있으면 상위 입찰 안내를 띄운다', async () => {
-    renderNotifications('/auctions/8')
 
     await waitFor(() => expect(streamHandlers).not.toBeNull())
 
@@ -542,6 +553,8 @@ describe('useNotifications 의 평가 결과 연동과 안내 표시 규칙', ()
       OUTBID_NOTIFICATION,
       expect.any(Function),
     )
+    expect(result.current.notifications.items).toEqual([OUTBID_NOTIFICATION])
+    expect(result.current.notifications.unreadCount).toBe(1)
   })
 })
 

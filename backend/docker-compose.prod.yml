@@ -4,6 +4,11 @@ services:
     image: ghcr.io/softeerbootcamp-8th/web-team1-f1-backend:${IMAGE_TAG:?배포 스크립트가 IMAGE_TAG 를 내려주지 않았다}
     container_name: race-backend
     restart: always
+    # 알림 실행기가 종료 때 기존 작업을 최대 10초 기다리므로, 같은 10초인 Docker 기본 유예로는
+    # 스프링 컨텍스트 정리 도중 SIGKILL 될 수 있다. 20초를 줘 실행기 대기 뒤 JVM이 끝날 틈을 남긴다
+    # server.shutdown 을 graceful 로 켜지 않아 종료 예산은 이 실행기 대기가 전부다.
+    # 켜는 순간 요청 드레이닝 시간이 예산에 더해지므로 이 값도 함께 다시 잡아야 한다
+    stop_grace_period: 20s
     # 값은 배포 스크립트의 환경변수에서 보간된다, 서버에 .env 를 두지 않아 평문 사본이 남지 않는다
     # env_file 로 두면 compose 가 값 안의 $ 를 변수 참조로 해석해 비밀번호가 조용히 잘린다
     environment:

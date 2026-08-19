@@ -70,12 +70,13 @@ public class RoomStreamService {
     /**
      * 연결을 열어 두지 않는 단계가 된 방의 구독을 서버가 끊는다
      */
-    // 마감 방송이 이미 끊고 지나가므로 여기 걸리는 것은 그 방송이 유실된 방뿐이다
+    // 마감 방송이 유실됐거나 판정과 등록이 엇갈려 남은 구독을, 원인 가리지 않고 줍는다
     public void closeStreamEndedRooms() {
         for (long auctionId : roomChannel.subscribedRooms()) {
             // 한 방의 실패를 그 방에 가둔다, 남은 방은 이번 주기에 그대로 정리한다
             try {
                 if (connectionsAreOver(auctionId)) {
+                    log.info("마감된 방에 연결이 남아 서버가 끊는다, 경매 {}", auctionId);
                     roomChannel.closeRoom(auctionId);
                 }
             } catch (Exception e) {

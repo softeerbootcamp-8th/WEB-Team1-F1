@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.jdbc.Sql;
 
@@ -91,6 +92,9 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
     @Autowired
     private Environment environment;
 
+    @Autowired
+    private ConfigurableApplicationContext context;
+
     @Test
     @DisplayName("동시 입찰 중 구독자가 받은 현재가 수열에 역전이 있는지 센다")
     void countPriceInversions() throws Exception {
@@ -158,6 +162,21 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
 
             // 마지막 방송이 도착할 틈을 준다, 곧바로 끊으면 보낸 것과 받은 것이 어긋난다
             Thread.sleep(DRAIN.toMillis());
+
+            // 마지막 회차에서만 종료를 잰다, 앞 회차에서 닫으면 남은 회차가 돌 컨텍스트가 없다
+            // 읽기를 먼저 끊으면 서버가 끝내 준 것과 그냥 끊긴 것을 구분할 수 없다
+            if (run == RUNS) {
+                long closingStartedAt = System.nanoTime();
+                context.close();
+
+                System.out.printf("종료에 걸린 시간 %.1fms, 정상 종료로 끝난 구독 %d/%d,"
+                                + " 마지막 성립가까지 따라온 구독 %d/%d%n",
+                        millis(System.nanoTime() - closingStartedAt),
+                        audience.subscriptions().stream().filter(Subscription::endedNormally).count(),
+                        audience.subscriptions().size(),
+                        audience.subscriptions().stream().filter(s -> lastPrice(s) == outcome.highest()).count(),
+                        audience.subscriptions().size());
+            }
 
             http.shutdownNow();
             threads.shutdownNow();
@@ -324,6 +343,9 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
 
                     subscription.add(price);
                 }
+
+                // readLine 이 널을 준 것은 서버가 응답을 끝냈다는 뜻이다, 예외로 빠지면 그냥 끊긴 것이다
+                subscription.markEndedNormally();
             }
         } catch (Exception ignored) {
             // 연결에 실패한 구독은 첫 현황도 못 받는다, 위쪽 대기가 시간 초과로 그것을 드러낸다
@@ -333,6 +355,15 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
     // 세 값 중 현재가만 쓴다, Boot 4 가 Jackson 3 으로 옮겨 어느 ObjectMapper 인지 고르지 않아도 된다
     // 안 맞으면 -1 이다, 호출자가 그것을 가격 수열에서 빼고 따로 센다
     // 관측한 가격 범위와 뺀 수를 리포트에 함께 찍어 계측을 검증한다
+    // 끊기 전에 마지막 현황을 내보냈는지 보는 값이다, 한 건도 못 받은 구독은 0 이라 절대 일치하지 않는다
+    private static long lastPrice(Subscription subscription) {
+        List<Long> prices = subscription.prices();
+
+        synchronized (prices) {
+            return prices.isEmpty() ? 0 : prices.get(prices.size() - 1);
+        }
+    }
+
     private long currentPrice(String line) {
         Matcher matcher = CURRENT_PRICE.matcher(line);
 
@@ -346,6 +377,9 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         AtomicLong accepted = new AtomicLong();
         AtomicLong timeouts = new AtomicLong();
         AtomicLong errors = new AtomicLong();
+
+        // 종료 직전에 나간 현황이 도착했는지 보려면 마지막으로 성립한 금액을 알아야 한다
+        AtomicLong highest = new AtomicLong(START_PRICE);
         long deadline = System.nanoTime() + BIDDING.toNanos();
 
         // 재는 것이 재는 대상을 흔들지 않도록 입찰자마다 자기 목록에 담고 끝에서 한 번만 합친다
@@ -370,6 +404,7 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
 
                         if (placed) {
                             accepted.incrementAndGet();
+                            highest.accumulateAndGet(amount, Math::max);
                         }
 
                         known = amount;
@@ -387,7 +422,7 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
             System.out.println("경고: 입찰 스레드가 시간 안에 끝나지 않았다");
         }
 
-        return new BidOutcome(accepted.get(), timeouts.get(), errors.get(),
+        return new BidOutcome(accepted.get(), timeouts.get(), errors.get(), highest.get(),
                 elapsedBatches.stream().flatMap(List::stream).toList());
     }
 
@@ -572,7 +607,7 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
         }
     }
 
-    private record BidOutcome(long accepted, long timeouts, long errors, List<BidSample> samples) {
+    private record BidOutcome(long accepted, long timeouts, long errors, long highest, List<BidSample> samples) {
     }
 
     // 입찰 요청을 보내고 응답을 받기까지 걸린 시간, 시간 초과는 제한 시간만큼 걸린 것으로 들어간다
@@ -659,11 +694,20 @@ class BroadcastOrderExperiment extends IntegrationTestSupport {
 
     // 읽는 쪽은 스레드 하나뿐이고 리포트는 그 스레드가 끝난 뒤에 읽는다
     // 쓸 때마다 배열을 복사하면 이벤트 수의 제곱이 되어, 구독을 올렸을 때 읽는 쪽이 스스로 느려진다
-    private record Subscription(int id, List<Long> prices, AtomicLong skipped, List<Long> heartbeatNanos) {
+    private record Subscription(int id, List<Long> prices, AtomicLong skipped, List<Long> heartbeatNanos,
+                                AtomicBoolean normalEnd) {
 
         Subscription(int id) {
             this(id, Collections.synchronizedList(new ArrayList<>()), new AtomicLong(),
-                    Collections.synchronizedList(new ArrayList<>()));
+                    Collections.synchronizedList(new ArrayList<>()), new AtomicBoolean());
+        }
+
+        void markEndedNormally() {
+            normalEnd.set(true);
+        }
+
+        boolean endedNormally() {
+            return normalEnd.get();
         }
 
         // sweepClosedSubscriptions 가 실제로 돈 시각이다, 스케줄러가 밀리면 간격이 벌어진다

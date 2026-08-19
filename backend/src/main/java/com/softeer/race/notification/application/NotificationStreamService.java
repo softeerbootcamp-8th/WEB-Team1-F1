@@ -20,9 +20,10 @@ import static com.softeer.race.notification.application.NotificationDeliveryMetr
 public class NotificationStreamService {
 
     // 10초마다 열린 구독을 찔러 보고(하트비트) 죽은 구독을 걷어낸다.
-    // CloudFront 가 응답 패킷 사이의 침묵을 30초까지만 허용한다(오리진 응답 시간 초과 기본값).
-    // 알림은 몇 시간 조용한 것이 정상이라, 하트비트가 없으면 30초마다 끊기고 열려 있던 연결이 모두
-    // 재접속하면서 재연결마다 세션 조회와 건수 조회가 붙는다. 3배 여유는 한 틱 밀려도 한도에 안 닿게.
+    // 알림 SSE 는 api.f1race.site 의 nginx 를 거치고, 그쪽 proxy_read_timeout 이 90초라
+    // 그 안에 무언가 흘러야 연결이 유지된다. 알림은 몇 시간 조용한 것이 정상이라, 하트비트가
+    // 없으면 침묵으로 끊기고 열려 있던 연결이 모두 재접속하면서 재연결마다 세션 조회와
+    // 건수 조회가 붙는다. 10초는 한 틱 밀려도 한도에 안 닿는 간격이다.
     // 경매방 sweep 이 5초인 것은 나간 사람이 접속자 수에서 빠지는 시간이라 목적이 다르다.
     private static final long HEARTBEAT_INTERVAL_MILLIS = 10_000L;
 

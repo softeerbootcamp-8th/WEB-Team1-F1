@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RequiredArgsConstructor
 public class NotificationStreamController implements NotificationStreamApi {
 
-    // 스트림 타임아웃 시간을 세션 유효 시간(30분)보다 짧게 10분으로 잡는다.
+    // 스트림 타임아웃 시간을 세션 체감 유효 시간(15~30분)보다 짧게 10분으로 잡는다.
     // 연결이 열려 있는 동안에는 인터셉터를 다시 타지 않아 세션이 연장되지 않는다. 30분으로 두면 알림만
     // 열어 둔 회원은 재연결하는 순간 만료된 세션을 만나 401 이 된다. 10분이면 재연결이 세션을 연장한다.
     private static final long STREAM_TIMEOUT_MILLIS = Duration.ofMinutes(10).toMillis();

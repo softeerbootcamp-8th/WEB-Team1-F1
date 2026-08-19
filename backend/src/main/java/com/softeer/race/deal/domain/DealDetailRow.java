@@ -54,7 +54,7 @@ public record DealDetailRow(
     /**
      * 이 취소의 귀책, 취소되지 않았으면 비어 있다
      */
-    // 화면이 사유에서 귀책을 다시 계산하지 않게 서버가 풀어 준다, 보증금 향방은 서버 정책이다
+    // 화면이 사유에서 귀책을 다시 계산하지 않게 서버가 풀어 준다, 사유→귀책 표는 서버 정책이다
     public FaultParty faultParty() {
         return cancellationReason != null ? cancellationReason.faultParty() : null;
     }
