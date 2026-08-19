@@ -24,7 +24,7 @@ class NotificationContentTest {
 
         assertThat(content.type()).isEqualTo(NotificationType.OUTBID);
         assertThat(content.message())
-                .isEqualTo("현대 아반떼 CN7 경매에서 김*수님이 10,000,000원에 입찰했습니다.");
+                .isEqualTo("현대 아반떼 CN7 경매에서 김*수님이 10,000,000원에 상위 입찰했습니다.");
     }
 
     @Test

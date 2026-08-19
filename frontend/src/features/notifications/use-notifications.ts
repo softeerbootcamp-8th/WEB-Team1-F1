@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import { useAuth } from '@/features/auth/auth-context'
 import { emitDealChanged, isDealNotification } from '@/features/deals/deal-events'
@@ -10,7 +10,6 @@ import {
   EVALUATION_DETAIL_QUERY_KEY,
   MY_REQUESTS_QUERY_KEY,
 } from '@/features/evaluations/query-keys'
-import type { NotificationType } from '@/types/domain'
 import type { AppNotification } from '@/types/domain'
 import {
   fetchNotifications,
@@ -20,20 +19,6 @@ import {
   subscribeNotifications,
 } from './api'
 import { showNotificationToast } from './notification-toast'
-
-/**
- * 같은 대상을 보고 있을 때 팝업을 접는 종류. 지금은 상위 입찰 하나다.
- *
- * 상위 입찰은 마감 30초 창에서 초 단위로 들어오고, 현재가·호가창·최저 상승가를 방이 이미
- * 그리고 있다. 팝업은 정보를 더하지 않으면서 입찰 버튼을 가린다.
- *
- * 마감 알림(종료·낙찰·유찰)은 여기 두지 않는다. 방이 스스로 세는 마감과 서버가 보내는 알림이
- * 각자의 시계로 움직여, 접기 판정이 "어느 쪽이 먼저 도착했는가"에 달리게 된다 — 같은 상황에서
- * 떴다 안 떴다 하는 것이 접히는 것보다 나쁘다.
- */
-const SILENT_ON_SAME_TARGET: ReadonlySet<NotificationType> = new Set<NotificationType>([
-  'OUTBID',
-])
 
 /**
  * 서버가 준 목록과 화면이 들고 있던 목록을 합친다.
@@ -76,7 +61,6 @@ export function useNotifications() {
   const { isAuthenticated, user } = useAuth()
   const userId = user?.id
   const navigate = useNavigate()
-  const location = useLocation()
   const queryClient = useQueryClient()
 
   const [items, setItems] = useState<AppNotification[]>([])
@@ -149,17 +133,10 @@ export function useNotifications() {
    * 그것을 의존성에 넣으면 화면을 옮길 때마다 연결이 끊기고 다시 붙는다. 실제로 그렇게 동작했다.
    */
   const openRef = useRef(open)
-  // pathname만 보면 승인 알림처럼 query로 대상을 가르는 화면을 같은 곳으로 오판한다.
-  // hash는 서버 알림 링크에 쓰지 않으므로 경로와 query만 비교한다.
-  const currentTargetRef = useRef(`${location.pathname}${location.search}`)
 
   useEffect(() => {
     openRef.current = open
   }, [open])
-
-  useEffect(() => {
-    currentTargetRef.current = `${location.pathname}${location.search}`
-  }, [location.pathname, location.search])
 
   // 최초 적재. 건수를 따로 묻는 이유는 실시간 연결이 막힌 환경에서도 배지가 맞아야 하기 때문이다
   useEffect(() => {
@@ -263,14 +240,8 @@ export function useNotifications() {
           emitDealChanged()
         }
 
-        // 같은 화면을 보고 있어도 기본은 띄우는 것이다. 접는 것은 아래 목록에 든 종류뿐이고,
-        // 그마저 대상이 정확히 같을 때만이다 — 경매·거래 id나 query가 다르면 다른 사건이다
-        if (
-          !SILENT_ON_SAME_TARGET.has(notification.type) ||
-          notification.link !== currentTargetRef.current
-        ) {
-          showNotificationToast(notification, () => openRef.current(notification))
-        }
+        // 알림 종류와 지금 보고 있는 화면을 가리지 않고 모두 띄운다
+        showNotificationToast(notification, () => openRef.current(notification))
       },
       onUnreadCount: (count) => {
         countChangedSinceLoad.current = true
