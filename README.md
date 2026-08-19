@@ -132,6 +132,6 @@
 | <img src="https://github.com/user-attachments/assets/f9abd491-6427-41d6-a36c-0dd3e91adafa" width="150"> | <img src="https://github.com/user-attachments/assets/7aa5297a-cc04-495a-bbde-36086cee4579" width="150"> | <img src="https://github.com/user-attachments/assets/cc09b641-801f-46a0-a2fa-e9de58ebdd4c" width="150"> | <img src="https://github.com/user-attachments/assets/6013009d-912f-4529-b136-a60c8bbf5ca1" width="150"> |
 | --- | --- | --- | --- |
 | 김어진 | 김재완 | 박태은 | 정동현(팀장) |
-| 경매 도메인<br>입찰 동시성 | 인증/인가·방문평가<br>AWS 인프라 | SSE 실시간 통신(알림)<br>거래 도메인 | SSE 실시간 통신<br>(경매방·목록) |
+| 경매 도메인<br>입찰 동시성 | 인증/인가·방문평가<br>AWS 인프라 | SSE 실시간 통신(알림)<br>낙찰 이후 거래 | SSE 실시간 통신<br>(경매방·목록) |
 
 </div>
