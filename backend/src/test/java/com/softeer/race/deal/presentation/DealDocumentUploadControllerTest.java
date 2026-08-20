@@ -50,7 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(controllers = DealController.class)
 @Import(GlobalExceptionHandler.class)
-@DisplayName("판매 서류 업로드 주소 발급 컨트롤러")
+@DisplayName("명의이전 서류 업로드 주소 발급 컨트롤러")
 class DealDocumentUploadControllerTest {
 
     private static final long DEAL_ID = 12L;
@@ -96,7 +96,7 @@ class DealDocumentUploadControllerTest {
                         "https://bucket.s3.ap-northeast-2.amazonaws.com/" + KEY,
                         "https://cdn.race.dev/" + KEY, EXPIRES_AT));
 
-        // 서류·탁송 일정 제출에 넣어야 하는 값은 fileUrl 쪽이다
+        // 명의이전 서류·탁송 출발 일정 제출에 넣어야 하는 값은 fileUrl 쪽이다
         request(PDF_REQUEST)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.key").value(KEY))

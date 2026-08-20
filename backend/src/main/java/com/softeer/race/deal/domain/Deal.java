@@ -124,7 +124,7 @@ public class Deal extends BaseTimeEntity {
     }
 
     /**
-     * 판매자가 서류와 탁송 일정을 낸다
+     * 판매자가 명의이전 서류와 탁송 일정을 낸다
      * <p>
      * 단계 검사를 값 검증보다 먼저 한다. 순서를 뒤집으면 남의 차례에 보낸 요청이 "날짜가 과거"라고
      * 답해서, 무엇이 틀렸는지 알 수 없는 응답이 나간다. 검사에서 걸리면 트랜잭션이 롤백되므로
@@ -144,9 +144,9 @@ public class Deal extends BaseTimeEntity {
     }
 
     /**
-     * 구매자가 탁송 일정에 동의하고 인도 일정을 잡는다, 동의는 별도 값이 아니라 이 호출 자체다
+     * 구매자가 탁송 일정에 동의하고 차량 인수 일정을 잡는다, 동의는 별도 값이 아니라 이 호출 자체다
      * <p>
-     * 인도가 탁송보다 앞서면 차가 출발하기 전에 받는 약속이 된다. 현재 시각이 아니라 탁송 시각과
+     * 인수가 탁송보다 앞서면 차가 출발하기 전에 받는 약속이 된다. 현재 시각이 아니라 탁송 시각과
      * 비교하는 이유다 — 지금보다 미래여도 탁송보다 앞설 수 있다.
      */
     public void confirmDelivery(LocalDateTime deliveryAt, String deliveryLocation, LocalDateTime now) {

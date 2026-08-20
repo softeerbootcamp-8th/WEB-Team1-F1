@@ -77,7 +77,7 @@ const AUCTION_NOTIFICATION: AppNotification = {
 const DEAL_NOTIFICATION: AppNotification = {
   id: 43,
   type: 'DEAL_BUYER_SCHEDULE_REQUIRED',
-  message: '판매자가 탁송 일정을 등록했습니다. 인도 일정을 정해 주세요.',
+  message: '판매자가 탁송 일정을 등록했습니다. 차량 인수 일정을 정해 주세요.',
   read: false,
   link: '/mypage/deals/12',
   createdAt: '2026-08-13T10:02:00',

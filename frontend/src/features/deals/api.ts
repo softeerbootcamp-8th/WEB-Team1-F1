@@ -38,7 +38,7 @@ export async function confirmPurchase(dealId: number): Promise<void> {
 }
 
 /**
- * 판매 서류 한 건을 올리고 탁송 제출에 쓸 조회 주소를 받는다.
+ * 명의이전 서류 한 건을 올리고 탁송 제출에 쓸 조회 주소를 받는다.
  *
  * 공용 발급(`/api/uploads/presigned`)이 아니라 거래 아래의 경로다. 공용 쪽은 차량 평가 경로라
  * 평가사만 부를 수 있고, 서류를 낼 자격은 역할이 아니라 "이 거래에서 지금 움직일 판매자인가"라
@@ -58,7 +58,7 @@ export async function uploadDealDocument(
   return data.fileUrl
 }
 
-/** 판매자가 서류와 탁송 일정을 낸다 */
+/** 판매자가 명의이전 서류와 탁송 일정을 낸다 */
 export async function submitTransport(
   dealId: number,
   request: TransportSubmitRequest,
@@ -66,7 +66,7 @@ export async function submitTransport(
   await axiosInstance.post(`/api/deals/${dealId}/transport`, request)
 }
 
-/** 구매자가 인도 일정을 잡아 거래가 확정된다 */
+/** 구매자가 인수 일정을 잡아 거래가 확정된다 */
 export async function confirmDelivery(
   dealId: number,
   request: DeliveryConfirmRequest,

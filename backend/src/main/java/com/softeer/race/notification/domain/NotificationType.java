@@ -41,9 +41,9 @@ public enum NotificationType {
 
     // 단계별로 쪼갠다. 하나로 두면 "서류를 올려 주세요"와 "일정을 확인해 주세요"가 같은 문구로 떠서,
     // 눌러 보기 전에는 무엇을 해야 하는지 알 수 없다
-    DEAL_SELLER_SUBMIT_REQUIRED("구매자가 구매를 확정했습니다. 서류와 탁송 일정을 등록해 주세요.", "/mypage/deals/%d"),
-    DEAL_BUYER_SCHEDULE_REQUIRED("판매자가 탁송 일정을 등록했습니다. 인도 일정을 정해 주세요.", "/mypage/deals/%d"),
-    DEAL_CONFIRMED("거래가 확정되었습니다. 인도 일정을 확인해 주세요.", "/mypage/deals/%d"),
+    DEAL_SELLER_SUBMIT_REQUIRED("구매자가 구매를 확정했습니다. 명의이전 서류와 탁송 일정을 등록해 주세요.", "/mypage/deals/%d"),
+    DEAL_BUYER_SCHEDULE_REQUIRED("판매자가 탁송 일정을 등록했습니다. 차량 인수 일정을 정해 주세요.", "/mypage/deals/%d"),
+    DEAL_CONFIRMED("거래가 확정되었습니다. 차량 인수 일정을 확인해 주세요.", "/mypage/deals/%d"),
     DEAL_CANCELLED("거래가 취소되었습니다.", "/mypage/deals/%d");
 
     private static final String REFERENCE = "%d";

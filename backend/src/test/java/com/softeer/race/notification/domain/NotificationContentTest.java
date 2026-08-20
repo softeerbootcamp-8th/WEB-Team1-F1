@@ -58,9 +58,9 @@ class NotificationContentTest {
     @DisplayName("거래 단계 요청 문구는 무엇을 해야 하는지를 단계마다 다르게 말한다")
     void dealStageRequestSaysWhatToDo() {
         assertThat(NotificationContent.dealSellerSubmitRequired(NAME).message())
-                .isEqualTo("현대 아반떼 CN7 차량의 구매자가 구매를 확정했습니다. 서류와 탁송 일정을 등록해 주세요.");
+                .isEqualTo("현대 아반떼 CN7 차량의 구매자가 구매를 확정했습니다. 명의이전 서류와 탁송 일정을 등록해 주세요.");
         assertThat(NotificationContent.dealBuyerScheduleRequired(NAME).message())
-                .isEqualTo("현대 아반떼 CN7 차량의 판매자가 탁송 일정을 등록했습니다. 인도 일정을 정해 주세요.");
+                .isEqualTo("현대 아반떼 CN7 차량의 판매자가 탁송 일정을 등록했습니다. 차량 인수 일정을 정해 주세요.");
     }
 
     @Test

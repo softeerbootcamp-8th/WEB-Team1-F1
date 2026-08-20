@@ -194,7 +194,7 @@ class DealProgressIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("시나리오 6 : 인도 일시가 탁송보다 앞서면 400 이다")
+    @DisplayName("시나리오 6 : 인수 일시가 탁송 출발보다 앞서면 400 이다")
     void scenario6_RejectsDeliveryBeforeTransport() throws Exception {
         confirmPurchase(BUYER_TOKEN).andExpect(status().isNoContent());
         submitTransport(SELLER_TOKEN, TRANSPORT_AT).andExpect(status().isNoContent());
@@ -234,9 +234,9 @@ class DealProgressIntegrationTest extends IntegrationTestSupport {
 
         // 단계마다 할 일이 다르다, 문구가 같으면 눌러 보기 전에는 무엇을 해야 하는지 알 수 없다
         assertThat(messageOf(seller, DEAL_SELLER_SUBMIT_REQUIRED)).isEqualTo(
-                "현대 아반떼 CN7 차량의 구매자가 구매를 확정했습니다. 서류와 탁송 일정을 등록해 주세요.");
+                "현대 아반떼 CN7 차량의 구매자가 구매를 확정했습니다. 명의이전 서류와 탁송 일정을 등록해 주세요.");
         assertThat(messageOf(buyer, DEAL_BUYER_SCHEDULE_REQUIRED)).isEqualTo(
-                "현대 아반떼 CN7 차량의 판매자가 탁송 일정을 등록했습니다. 인도 일정을 정해 주세요.");
+                "현대 아반떼 CN7 차량의 판매자가 탁송 일정을 등록했습니다. 차량 인수 일정을 정해 주세요.");
 
         // 같은 확정이어도 실제 행동은 구매자가 인수, 판매자가 인도라 문구를 구분한다
         assertThat(messageOf(buyer, DEAL_CONFIRMED)).isEqualTo(

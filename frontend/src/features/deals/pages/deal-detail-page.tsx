@@ -10,7 +10,6 @@ import {
   FileText,
   Gavel,
   LoaderCircle,
-  MapPin,
   UserRound,
 } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
@@ -209,13 +208,13 @@ export function DealDetailPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CalendarClock />
-              인수 일정
+              탁송·인수 일정
             </CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="space-y-5 text-sm">
               <Row
-                label="출차"
+                label="탁송 출발"
                 value={
                   deal.transportAt
                     ? `${formatDateTime(deal.transportAt)} · ${deal.transportLocation}`
@@ -224,7 +223,7 @@ export function DealDetailPage() {
                 fallback="판매자가 아직 등록하지 않았습니다."
               />
               <Row
-                label="인도"
+                label="차량 인수"
                 value={
                   deal.deliveryAt
                     ? `${formatDateTime(deal.deliveryAt)} · ${deal.deliveryLocation}`
@@ -235,7 +234,7 @@ export function DealDetailPage() {
               <div>
                 <dt className="text-muted-foreground flex items-center gap-1">
                   <FileText className="size-3.5" />
-                  판매 서류
+                  명의이전 서류
                 </dt>
                 <dd className="mt-1">
                   {deal.documentUrl ? (
@@ -271,14 +270,6 @@ export function DealDetailPage() {
             거래 그만두기
           </Button>
         </div>
-      )}
-
-      {deal.status === 'CONFIRMED' && (
-        <p className="text-muted-foreground mt-8 flex items-start gap-2 text-sm">
-          <MapPin className="mt-0.5 size-4 shrink-0" />
-          {/* 이전 등록은 자동차365가 이미 제공하고, 끝났는지 확인할 수단이 우리에게 없다 */}
-          명의이전은 자동차365에서 직접 진행합니다. 대금은 만나서 당사자끼리 주고받습니다.
-        </p>
       )}
     </main>
   )

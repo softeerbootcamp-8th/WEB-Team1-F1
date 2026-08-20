@@ -121,13 +121,13 @@ public record NotificationContent(NotificationType type, String message) {
 
     public static NotificationContent dealSellerSubmitRequired(String vehicleName) {
         return new NotificationContent(DEAL_SELLER_SUBMIT_REQUIRED,
-                "%s 차량의 구매자가 구매를 확정했습니다. 서류와 탁송 일정을 등록해 주세요."
+                "%s 차량의 구매자가 구매를 확정했습니다. 명의이전 서류와 탁송 일정을 등록해 주세요."
                         .formatted(text(vehicleName)));
     }
 
     public static NotificationContent dealBuyerScheduleRequired(String vehicleName) {
         return new NotificationContent(DEAL_BUYER_SCHEDULE_REQUIRED,
-                "%s 차량의 판매자가 탁송 일정을 등록했습니다. 인도 일정을 정해 주세요."
+                "%s 차량의 판매자가 탁송 일정을 등록했습니다. 차량 인수 일정을 정해 주세요."
                         .formatted(text(vehicleName)));
     }
 
@@ -140,7 +140,7 @@ public record NotificationContent(NotificationType type, String message) {
     private static NotificationContent dealConfirmed(
             String vehicleModel, LocalDateTime deliveryAt,
             String deliveryLocation, String action) {
-        Objects.requireNonNull(deliveryAt, "인도 일시는 필수입니다.");
+        Objects.requireNonNull(deliveryAt, "인수 일시는 필수입니다.");
 
         return new NotificationContent(DEAL_CONFIRMED,
                 "%s 차량을 %s에 %s에서 %s합니다."
