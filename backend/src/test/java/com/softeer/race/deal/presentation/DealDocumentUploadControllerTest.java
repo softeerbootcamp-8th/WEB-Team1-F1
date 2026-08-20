@@ -96,7 +96,7 @@ class DealDocumentUploadControllerTest {
                         "https://bucket.s3.ap-northeast-2.amazonaws.com/" + KEY,
                         "https://cdn.race.dev/" + KEY, EXPIRES_AT));
 
-        // 서류·탁송 일정 제출에 넣어야 하는 값은 fileUrl 쪽이다
+        // 명의이전 서류·탁송 출발 일정 제출에 넣어야 하는 값은 fileUrl 쪽이다
         request(PDF_REQUEST)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.key").value(KEY))

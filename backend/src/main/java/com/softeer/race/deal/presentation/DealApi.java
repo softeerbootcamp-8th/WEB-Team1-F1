@@ -37,7 +37,7 @@ public interface DealApi {
             Long dealId);
 
     @Operation(summary = "구매 확정",
-            description = "구매자가 거래를 진행하겠다고 확정한다. 판매자에게 서류와 탁송 일정을 "
+            description = "구매자가 거래를 진행하겠다고 확정한다. 판매자에게 명의이전 서류와 탁송 일정을 "
                     + "요청하는 알림이 나간다. 지금 상대방 차례이면 403, 이미 지난 단계이면 409 다.")
     ResponseEntity<Void> confirmPurchase(
             AuthenticatedUser authenticatedUser,
