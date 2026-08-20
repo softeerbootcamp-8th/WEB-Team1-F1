@@ -50,7 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(controllers = DealController.class)
 @Import(GlobalExceptionHandler.class)
-@DisplayName("판매 서류 업로드 주소 발급 컨트롤러")
+@DisplayName("명의이전 서류 업로드 주소 발급 컨트롤러")
 class DealDocumentUploadControllerTest {
 
     private static final long DEAL_ID = 12L;

@@ -34,14 +34,14 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
 /**
- * 판매 서류 발급의 자격 판정
+ * 명의이전 서류 발급의 자격 판정
  * <p>
  * 여기서 볼 것은 "누가 언제 서류 주소를 받을 수 있는가"다. 발급 자체는 저장소가 하므로 목으로
  * 두고, 자격이 없으면 저장소까지 가지 않는지를 함께 확인한다 — 발급이 먼저 일어나면 쓰이지 않을
  * 객체 자리가 남는다.
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("판매 서류 업로드 주소 발급")
+@DisplayName("명의이전 서류 업로드 주소 발급")
 class DealDocumentUploadServiceTest {
 
     private static final LocalDateTime PUBLISHED_AT = LocalDateTime.of(2026, 8, 8, 10, 0);

@@ -45,15 +45,15 @@ public interface DealApi {
             @Parameter(description = "거래 식별자", example = "12")
             Long dealId);
 
-    @Operation(summary = "판매 서류 업로드 주소 발급",
+    @Operation(summary = "명의이전 서류 업로드 주소 발급",
             description = """
-                    판매자가 이 거래의 서류 PDF 를 저장소에 직접 올릴 서명된 주소를 발급한다.
+                    판매자가 이 거래의 명의이전 서류 PDF 를 저장소에 직접 올릴 서명된 주소를 발급한다.
                     파일은 이 API 로 보내지 않는다.
 
                     1. 올릴 파일의 형식과 크기를 보내 uploadUrl 을 받는다.
                     2. 받은 uploadUrl 로 파일을 PUT 한다. Content-Type 헤더와 파일 크기가 1번에서
                        보낸 값과 정확히 같아야 하며, 다르면 업로드가 거부된다.
-                    3. 함께 받은 fileUrl 을 서류·탁송 일정 제출의 documentUrl 로 보낸다.
+                    3. 함께 받은 fileUrl 을 명의이전 서류·탁송 출발 일정 제출의 documentUrl 로 보낸다.
 
                     application/pdf 만 20MB 까지 받는다. 발급 자격은 역할이 아니라 거래가 판정하므로
                     이 거래의 판매자이면서 판매자 차례일 때만 발급된다.
@@ -72,9 +72,9 @@ public interface DealApi {
 
             DealDocumentUploadRequest request);
 
-    @Operation(summary = "서류·탁송 일정 제출",
-            description = "판매자가 서류 PDF 주소와 탁송 일시·장소를 낸다. 파일은 업로드 API 로 "
-                    + "미리 올리고 조회 주소만 보낸다. 탁송 일시가 과거이면 400 이다.")
+    @Operation(summary = "명의이전 서류·탁송 출발 일정 제출",
+            description = "판매자가 명의이전 서류 PDF 주소와 탁송 출발 일시·장소를 낸다. 파일은 업로드 "
+                    + "API 로 미리 올리고 조회 주소만 보낸다. 탁송 출발 일시가 과거이면 400 이다.")
     ResponseEntity<Void> submitTransport(
             AuthenticatedUser authenticatedUser,
 
@@ -83,9 +83,9 @@ public interface DealApi {
 
             TransportSubmitRequest request);
 
-    @Operation(summary = "인도 일정 확정",
-            description = "구매자가 탁송 일정에 동의하고 인도 일시·장소를 잡는다. 이 호출로 거래가 "
-                    + "확정되며 양쪽에 알림이 나간다. 인도 일시가 탁송 일시보다 앞서면 400 이다.")
+    @Operation(summary = "차량 인수 일정 확정",
+            description = "구매자가 탁송 출발 일정에 동의하고 차량 인수 일시·장소를 잡는다. 이 호출로 "
+                    + "거래가 확정되며 양쪽에 알림이 나간다. 인수 일시가 탁송 출발 일시보다 앞서면 400 이다.")
     ResponseEntity<Void> confirmDelivery(
             AuthenticatedUser authenticatedUser,
 

@@ -52,7 +52,7 @@ public class DealProgressService {
     }
 
     /**
-     * 판매자가 서류와 탁송 일정을 낸다, 구매자에게 확인을 요청한다
+     * 판매자가 명의이전 서류와 탁송 출발 일정을 낸다, 구매자에게 확인을 요청한다
      */
     public void submitTransport(long userId, long dealId, String documentUrl,
                                 LocalDateTime transportAt, String transportLocation) {
@@ -70,7 +70,7 @@ public class DealProgressService {
     }
 
     /**
-     * 구매자가 인도 일정을 잡아 거래가 확정된다
+     * 구매자가 차량 인수 일정을 잡아 거래가 확정된다
      * <p>
      * 확정만 양쪽에 알린다. 앞 단계들은 다음에 움직일 한 사람에게만 가면 되지만, 확정은 둘 다
      * 그 날짜에 나가야 하는 결과다

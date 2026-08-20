@@ -61,9 +61,9 @@ describe('uploadDealDocument', () => {
     expect(() =>
       prepareDocumentFile(
         new File([new Uint8Array(10)], 'photo.jpg', { type: 'image/jpeg' }),
-        '판매 서류',
+        '명의이전 서류',
       ),
-    ).toThrow('판매 서류는 PDF')
+    ).toThrow('명의이전 서류는 PDF')
     expect(post).not.toHaveBeenCalled()
   })
 })

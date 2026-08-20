@@ -89,7 +89,7 @@ export interface DealDetail {
   statusChangedAt: string
   cancellationReason: CancellationReason | null
   faultParty: FaultParty | null
-  /** 판매자가 낸 서류, 아직 없으면 null */
+  /** 판매자가 낸 명의이전 서류, 아직 없으면 null */
   documentUrl: string | null
   /** 판매자가 차를 넘기는 시각과 자리 */
   transportAt: string | null
@@ -118,8 +118,8 @@ export const DEAL_FLOW: DealStatus[] = [
  */
 export const DEAL_STATUS_META: Record<DealStatus, { label: string; step: string }> = {
   BUYER_CONFIRM_PENDING: { label: '구매 확정 대기', step: '구매 확정' },
-  SELLER_SUBMIT_PENDING: { label: '서류·탁송 일정 대기', step: '서류·탁송' },
-  BUYER_SCHEDULE_PENDING: { label: '인도 일정 대기', step: '인도 일정' },
+  SELLER_SUBMIT_PENDING: { label: '서류·탁송 등록 대기', step: '서류·탁송' },
+  BUYER_SCHEDULE_PENDING: { label: '차량 인수 일정 대기', step: '인수 일정' },
   CONFIRMED: { label: '거래 확정', step: '확정' },
   CANCELLED: { label: '거래 취소', step: '취소' },
 }
@@ -139,12 +139,12 @@ export function dealGuide(status: DealStatus, actionRequired: boolean): string {
   const mine: Record<Exclude<DealStatus, 'CONFIRMED' | 'CANCELLED'>, string> = {
     BUYER_CONFIRM_PENDING: '구매 확정 필요',
     SELLER_SUBMIT_PENDING: '서류·탁송 등록 필요',
-    BUYER_SCHEDULE_PENDING: '인도 일정 입력 필요',
+    BUYER_SCHEDULE_PENDING: '인수 일정 입력 필요',
   }
   const theirs: Record<Exclude<DealStatus, 'CONFIRMED' | 'CANCELLED'>, string> = {
     BUYER_CONFIRM_PENDING: '구매자의 구매 확정을 기다리고 있습니다.',
-    SELLER_SUBMIT_PENDING: '판매자의 서류와 탁송 일정 입력을 기다리고 있습니다.',
-    BUYER_SCHEDULE_PENDING: '구매자의 인도 일정 입력을 기다리고 있습니다.',
+    SELLER_SUBMIT_PENDING: '판매자의 명의이전 서류와 탁송 일정을 기다리고 있습니다.',
+    BUYER_SCHEDULE_PENDING: '구매자의 차량 인수 일정을 기다리고 있습니다.',
   }
 
   return actionRequired ? mine[status] : theirs[status]

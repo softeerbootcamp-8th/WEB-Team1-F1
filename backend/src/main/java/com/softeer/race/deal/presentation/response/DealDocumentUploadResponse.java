@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
-@Schema(description = "판매 서류 업로드 주소 발급 응답")
+@Schema(description = "명의이전 서류 업로드 주소 발급 응답")
 public record DealDocumentUploadResponse(
 
         @Schema(description = "저장소 안의 객체 키",

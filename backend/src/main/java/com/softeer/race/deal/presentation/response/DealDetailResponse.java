@@ -57,21 +57,21 @@ public record DealDetailResponse(
                 example = "BUYER")
         FaultParty faultParty,
 
-        @Schema(description = "판매자가 낸 서류 PDF 주소, 아직 없으면 null")
+        @Schema(description = "판매자가 낸 명의이전 서류 PDF 주소, 아직 없으면 null")
         String documentUrl,
 
-        @Schema(description = "판매자가 차를 넘기는 일시, 아직 없으면 null",
+        @Schema(description = "탁송 출발 일시, 아직 없으면 null",
                 example = "2026-08-20T14:00:00")
         LocalDateTime transportAt,
 
-        @Schema(description = "출차 장소, 아직 없으면 null", example = "서울시 강남구 테헤란로 123")
+        @Schema(description = "탁송 출발지, 아직 없으면 null", example = "서울시 강남구 테헤란로 123")
         String transportLocation,
 
-        @Schema(description = "구매자가 차를 받는 일시, 아직 없으면 null",
+        @Schema(description = "차량 인수 일시, 아직 없으면 null",
                 example = "2026-08-21T10:00:00")
         LocalDateTime deliveryAt,
 
-        @Schema(description = "인도 장소, 아직 없으면 null", example = "부산시 해운대구 센텀중앙로 55")
+        @Schema(description = "차량 인수 장소, 아직 없으면 null", example = "부산시 해운대구 센텀중앙로 55")
         String deliveryLocation,
 
         @Schema(description = "지금 내가 움직일 차례인지, 화면이 액션 버튼을 켜는 기준", example = "true")

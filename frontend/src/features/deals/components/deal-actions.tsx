@@ -50,7 +50,7 @@ function ConfirmPurchase({ deal, onDone }: DealActionsProps) {
     setIsPending(true)
     try {
       await confirmPurchase(deal.dealId)
-      toast.success('구매를 확정했습니다. 판매자에게 서류와 일정을 요청했습니다.')
+      toast.success('구매를 확정했습니다. 판매자에게 명의이전 서류와 탁송 일정을 요청했습니다.')
       onDone()
     } catch (cause) {
       toast.error(getErrorMessage(cause, '구매 확정에 실패했습니다.'))
@@ -62,7 +62,7 @@ function ConfirmPurchase({ deal, onDone }: DealActionsProps) {
   return (
     <ActionBox title="확정 전 확인해 주세요">
       <p className="text-muted-foreground text-sm">
-        확정하면 판매자가 서류와 탁송 일정을 준비합니다. 확정 전까지는 취소할 수 있습니다.
+        확정하면 판매자가 명의이전 서류와 탁송 일정을 등록합니다. 확정 전까지는 취소할 수 있습니다.
       </p>
       <Button onClick={submit} disabled={isPending} className="mt-4">
         {isPending && <LoaderCircle className="animate-spin" />}
@@ -80,7 +80,7 @@ function SubmitTransport({ deal, onDone }: DealActionsProps) {
 
   const submit = async () => {
     if (!file) {
-      toast.error('판매 서류를 첨부해 주세요.')
+      toast.error('명의이전 서류를 첨부해 주세요.')
       return
     }
 
@@ -88,7 +88,7 @@ function SubmitTransport({ deal, onDone }: DealActionsProps) {
     try {
       // 파일은 서버를 거치지 않는다. 발급받은 주소로 브라우저가 S3 에 직접 올리고,
       // 거래에는 조회 주소만 넘긴다
-      const prepared = prepareDocumentFile(file, '판매 서류')
+      const prepared = prepareDocumentFile(file, '명의이전 서류')
       const documentUrl = await uploadDealDocument(deal.dealId, prepared)
 
       await submitTransport(deal.dealId, {
@@ -97,7 +97,7 @@ function SubmitTransport({ deal, onDone }: DealActionsProps) {
         transportAt: `${transportAt}:00`,
         transportLocation,
       })
-      toast.success('서류와 탁송 일정을 등록했습니다.')
+      toast.success('명의이전 서류와 탁송 일정을 등록했습니다.')
       onDone()
     } catch (cause) {
       const fallback =
@@ -109,10 +109,10 @@ function SubmitTransport({ deal, onDone }: DealActionsProps) {
   }
 
   return (
-    <ActionBox title="판매 서류와 출차 정보">
+    <ActionBox title="명의이전 서류와 탁송 정보">
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="document">판매 서류 (PDF, 20MB 이하)</Label>
+          <Label htmlFor="document">명의이전 서류 (PDF, 20MB 이하)</Label>
           <Input
             id="document"
             type="file"
@@ -128,7 +128,7 @@ function SubmitTransport({ deal, onDone }: DealActionsProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="transportAt">출차 일시</Label>
+          <Label htmlFor="transportAt">탁송 출발 일시</Label>
           <Input
             id="transportAt"
             type="datetime-local"
@@ -138,7 +138,7 @@ function SubmitTransport({ deal, onDone }: DealActionsProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="transportLocation">출차 장소</Label>
+          <Label htmlFor="transportLocation">탁송 출발지</Label>
           <Input
             id="transportLocation"
             placeholder="서울시 강남구 테헤란로 123"
@@ -174,7 +174,7 @@ function ConfirmDelivery({ deal, onDone }: DealActionsProps) {
       toast.success('거래가 확정되었습니다.')
       onDone()
     } catch (cause) {
-      toast.error(getErrorMessage(cause, '인도 일정 확정에 실패했습니다.'))
+      toast.error(getErrorMessage(cause, '인수 일정 확정에 실패했습니다.'))
     } finally {
       setIsPending(false)
     }
@@ -187,12 +187,12 @@ function ConfirmDelivery({ deal, onDone }: DealActionsProps) {
   return (
     <ActionBox title="차량을 받을 날짜와 장소">
       <p className="text-muted-foreground text-sm">
-        판매자가 등록한 출차 일정 이후로 정해야 합니다. 등록하면 거래가 확정됩니다.
+        판매자가 등록한 탁송 출발 이후로 정해야 합니다. 등록하면 거래가 확정됩니다.
       </p>
 
       <div className="mt-4 space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="deliveryAt">인도 일시</Label>
+          <Label htmlFor="deliveryAt">차량 인수 일시</Label>
           <Input
             id="deliveryAt"
             type="datetime-local"
@@ -203,7 +203,7 @@ function ConfirmDelivery({ deal, onDone }: DealActionsProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="deliveryLocation">인도 장소</Label>
+          <Label htmlFor="deliveryLocation">차량 인수 장소</Label>
           <Input
             id="deliveryLocation"
             placeholder="부산시 해운대구 센텀중앙로 55"
